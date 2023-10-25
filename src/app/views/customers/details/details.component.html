@@ -1,0 +1,290 @@
+<h4 class="mb-5">{{ editable ? "Edit Customer" : "Add Customer" }}</h4>
+<div>
+  <form [formGroup]="form">
+    <c-row>
+      <label cLabel="col" class="col-sm-1" for="Identity"> Identity </label>
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="Identity"
+          type="text"
+          formControlName="identity"
+        />
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="Name">
+        Name <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input cFormControl id="Name" type="text" formControlName="name" />
+        <small
+          class="error"
+          *ngIf="
+            (f['name']?.errors?.['required'] && f['name'].touched) ||
+            (f['name']?.errors?.['required'] && submitted)
+          "
+          >Name is required</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="Phone">
+        Phone <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input cFormControl id="Phone" type="text" formControlName="phone" />
+        <small
+          class="error"
+          *ngIf="
+            (f['phone']?.errors?.['required'] && f['phone'].touched) ||
+            (f['phone']?.errors?.['required'] && submitted)
+          "
+          >Phone is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['phone']?.errors?.['required'] && f['phone']?.errors?.['pattern'] && f['phone'].touched) ||
+            (!f['phone']?.errors?.['required'] && f['phone']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Phone Number</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="Email"> Email</label>
+      <c-col [sm]="5">
+        <input cFormControl id="Email" type="text" formControlName="email" />
+        <small
+          class="error"
+          *ngIf="
+            (!f['email']?.errors?.['required'] && f['email']?.errors?.['email'] && f['email'].touched) ||
+            (!f['email']?.errors?.['required'] && f['email']?.errors?.['email'] && submitted)
+          "
+          >Please enter valid email id</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <c-col [xs]>
+        <c-form-check>
+          <input
+            cFormCheckInput
+            id="is_dealer"
+            type="checkbox"
+            formControlName="is_dealer"
+          />
+          <label cFormCheckLabel for="is_dealer">Is dealer</label>
+        </c-form-check>
+      </c-col>
+    </c-row>
+    <div class="mt-5 d-flex gap-4">
+      <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
+      <p-button
+        color="secondary"
+        styleClass="p-button-secondary"
+        (click)="toggleWarningModal()"
+      >
+        Cancel</p-button
+      >
+    </div>
+  </form>
+</div>
+<ng-container *ngIf="customerId">
+  <div class="mt-5">
+    <p-button (click)="addressAddEdit()"> Add Address</p-button>
+  </div>
+  <div class="card mt-5">
+    <p-table
+      [value]="customerAddresses"
+      [paginator]="true"
+      [rows]="7"
+      [globalFilterFields]="['city', 'address', 'zip_code', 'state']"
+      (sortFunction)="customSort($event)"
+      [customSort]="true"
+      [tableStyle]="{ 'min-width': '60rem' }"
+      [rowsPerPageOptions]="[5, 10, 15]"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="state" style="width: 20%" scope="row">
+            State <p-sortIcon field="state"></p-sortIcon>
+          </th>
+          <th pSortableColumn="city" style="width: 20%" scope="row">
+            City <p-sortIcon field="city"></p-sortIcon>
+          </th>
+          <th pSortableColumn="zip_code" style="width: 20%" scope="row">
+            Zip Code <p-sortIcon field="zip_code"></p-sortIcon>
+          </th>
+          <th pSortableColumn="address" style="width: 20%" scope="row">
+            Address <p-sortIcon field="address"></p-sortIcon>
+          </th>
+          <th pSortableColumn="is_default" style="width: 10%" scope="row">
+            Default <p-sortIcon field="is_default"></p-sortIcon>
+          </th>
+          <th style="width: 10%" scope="row">Actions</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-address>
+        <tr>
+          <td>{{ address.state }}</td>
+          <td>{{ address.city }}</td>
+          <td>{{ address.zip_code }}</td>
+          <td>{{ address.address }}</td>
+          <td>{{ address.is_default === 0 ? "No" : "Yes" }}</td>
+          <td>
+            <p-button
+              icon="pi pi-pencil"
+              (click)="addressAddEdit(address)"
+              styleClass="p-button-rounded p-button-text"
+            ></p-button>
+            <p-button
+              icon="pi pi-trash"
+              (click)="deleteCustomerAddress(address)"
+              styleClass="p-button-rounded p-button-text"
+            ></p-button>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+  <c-modal
+    id="liveDemoModal"
+    [visible]="visible"
+    backdrop="static"
+    alignment="center"
+    (visibleChange)="handleFormModal($event)"
+  >
+    <c-modal-header>
+      <h5 cModalTitle color="warm">
+        {{ editAddress ? "Edit " : "Add " }}Address
+      </h5>
+    </c-modal-header>
+    <c-modal-body>
+      <div>
+        <form [formGroup]="addressForm">
+          <c-row>
+            <label cLabel="col" class="col-sm-3" for="address">
+              Address Line 1 <span class="error">*</span>
+            </label>
+            <c-col [sm]="9">
+              <input
+                cFormControl
+                id="address"
+                type="text"
+                formControlName="address"
+              />
+              <small
+                class="error"
+                *ngIf="
+            (af['address']?.errors?.['required'] && af['address'].touched) ||
+            (af['address']?.errors?.['required'] && submittedAddress)
+          "
+                >Address line 1 is required</small
+              >
+            </c-col>
+          </c-row>
+          <c-row class="mt-3">
+            <label cLabel="col" class="col-sm-3" for="address_line2">
+              Address Line 2
+            </label>
+            <c-col [sm]="9">
+              <input
+                cFormControl
+                id="address_line2"
+                type="text"
+                formControlName="address_line2"
+              />
+            </c-col>
+          </c-row>
+          <c-row class="mt-3">
+            <label cLabel="col" class="col-sm-3" for="zip_code">
+              Zip Code <span class="error">*</span></label
+            >
+            <c-col [sm]="9">
+              <input
+                cFormControl
+                id="zip_code"
+                type="text"
+                formControlName="zip_code"
+              />
+              <small
+                class="error"
+                *ngIf="
+            (af['zip_code']?.errors?.['required'] && af['zip_code'].touched) ||
+            (af['zip_code']?.errors?.['required'] && submittedAddress)
+          "
+                >Zip Code is required</small
+              >
+            </c-col>
+          </c-row>
+          <c-row class="mt-3">
+            <label cLabel="col" class="col-sm-3" for="city">
+              City <span class="error">*</span></label
+            >
+            <c-col [sm]="9">
+              <input
+                cFormControl
+                id="city"
+                type="text"
+                formControlName="city"
+              />
+              <small
+                class="error"
+                *ngIf="
+            (af['city']?.errors?.['required'] && af['city'].touched) ||
+            (af['city']?.errors?.['required'] && submittedAddress)
+          "
+                >City is required</small
+              >
+            </c-col>
+          </c-row>
+          <c-row class="mt-3">
+            <label cLabel="col" class="col-sm-3" for="state">
+              State <span class="error">*</span></label
+            >
+            <c-col [sm]="9">
+              <input
+                cFormControl
+                id="state"
+                type="text"
+                formControlName="state"
+              />
+              <small
+                class="error"
+                *ngIf="
+            (af['state']?.errors?.['required'] && af['state'].touched) ||
+            (af['state']?.errors?.['required'] && submittedAddress)
+          "
+                >State is required</small
+              >
+            </c-col>
+          </c-row>
+          <c-row class="mt-3">
+            <label cLabel="col" class="col-sm-3" for="is_default"
+              >Is Default</label
+            >
+            <c-col [sm]="9">
+              <c-form-check>
+                <input
+                  cFormCheckInput
+                  id="is_default"
+                  type="checkbox"
+                  formControlName="is_default"
+                />
+              </c-form-check>
+            </c-col>
+          </c-row>
+        </form>
+      </div>
+    </c-modal-body>
+    <c-modal-footer>
+      <p-button
+        styleClass="p-button-secondary"
+        (click)="toggleAddressWarningModal()"
+      >
+        Cancel
+      </p-button>
+      <p-button (click)="submitAddress()">
+        {{ editAddress ? "Save" : "Add" }}
+      </p-button>
+    </c-modal-footer>
+  </c-modal>
+</ng-container>

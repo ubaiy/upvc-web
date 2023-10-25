@@ -1,0 +1,131 @@
+<div class="flex py-2 justify-content-center">
+  <form [formGroup]="form">
+    <c-row>
+      <label cLabel="col" class="col-sm-3" for="payment_terms">
+        Payment Terms <span class="error">*</span>
+      </label>
+      <c-col [sm]="9">
+        <select
+          aria-label="Default select example"
+          cSelect
+          formControlName="payment_terms"
+        >
+          <option value="" disabled>select</option>
+          <option
+            *ngFor="let paymentTerm of paymentTerms"
+            [value]="paymentTerm.id"
+          >
+            {{ paymentTerm.name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['payment_terms']?.errors?.['required'] && f['payment_terms'].touched) ||
+            (f['payment_terms']?.errors?.['required'] && submitted)
+          "
+          >Payment Terms is required</small
+        >
+      </c-col>
+    </c-row>
+
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-3" for="order_type_margin">
+        Order Type Margin <span class="error">*</span>
+      </label>
+      <c-col [sm]="9">
+        <select
+          aria-label="Default select example"
+          cSelect
+          formControlName="order_type_margin"
+        >
+          <option value="" disabled>select</option>
+          <option *ngFor="let margin of margins" [value]="margin.id">
+            {{ margin.name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['order_type_margin']?.errors?.['required'] && f['order_type_margin'].touched) ||
+            (f['order_type_margin']?.errors?.['required'] && submitted)
+          "
+          >Order Type Margin is required</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-3" for="cgst">
+        CGST <span class="error">*</span>
+      </label>
+      <c-col [sm]="9">
+        <p-checkbox
+          id="cgst"
+          formControlName="cgst"
+          [binary]="true"
+          inputId="binary"
+        ></p-checkbox>
+        <small
+          class="error"
+          *ngIf="
+            (f['cgst']?.errors?.['required'] && f['cgst'].touched) ||
+            (f['cgst']?.errors?.['required'] && submitted)
+          "
+          >CGST is required</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-3" for="sgst">
+        SGST <span class="error">*</span>
+      </label>
+      <c-col [sm]="9">
+        <p-checkbox
+          id="sgst"
+          formControlName="sgst"
+          [binary]="true"
+          inputId="binary"
+        ></p-checkbox>
+        <small
+          class="error"
+          *ngIf="
+            (f['sgst']?.errors?.['required'] && f['sgst'].touched) ||
+            (f['sgst']?.errors?.['required'] && submitted)
+          "
+          >SGST is required</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-3" for="igst">
+        IGST <span class="error">*</span>
+      </label>
+      <c-col [sm]="9">
+        <p-checkbox
+          id="igst"
+          formControlName="igst"
+          [binary]="true"
+          inputId="binary"
+        ></p-checkbox>
+        <small
+          class="error"
+          *ngIf="
+            (f['igst']?.errors?.['required'] && f['igst'].touched) ||
+            (f['igst']?.errors?.['required'] && submitted)
+          "
+          >IGST is required</small
+        >
+      </c-col>
+    </c-row>
+  </form>
+  <div class="mt-5 d-flex gap-4">
+    <p-button (click)="submit()"> Print</p-button>
+    <p-button
+      color="secondary"
+      styleClass="p-button-secondary"
+      (click)="cancel()"
+    >
+      Cancel</p-button
+    >
+  </div>
+</div>

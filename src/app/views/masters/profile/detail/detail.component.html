@@ -1,0 +1,249 @@
+<h4 class="mb-5">{{ editable ? "Edit Profile" : "Add Profile" }}</h4>
+<div>
+  <form [formGroup]="form">
+    <c-row>
+      <label cLabel="col" class="col-sm-1" for="category">
+        Category <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <select
+          aria-label="Default select example"
+          cSelect
+          formControlName="category"
+        >
+          <option value="" disabled>select</option>
+          <option *ngFor="let category of categoryList" [value]="category">
+            {{ category }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['category']?.errors?.['required'] && f['category'].touched) ||
+            (f['category']?.errors?.['required'] && submitted)
+          "
+          >Category is required</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="profile_code">
+        Profile Code <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="profile_code"
+          type="text"
+          formControlName="profile_code"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['profile_code']?.errors?.['required'] && f['profile_code'].touched) ||
+            (f['profile_code']?.errors?.['required'] && submitted)
+          "
+          >Profile Code is required</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="profile_name">
+        Profile Name <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="profile_name"
+          type="text"
+          formControlName="profile_name"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['profile_name']?.errors?.['required'] && f['profile_name'].touched) ||
+            (f['profile_name']?.errors?.['required'] && submitted)
+          "
+          >Profile Name is required</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="kg_meter">
+        Kg/mtr <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="kg_meter"
+          type="text"
+          formControlName="kg_meter"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['kg_meter']?.errors?.['required'] && f['kg_meter'].touched) ||
+            (f['kg_meter']?.errors?.['required'] && submitted)
+          "
+          >Kg/mtr is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['kg_meter']?.errors?.['required'] && f['kg_meter']?.errors?.['pattern'] && f['kg_meter'].touched) ||
+            (!f['kg_meter']?.errors?.['required'] && f['kg_meter']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Kg/mtr Number</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="rate_meter">
+        Rate/Meter <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="rate_meter"
+          type="text"
+          formControlName="rate_meter"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['rate_meter']?.errors?.['required'] && f['rate_meter'].touched) ||
+            (f['rate_meter']?.errors?.['required'] && submitted)
+          "
+          >Rate/Meter is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['rate_meter']?.errors?.['required'] && f['rate_meter']?.errors?.['pattern'] && f['rate_meter'].touched) ||
+            (!f['rate_meter']?.errors?.['required'] && f['rate_meter']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Rate/Meter Number</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="rate_bar">
+        Rate/Bar<span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="rate_bar"
+          type="text"
+          formControlName="rate_bar"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['rate_bar']?.errors?.['required'] && f['rate_bar'].touched) ||
+            (f['rate_bar']?.errors?.['required'] && submitted)
+          "
+          >Rate/Bar is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['rate_bar']?.errors?.['required'] && f['rate_bar']?.errors?.['pattern'] && f['rate_bar'].touched) ||
+            (!f['rate_bar']?.errors?.['required'] && f['rate_bar']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Rate/Bar Number</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="kg_meter_color">
+        Color Kg/mtr <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="kg_meter_color"
+          type="text"
+          formControlName="kg_meter_color"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['kg_meter_color']?.errors?.['required'] && f['kg_meter_color'].touched) ||
+            (f['kg_meter_color']?.errors?.['required'] && submitted)
+          "
+          >Kg/mtr is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['kg_meter_color']?.errors?.['required'] && f['kg_meter_color']?.errors?.['pattern'] && f['kg_meter_color'].touched) ||
+            (!f['kg_meter_color']?.errors?.['required'] && f['kg_meter_color']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Color Kg/mtr Number</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="rate_meter_color">
+        Color Rate/Meter <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="rate_meter_color"
+          type="text"
+          formControlName="rate_meter_color"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['rate_meter_color']?.errors?.['required'] && f['rate_meter_color'].touched) ||
+            (f['rate_meter_color']?.errors?.['required'] && submitted)
+          "
+        >
+          Color Rate/Meter is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['rate_meter_color']?.errors?.['required'] && f['rate_meter_color']?.errors?.['pattern'] && f['rate_meter_color'].touched) ||
+            (!f['rate_meter_color']?.errors?.['required'] && f['rate_meter_color']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Color Rate/Meter Number</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="rate_bar_color">
+        Color Rate/Bar<span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="rate_bar_color"
+          type="text"
+          formControlName="rate_bar_color"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['rate_bar_color']?.errors?.['required'] && f['rate_bar_color'].touched) ||
+            (f['rate_bar_color']?.errors?.['required'] && submitted)
+          "
+          >Color Rate/Bar is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['rate_bar_color']?.errors?.['required'] && f['rate_bar_color']?.errors?.['pattern'] && f['rate_bar_color'].touched) ||
+            (!f['rate_bar_color']?.errors?.['required'] && f['rate_bar_color']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Rate/Bar Number</small
+        >
+      </c-col>
+    </c-row>
+    <div class="mt-5 d-flex gap-4">
+      <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
+      <p-button
+        color="secondary"
+        styleClass="p-button-secondary"
+        (click)="toggleWarningModal()"
+      >
+        Cancel</p-button
+      >
+    </div>
+  </form>
+</div>

@@ -1,0 +1,648 @@
+<h4 class="mb-5">{{ editable ? "Edit Quotation" : "Add Quotation" }}</h4>
+<div>
+  <div class="box">
+    <form
+      cForm
+      class="row g-3 form-class"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+    >
+      <c-col [md]="6">
+        <label cLabel for="quantity"
+          >Quantity <span class="error">*</span></label
+        >
+        <input
+          id="quantity"
+          aria-label="Quantity"
+          type="number"
+          cFormControl
+          placeholder="Quantity"
+          formControlName="quantity"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['quantity']?.errors?.['required'] && f['quantity'].touched) ||
+            (f['quantity']?.errors?.['required'] && submitted)
+          "
+          >Quantity is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="color"
+          >Profile Color <span class="error">*</span></label
+        >
+        <select cSelect id="color" formControlName="color">
+          <option value="" disabled>select</option>
+          <option
+            *ngFor="let color of colors"
+            [ngValue]="color"
+            [selected]="color.selected"
+          >
+            {{ color.color_name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['color']?.errors?.['required'] && f['color'].touched) ||
+            (f['color']?.errors?.['required'] && submitted)
+          "
+          >Profile Color is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="width">Width <span class="error">*</span></label>
+        <input
+          id="width"
+          cFormControl
+          aria-label="Width"
+          type="number"
+          cFormControl
+          placeholder="Width"
+          formControlName="width"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['width']?.errors?.['required'] && f['width'].touched) ||
+            (f['width']?.errors?.['required'] && submitted)
+          "
+          >Width is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="height">Height <span class="error">*</span></label>
+        <input
+          id="height"
+          cFormControl
+          aria-label="Height"
+          type="number"
+          cFormControl
+          placeholder="Height"
+          formControlName="height"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['height']?.errors?.['required'] && f['height'].touched) ||
+            (f['height']?.errors?.['required'] && submitted)
+          "
+          >Height is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="category_name"
+          >Category <span class="error">*</span></label
+        >
+        <select cSelect id="category_name" formControlName="category_name">
+          <option value="" disabled>select</option>
+          <option *ngFor="let category of categoryList" [value]="category">
+            {{ category }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['category_name']?.errors?.['required'] && f['category_name'].touched) ||
+            (f['category_name']?.errors?.['required'] && submitted)
+          "
+          >Category is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="product_type"
+          >Type <span class="error">*</span></label
+        >
+        <select cSelect id="product_type" formControlName="product_type">
+          <option value="" disabled>select</option>
+          <option *ngFor="let type of typeList" [value]="type">
+            {{ type }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['product_type']?.errors?.['required'] && f['product_type'].touched) ||
+            (f['product_type']?.errors?.['required'] && submitted)
+          "
+          >Type is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="glazz_id">Glass</label>
+        <select cSelect id="glazz_id" formControlName="glazz_id">
+          <option value="" disabled>select</option>
+          <option *ngFor="let glass of glassList" [value]="glass.id">
+            {{ glass.name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['glazz_id']?.errors?.['required'] && f['glazz_id'].touched) ||
+            (f['glazz_id']?.errors?.['required'] && submitted)
+          "
+          >Glass is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="product_id"
+          >Frame <span class="error">*</span></label
+        >
+        <select cSelect id="product_id" formControlName="product_id">
+          <option value="" disabled>select</option>
+          <option *ngFor="let product of profileList" [value]="product.id">
+            {{ product.profile_code + " - " + product.profile_name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['product_id']?.errors?.['required'] && f['product_id'].touched) ||
+            (f['product_id']?.errors?.['required'] && submitted)
+          "
+          >Frame is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="mullion_id">Mullion</label>
+        <select cSelect id="mullion_id" formControlName="mullion_id">
+          <option value="" disabled>select</option>
+          <option *ngFor="let mullion of mullionList" [value]="mullion.id">
+            {{ mullion.profile_code + " - " + mullion.profile_name }}
+          </option>
+        </select>
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="mullion_quantity">Mullion Quantity</label>
+        <input
+          id="mullion_quantity"
+          aria-label="Mullion Quantity"
+          type="number"
+          cFormControl
+          placeholder="Mullion Quantity"
+          formControlName="mullion_quantity"
+        />
+      </c-col>
+      <c-col [md]="6" *ngIf="f['category_name'].value == 'Casement'">
+        <label cLabel for="casement_type"
+          >Casement Type <span class="error">*</span></label
+        >
+        <select cSelect id="casement_type" formControlName="casement_type">
+          <option value="" disabled>select</option>
+          <option
+            *ngFor="let casementType of casementTypes"
+            [value]="casementType"
+          >
+            {{ casementType }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['casement_type']?.errors?.['required'] && f['casement_type'].touched) ||
+            (f['casement_type']?.errors?.['required'] && submitted)
+          "
+          >Casement Type is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Openable'
+        "
+      >
+        <label cLabel for="palla_type"
+          >Palla Type <span class="error">*</span></label
+        >
+        <select cSelect id="palla_type" formControlName="palla_type">
+          <option value="" disabled>select</option>
+          <option *ngFor="let palla_type of palla_types" [value]="palla_type">
+            {{ palla_type }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['palla_type']?.errors?.['required'] && f['palla_type'].touched) ||
+            (f['palla_type']?.errors?.['required'] && submitted)
+          "
+          >Palla Type is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Openable'
+        "
+      >
+        <label cLabel for="open_direction"
+          >Open Direction <span class="error">*</span></label
+        >
+        <select cSelect id="open_direction" formControlName="open_direction">
+          <option value="" disabled>select</option>
+          <option
+            *ngFor="let openningDirection of openningDirections"
+            [value]="openningDirection.key"
+          >
+            {{ openningDirection.value }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['open_direction']?.errors?.['required'] && f['open_direction'].touched) ||
+            (f['open_direction']?.errors?.['required'] && submitted)
+          "
+          >Open Direction is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          (f['category_name'].value == 'Casement' &&
+            f['casement_type'].value == 'Openable') ||
+          f['category_name'].value == 'Slidding'
+        "
+      >
+        <label cLabel for="sash_id">Sash <span class="error">*</span></label>
+        <select cSelect id="sash_id" formControlName="sash_id">
+          <option value="" disabled>select</option>
+          <option *ngFor="let sash of sashList" [value]="sash.id">
+            {{ sash.profile_code + " - " + sash.profile_name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['sash_id']?.errors?.['required'] && f['sash_id'].touched) ||
+            (f['sash_id']?.errors?.['required'] && submitted)
+          "
+          >Sash is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          (f['category_name'].value == 'Casement' &&
+            f['casement_type'].value == 'Openable') ||
+          f['category_name'].value == 'Slidding'
+        "
+      >
+        <label cLabel for="handle_id"
+          >Handle <span class="error">*</span></label
+        >
+        <select cSelect id="handle_id" formControlName="handle_id">
+          <option value="" disabled>select</option>
+          <option *ngFor="let handle of handleList" [value]="handle.id">
+            {{ handle.name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['handle_id']?.errors?.['required'] && f['handle_id'].touched) ||
+            (f['handle_id']?.errors?.['required'] && submitted)
+          "
+          >Handle is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Openable'
+        "
+      >
+        <label cLabel for="hinges_type"
+          >Hinge <span class="error">*</span></label
+        >
+        <select cSelect id="hinges_type" formControlName="hinges_type">
+          <option value="" disabled>select</option>
+          <option *ngFor="let hinge of hingesType" [value]="hinge">
+            {{ hinge }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['hinges_type']?.errors?.['required'] && f['hinges_type'].touched) ||
+            (f['hinges_type']?.errors?.['required'] && submitted)
+          "
+          >Hinge is required</small
+        >
+      </c-col>
+      <c-col [md]="6" *ngIf="f['category_name'].value == 'Slidding'">
+        <label cLabel for="is_track">Track <span class="error">*</span></label>
+        <select cSelect id="is_track" formControlName="is_track">
+          <option value="" disabled>select</option>
+          <option *ngFor="let type of sliddingTypes" [value]="type">
+            {{ type }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['is_track']?.errors?.['required'] && f['is_track'].touched) ||
+            (f['is_track']?.errors?.['required'] && submitted)
+          "
+          >Track is required</small
+        >
+      </c-col>
+      <c-col
+        [xs]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Fixed'
+        "
+      >
+        <c-form-check class="mt-5">
+          <label cFormCheckLabel for="is_ventilation">Ventilation</label>
+          <input
+            cFormCheckInput
+            id="is_ventilation"
+            name="is_ventilation"
+            type="checkbox"
+            formControlName="is_ventilation"
+          />
+        </c-form-check>
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Fixed' &&
+          f['is_ventilation'].value == true
+        "
+      >
+        <label cLabel for="ventilation_id"
+          >Ventilation Type <span class="error">*</span></label
+        >
+        <select cSelect id="ventilation_id" formControlName="ventilation_id">
+          <option value="" disabled>select</option>
+          <option
+            *ngFor="let ventilation of ventilationTypes"
+            [value]="ventilation.id"
+          >
+            {{ ventilation.name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['ventilation_id']?.errors?.['required'] && f['ventilation_id'].touched) ||
+            (f['ventilation_id']?.errors?.['required'] && submitted)
+          "
+          >Ventilation Type is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Fixed' &&
+          f['is_ventilation'].value == true
+        "
+      >
+        <label cLabel for="ventilation_width"
+          >Ventilation Width <span class="error">*</span></label
+        >
+        <input
+          id="ventilation_width"
+          cFormControl
+          aria-label="Ventilation Width"
+          type="number"
+          cFormControl
+          placeholder="Ventilation Width"
+          formControlName="ventilation_width"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['ventilation_width']?.errors?.['required'] && f['ventilation_width'].touched) ||
+            (f['ventilation_width']?.errors?.['required'] && submitted)
+          "
+          >Ventilation Width is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Fixed' &&
+          f['is_ventilation'].value == true
+        "
+      >
+        <label cLabel for="ventilation_height"
+          >Ventilation Height <span class="error">*</span></label
+        >
+        <input
+          id="ventilation_height"
+          cFormControl
+          aria-label="Ventilation Height"
+          type="number"
+          cFormControl
+          placeholder="Ventilation Height"
+          formControlName="ventilation_height"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['ventilation_height']?.errors?.['required'] && f['ventilation_height'].touched) ||
+            (f['ventilation_height']?.errors?.['required'] && submitted)
+          "
+          >Ventilation Height is required</small
+        >
+      </c-col>
+      <c-col
+        [md]="6"
+        *ngIf="
+          f['category_name'].value == 'Casement' &&
+          f['casement_type'].value == 'Fixed' &&
+          f['is_ventilation'].value == true
+        "
+      >
+        <label cLabel for="ventilation_glazz_id"
+          >Ventilation Glass <span class="error">*</span></label
+        >
+        <select
+          cSelect
+          id="ventilation_glazz_id"
+          formControlName="ventilation_glazz_id"
+        >
+          <option value="" disabled>select</option>
+          <option *ngFor="let glass of glassList" [value]="glass.id">
+            {{ glass.name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['ventilation_glazz_id']?.errors?.['required'] && f['ventilation_glazz_id'].touched) ||
+            (f['ventilation_glazz_id']?.errors?.['required'] && submitted)
+          "
+          >Ventilation Glass is required</small
+        >
+      </c-col>
+
+      <c-col [xs]="6">
+        <c-form-check class="mt-5">
+          <label cFormCheckLabel for="is_cupler">Cupler</label>
+          <input
+            cFormCheckInput
+            id="is_cupler"
+            name="is_cupler"
+            type="checkbox"
+            formControlName="is_cupler"
+          />
+        </c-form-check>
+      </c-col>
+      <c-col [xs]="6">
+        <c-form-check class="mt-3">
+          <label cFormCheckLabel for="is_louvers">Louvers</label>
+          <input
+            cFormCheckInput
+            id="is_louvers"
+            name="is_louvers"
+            type="checkbox"
+            formControlName="is_louvers"
+          />
+        </c-form-check>
+      </c-col>
+      <c-col [xs]="6">
+        <c-form-check class="mt3">
+          <label cFormCheckLabel for="is_lshape">lshape</label>
+          <input
+            cFormCheckInput
+            id="is_lshape"
+            name="is_lshape"
+            type="checkbox"
+            formControlName="is_lshape"
+          />
+        </c-form-check>
+      </c-col>
+      <div class="mt-5 d-flex gap-4">
+        <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
+        <p-button
+          color="secondary"
+          styleClass="p-button-secondary"
+          (click)="toggleWarningModal()"
+        >
+          Cancel</p-button
+        >
+      </div>
+    </form>
+    <div id="container" #container class="container margin-class"></div>
+  </div>
+  <div class="text-class">
+    <strong>Total - {{ price }}</strong>
+  </div>
+  <div class="card mt-5">
+    <p-table
+      #dt1
+      [value]="costheadInfo"
+      [paginator]="true"
+      [rows]="6"
+      [globalFilterFields]="[
+        'product_no',
+        'name',
+        'type',
+        'cost',
+        'totalCost',
+        'quantity'
+      ]"
+      (sortFunction)="customSort($event)"
+      [customSort]="true"
+      [tableStyle]="{ 'min-width': '60rem' }"
+      [rowsPerPageOptions]="[5, 10, 15]"
+    >
+      <ng-template pTemplate="caption">
+        <button
+          pButton
+          label="Clear"
+          class="p-button-outlined"
+          icon="pi pi-filter-slash"
+          (click)="clear(dt1)"
+        ></button>
+
+        <span class="p-input-icon-left ml-auto">
+          <i class="pi pi-search"></i>
+          <input
+            pInputText
+            type="text"
+            [(ngModel)]="inputValue"
+            (input)="dt1?.filterGlobal(inputValue, 'contains')"
+          />
+        </span>
+      </ng-template>
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="product_no" style="width: 15%" scope="row">
+            Product Number
+            <p-sortIcon field="product_no"></p-sortIcon>
+          </th>
+          <th pSortableColumn="name" style="width: 20%" scope="row">
+            Name <p-sortIcon field="name"></p-sortIcon>
+          </th>
+          <th pSortableColumn="type" style="width: 20%" scope="row">
+            Type <p-sortIcon field="type"></p-sortIcon>
+          </th>
+          <th pSortableColumn="cost" style="width: 20%" scope="row">
+            Cost <p-sortIcon field="cost"></p-sortIcon>
+          </th>
+          <th pSortableColumn="totalCost" style="width: 15%" scope="row">
+            Total Cost <p-sortIcon field="totalCost"></p-sortIcon>
+          </th>
+          <th pSortableColumn="quantity" style="width: 10%" scope="row">
+            Quantity <p-sortIcon field="quantity"></p-sortIcon>
+          </th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-quotation>
+        <tr>
+          <td>{{ quotation.product_no }}</td>
+          <td>{{ quotation.name }}</td>
+          <td>{{ quotation.type }}</td>
+          <td>{{ quotation.cost | currency : "INR" }}</td>
+          <td>{{ quotation.totalCost | currency : "INR" }}</td>
+          <td>{{ quotation.quantity }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+<p-dialog header="Header" [(visible)]="visible" [style]="{ width: '50vw' }">
+  <form [formGroup]="pallaForm">
+    <c-col
+      [md]="6"
+      *ngIf="
+        f['category_name'].value == 'Casement' &&
+        f['casement_type'].value == 'Openable'
+      "
+    >
+      <label cLabel for="open_direction"
+        >Open Direction <span class="error">*</span></label
+      >
+      <select cSelect id="open_direction" formControlName="open_direction">
+        <option value="" disabled>select</option>
+        <option
+          *ngFor="let openningDirection of openningDirections"
+          [value]="openningDirection.key"
+        >
+          {{ openningDirection.value }}
+        </option>
+      </select>
+      <small
+        class="error"
+        *ngIf="
+            (f['open_direction']?.errors?.['required'] && f['open_direction'].touched) ||
+            (f['open_direction']?.errors?.['required'] && submitted)
+          "
+        >Open Direction is required</small
+      >
+    </c-col>
+  </form>
+</p-dialog>

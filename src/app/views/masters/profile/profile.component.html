@@ -1,0 +1,81 @@
+<div class="d-flex mb-5 justify-content-between align-items-center">
+  <h4 class="">Profiles</h4>
+  <p-button routerLink="add">Add New</p-button>
+</div>
+<div class="card">
+  <p-table
+    #dt1
+    [value]="profileList"
+    dataKey="id"
+    [rows]="10"
+    [showCurrentPageReport]="true"
+    [rowsPerPageOptions]="[10, 25, 50]"
+    [paginator]="true"
+    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
+    [globalFilterFields]="[
+      'category',
+      'profile_code',
+      'profile_name',
+      'rate_meter'
+    ]"
+  >
+    <ng-template pTemplate="caption">
+      <button
+        pButton
+        label="Clear"
+        class="p-button-outlined"
+        icon="pi pi-filter-slash"
+        (click)="clear(dt1)"
+      ></button>
+      <span class="p-input-icon-left ml-auto">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          [(ngModel)]="inputValue"
+          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+        />
+      </span>
+    </ng-template>
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="category" style="width: 12%" scope="row">
+          Category <p-sortIcon field="category"></p-sortIcon>
+        </th>
+        <th pSortableColumn="profile_code" style="width: 15%" scope="row">
+          Profile Code <p-sortIcon field="profile_code"></p-sortIcon>
+        </th>
+
+        <th pSortableColumn="profile_name" style="width: 22%" scope="row">
+          Profile Name <p-sortIcon field="profile_name"></p-sortIcon>
+        </th>
+
+        <th pSortableColumn="rate_meter" style="width: 15%" scope="row">
+          Profile Rate <p-sortIcon field="rate_meter"></p-sortIcon>
+        </th>
+        <th pSortableColumn="rate_meter_color" style="width: 22%" scope="row">
+          Color Profile Rate <p-sortIcon field="rate_meter_color"></p-sortIcon>
+        </th>
+        <th pSortableColumn="actions" style="width: 12%" scope="row">
+          Actions
+        </th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-profile>
+      <tr>
+        <td>{{ profile.category }}</td>
+        <td>{{ profile.profile_code }}</td>
+        <td>{{ profile.profile_name }}</td>
+        <td>{{ profile.rate_meter }}</td>
+        <td>{{ profile.rate_meter_color }}</td>
+        <td>
+          <p-button
+            icon="pi pi-pencil"
+            [routerLink]="['edit', profile.id]"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

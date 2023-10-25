@@ -1,0 +1,82 @@
+<div class="d-flex mb-5 justify-content-between align-items-center">
+  <h4 class="">Customers</h4>
+  <p-button routerLink="add">Add New</p-button>
+</div>
+<div class="card">
+  <p-table
+    #dt1
+    [value]="customers"
+    [paginator]="true"
+    [rows]="5"
+    [globalFilterFields]="['name', 'identity', 'phone', 'email', 'is_dealer']"
+    (sortFunction)="customSort($event)"
+    [customSort]="true"
+    [tableStyle]="{ 'min-width': '60rem' }"
+    [rowsPerPageOptions]="[5, 10, 15]"
+  >
+    <ng-template pTemplate="caption">
+      <button
+        pButton
+        label="Clear"
+        class="p-button-outlined"
+        icon="pi pi-filter-slash"
+        (click)="clear(dt1)"
+      ></button>
+      <span class="p-input-icon-left ml-auto">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          [(ngModel)]="inputValue"
+          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+        />
+      </span>
+    </ng-template>
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="identity" style="width: 10%" scope="row">
+          Identity <p-sortIcon field="identity"></p-sortIcon>
+        </th>
+        <th pSortableColumn="name" style="width: 20%" scope="row">
+          Name <p-sortIcon field="name"></p-sortIcon>
+        </th>
+        <th pSortableColumn="phone" style="width: 20%" scope="row">
+          Phone <p-sortIcon field="phone"></p-sortIcon>
+        </th>
+        <th pSortableColumn="email" style="width: 20%" scope="row">
+          Email <p-sortIcon field="email"></p-sortIcon>
+        </th>
+        <th pSortableColumn="is_dealer" style="width: 10%" scope="row">
+          Is dealer <p-sortIcon field="is_dealer"></p-sortIcon>
+        </th>
+        <th style="width: 20%" scope="row">Actions</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-customer>
+      <tr>
+        <td>{{ customer.identity }}</td>
+        <td>{{ customer.name }}</td>
+        <td>{{ customer.phone }}</td>
+        <td>{{ customer.email }}</td>
+        <td>{{ customer.is_dealer === 0 ? "No" : "Yes" }}</td>
+        <td>
+          <p-button
+            icon="pi pi-pencil"
+            [routerLink]="['edit', customer.id]"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+          <!-- <p-button
+            icon="pi pi-calculator"
+            [routerLink]="['quatationList', customer.id]"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button> -->
+          <p-button
+            icon="pi pi-trash"
+            (onClick)="deleteCustomer(customer)"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

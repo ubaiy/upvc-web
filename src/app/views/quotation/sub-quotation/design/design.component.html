@@ -1,0 +1,209 @@
+<h4 class="mb-5">{{ edit ? "Edit Quotation" : "Add Quotation" }}</h4>
+<div>
+  <div class="box">
+    <form
+      cForm
+      class="row g-3 form-class"
+      [formGroup]="form"
+      (ngSubmit)="submit()"
+    >
+      <c-col [md]="6">
+        <label cLabel for="quantity"
+          >Quantity <span class="error">*</span></label
+        >
+        <input
+          id="quantity"
+          aria-label="Quantity"
+          type="number"
+          cFormControl
+          placeholder="Quantity"
+          formControlName="quantity"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['quantity']?.errors?.['required'] && f['quantity'].touched) ||
+            (f['quantity']?.errors?.['required'] && submitted)
+          "
+          >Quantity is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="color"
+          >Profile Color <span class="error">*</span></label
+        >
+        <select cSelect id="color" formControlName="color">
+          <option value="" disabled>select</option>
+          <option
+            *ngFor="let color of colors"
+            [ngValue]="color"
+            [selected]="color.selected"
+          >
+            {{ color.color_name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
+            (f['color']?.errors?.['required'] && f['color'].touched) ||
+            (f['color']?.errors?.['required'] && submitted)
+          "
+          >Profile Color is required</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="width">Width <span class="error">*</span></label>
+        <input
+          id="width"
+          cFormControl
+          aria-label="Width"
+          type="number"
+          cFormControl
+          placeholder="Width"
+          formControlName="width"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['width']?.errors?.['required'] && f['width'].touched) ||
+            (f['width']?.errors?.['required'] && submitted)
+          "
+          >Width is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (f['width']?.errors?.['max'] && f['width'].touched) ||
+            (f['width']?.errors?.['max'] && submitted)
+          "
+          >Width should be not more than 5800</small
+        >
+      </c-col>
+      <c-col [md]="6">
+        <label cLabel for="height">Height <span class="error">*</span></label>
+        <input
+          id="height"
+          cFormControl
+          aria-label="Height"
+          type="number"
+          cFormControl
+          placeholder="Height"
+          formControlName="height"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['height']?.errors?.['required'] && f['height'].touched) ||
+            (f['height']?.errors?.['required'] && submitted)
+          "
+          >Height is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (f['height']?.errors?.['max'] && f['height'].touched) ||
+            (f['height']?.errors?.['max'] && submitted)
+          "
+          >Height should be not more than 5800</small
+        >
+      </c-col>
+      <div class="mt-5 d-flex gap-4">
+        <p-button (click)="submit()"> {{ edit ? "Save" : "Add" }}</p-button>
+        <p-button
+          color="secondary"
+          styleClass="p-button-secondary"
+          (click)="toggleWarningModal()"
+        >
+          Cancel</p-button
+        >
+      </div>
+    </form>
+    <div id="container" #container class="container margin-class"></div>
+  </div>
+  <div class="text-class">
+    <strong>Total - {{ price }}</strong>
+  </div>
+  <div class="card mt-5">
+    <p-table
+      #dt1
+      [value]="costheadInfo"
+      [paginator]="true"
+      [rows]="6"
+      [globalFilterFields]="[
+        'product_no',
+        'name',
+        'type',
+        'cost',
+        'totalCost',
+        'quantity'
+      ]"
+      (sortFunction)="customSort($event)"
+      [customSort]="true"
+      [tableStyle]="{ 'min-width': '60rem' }"
+      [rowsPerPageOptions]="[5, 10, 15]"
+    >
+      <ng-template pTemplate="caption">
+        <button
+          pButton
+          label="Clear"
+          class="p-button-outlined"
+          icon="pi pi-filter-slash"
+          (click)="clear(dt1)"
+        ></button>
+
+        <span class="p-input-icon-left ml-auto">
+          <i class="pi pi-search"></i>
+          <input
+            pInputText
+            type="text"
+            [(ngModel)]="inputValue"
+            (input)="dt1?.filterGlobal(inputValue, 'contains')"
+          />
+        </span>
+      </ng-template>
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="product_no" style="width: 15%" scope="row">
+            Product Number
+            <p-sortIcon field="product_no"></p-sortIcon>
+          </th>
+          <th pSortableColumn="name" style="width: 20%" scope="row">
+            Name <p-sortIcon field="name"></p-sortIcon>
+          </th>
+          <th pSortableColumn="type" style="width: 20%" scope="row">
+            Type <p-sortIcon field="type"></p-sortIcon>
+          </th>
+          <th pSortableColumn="cost" style="width: 20%" scope="row">
+            Cost <p-sortIcon field="cost"></p-sortIcon>
+          </th>
+          <th pSortableColumn="totalCost" style="width: 15%" scope="row">
+            Total Cost <p-sortIcon field="totalCost"></p-sortIcon>
+          </th>
+          <th pSortableColumn="quantity" style="width: 10%" scope="row">
+            Quantity <p-sortIcon field="quantity"></p-sortIcon>
+          </th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-quotation>
+        <tr>
+          <td>{{ quotation.product_no }}</td>
+          <td>{{ quotation.name }}</td>
+          <td>{{ quotation.type }}</td>
+          <td>{{ quotation.cost | currency : "INR" }}</td>
+          <td>{{ quotation.totalCost | currency : "INR" }}</td>
+          <td>{{ quotation.quantity }}</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+</div>
+<p-dialog header="Header" [(visible)]="visible" [style]="{ width: '50vw' }">
+  <c-col [md]="6">
+    <label cLabel for="mullion">Mullion</label>
+    <select cSelect id="mullion" formControlName="mullion">
+      <option value="" disabled>select</option>
+      <option [value]="1">Horizontal</option>
+      <option [value]="2">Vertical</option>
+    </select>
+  </c-col>
+</p-dialog>

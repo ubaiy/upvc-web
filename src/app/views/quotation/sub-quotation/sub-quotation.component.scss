@@ -1,0 +1,7 @@
+/* Media query for screens less than 768 pixels wide */
+@media (max-width: 800px) {
+  .p-button .p-button-label {
+    /* Target the button's label */
+    display: none !important; /* Hide the button label */
+  }
+}
