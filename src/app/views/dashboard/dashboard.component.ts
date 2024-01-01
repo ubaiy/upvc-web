@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
 
 import { DashboardChartsData, IChartProps } from './dashboard-charts-data';
+import { LocalStoreService } from 'src/app/shared/services/local-storage.service';
+import { IUserDto } from 'src/app/shared/model/user.model';
 
 interface IUser {
   name: string;
@@ -22,7 +24,9 @@ interface IUser {
   styleUrls: ['dashboard.component.scss']
 })
 export class DashboardComponent implements OnInit {
-  constructor(private chartsData: DashboardChartsData) {
+  userDetail: IUserDto
+  constructor(private chartsData: DashboardChartsData, private _ls: LocalStoreService) {
+    this.userDetail = this._ls.getItem('User');
   }
 
 

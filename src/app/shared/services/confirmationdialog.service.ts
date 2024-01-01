@@ -7,7 +7,6 @@ import { ConfirmationService } from 'primeng/api';
 })
 export class ConfirmationDialogService {
   constructor(private confirmationService: ConfirmationService) {}
-
   confirm(
     header: string,
     message: string,
@@ -16,7 +15,6 @@ export class ConfirmationDialogService {
     reject: () => void
   ) {
     this.confirmationService.confirm({
-      
       header: header,
       message: message,
       icon: `pi ${icon}`,

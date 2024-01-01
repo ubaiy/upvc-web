@@ -8,9 +8,18 @@ import { ToastModule } from 'primeng/toast';
 import { MessageService, ConfirmationService } from 'primeng/api';
 import { ConfirmationDialogService } from './services/confirmationdialog.service';
 import { ToastService } from './services/toast.service';
+import { DropdownModule } from 'primeng/dropdown';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 @NgModule({
   declarations: [],
-  imports: [CommonModule, ConfirmDialogModule, ToastModule],
+  imports: [
+    CommonModule,
+    ConfirmDialogModule,
+    ToastModule,
+    DropdownModule,
+    FormsModule,
+    ReactiveFormsModule,
+  ],
   providers: [
     AuthGuard,
     LogoutGuard,

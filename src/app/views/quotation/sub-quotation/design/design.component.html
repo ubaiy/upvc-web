@@ -1,123 +1,272 @@
-<h4 class="mb-5">{{ edit ? "Edit Quotation" : "Add Quotation" }}</h4>
+<h2 class="mb-5">{{ edit ? "Edit Quotation" : "Add Quotation" }}</h2>
 <div>
   <div class="box">
-    <form
-      cForm
-      class="row g-3 form-class"
-      [formGroup]="form"
-      (ngSubmit)="submit()"
-    >
-      <c-col [md]="6">
-        <label cLabel for="quantity"
-          >Quantity <span class="error">*</span></label
-        >
-        <input
-          id="quantity"
-          aria-label="Quantity"
-          type="number"
-          cFormControl
-          placeholder="Quantity"
-          formControlName="quantity"
-        />
-        <small
-          class="error"
-          *ngIf="
+    <div>
+      <form [formGroup]="form">
+        <div class="formMainDiv">
+          <div>
+            <label class="mb-2 block font-bold" for="quantity">Quantity</label>
+            <p-inputNumber
+              [showButtons]="true"
+              formControlName="quantity"
+              inputId="quantity"
+              mode="decimal"
+              [min]="1"
+              [max]="100"
+            >
+            </p-inputNumber>
+            <small
+              class="error"
+              *ngIf="
             (f['quantity']?.errors?.['required'] && f['quantity'].touched) ||
             (f['quantity']?.errors?.['required'] && submitted)
           "
-          >Quantity is required</small
-        >
-      </c-col>
-      <c-col [md]="6">
-        <label cLabel for="color"
-          >Profile Color <span class="error">*</span></label
-        >
-        <select cSelect id="color" formControlName="color">
-          <option value="" disabled>select</option>
-          <option
-            *ngFor="let color of colors"
-            [ngValue]="color"
-            [selected]="color.selected"
-          >
-            {{ color.color_name }}
-          </option>
-        </select>
-        <small
-          class="error"
-          *ngIf="
-            (f['color']?.errors?.['required'] && f['color'].touched) ||
-            (f['color']?.errors?.['required'] && submitted)
+              >Quantity is required</small
+            >
+          </div>
+          <div>
+            <label class="mb-2 block font-bold" for="color"
+              >Profile Color</label
+            >
+            <p-dropdown
+              [options]="colors"
+              class="displaySelect"
+              optionLabel="color_name"
+              placeholder="Select a Color"
+              formControlName="color"
+            ></p-dropdown>
+            <small
+              class="error"
+              *ngIf="
+            (f['color_name']?.errors?.['required'] && f['color_name'].touched) ||
+            (f['color_name']?.errors?.['required'] && submitted)
           "
-          >Profile Color is required</small
-        >
-      </c-col>
-      <c-col [md]="6">
-        <label cLabel for="width">Width <span class="error">*</span></label>
-        <input
-          id="width"
-          cFormControl
-          aria-label="Width"
-          type="number"
-          cFormControl
-          placeholder="Width"
-          formControlName="width"
-        />
-        <small
-          class="error"
-          *ngIf="
+              >Color is required</small
+            >
+          </div>
+          <div>
+            <label class="mb-2 block font-bold" for="width">Width</label>
+            <p-inputNumber
+              [showButtons]="true"
+              formControlName="width"
+              inputId="width"
+              mode="decimal"
+              [step]="100"
+              [min]="200"
+              [max]="5800"
+            >
+            </p-inputNumber>
+            <small
+              class="error"
+              *ngIf="
             (f['width']?.errors?.['required'] && f['width'].touched) ||
             (f['width']?.errors?.['required'] && submitted)
           "
-          >Width is required</small
-        >
-        <small
-          class="error"
-          *ngIf="
-            (f['width']?.errors?.['max'] && f['width'].touched) ||
-            (f['width']?.errors?.['max'] && submitted)
-          "
-          >Width should be not more than 5800</small
-        >
-      </c-col>
-      <c-col [md]="6">
-        <label cLabel for="height">Height <span class="error">*</span></label>
-        <input
-          id="height"
-          cFormControl
-          aria-label="Height"
-          type="number"
-          cFormControl
-          placeholder="Height"
-          formControlName="height"
-        />
-        <small
-          class="error"
-          *ngIf="
+              >Width is required</small
+            >
+          </div>
+          <div>
+            <label class="mb-2 block font-bold" for="height">Height</label>
+            <p-inputNumber
+              [showButtons]="true"
+              [step]="100"
+              formControlName="height"
+              inputId="height"
+              mode="decimal"
+              [min]="200"
+              [max]="5800"
+            >
+            </p-inputNumber>
+            <small
+              class="error"
+              *ngIf="
             (f['height']?.errors?.['required'] && f['height'].touched) ||
             (f['height']?.errors?.['required'] && submitted)
           "
-          >Height is required</small
-        >
-        <small
-          class="error"
-          *ngIf="
-            (f['height']?.errors?.['max'] && f['height'].touched) ||
-            (f['height']?.errors?.['max'] && submitted)
-          "
-          >Height should be not more than 5800</small
-        >
-      </c-col>
-      <div class="mt-5 d-flex gap-4">
-        <p-button (click)="submit()"> {{ edit ? "Save" : "Add" }}</p-button>
-        <p-button
-          color="secondary"
-          styleClass="p-button-secondary"
-          (click)="toggleWarningModal()"
-        >
-          Cancel</p-button
-        >
-      </div>
-    </form>
+              >Height is required</small
+            >
+          </div>
+        </div>
+      </form>
+      <ng-container *ngIf="rectSelected" style="margin-top: 40px">
+        <h3>Design Specification</h3>
+        <form [formGroup]="designSpecificationForm">
+          <div class="formMainDiv">
+            <div>
+              <label class="mb-2 block font-bold" for="category_type"
+                >Category Type</label
+              >
+              <p-dropdown
+                [options]="categoryList"
+                class="displaySelect"
+                placeholder="Select a Category"
+                formControlName="category_type"
+              ></p-dropdown>
+            </div>
+
+            <div>
+              <label class="mb-2 block font-bold" for="glazz_id">Glass</label>
+              <p-dropdown
+                [options]="glassList"
+                class="displaySelect"
+                optionLabel="name"
+                dataKey="id"
+                placeholder="Select a Glass"
+                formControlName="glazz_id"
+              ></p-dropdown>
+            </div>
+            <div>
+              <label class="mb-2 block font-bold" for="product_type"
+                >Product Type</label
+              >
+              <p-dropdown
+                [options]="typeList"
+                class="displaySelect"
+                placeholder="Select a Type"
+                formControlName="product_type"
+              ></p-dropdown>
+            </div>
+            <div>
+              <label class="mb-2 block font-bold" for="product_id">Frame</label>
+              <p-dropdown
+                [options]="profileList"
+                class="displaySelect"
+                optionLabel="profile_name"
+                placeholder="Select a Frame"
+                formControlName="product_id"
+                dataKey="id"
+              ></p-dropdown>
+            </div>
+            <div *ngIf="df['category_type'].value === 'Casement'">
+              <label class="mb-2 block font-bold" for="casement_type"
+                >Casement Type</label
+              >
+              <p-dropdown
+                [options]="casementTypes"
+                class="displaySelect"
+                placeholder="Select a Casement Type"
+                formControlName="casement_type"
+              ></p-dropdown>
+            </div>
+            <div
+              *ngIf="
+                df['category_type'].value === 'Casement' &&
+                df['casement_type'].value === 'Openable'
+              "
+            >
+              <label class="mb-2 block font-bold" for="palla_type">Palla</label>
+              <p-dropdown
+                [options]="palla_types"
+                class="displaySelect"
+                placeholder="Select a Palla"
+                formControlName="palla_type"
+              ></p-dropdown>
+            </div>
+            <div
+              *ngIf="
+                (df['category_type'].value === 'Casement' &&
+                  df['casement_type'].value === 'Openable') ||
+                df['category_type'].value === 'Slidding'
+              "
+            >
+              <label class="mb-2 block font-bold" for="sash_id">Sash</label>
+              <p-dropdown
+                [options]="sashList"
+                class="displaySelect"
+                id="sash_id"
+                optionLabel="profile_name"
+                placeholder="Select a Sash"
+                formControlName="sash_id"
+              ></p-dropdown>
+            </div>
+            <div
+              *ngIf="
+                df['category_type'].value === 'Casement' &&
+                df['casement_type'].value === 'Openable'
+              "
+            >
+              <label class="mb-2 block font-bold" for="hinges_type"
+                >Hinges</label
+              >
+              <p-dropdown
+                [options]="hingesType"
+                class="displaySelect"
+                id="hinges_type"
+                placeholder="Select a Sash"
+                formControlName="hinges_type"
+              ></p-dropdown>
+            </div>
+            <div *ngIf="df['category_type'].value === 'Slidding'">
+              <label class="mb-2 block font-bold" for="is_track">Track</label>
+              <p-dropdown
+                [options]="sliddingTypes"
+                class="displaySelect"
+                id="is_track"
+                placeholder="Select a Track"
+                formControlName="is_track"
+              ></p-dropdown>
+            </div>
+            <div
+              *ngIf="
+                (df['category_type'].value === 'Casement' &&
+                  df['casement_type'].value === 'Openable') ||
+                df['category_type'].value === 'Slidding'
+              "
+            >
+              <label class="mb-2 block font-bold" for="handle_id">Handle</label>
+              <p-dropdown
+                [options]="handleList"
+                class="displaySelect"
+                id="handle_id"
+                optionLabel="name"
+                placeholder="Select a Handle"
+                formControlName="handle_id"
+              ></p-dropdown>
+            </div>
+            <div style="padding-top: 50px">
+              <label
+                for="is_cupler"
+                class="mb-2 block font-bold"
+                style="padding-right: 5px"
+                >Is Cupler</label
+              >
+              <p-checkbox
+                formControlName="is_cupler"
+                value="true"
+                inputId="is_cupler"
+              ></p-checkbox>
+            </div>
+            <div style="padding-top: 25px">
+              <label
+                for="is_louvers"
+                class="mb-2 block font-bold"
+                style="padding-right: 5px"
+                >Is Louvers</label
+              >
+              <p-checkbox
+                formControlName="is_louvers"
+                value="true"
+                inputId="is_louvers"
+              ></p-checkbox>
+            </div>
+            <div style="padding-top: 25px">
+              <label
+                for="is_lshape"
+                class="mb-2 block font-bold"
+                style="padding-right: 5px"
+                >Is Lshape</label
+              >
+              <p-checkbox
+                formControlName="is_lshape"
+                value="true"
+                inputId="is_lshape"
+              ></p-checkbox>
+            </div>
+          </div>
+        </form>
+      </ng-container>
+
+    </div>
     <div id="container" #container class="container margin-class"></div>
   </div>
   <div class="text-class">
@@ -197,13 +346,3 @@
     </p-table>
   </div>
 </div>
-<p-dialog header="Header" [(visible)]="visible" [style]="{ width: '50vw' }">
-  <c-col [md]="6">
-    <label cLabel for="mullion">Mullion</label>
-    <select cSelect id="mullion" formControlName="mullion">
-      <option value="" disabled>select</option>
-      <option [value]="1">Horizontal</option>
-      <option [value]="2">Vertical</option>
-    </select>
-  </c-col>
-</p-dialog>

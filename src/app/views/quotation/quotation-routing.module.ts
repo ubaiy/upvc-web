@@ -8,23 +8,12 @@ import { AreaResolver } from '../area/area.resolver';
 import { AddResolver } from './add/add.resolver';
 import { SubQuotationComponent } from './sub-quotation/sub-quotation.component';
 import { SubQuotationResolver } from './sub-quotation/sub-quotation.resolver';
-import { SubQuotationDetailResolver } from './sub-quotation/sub-quotation-detail/sub-quotation-detail.resolver';
 import { ProfileCategoryResolver } from 'src/app/shared/resolver/profile-category.resolver';
-import { ProductTypeResolver } from 'src/app/shared/resolver/product-type.resolver';
-import { GlassDropdownResolver } from 'src/app/shared/resolver/glass-dropdown.resolver';
-import { HandleResolver } from 'src/app/shared/resolver/handle.resolver';
-import { MullionResolver } from 'src/app/shared/resolver/mullion.resolver';
 import { ProfileListResolver } from 'src/app/shared/resolver/profile-list.resolver';
-import { DetailComponent } from './sub-quotation/detail/detail.component';
-import { CasementTypeResolver } from 'src/app/shared/resolver/casement-type.resolver';
-import { HingesResolver } from 'src/app/shared/resolver/hinges.resolver';
-import { SliddingTypesResolver } from 'src/app/shared/resolver/slidding-types.resolver';
-import { VentilationTypeResolver } from 'src/app/shared/resolver/ventilation-type.resolver';
-import { PallaTypeResolver } from 'src/app/shared/resolver/palla-type.resolver';
-import { ProfileColorResolver } from 'src/app/shared/resolver/profile-color.resolver';
-import { OpenDirectionResolver } from 'src/app/shared/resolver/open-direction.resolver';
-import { DesignComponent } from './sub-quotation/design/design.component';
 import { AllDropdownsResolver } from 'src/app/shared/resolver/all-dropdowns.resolver';
+import { GlassDropdownResolver } from 'src/app/shared/resolver/glass-dropdown.resolver';
+import { DesignComponent } from './sub-quotation/design/design.component';
+import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 const routes: Routes = [
   {
     path: '',
@@ -53,20 +42,43 @@ const routes: Routes = [
     resolve: { data: SubQuotationResolver },
     data: { edit: false },
   },
+  // {
+  //   path: 'detail/:id/add',
+  //   component: DesignComponent,
+  //   resolve: {
+  //     profileList: ProfileListResolver,
+  //     dropdowns: AllDropdownsResolver,
+  //     glassList: GlassDropdownResolver,
+  //     productCategory: ProfileCategoryResolver,
+  //   },
+  //   data: { edit: false },
+  // },
+  // {
+  //   path: 'detail/:id/edit/:subId',
+  //   component: DesignComponent,
+  //   resolve: {
+  //     details: SubQuotationResolver,
+  //     profileList: ProfileListResolver,
+  //     dropdowns: AllDropdownsResolver,
+  //     glassList: GlassDropdownResolver,
+  //     productCategory: ProfileCategoryResolver,
+  //   },
+  //   data: { edit: true },
+  // },
   {
     path: 'detail/:id/add',
-    component: DesignComponent,
+    component: SubQuotationDesignComponent,
     resolve: {
-      dropdowns: AllDropdownsResolver,
       profileList: ProfileListResolver,
+      dropdowns: AllDropdownsResolver,
     },
     data: { edit: false },
   },
   {
     path: 'detail/:id/edit/:subId',
-    component: DesignComponent,
+    component: SubQuotationDesignComponent,
     resolve: {
-      details: SubQuotationDetailResolver,
+      details: SubQuotationResolver,
       profileList: ProfileListResolver,
       dropdowns: AllDropdownsResolver,
     },

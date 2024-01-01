@@ -6,18 +6,21 @@
   visible
 >
   <c-sidebar-brand
-    style="object-fit: contain"
+    class="sidebarClass"
+    style="object-fit: contain; object-fit: contain"
     [brandFull]="{
-      src: 'assets/img/brand/coreui-base-white.svg',
+      style: 'object-fit:contain',
+      src: 'assets/images/logoLong.png',
       width: 200,
-      height: 46,
-      alt: 'CoreUI Logo'
+      height: 40,
+      alt: 'Full Logo'
     }"
     [brandNarrow]="{
-      src: 'assets/img/brand/coreui-signet-white.svg',
+      style: 'object-fit:contain',
+      src: 'assets/images/smalllogo.png',
       width: 46,
       height: 46,
-      alt: 'CoreUI Logo'
+      alt: 'Small Logo'
     }"
     routerLink="./"
   />

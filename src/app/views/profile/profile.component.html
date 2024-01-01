@@ -1,0 +1,100 @@
+<h2 class="mb-5">Profile</h2>
+<c-card class="mb-4">
+  <c-card-body>
+    <img
+      [src]="imageSrc"
+      (click)="uploader.click()"
+      alt="profile"
+      class="profileImg"
+    />
+    <input #uploader (change)="onFileChange($event)" hidden type="file" />
+    <form cForm [formGroup]="form" (ngSubmit)="submit()">
+      <c-row>
+        <c-col>
+          <div class="mb-3">
+            <label cLabel="" for="name">First Name</label>
+            <input
+              aria-describedby="name"
+              cFormControl
+              id="name"
+              type="text"
+              formControlName="name"
+            />
+            <small
+              class="error"
+              *ngIf="
+            (f['name']?.errors?.['required'] && f['name'].touched) ||
+            (f['name']?.errors?.['required'] && submitted)
+          "
+              >First Name is required</small
+            >
+          </div></c-col
+        >
+        <c-col>
+          <div class="mb-3">
+            <label cLabel="" for="last_name">Last Name</label>
+            <input
+              aria-describedby="last_name"
+              cFormControl
+              id="last_name"
+              type="text"
+              formControlName="last_name"
+            />
+            <small
+              class="error"
+              *ngIf="
+            (f['last_name']?.errors?.['required'] && f['last_name'].touched) ||
+            (f['last_name']?.errors?.['required'] && submitted)
+          "
+              >Last Name is required</small
+            >
+          </div></c-col
+        >
+      </c-row>
+      <c-row>
+        <c-col>
+          <div class="mb-3">
+            <label cLabel="" for="email">Email</label>
+            <input
+              aria-describedby="email"
+              cFormControl
+              id="email"
+              type="email"
+              formControlName="email"
+            /></div
+        ></c-col>
+        <c-col>
+          <div class="mb-3">
+            <label cLabel="" for="phone">Phone No.</label>
+            <input
+              aria-describedby="phone"
+              cFormControl
+              id="phone"
+              type="number"
+              formControlName="phone"
+            />
+            <small
+              class="error"
+              *ngIf="
+            (f['phone']?.errors?.['required'] && f['phone'].touched) ||
+            (f['phone']?.errors?.['required'] && submitted)
+          "
+              >Last Name is required</small
+            >
+          </div></c-col
+        >
+      </c-row>
+      <div style="display: flex; gap: 10px">
+        <button cButton color="primary" type="submit">Save</button>
+        <button
+          cButton
+          color="secondary"
+          type="button"
+          (click)="toggleWarningModal()"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  </c-card-body>
+</c-card>

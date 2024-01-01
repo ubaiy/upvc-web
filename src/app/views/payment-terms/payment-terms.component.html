@@ -79,8 +79,8 @@
     <div>
       <form [formGroup]="form">
         <c-row>
-          <label cLabel="col" class="col-sm-2" for="Name"> Name </label>
-          <c-col [sm]="10">
+          <label cLabel="col" class="col-sm-3" for="Name"> Name </label>
+          <c-col [sm]="9">
             <input cFormControl id="Name" type="text" formControlName="name" />
             <small
               class="error"
@@ -93,10 +93,10 @@
           </c-col>
         </c-row>
         <c-row class="mt-3">
-          <label cLabel="col" class="col-sm-2" for="description">
+          <label cLabel="col" class="col-sm-3" for="description">
             Description
           </label>
-          <c-col [sm]="10">
+          <c-col [sm]="9">
             <input
               cFormControl
               id="description"

@@ -10,7 +10,7 @@ import { IMasterDetailDto } from 'src/app/shared/model/masters/masterDetail.mode
 export class MastersService {
   constructor(private _apiHttpService: ApiHttpService) {}
 
-  public getList(query: any): Observable<IResponseDto<IMasterDetailDto>> {
+  public getList(query: any): Observable<IResponseDto<IMasterDetailDto[]>> {
     query = Object.keys(query)
       .map((key) => key + '=' + query[key])
       .join('&');

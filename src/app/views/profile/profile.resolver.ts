@@ -5,19 +5,18 @@ import {
   ActivatedRouteSnapshot,
 } from '@angular/router';
 import { Observable, of, switchMap, throwError } from 'rxjs';
-import { QuotationService } from '../../quotation.service';
+import { ProfileService } from './profile.service';
 @Injectable({
   providedIn: 'root',
 })
-export class SubQuotationDetailResolver implements Resolve<boolean> {
-  constructor(private _dataService: QuotationService) {}
+export class ProfileResolver implements Resolve<boolean> {
+  constructor(private _dataService: ProfileService) {}
   resolve(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<any> {
-    let id = route.params['subId'];
     return this._dataService
-      .getSubQuotationDetail(id)
+      .getProfile()
       .pipe(
         switchMap((res) =>
           res.success ? of(res.data) : throwError(res.message)

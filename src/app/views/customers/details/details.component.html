@@ -129,7 +129,7 @@
           <td>{{ address.zip_code }}</td>
           <td>{{ address.address }}</td>
           <td>{{ address.is_default === 0 ? "No" : "Yes" }}</td>
-          <td>
+          <td style="display: flex">
             <p-button
               icon="pi pi-pencil"
               (click)="addressAddEdit(address)"

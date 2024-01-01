@@ -42,7 +42,7 @@ export class DropdownService {
 
   public getCostHeadDataDropdown(
     query: any
-  ): Observable<IResponseDto<IMasterListDto>> {
+  ): Observable<IResponseDto<IMasterListDto[]>> {
     query = Object.keys(query)
       .map((key) => key + '=' + query[key])
       .join('&');

@@ -2,6 +2,11 @@ export const API_END_POINT = {
   auth: {
     login: 'login',
   },
+  user: {
+    getProfile: 'get-profile',
+    updateProfile: 'update-profile',
+    updateProfilePhoto: 'change-profile-picture',
+  },
   customer: {
     list: 'customer/list',
     add: 'customer/add',

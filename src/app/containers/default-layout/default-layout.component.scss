@@ -5,3 +5,16 @@
     --scrollbar-hover-size: calc(var(--scrollbar-size) * 1.5);
   }
 }
+
+:host .sidebar-brand-narrow {
+  /* Your styles go here */
+  object-fit: contain;
+}
+
+.sidebar-brand-full {
+  object-fit: contain !important;
+}
+
+sidebar-brand-narrow {
+  object-fit: contain;
+}

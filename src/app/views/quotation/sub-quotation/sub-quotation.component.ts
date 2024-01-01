@@ -9,6 +9,9 @@ import { PrintQuotationPdfComponent } from './print-quotation-pdf/print-quotatio
 import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { QuotationService } from '../quotation.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { PaymentTermsService } from '../../payment-terms/payment-terms.service';
+import { TypeMarginService } from '../../type-margin/type-margin.service';
+import { IPaymentTypeDto } from 'src/app/shared/model/paymentTerms/paymentTerms.model';
 @Component({
   selector: 'app-sub-quotation',
   templateUrl: './sub-quotation.component.html',
@@ -23,7 +26,9 @@ export class SubQuotationComponent {
     public dialogService: DialogService,
     private confirmationDialogService: ConfirmationDialogService,
     private _dataService: QuotationService,
-    private _toastService: ToastService
+    private _toastService: ToastService,
+    private _paymentTermsService: PaymentTermsService,
+    private _typeMarginService: TypeMarginService
   ) {
     let data = this._activeRoute.snapshot.data['data'];
     this.data = data;
@@ -77,18 +82,29 @@ export class SubQuotationComponent {
         ids.push(e.id);
       }
     });
-    this.ref = this.dialogService.open(PrintQuotationPdfComponent, {
-      header: 'Print Quotation',
-      contentStyle: { overflow: 'auto' },
-      baseZIndex: 10000,
-      data: {
-        quatation_id: this.data.id,
-        name: this.data.customer.name,
-        quatation_products: ids,
-      },
-    });
-    this.ref.onClose.subscribe((res) => {
-      console.log(res);
+    let paymentTerms: IPaymentTypeDto[];
+    let margin;
+    this._paymentTermsService.getPaymentTypeList().subscribe((res) => {
+      if (res.success) {
+        paymentTerms = res.data;
+        this._typeMarginService.getTypeMarginList().subscribe((res) => {
+          if (res.success) {
+            margin = res.data;
+            this.ref = this.dialogService.open(PrintQuotationPdfComponent, {
+              header: 'Print Quotation',
+              contentStyle: { overflow: 'auto' },
+              baseZIndex: 10000,
+              data: {
+                quatation_id: this.data.id,
+                name: this.data.customer.name,
+                quatation_products: ids,
+                terms: paymentTerms,
+                margin: margin,
+              },
+            });
+          }
+        });
+      }
     });
   }
 }

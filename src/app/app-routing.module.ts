@@ -5,6 +5,8 @@ import { DefaultLayoutComponent } from './containers';
 import { Page404Component } from './views/pages/page404/page404.component';
 import { Page500Component } from './views/pages/page500/page500.component';
 import { AuthGuard } from './shared/guards/auth.guard';
+import { ProfileComponent } from './views/profile/profile.component';
+import { ProfileResolver } from './views/profile/profile.resolver';
 const routes: Routes = [
   {
     path: '',
@@ -26,6 +28,12 @@ const routes: Routes = [
           import('./views/dashboard/dashboard.module').then(
             (m) => m.DashboardModule
           ),
+      },
+      {
+        path: 'profile',
+        canActivate: [AuthGuard],
+        component: ProfileComponent,
+        resolve: { data: ProfileResolver },
       },
       {
         path: 'customers',

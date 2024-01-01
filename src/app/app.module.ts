@@ -55,6 +55,8 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { LoaderInterceptor } from 'src/app/shared/interceptors/loader.interceptor';
+import { ProgressSpinnerModule } from 'primeng/progressspinner';
+import { ProfileComponent } from './views/profile/profile.component';
 const APP_CONTAINERS = [
   DefaultFooterComponent,
   DefaultHeaderComponent,
@@ -62,7 +64,7 @@ const APP_CONTAINERS = [
 ];
 
 @NgModule({
-  declarations: [AppComponent, ...APP_CONTAINERS],
+  declarations: [AppComponent, ...APP_CONTAINERS, ProfileComponent],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
@@ -96,6 +98,7 @@ const APP_CONTAINERS = [
     HttpClientModule,
     AlertModule,
     ProgressBarModule,
+    ProgressSpinnerModule,
   ],
   providers: [
     ConfirmationDialogService,

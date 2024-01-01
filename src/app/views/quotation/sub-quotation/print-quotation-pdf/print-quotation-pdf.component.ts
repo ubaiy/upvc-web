@@ -27,8 +27,11 @@ export class PrintQuotationPdfComponent {
     private _dataService: QuotationService
   ) {
     this.form = this._initFrom();
-    this._getDrpData();
+    // this._getDrpData();
+    console.log(this.config.data);
     this.name = this.config.data.name;
+    this.paymentTerms = this.config.data.terms;
+    this.margins = this.config.data.margin;
   }
 
   get f() {

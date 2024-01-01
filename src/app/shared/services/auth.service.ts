@@ -16,6 +16,9 @@ export class AuthService {
   isAuthenticated: Boolean = false;
   user: IUserDto = new UserDto();
   user$ = new BehaviorSubject<IUserDto>(this.user);
+  profile$ = new BehaviorSubject<string>(
+    '../../assets/images/defaultProfile.webp'
+  );
   TOKEN = 'Token';
   USER = 'User';
   constructor(
@@ -55,7 +58,9 @@ export class AuthService {
     this.token = user.access_token;
     this.user = user;
     this.user$.next(user);
+    this.profile$.next(user.profile);
     this._ls.setItem(this.TOKEN, this.token);
     this._ls.setItem(this.USER, user);
+    this._ls.setItem('profile', user.profile);
   }
 }

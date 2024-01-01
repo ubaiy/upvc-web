@@ -1,8 +1,4 @@
-<p-progressBar
-  [hidden]="!loading"
-  mode="indeterminate"
-  [style]="{ height: '4px' }"
-></p-progressBar>
+<p-progressSpinner [hidden]="!loading"></p-progressSpinner>
 <p-toast></p-toast>
 <p-confirmDialog rejectButtonStyleClass="p-button-outlined"></p-confirmDialog>
 <router-outlet></router-outlet>
