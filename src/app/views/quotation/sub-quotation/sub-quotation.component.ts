@@ -93,6 +93,7 @@ export class SubQuotationComponent {
             this.ref = this.dialogService.open(PrintQuotationPdfComponent, {
               header: 'Print Quotation',
               contentStyle: { overflow: 'auto' },
+              width: '30%',
               baseZIndex: 10000,
               data: {
                 quatation_id: this.data.id,

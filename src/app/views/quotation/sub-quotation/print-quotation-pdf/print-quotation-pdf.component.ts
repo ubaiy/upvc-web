@@ -27,8 +27,6 @@ export class PrintQuotationPdfComponent {
     private _dataService: QuotationService
   ) {
     this.form = this._initFrom();
-    // this._getDrpData();
-    console.log(this.config.data);
     this.name = this.config.data.name;
     this.paymentTerms = this.config.data.terms;
     this.margins = this.config.data.margin;
@@ -36,19 +34,6 @@ export class PrintQuotationPdfComponent {
 
   get f() {
     return this.form.controls;
-  }
-
-  private _getDrpData() {
-    this._paymentTermsService.getPaymentTypeList().subscribe((res) => {
-      if (res.success) {
-        this.paymentTerms = res.data;
-      }
-    });
-    this._typeMarginService.getTypeMarginList().subscribe((res) => {
-      if (res.success) {
-        this.margins = res.data;
-      }
-    });
   }
 
   public submit() {
@@ -79,9 +64,10 @@ export class PrintQuotationPdfComponent {
       }
       this._dataService.getPDF(data).subscribe(
         (res) => {
-          const blob = new Blob([res], { type: 'application/pdf' });
-          saveAs(blob, `${this.name}'s Quotation.pdf`); // Trigger the download
-          // Close the dialog here
+          const blobUrl = URL.createObjectURL(res);
+
+          // Open the Blob URL in a new tab
+          window.open(blobUrl, '_blank');
           this.ref.close();
         },
         (err) => {

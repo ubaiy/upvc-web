@@ -243,7 +243,7 @@
                       >
                         <option disabled>Please select Sash</option>
                         <option *ngFor="let sash of sashList" [value]="sash.id">
-                          {{ sash.profile_name }}
+                          {{ sash.profile_code + "-" + sash.profile_name }}
                         </option>
                       </select>
                       <small

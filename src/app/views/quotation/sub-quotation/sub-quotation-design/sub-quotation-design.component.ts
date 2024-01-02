@@ -192,12 +192,12 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     if (this.rectSelected) {
       this._toastService.showError('Please complete the design first.');
     } else {
-      var dataURL = this.stage.toDataURL();
       let data = this.form.value;
       data.is_saved = true;
       data.quatation_id = this.quotationId ? this.quotationId : null;
       data.parts = this.designSpecArray;
-      data.image = dataURL;
+      console.log(this.designSpecArray);
+      data.image = this.stage.toDataURL();
       this._dataService.quotationManageProduct(data).subscribe((res) => {
         if (res.success) {
           this.costheadInfo = res.data.costhead_information.costhead;
@@ -333,6 +333,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     const width = fg.get('width');
     const color = fg.get('color');
     const profile_color = fg.get('profile_color');
+    const quantity = fg.get('quantity');
     const handleValueChange = (res: any) => {
       if (!res) return;
       this._updateCanvas();
@@ -340,6 +341,11 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     };
     height?.valueChanges.subscribe(handleValueChange);
     width?.valueChanges.subscribe(handleValueChange);
+    quantity?.valueChanges.subscribe((res) => {
+      if (res) {
+        this._manageProduct();
+      }
+    });
     color?.valueChanges.subscribe((value: any) => {
       if (value.id) {
         profile_color?.patchValue(value.color_code);
@@ -392,6 +398,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         if (res === 'Slidding') {
           isTrackControl.setValue('2 Track');
           isTrackControl.setValidators([Validators.required]);
+          hingesTypeControl.setValue('');
+          hingesTypeControl.clearValidators();
+          hingesTypeControl.updateValueAndValidity();
         }
 
         if (res === 'Casement' && casementTypeControl.value === 'Openable') {
@@ -469,6 +478,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         this._manageProduct();
       }
     });
+    fly_mesh.valueChanges.subscribe((res) => {
+      this._updateCanvas();
+      this._manageProduct();
+    });
     handleIdControl.valueChanges.subscribe((res) => {
       if (res) {
         this._manageProduct();
@@ -503,7 +516,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
    * Api Calls start
    */
   private _manageProduct() {
-    let data = this.form.value;
+    let data = this.form.getRawValue();
+    this.designSpecArray[0] = this.designSpecificationForm.value;
     data.parts = [this.designSpecificationForm.value];
     this._dataService.quotationManageProduct(data).subscribe((res) => {
       if (res.success) {
@@ -640,9 +654,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       designConst.strokeDefaultColor
     );
     this.mainRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
-      // document.addEventListener('contextmenu', (e) => {
-      //   e.preventDefault();
-      // });
       this._handleInnerRectClick(this.mainRect);
     });
     const lineConnectors = this._designService.cornerConnectors(
@@ -667,21 +678,20 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   private _handleInnerRectClick(innerRect: Konva.Rect) {
-    const designRectId = innerRect.getAttr('id');
     if (innerRect.fill() === designConst.defaultRectColor) {
-      this._handleInnerRectSelect(innerRect, designRectId);
+      this._handleInnerRectSelect(innerRect);
     } else {
       this._handleInnerRectDeselect(innerRect);
     }
   }
 
-  private _handleInnerRectSelect(innerRect: Konva.Rect, designRectId: any) {
+  private _handleInnerRectSelect(innerRect: Konva.Rect) {
     innerRect.fill(designConst.selectedRectColor);
     this.rectSelected = true;
     this.designSpecificationForm.reset();
     this.designSpecificationForm.updateValueAndValidity();
     this.designSpecificationForm = this._designSpecFormInit(
-      this.designSpecArray[0] ? this.designSpecArray[0] : undefined
+      this.designSpecArray[0]
     );
   }
 
@@ -780,13 +790,13 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     if (i % 2) {
       handle = this._designService.handle({
         x: xPos + frameWidth - designConst.innerRectGap,
-        y: frameHeight * ratio - designConst.innerRectGap * 2,
+        y: orignalFrameHeight * ratio - designConst.innerRectGap * 2,
         rotationDeg: 180,
       });
     } else {
       handle = this._designService.handle({
         x: xPos + designConst.innerRectGap,
-        y: frameHeight * ratio - designConst.innerRectGap * 2,
+        y: orignalFrameHeight * ratio - designConst.innerRectGap * 2,
         rotationDeg: 0,
       });
     }

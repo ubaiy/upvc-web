@@ -11,6 +11,7 @@ import { Observable } from 'rxjs';
 import { LoaderService } from '../services/loader.service';
 import { LocalStoreService } from '../services/local-storage.service';
 import { AuthService } from '../services/auth.service';
+import { ToastService } from '../services/toast.service';
 @Injectable()
 export class LoaderInterceptor implements HttpInterceptor {
   private requests: HttpRequest<any>[] = [];
@@ -18,7 +19,8 @@ export class LoaderInterceptor implements HttpInterceptor {
   constructor(
     private loaderService: LoaderService,
     private authService: AuthService,
-    private ls: LocalStoreService
+    private ls: LocalStoreService,
+    private _toastService: ToastService
   ) {}
 
   removeRequest(req: HttpRequest<any>) {
@@ -52,7 +54,7 @@ export class LoaderInterceptor implements HttpInterceptor {
           },
           (err) => {
             if (err.status == 401) {
-              // this.alertService.errorAlert('Session expired');//TODO need to add alert
+              this._toastService.showError('Session Expired.');
               this.authService.logout();
             }
             this.removeRequest(req);
