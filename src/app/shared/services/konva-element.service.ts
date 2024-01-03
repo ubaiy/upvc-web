@@ -27,6 +27,7 @@ export class KonvaElementService {
       stroke: strokeColor,
       strokeWidth: designConst.strokeWidth,
       cornerRadius: designConst.cornerRadius,
+      pointerEvent: 'auto',
     });
     return rect;
   }

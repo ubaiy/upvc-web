@@ -491,7 +491,7 @@ export class DesignComponent implements AfterViewInit {
     this.casementTypes = this.dropdowns.casement_type;
     this.hingesType = this.dropdowns.hinges_type;
     this.sliddingTypes = this.dropdowns.slidding_type;
-    this.palla_types = this.dropdowns.palla_type;
+    // this.palla_types = this.dropdowns.palla_type;
     this.openningDirections = this.dropdowns.opening_direction;
   }
 

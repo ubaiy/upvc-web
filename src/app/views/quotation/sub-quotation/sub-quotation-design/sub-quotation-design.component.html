@@ -285,11 +285,37 @@
                   >
                 </c-row>
                 <c-row>
+                  <c-col *ngIf="df['category_type'].value === 'Slidding'">
+                    <div class="mb-3">
+                      <label cLabel="" for="palla_type">Palla Type</label>
+                      <select
+                        aria-label="Palla Type"
+                        id="palla_type"
+                        cSelect
+                        formControlName="palla_type"
+                      >
+                        <option disabled>Please select Palla Count</option>
+                        <option
+                          *ngFor="let palla_type of palla_type_slidding"
+                          [value]="palla_type"
+                        >
+                          {{ palla_type }}
+                        </option>
+                      </select>
+                      <small
+                        class="error"
+                        *ngIf="
+            (f['palla_type']?.errors?.['required'] && f['palla_type'].touched) ||
+            (f['palla_type']?.errors?.['required'] && submitted)
+          "
+                        >Palla Type is required</small
+                      >
+                    </div></c-col
+                  >
                   <c-col
                     *ngIf="
-                      df['category_type'].value === 'Slidding' ||
-                      (df['category_type'].value === 'Casement' &&
-                        df['casement_type'].value === 'Openable')
+                      df['category_type'].value === 'Casement' &&
+                      df['casement_type'].value === 'Openable'
                     "
                   >
                     <div class="mb-3">
@@ -302,7 +328,7 @@
                       >
                         <option disabled>Please select Palla Count</option>
                         <option
-                          *ngFor="let palla_type of palla_types"
+                          *ngFor="let palla_type of palla_type_openable"
                           [value]="palla_type"
                         >
                           {{ palla_type }}

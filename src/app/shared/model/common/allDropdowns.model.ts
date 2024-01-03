@@ -5,7 +5,8 @@ export interface IAllDropDownsDto {
   product_type: string[];
   slidding_type: string[];
   casement_type: string[];
-  palla_type: number[];
+  palla_type_openable: number[];
+  palla_type_slidding: number[];
   opening_direction: IOpenDirectionDrpDto[];
   hinges_type: string[];
   costhead_unit_type: string[];
@@ -18,7 +19,8 @@ export class AllDropdowns implements IAllDropDownsDto {
   product_type: string[] = [];
   slidding_type: string[] = [];
   casement_type: string[] = [];
-  palla_type: number[] = [];
+  palla_type_openable: number[];
+  palla_type_slidding: number[];
   opening_direction: IOpenDirectionDrpDto[] = [];
   hinges_type: string[] = [];
   costhead_unit_type: string[] = [];

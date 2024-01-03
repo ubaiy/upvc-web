@@ -15,12 +15,6 @@ export class PallaTypeResolver implements Resolve<boolean> {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<any> {
-    return this.dataService
-      .getPallaTypes()
-      .pipe(
-        switchMap((res) =>
-          res.success ? of(res.data) : throwError(res.message)
-        )
-      );
+    return of(null)
   }
 }

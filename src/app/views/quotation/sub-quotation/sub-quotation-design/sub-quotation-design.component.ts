@@ -83,7 +83,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   hingesType: string[] = [];
   sashList: IProfileDropdown[] = [];
   casementTypes: string[] = [];
-  palla_types: number[];
+  palla_type_openable: number[];
+  palla_type_slidding: number[];
   openningDirections: IOpenDirectionDrpDto[];
   /**
    * Dropdown variables end
@@ -243,7 +244,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.dropdowns = data['dropdowns'];
     this.edit = data['edit'];
     this.profileList = data['profileList'];
-    console.log(data);
     this.glassList = this.dropdowns.costhead;
     this.categoryList = this.dropdowns.category;
     this.typeList = this.dropdowns.product_type;
@@ -251,7 +251,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.sliddingTypes = this.dropdowns.slidding_type;
     this.hingesType = this.dropdowns.hinges_type;
     this.casementTypes = this.dropdowns.casement_type;
-    this.palla_types = this.dropdowns.palla_type;
+    this.palla_type_openable = this.dropdowns.palla_type_openable;
+    this.palla_type_slidding = this.dropdowns.palla_type_slidding;
     this.openningDirections = this.dropdowns.opening_direction;
     this.colors = this.dropdowns.profile_color;
   }
@@ -299,7 +300,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         Validators.required,
       ]),
       color_id: new FormControl(this.f['color'].value.id),
-      sash_id: new FormControl(),
+      sash_id: new FormControl(''),
       casement_type: new FormControl('Fixed'),
       palla_type: new FormControl(),
       hinges_type: new FormControl(),
@@ -376,7 +377,12 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           res === 'Slidding'
         ) {
           sashIdControl.setValidators([Validators.required]);
-          pallaTypeControl.setValue(2);
+          console.log(res, casementTypeControl.value);
+          if (res === 'Casement' && casementTypeControl.value === 'Openable') {
+            pallaTypeControl.setValue(1);
+          } else if (res === 'Slidding') {
+            pallaTypeControl.setValue(2);
+          }
           pallaTypeControl.setValidators([Validators.required]);
           handleIdControl.setValidators([Validators.required]);
           this._profileList();
@@ -396,6 +402,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         }
 
         if (res === 'Slidding') {
+          pallaTypeControl.setValue(2);
+          pallaTypeControl.setValidators([Validators.required]);
           isTrackControl.setValue('2 Track');
           isTrackControl.setValidators([Validators.required]);
           hingesTypeControl.setValue('');
@@ -404,6 +412,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         }
 
         if (res === 'Casement' && casementTypeControl.value === 'Openable') {
+          pallaTypeControl.setValue(1);
+          pallaTypeControl.setValidators([Validators.required]);
           hingesTypeControl.setValidators([Validators.required]);
         }
         [
@@ -422,12 +432,13 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     casementTypeControl.valueChanges.subscribe((res) => {
       if (res) {
         if (category.value === 'Casement' && res === 'Openable') {
+          pallaTypeControl.setValue(1);
+          pallaTypeControl.setValidators([Validators.required]);
           this._profileList();
           this._sashList();
           this._handleList();
           [
             sashIdControl,
-            pallaTypeControl,
             hingesTypeControl,
             isTrackControl,
             handleIdControl,
@@ -567,6 +578,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this._profileService.productDropdown(query).subscribe((res) => {
       if (res.success) {
         this.sashList = res.data;
+        this.df['sash_id'].patchValue(
+          this.sashList[0] ? this.sashList[0].id : ''
+        );
       }
     });
   }
@@ -696,13 +710,13 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   private _handleInnerRectDeselect(innerRect: Konva.Rect) {
-    console.log(this.designSpecificationForm);
     if (this.designSpecificationForm.invalid) {
       this._toastService.showError(
         'Please fill all the required fields first.'
       );
     } else {
       innerRect.fill(designConst.defaultRectColor);
+      this.mainRect.off('Click');
       this.rectSelected = false;
     }
   }
@@ -734,24 +748,20 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     profile_color: string
   ) {
     const divisions = this.df['palla_type'].value;
-    if (divisions > 1) {
-      const divisionWidth =
-        (frameWidth * ratio - 2 * designConst.innerRectGap) / divisions;
-      for (let i = 0; i < divisions; i++) {
-        const divisionXPos =
-          xPos + designConst.innerRectGap + i * divisionWidth;
-        this._drawDivisionRect(
-          i,
-          divisionXPos,
-          yPos + designConst.innerRectGap,
-          ratio,
-          divisionWidth,
-          frameHeight,
-          profile_color,
-          frameWidth,
-          frameHeight
-        );
-      }
+    const divisionWidth =
+      (frameWidth * ratio - 2 * designConst.innerRectGap) / divisions;
+    for (let i = 0; i < divisions; i++) {
+      const divisionXPos = xPos + designConst.innerRectGap + i * divisionWidth;
+      this._drawDivisionRect(
+        i,
+        divisionXPos,
+        yPos + designConst.innerRectGap,
+        ratio,
+        divisionWidth,
+        frameHeight,
+        profile_color,
+        frameHeight
+      );
     }
   }
 
@@ -763,10 +773,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     frameWidth: number,
     frameHeight: number,
     profile_color: string,
-    orignalFrameWidth: number,
     orignalFrameHeight: number
   ) {
-    const divisions = this.df['palla_type'].value;
     const windowRect = this._konvaDesignService.createRect(
       xPos,
       yPos,
@@ -805,18 +813,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     const end = { X: d, y: zeroValue };
     const start = { x: xPos, y: yPos };
     const lineConnectors = this._konvaDesignService.createLine(start, end);
-    const directionInfo = this._designService.addLineAndArrow(
-      xPos,
-      yPos,
-      orignalFrameWidth / divisions - designConst.innerRectGap * 4,
-      orignalFrameHeight - designConst.innerRectGap * 4,
-      ratio
-    );
     this.layer.add(windowRect);
     this.layer.add(innerRect);
     this.layer.add(lineConnectors);
     this.layer.add(handle);
-    this.layer.add(directionInfo);
   }
 
   private _handlePallaRectClick(innerRect: Konva.Rect) {

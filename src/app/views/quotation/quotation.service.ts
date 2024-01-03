@@ -32,9 +32,9 @@ export class QuotationService {
     return this._apiHttpService.get(API_END_POINT.quatation.sliddingTypes);
   }
 
-  public getPallaTypes(): Observable<IResponseDto<[]>> {
-    return this._apiHttpService.get(API_END_POINT.quatation.pallaTypes);
-  }
+  // public getPallaTypes(): Observable<IResponseDto<[]>> {
+  //   return this._apiHttpService.get(API_END_POINT.quatation.pallaTypes);
+  // }
 
   public getQuotationDetail(
     id: number
