@@ -28,6 +28,10 @@ import { ConfirmationDialogService } from 'src/app/shared/services/confirmationd
 import { ProfileService } from 'src/app/views/masters/profile/profile.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { cilLoopCircular } from '@coreui/icons';
+const isMobile =
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
 @Component({
   selector: 'app-sub-quotation-design',
   templateUrl: './sub-quotation-design.component.html',
@@ -667,9 +671,21 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         : designConst.defaultRectColor,
       designConst.strokeDefaultColor
     );
-    this.mainRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
-      this._handleInnerRectClick(this.mainRect);
-    });
+    // this.mainRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
+    //   this._handleInnerRectClick(this.mainRect);
+    // });
+
+    if (isMobile) {
+      // Attach touch event handlers for mobile
+      this.mainRect.on('tap', () => {
+        this._handleInnerRectClick(this.mainRect);
+      });
+    } else {
+      // Attach click event handlers for non-mobile
+      this.mainRect.on('click', () => {
+        this._handleInnerRectClick(this.mainRect);
+      });
+    }
     const lineConnectors = this._designService.cornerConnectors(
       this.mainRect,
       xPos,
