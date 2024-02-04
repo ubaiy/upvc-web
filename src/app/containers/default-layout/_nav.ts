@@ -59,13 +59,17 @@ export const navItems: INavData[] = [
         name: 'Profile',
         url: '/masters/profile',
       },
-       {
+      {
         name: 'Profile Colors',
         url: '/masters/profile-color',
       },
       {
         name: 'Glass',
         url: '/masters/glass',
+      },
+      {
+        name: 'Bulk Price Update',
+        url: '/bulk-price-update',
       },
     ],
   },

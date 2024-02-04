@@ -1,0 +1,123 @@
+<h4 class="mb-5">Product Price Change</h4>
+<div>
+  <form [formGroup]="form">
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="per_kg">
+        Rate/kg <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input cFormControl id="per_kg" type="text" formControlName="per_kg" />
+        <small
+          class="error"
+          *ngIf="
+            (f['per_kg']?.errors?.['required'] && f['per_kg'].touched) ||
+            (f['per_kg']?.errors?.['required'] && submitted)
+          "
+          >Rate/kg is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['per_kg']?.errors?.['required'] && f['per_kg']?.errors?.['pattern'] && f['per_kg'].touched) ||
+            (!f['per_kg']?.errors?.['required'] && f['per_kg']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Rate/kg Number</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="rate_bar">
+        Rate/Bar<span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="rate_bar"
+          type="text"
+          formControlName="rate_bar"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['rate_bar']?.errors?.['required'] && f['rate_bar'].touched) ||
+            (f['rate_bar']?.errors?.['required'] && submitted)
+          "
+          >Rate/Bar is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['rate_bar']?.errors?.['required'] && f['rate_bar']?.errors?.['pattern'] && f['rate_bar'].touched) ||
+            (!f['rate_bar']?.errors?.['required'] && f['rate_bar']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Rate/Bar Number</small
+        >
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="color_per_kg">
+        Color Kg/mtr <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="color_per_kg"
+          type="text"
+          formControlName="color_per_kg"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['color_per_kg']?.errors?.['required'] && f['color_per_kg'].touched) ||
+            (f['color_per_kg']?.errors?.['required'] && submitted)
+          "
+          >Kg/mtr is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['color_per_kg']?.errors?.['required'] && f['color_per_kg']?.errors?.['pattern'] && f['color_per_kg'].touched) ||
+            (!f['color_per_kg']?.errors?.['required'] && f['color_per_kg']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Color Kg/mtr Number</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="color_rate_bar">
+        Color Rate/Meter <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="color_rate_bar"
+          type="text"
+          formControlName="color_rate_bar"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['color_rate_bar']?.errors?.['required'] && f['color_rate_bar'].touched) ||
+            (f['color_rate_bar']?.errors?.['required'] && submitted)
+          "
+        >
+          Color Rate/Meter is required</small
+        >
+        <small
+          class="error"
+          *ngIf="
+            (!f['color_rate_bar']?.errors?.['required'] && f['color_rate_bar']?.errors?.['pattern'] && f['color_rate_bar'].touched) ||
+            (!f['color_rate_bar']?.errors?.['required'] && f['color_rate_bar']?.errors?.['pattern'] && submitted)
+          "
+          >Please enter valid Color Rate/Meter Number</small
+        >
+      </c-col>
+    </c-row>
+    <div class="mt-5 d-flex gap-4">
+      <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
+      <p-button
+        color="secondary"
+        styleClass="p-button-secondary"
+        (click)="toggleWarningModal()"
+      >
+        Cancel</p-button
+      >
+    </div>
+  </form>
+</div>

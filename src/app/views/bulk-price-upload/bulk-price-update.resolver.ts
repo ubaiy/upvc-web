@@ -5,25 +5,18 @@ import {
   ActivatedRouteSnapshot,
 } from '@angular/router';
 import { Observable, of, switchMap, throwError } from 'rxjs';
-import { ProfileService } from '../../views/masters/profile/profile.service';
+import { BulkPriceUpdateService } from './bulk-price-update.service';
 @Injectable({
   providedIn: 'root',
 })
-export class MullionResolver implements Resolve<boolean> {
-  constructor(private dataService: ProfileService) {}
+export class BulkPriceUpdateResolver implements Resolve<boolean> {
+  constructor(private _dataService: BulkPriceUpdateService) {}
   resolve(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Observable<any> {
-    let query = {
-      category_name: '',
-      track: '',
-      sub_category_name: 'Mullion',
-      casement_type: '',
-      product_type: '',
-    };
-    return this.dataService
-      .productDropdown(query)
+    return this._dataService
+      .getBulkPrice()
       .pipe(
         switchMap((res) =>
           res.success ? of(res.data) : throwError(res.message)

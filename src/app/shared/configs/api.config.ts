@@ -99,4 +99,8 @@ export const API_END_POINT = {
     delete: 'profile-color/delete/',
     dropdown: 'profile-color/dropdown',
   },
+  bulkPriceUpdate: {
+    get: 'product/get-price',
+    post: 'product/update-price',
+  },
 };

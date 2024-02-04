@@ -8,12 +8,10 @@ import { AreaResolver } from '../area/area.resolver';
 import { AddResolver } from './add/add.resolver';
 import { SubQuotationComponent } from './sub-quotation/sub-quotation.component';
 import { SubQuotationResolver } from './sub-quotation/sub-quotation.resolver';
-import { ProfileCategoryResolver } from 'src/app/shared/resolver/profile-category.resolver';
 import { ProfileListResolver } from 'src/app/shared/resolver/profile-list.resolver';
 import { AllDropdownsResolver } from 'src/app/shared/resolver/all-dropdowns.resolver';
-import { GlassDropdownResolver } from 'src/app/shared/resolver/glass-dropdown.resolver';
-import { DesignComponent } from './sub-quotation/design/design.component';
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
+import { MullionResolver } from '../../shared/resolver/mullion.resolver';
 const routes: Routes = [
   {
     path: '',
@@ -42,35 +40,13 @@ const routes: Routes = [
     resolve: { data: SubQuotationResolver },
     data: { edit: false },
   },
-  // {
-  //   path: 'detail/:id/add',
-  //   component: DesignComponent,
-  //   resolve: {
-  //     profileList: ProfileListResolver,
-  //     dropdowns: AllDropdownsResolver,
-  //     glassList: GlassDropdownResolver,
-  //     productCategory: ProfileCategoryResolver,
-  //   },
-  //   data: { edit: false },
-  // },
-  // {
-  //   path: 'detail/:id/edit/:subId',
-  //   component: DesignComponent,
-  //   resolve: {
-  //     details: SubQuotationResolver,
-  //     profileList: ProfileListResolver,
-  //     dropdowns: AllDropdownsResolver,
-  //     glassList: GlassDropdownResolver,
-  //     productCategory: ProfileCategoryResolver,
-  //   },
-  //   data: { edit: true },
-  // },
   {
     path: 'detail/:id/add',
     component: SubQuotationDesignComponent,
     resolve: {
       profileList: ProfileListResolver,
       dropdowns: AllDropdownsResolver,
+      mullionList: MullionResolver,
     },
     data: { edit: false },
   },
@@ -81,6 +57,7 @@ const routes: Routes = [
       details: SubQuotationResolver,
       profileList: ProfileListResolver,
       dropdowns: AllDropdownsResolver,
+      mullionList: MullionResolver,
     },
     data: { edit: true },
   },

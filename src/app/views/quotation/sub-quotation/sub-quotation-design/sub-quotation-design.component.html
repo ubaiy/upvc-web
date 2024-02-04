@@ -61,26 +61,6 @@
               <c-row>
                 <c-col>
                   <div class="mb-3">
-                    <label cLabel="" for="height">Height</label>
-                    <input
-                      aria-describedby="height"
-                      cFormControl
-                      id="height"
-                      type="number"
-                      formControlName="height"
-                    />
-                    <small
-                      class="error"
-                      *ngIf="
-            (f['height']?.errors?.['required'] && f['height'].touched) ||
-            (f['height']?.errors?.['required'] && submitted)
-          "
-                      >Height is required</small
-                    >
-                  </div></c-col
-                >
-                <c-col>
-                  <div class="mb-3">
                     <label cLabel="" for="width">Width</label>
                     <input
                       aria-describedby="width"
@@ -96,6 +76,26 @@
             (f['width']?.errors?.['required'] && submitted)
           "
                       >Width is required</small
+                    >
+                  </div></c-col
+                >
+                <c-col>
+                  <div class="mb-3">
+                    <label cLabel="" for="height">Height</label>
+                    <input
+                      aria-describedby="height"
+                      cFormControl
+                      id="height"
+                      type="number"
+                      formControlName="height"
+                    />
+                    <small
+                      class="error"
+                      *ngIf="
+            (f['height']?.errors?.['required'] && f['height'].touched) ||
+            (f['height']?.errors?.['required'] && submitted)
+          "
+                      >Height is required</small
                     >
                   </div></c-col
                 >
@@ -500,6 +500,13 @@
                         formControlName="is_lshape"
                       /></div
                   ></c-col>
+                  <c-col>
+                    <div class="mb-3">
+                      <button cButton color="primary" (click)="addMullion()">
+                        Add Mullion
+                      </button>
+                    </div>
+                  </c-col>
                 </c-row>
                 <div style="display: flex; gap: 10px">
                   <button cButton color="primary" (click)="saveDesign()">
@@ -592,3 +599,75 @@
     </p-table>
   </c-row>
 </c-container>
+<c-modal
+  id="liveDemoModal"
+  [visible]="isMullion"
+  backdrop="static"
+  alignment="center"
+  (visibleChange)="handleFormModal($event)"
+>
+  <c-modal-header>
+    <h5 cModalTitle color="warm">Add Mullion</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div>
+      <form [formGroup]="mullionForm">
+        <c-row>
+          <label cLabel="col" class="col-sm-3" for="profile_id">
+            Profile
+          </label>
+          <c-col [sm]="9">
+            <select
+              aria-label="Default select example"
+              cSelect
+              formControlName="profile_id"
+            >
+              <option disabled>Please select Profile</option>
+              <option *ngFor="let profile of mullionList" [value]="profile.id">
+                {{ profile.profile_code + " - " + profile.profile_name }}
+              </option>
+            </select>
+            <small
+              class="error"
+              *ngIf="
+            (f['profile_id']?.errors?.['required'] && f['profile_id'].touched) ||
+            (f['profile_id']?.errors?.['required'] && submitted)
+          "
+              >Profile is required</small
+            >
+          </c-col>
+        </c-row>
+        <c-row style="margin-top: 25px">
+          <label cLabel="col" class="col-sm-3" for="direction">
+            Direction
+          </label>
+          <c-col [sm]="9">
+            <select
+              aria-label="Default select example"
+              cSelect
+              formControlName="direction"
+            >
+              <option disabled>Please select Direction</option>
+              <option value="vertical">Vertical</option>
+              <option value="horizontal">Horizontal</option>
+            </select>
+            <small
+              class="error"
+              *ngIf="
+            (f['direction']?.errors?.['required'] && f['direction'].touched) ||
+            (f['direction']?.errors?.['required'] && submitted)
+          "
+              >Direction is required</small
+            >
+          </c-col>
+        </c-row>
+      </form>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <p-button styleClass="p-button-secondary" (click)="cancelMullion()">
+      Cancel
+    </p-button>
+    <p-button (click)="submitMullion()"> Add </p-button>
+  </c-modal-footer>
+</c-modal>

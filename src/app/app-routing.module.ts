@@ -7,6 +7,9 @@ import { Page500Component } from './views/pages/page500/page500.component';
 import { AuthGuard } from './shared/guards/auth.guard';
 import { ProfileComponent } from './views/profile/profile.component';
 import { ProfileResolver } from './views/profile/profile.resolver';
+import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
+import { BulkPriceUpdateResolver } from './views/bulk-price-upload/bulk-price-update.resolver';
+
 const routes: Routes = [
   {
     path: '',
@@ -41,6 +44,11 @@ const routes: Routes = [
           import('./views/customers/customers.module').then(
             (m) => m.CustomersModule
           ),
+      },
+      {
+        path: 'bulk-price-update',
+        component: BulkPriceUploadComponent,
+        // resolve: { data: BulkPriceUpdateResolver },
       },
       {
         path: 'quotation',

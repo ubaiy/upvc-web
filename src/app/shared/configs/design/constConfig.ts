@@ -17,4 +17,5 @@ export const mullionDirections = [
 ];
 export const selectedRectColor = 'lightgreen';
 export const defaultRectColor = 'lightblue';
+export const noGlassRectColor = 'black'
 export const strokeDefaultColor = 'black';

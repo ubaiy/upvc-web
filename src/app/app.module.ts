@@ -57,6 +57,7 @@ import { LoaderService } from 'src/app/shared/services/loader.service';
 import { LoaderInterceptor } from 'src/app/shared/interceptors/loader.interceptor';
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ProfileComponent } from './views/profile/profile.component';
+import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
 const APP_CONTAINERS = [
   DefaultFooterComponent,
   DefaultHeaderComponent,
@@ -64,7 +65,7 @@ const APP_CONTAINERS = [
 ];
 
 @NgModule({
-  declarations: [AppComponent, ...APP_CONTAINERS, ProfileComponent],
+  declarations: [AppComponent, ...APP_CONTAINERS, ProfileComponent, BulkPriceUploadComponent],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,

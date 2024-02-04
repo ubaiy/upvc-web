@@ -90,6 +90,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   palla_type_openable: number[];
   palla_type_slidding: number[];
   openningDirections: IOpenDirectionDrpDto[];
+  product_id: any;
+  isMullion: boolean;
+  mullionForm: FormGroup;
   /**
    * Dropdown variables end
    */
@@ -107,7 +110,21 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   ) {
     this._setUpData();
     this.form = this._initForm();
+    this.mullionForm = this._mullionFormInit();
     this.quotationId = this._activeRoute.snapshot.paramMap.get('id') || '';
+    this.product_id = this._activeRoute.snapshot.paramMap.get('subId') || '';
+  }
+
+  public handleFormModal(event: any) {
+    this.isMullion = event;
+  }
+
+  public submitMullion() {
+    console.log('mullionsubmitted');
+  }
+
+  public cancelMullion() {
+    this.isMullion = false;
   }
 
   /**
@@ -154,6 +171,19 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.inputValue = '';
   }
 
+  public addMullion() {
+    this.isMullion = true;
+  }
+
+  private _mullionFormInit(): FormGroup {
+    const fg = this._fb.group({
+      profile_id: new FormControl('', [Validators.required]),
+      direction: new FormControl('', [Validators.required]),
+      length: new FormControl(''),
+    });
+
+    return fg;
+  }
   public customSort(event: SortEvent) {
     sharedClasses.customSort(event);
   }
@@ -201,7 +231,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       data.is_saved = true;
       data.quatation_id = this.quotationId ? this.quotationId : null;
       data.parts = this.designSpecArray;
-      console.log(this.designSpecArray);
       data.image = this.stage.toDataURL();
       this._dataService.quotationManageProduct(data).subscribe((res) => {
         if (res.success) {
@@ -259,6 +288,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.palla_type_slidding = this.dropdowns.palla_type_slidding;
     this.openningDirections = this.dropdowns.opening_direction;
     this.colors = this.dropdowns.profile_color;
+    this.mullionList = data['mullionList'];
   }
   /**
    * Data initialization end
@@ -269,7 +299,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   private _initForm() {
     let fg = this._fb.group({
       quatation_id: new FormControl(),
-      quatation_product_id: new FormControl(),
+      quatation_product_id: new FormControl(
+        this.product_id ? this.product_id : ''
+      ),
       is_saved: new FormControl(false),
       quantity: new FormControl(1, [Validators.required]),
       color: new FormControl(
@@ -381,7 +413,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           res === 'Slidding'
         ) {
           sashIdControl.setValidators([Validators.required]);
-          console.log(res, casementTypeControl.value);
           if (res === 'Casement' && casementTypeControl.value === 'Openable') {
             pallaTypeControl.setValue(1);
           } else if (res === 'Slidding') {
@@ -505,6 +536,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     glass_id.valueChanges.subscribe((res) => {
       if (res) {
         this._manageProduct();
+        this._updateCanvas();
       }
     });
     handleIdControl.valueChanges.subscribe((res) => {
@@ -520,6 +552,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     product_type.valueChanges.subscribe((res) => {
       if (res) {
         this._manageProduct();
+        this._handleList();
       }
     });
   }
@@ -532,6 +565,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
    */
   private _manageProduct() {
     let data = this.form.getRawValue();
+    this.designSpecificationForm.get('height')?.setValue(data.height);
+    this.designSpecificationForm.get('width')?.setValue(data.width);
+    this.designSpecificationForm.get('color')?.setValue(data.color);
     this.designSpecArray[0] = this.designSpecificationForm.value;
     data.parts = [this.designSpecificationForm.value];
     this._dataService.quotationManageProduct(data).subscribe((res) => {
@@ -614,6 +650,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     const frameWidth = this.f['width'].value;
     const frameHeight = this.f['height'].value;
     const profile_color = this.f['profile_color'].value;
+    const glass_id = this.df['glazz_id'].value;
     if (this.isFrameSizeValid(frameWidth, frameHeight)) {
       this.clearLayerChildren();
       const { xPos, yPos, ratio } = this._designService.calculations(
@@ -668,6 +705,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       frameHeight * ratio - 2 * designConst.innerRectGap,
       this.rectSelected
         ? designConst.selectedRectColor
+        : this.df['glazz_id'].value == 20
+        ? 'black'
         : designConst.defaultRectColor,
       designConst.strokeDefaultColor
     );
@@ -708,7 +747,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   private _handleInnerRectClick(innerRect: Konva.Rect) {
-    if (innerRect.fill() === designConst.defaultRectColor) {
+    if (
+      innerRect.fill() === designConst.defaultRectColor ||
+      innerRect.fill() === designConst.noGlassRectColor
+    ) {
       this._handleInnerRectSelect(innerRect);
     } else {
       this._handleInnerRectDeselect(innerRect);
@@ -718,8 +760,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   private _handleInnerRectSelect(innerRect: Konva.Rect) {
     innerRect.fill(designConst.selectedRectColor);
     this.rectSelected = true;
-    this.designSpecificationForm.reset();
-    this.designSpecificationForm.updateValueAndValidity();
+    // this.designSpecificationForm.reset();
+    // this.designSpecificationForm.updateValueAndValidity();
     this.designSpecificationForm = this._designSpecFormInit(
       this.designSpecArray[0]
     );
@@ -731,7 +773,11 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         'Please fill all the required fields first.'
       );
     } else {
-      innerRect.fill(designConst.defaultRectColor);
+      innerRect.fill(
+        this.df['glazz_id'].value == 20
+          ? designConst.noGlassRectColor
+          : designConst.defaultRectColor
+      );
       this.mainRect.off('Click');
       this.rectSelected = false;
     }
@@ -791,6 +837,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     profile_color: string,
     orignalFrameHeight: number
   ) {
+    const innerRectHeight = frameHeight * ratio - designConst.innerRectGap;
     const windowRect = this._konvaDesignService.createRect(
       xPos,
       yPos,
@@ -804,44 +851,39 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       yPos + designConst.innerRectGap,
       frameWidth - 2 * designConst.innerRectGap,
       frameHeight * ratio - designConst.innerRectGap * 4,
-      designConst.defaultRectColor,
+      this.df['glazz_id'].value == 20
+        ? designConst.noGlassRectColor
+        : designConst.defaultRectColor,
       designConst.strokeDefaultColor
     );
     innerRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
       this._handlePallaRectClick(innerRect);
     });
-    let handle;
-    if (i % 2) {
-      handle = this._designService.handle({
-        x: xPos + frameWidth - designConst.innerRectGap,
-        y: orignalFrameHeight * ratio - designConst.innerRectGap * 2,
-        rotationDeg: 180,
-      });
-    } else {
-      handle = this._designService.handle({
-        x: xPos + designConst.innerRectGap,
-        y: orignalFrameHeight * ratio - designConst.innerRectGap * 2,
-        rotationDeg: 0,
-      });
-    }
-    const d = innerRect.x() + innerRect.width();
-    const zeroValue = 0;
-    const end = { X: d, y: zeroValue };
-    const start = { x: xPos, y: yPos };
-    const lineConnectors = this._konvaDesignService.createLine(start, end);
+    const handle = this._designService.handle({
+      x: xPos + frameWidth - designConst.innerRectGap,
+      y: frameHeight * ratio - designConst.innerRectGap * 3,
+      rotationDeg: 180,
+    });
+    console.log(handle);
     this.layer.add(windowRect);
     this.layer.add(innerRect);
-    this.layer.add(lineConnectors);
     this.layer.add(handle);
   }
 
   private _handlePallaRectClick(innerRect: Konva.Rect) {
     if (this.designSpecificationForm.invalid) {
     } else {
-      if (innerRect.fill() === designConst.defaultRectColor) {
+      if (
+        innerRect.fill() === designConst.defaultRectColor ||
+        innerRect.fill() === designConst.noGlassRectColor
+      ) {
         innerRect.fill(designConst.selectedRectColor);
       } else {
-        innerRect.fill(designConst.defaultRectColor);
+        innerRect.fill(
+          this.df['glazz_id'].value == 20
+            ? designConst.noGlassRectColor
+            : designConst.defaultRectColor
+        );
       }
     }
   }
