@@ -92,7 +92,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   openningDirections: IOpenDirectionDrpDto[];
   product_id: any;
   isMullion: boolean;
+  isAddMullion: boolean;
   mullionForm: FormGroup;
+  selectedRect: Konva.Rect | null;
   /**
    * Dropdown variables end
    */
@@ -361,7 +363,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       fg.patchValue(obj);
     }
     this._designFormValueChange(fg);
-
     return fg;
   }
 
@@ -412,6 +413,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           (res === 'Casement' && casementTypeControl.value === 'Openable') ||
           res === 'Slidding'
         ) {
+          this.isAddMullion = false;
           sashIdControl.setValidators([Validators.required]);
           if (res === 'Casement' && casementTypeControl.value === 'Openable') {
             pallaTypeControl.setValue(1);
@@ -424,6 +426,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           this._sashList();
           this._handleList();
         } else {
+          this.isAddMullion = true;
           [
             sashIdControl,
             pallaTypeControl,
@@ -710,9 +713,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         : designConst.defaultRectColor,
       designConst.strokeDefaultColor
     );
-    // this.mainRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
-    //   this._handleInnerRectClick(this.mainRect);
-    // });
 
     if (isMobile) {
       // Attach touch event handlers for mobile
@@ -758,10 +758,18 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   private _handleInnerRectSelect(innerRect: Konva.Rect) {
+    const allRects = this.layer.find('Rect');
+    console.log(allRects);
+    allRects?.forEach((e: any) => {
+      console.log(e.fill() === designConst.selectedRectColor);
+      if (e.fill() === designConst.selectedRectColor) {
+        e.fill(designConst.defaultRectColor);
+      }
+    });
+    this.selectedRect = innerRect;
     innerRect.fill(designConst.selectedRectColor);
     this.rectSelected = true;
-    // this.designSpecificationForm.reset();
-    // this.designSpecificationForm.updateValueAndValidity();
+    this.isAddMullion = true;
     this.designSpecificationForm = this._designSpecFormInit(
       this.designSpecArray[0]
     );
@@ -773,6 +781,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         'Please fill all the required fields first.'
       );
     } else {
+      this.isAddMullion = false;
       innerRect.fill(
         this.df['glazz_id'].value == 20
           ? designConst.noGlassRectColor
@@ -837,6 +846,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     profile_color: string,
     orignalFrameHeight: number
   ) {
+    this.isAddMullion = false;
     const innerRectHeight = frameHeight * ratio - designConst.innerRectGap;
     const windowRect = this._konvaDesignService.createRect(
       xPos,
@@ -859,6 +869,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     innerRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
       this._handlePallaRectClick(innerRect);
     });
+    innerRect.on('tap', (e: KonvaEventObject<MouseEvent>) => {
+      this._handlePallaRectClick(innerRect);
+    });
     const handle = this._designService.handle({
       x: xPos + frameWidth - designConst.innerRectGap,
       y: frameHeight * ratio - designConst.innerRectGap * 3,
@@ -873,11 +886,21 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   private _handlePallaRectClick(innerRect: Konva.Rect) {
     if (this.designSpecificationForm.invalid) {
     } else {
+      const allRects = this.layer.find('Rect');
+      console.log(allRects);
+      allRects?.forEach((e: any) => {
+        console.log(e.fill() === designConst.selectedRectColor);
+        if (e.fill() === designConst.selectedRectColor) {
+          e.fill(designConst.defaultRectColor);
+        }
+      });
+      this.selectedRect = innerRect;
       if (
         innerRect.fill() === designConst.defaultRectColor ||
         innerRect.fill() === designConst.noGlassRectColor
       ) {
         innerRect.fill(designConst.selectedRectColor);
+        this.isAddMullion = true;
       } else {
         innerRect.fill(
           this.df['glazz_id'].value == 20

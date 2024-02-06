@@ -1,8 +1,13 @@
 import { Component } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { SortEvent } from 'primeng/api';
 import { Table } from 'primeng/table';
 import { IProductListDto } from 'src/app/shared/model/profile/productList.model';
+import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
+import { ToastService } from 'src/app/shared/services/toast.service';
+import { BulkPriceUpdateService } from '../../bulk-price-upload/bulk-price-update.service';
+import { ProfileService } from './profile.service';
 
 @Component({
   selector: 'app-profile',
@@ -12,8 +17,86 @@ import { IProductListDto } from 'src/app/shared/model/profile/productList.model'
 export class ProfileComponent {
   profileList: IProductListDto[] = [];
   inputValue: string = '';
-  constructor(private _activeRoute: ActivatedRoute) {
+  form: FormGroup;
+  submitted: boolean = false;
+  data: any;
+  constructor(
+    private _activeRoute: ActivatedRoute,
+    private _fb: FormBuilder,
+    private confirmationDialogService: ConfirmationDialogService,
+    private _toastService: ToastService,
+    private _dataService: BulkPriceUpdateService,
+    private _profileService: ProfileService
+  ) {
     this.profileList = this._activeRoute.snapshot.data['list'];
+    this.form = this._initForm();
+    this.data = this._activeRoute.snapshot.data['data'];
+    this.form.patchValue(this._activeRoute.snapshot.data['data']);
+  }
+
+  get f() {
+    return this.form.controls;
+  }
+
+  private _initForm(): FormGroup {
+    let fg = this._fb.group({
+      per_kg: [
+        '',
+        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
+      ],
+      rate_bar: [
+        '',
+        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
+      ],
+      color_per_kg: [
+        '',
+        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
+      ],
+      color_rate_bar: [
+        '',
+        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
+      ],
+    });
+    return fg;
+  }
+
+  public toggleWarningModal() {
+    if (this.form.dirty && this.form.touched) {
+      this.confirmationDialogService.confirm(
+        'Are you sure!',
+        'Are you sure you want to Cancel ? ',
+        'pi-info-circle',
+        () => {
+          this.form.patchValue(this.data);
+        },
+        () => {
+          console.log('Action rejected');
+        }
+      );
+    } else {
+      this.form.patchValue(this.data);
+    }
+  }
+
+  public submit() {
+    this.submitted = true;
+    if (this.form.valid) {
+      this._dataService
+        .postBulkPrice(this.form.getRawValue())
+        .subscribe((res) => {
+          if (res.success) {
+            this._toastService.showSuccess(res.message);
+            this._profileService.getProductList().subscribe((res) => {
+              console.log(res);
+              if (res.success) {
+                this.profileList = res.data;
+              }
+            });
+          } else {
+            this._toastService.showError(res.message);
+          }
+        });
+    }
   }
 
   public customSort(event: SortEvent) {

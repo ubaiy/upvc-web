@@ -48,7 +48,8 @@ const routes: Routes = [
       {
         path: 'bulk-price-update',
         component: BulkPriceUploadComponent,
-        // resolve: { data: BulkPriceUpdateResolver },
+        data: { edit: true },
+        resolve: { data: BulkPriceUpdateResolver },
       },
       {
         path: 'quotation',

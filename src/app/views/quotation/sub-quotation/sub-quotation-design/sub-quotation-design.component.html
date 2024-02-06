@@ -2,6 +2,13 @@
 <c-container>
   <c-row class="align-items-center text-class">
     <!-- <svg [cIcon]="circleIcon" width="10" title="Shield Icon"></svg> -->
+    <c-col *ngIf="isAddMullion">
+      <div>
+        <button cButton color="primary" (click)="addMullion()">
+          Add Mullion
+        </button>
+      </div>
+    </c-col>
     <button cButton color="danger" class="classIner" (click)="resetDesign()">
       Refresh Design
     </button>
@@ -500,13 +507,6 @@
                         formControlName="is_lshape"
                       /></div
                   ></c-col>
-                  <c-col>
-                    <div class="mb-3">
-                      <button cButton color="primary" (click)="addMullion()">
-                        Add Mullion
-                      </button>
-                    </div>
-                  </c-col>
                 </c-row>
                 <div style="display: flex; gap: 10px">
                   <button cButton color="primary" (click)="saveDesign()">

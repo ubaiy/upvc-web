@@ -25,6 +25,8 @@ import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { InputTextModule } from 'primeng/inputtext';
+import { PanelModule } from 'primeng/panel';
+
 @NgModule({
   declarations: [ProfileComponent, DetailComponent],
   imports: [
@@ -51,6 +53,7 @@ import { InputTextModule } from 'primeng/inputtext';
     AlertModule,
     FormsModule,
     InputTextModule,
+    PanelModule,
   ],
 })
 export class ProfileModule {}

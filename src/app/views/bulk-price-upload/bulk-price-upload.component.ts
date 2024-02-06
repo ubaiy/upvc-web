@@ -15,7 +15,6 @@ export class BulkPriceUploadComponent {
   editable: boolean = false;
   form: FormGroup;
   submitted: boolean = false;
-  categoryList: [];
   constructor(
     private _activeRoute: ActivatedRoute,
     private _router: Router,
@@ -26,40 +25,17 @@ export class BulkPriceUploadComponent {
   ) {
     let data = this._activeRoute.snapshot.data;
     this.editable = data['edit'];
-    this.categoryList = data['category'];
-    this.form = this._initForm();
+    // this.form = this._initForm();
+    console.log(data['data']);
     if (this.editable) {
       this.form.patchValue(data['data']);
+      console.log(this.form);
     }
   }
 
   get f() {
     return this.form.controls;
   }
-
-  public customSort(event: SortEvent) {
-    if (event.data) {
-      event.data.sort((data1, data2) => {
-        if (event.field && event.order) {
-          let value1 = data1[event.field];
-          let value2 = data2[event.field];
-          let result = null;
-
-          if (value1 == null && value2 != null) result = -1;
-          else if (value1 != null && value2 == null) result = 1;
-          else if (value1 == null && value2 == null) result = 0;
-          else if (typeof value1 === 'string' && typeof value2 === 'string')
-            result = value1.localeCompare(value2);
-          else result = value1 < value2 ? -1 : value1 > value2 ? 1 : 0;
-
-          return event.order * result;
-        } else {
-          return 0;
-        }
-      });
-    }
-  }
-
   public toggleWarningModal() {
     if (this.form.dirty && this.form.touched) {
       this.confirmationDialogService.confirm(
@@ -67,19 +43,15 @@ export class BulkPriceUploadComponent {
         'Are you sure you want to Cancel ? ',
         'pi-info-circle',
         () => {
-          this._router.navigate(['/masters/profile']);
+          this._router.navigate(['/dashboard']);
         },
         () => {
           console.log('Action rejected');
         }
       );
     } else {
-      this._router.navigate(['/masters/profile']);
+      this._router.navigate(['/dashboard']);
     }
-  }
-
-  public closeModal() {
-    this._router.navigate(['/masters/profile']);
   }
 
   public submit() {
@@ -90,33 +62,10 @@ export class BulkPriceUploadComponent {
         .subscribe((res) => {
           if (res.success) {
             this._toastService.showSuccess(res.message);
-            this._router.navigate(['/masters/profile']);
           } else {
             this._toastService.showError(res.message);
           }
         });
     }
-  }
-
-  private _initForm(): FormGroup {
-    let fg = this._fb.group({
-      per_kg: [
-        '',
-        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
-      ],
-      rate_bar: [
-        '',
-        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
-      ],
-      color_per_kg: [
-        '',
-        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
-      ],
-      color_rate_bar: [
-        '',
-        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
-      ],
-    });
-    return fg;
   }
 }

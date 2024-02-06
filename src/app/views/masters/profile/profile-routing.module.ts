@@ -5,11 +5,12 @@ import { ProfileResolver } from './profile.resolver';
 import { DetailComponent } from './detail/detail.component';
 import { DetailResolver } from './detail/detail.resolver';
 import { ProfileCategoryResolver } from 'src/app/shared/resolver/profile-category.resolver';
+import { BulkPriceUpdateResolver } from '../../bulk-price-upload/bulk-price-update.resolver';
 const routes: Routes = [
   {
     path: '',
     component: ProfileComponent,
-    resolve: { list: ProfileResolver },
+    resolve: { list: ProfileResolver, data: BulkPriceUpdateResolver },
   },
   {
     path: 'add',

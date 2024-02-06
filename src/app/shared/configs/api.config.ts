@@ -100,7 +100,7 @@ export const API_END_POINT = {
     dropdown: 'profile-color/dropdown',
   },
   bulkPriceUpdate: {
-    get: 'product/get-price',
-    post: 'product/update-price',
+    get: 'setting/get-price',
+    post: 'setting/update-price',
   },
 };
