@@ -187,6 +187,54 @@ export class FinalService {
     return group;
   }
 
+  public addLineAndArrowVertical(
+    xPos: number,
+    yPos: number,
+    frameWidth: number,
+    ratio: number
+  ): Konva.Group {
+    const lines: any[] = [];
+    const start: any = {
+        x: xPos,
+        y: yPos,
+      },
+      end: any = {
+        x: xPos + frameWidth * ratio,
+        y: yPos - 15,
+      },
+      text: string = `${frameWidth} mm`,
+      rotation: number = 0;
+    const textPadding: number = -20;
+    lines.push(this.addArrowLine(start, end, text, rotation, textPadding));
+    const group = this._konvaDesignService.returnGroup(lines);
+    return group;
+  }
+
+  public addLineAndArrowHorizontal(
+    xPos: number,
+    yPos: number,
+    frameHeight: number,
+    ratio: number
+  ): Konva.Group {
+    const lines: any[] = [];
+    directions.forEach((c) => {
+      const start: any = {
+          x: xPos - 15,
+          y: yPos,
+        },
+        end: any = {
+          x: xPos - 15,
+          y: yPos + frameHeight * ratio,
+        },
+        text: string = `${frameHeight} mm`,
+        rotation: number = 90;
+      const textPadding: number = 8;
+      lines.push(this.addArrowLine(start, end, text, rotation, textPadding));
+    });
+    const group = this._konvaDesignService.returnGroup(lines);
+    return group;
+  }
+
   public handle(handleProps: { x: number; y: number; rotationDeg: number }) {
     const { x, y, rotationDeg } = handleProps;
     const handle = new Konva.Shape({

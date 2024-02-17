@@ -2,13 +2,6 @@
 <c-container>
   <c-row class="align-items-center text-class">
     <!-- <svg [cIcon]="circleIcon" width="10" title="Shield Icon"></svg> -->
-    <c-col *ngIf="isAddMullion">
-      <div>
-        <button cButton color="primary" (click)="addMullion()">
-          Add Mullion
-        </button>
-      </div>
-    </c-col>
     <button cButton color="danger" class="classIner" (click)="resetDesign()">
       Refresh Design
     </button>
@@ -441,6 +434,13 @@
                     </div></c-col
                   >
                   <c-col
+                    *ngIf="
+                      df['category_type'].value !== 'Slidding' &&
+                      (df['is_track'].value !== '2.5 Track' ||
+                        df['is_track'].value !== '3 Track')
+                    "
+                  ></c-col>
+                  <c-col
                     style="margin-top: 45px"
                     *ngIf="
                       df['category_type'].value === 'Slidding' &&
@@ -457,21 +457,6 @@
                         id="fly_mesh"
                         type="checkbox"
                         formControlName="fly_mesh"
-                      /></div
-                  ></c-col>
-                  <c-col style="margin-top: 45px">
-                    <div class="mb-3">
-                      <label
-                        cLabel=""
-                        for="is_cupler"
-                        style="margin-right: 10px"
-                        >Is Cupler</label
-                      >
-                      <input
-                        cFormCheckInput
-                        id="is_cupler"
-                        type="checkbox"
-                        formControlName="is_cupler"
                       /></div
                   ></c-col>
                 </c-row>
@@ -508,12 +493,23 @@
                       /></div
                   ></c-col>
                 </c-row>
+
                 <div style="display: flex; gap: 10px">
                   <button cButton color="primary" (click)="saveDesign()">
                     Save Design
                   </button>
                 </div>
               </form>
+              <c-row style="margin-top: 45px">
+                <c-col *ngIf="isAddMullion">
+                  <div>
+                    <button cButton color="primary" (click)="addMullion()">
+                      Add Mullion
+                    </button>
+                  </div>
+                </c-col>
+                <c-col></c-col>
+              </c-row>
             </div>
           </ng-container>
           <div></div>
@@ -648,8 +644,8 @@
               formControlName="direction"
             >
               <option disabled>Please select Direction</option>
-              <option value="vertical">Vertical</option>
-              <option value="horizontal">Horizontal</option>
+              <option value="vertical">Vertical |</option>
+              <option value="horizontal">Horizontal --</option>
             </select>
             <small
               class="error"

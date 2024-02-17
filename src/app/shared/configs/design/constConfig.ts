@@ -11,6 +11,7 @@ export const lineConnectosDirections = [
   'BottomRight',
 ];
 export const directionLines = ['top', 'left'];
+
 export const mullionDirections = [
   { key: 1, value: 'Vertical' },
   { key: 1, value: 'Horizontal' },

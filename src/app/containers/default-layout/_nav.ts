@@ -67,10 +67,10 @@ export const navItems: INavData[] = [
         name: 'Glass',
         url: '/masters/glass',
       },
-      {
-        name: 'Bulk Price Update',
-        url: '/bulk-price-update',
-      },
+      // {
+      //   name: 'Bulk Price Update',
+      //   url: '/bulk-price-update',
+      // },
     ],
   },
   // {
