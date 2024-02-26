@@ -58,7 +58,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   layer = new Konva.Layer();
   @ViewChild('design') container: ElementRef;
   rectSelected: boolean = false;
-  mainRect: Konva.Rect;
   /**
    * Design variables end
    */
@@ -95,6 +94,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   isAddMullion: boolean;
   mullionForm: FormGroup;
   selectedRect: Konva.Rect;
+  mullionSubmitted: boolean;
+  ratio: number;
+  mullionArray: any[] = [];
   /**
    * Dropdown variables end
    */
@@ -121,313 +123,198 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.isMullion = event;
   }
 
-  // public submitMullion() {
-  //   var height = this.selectedRect.height();
-  //   var width = this.selectedRect.width();
-  //   var y = this.selectedRect.y();
-  //   var x = this.selectedRect.x();
-  //   var smallerRectWidth,
-  //     smallerRectHeight,
-  //     smallerRect1X,
-  //     smallerRect2X,
-  //     smallerRect1: Konva.Rect,
-  //     smallerRect2: Konva.Rect,
-  //     smallerRect1Y,
-  //     smallerRect2Y,
-  //     directionLine1: any,
-  //     directionLine2: any,
-  //     text1: any,
-  //     text2: any;
-  //   const { xPos, yPos, ratio } = this._designService.calculations(
-  //     this.stage,
-  //     width,
-  //     height
-  //   );
-  //   if (this.mullionForm.value.direction === 'vertical') {
-  //     smallerRectWidth = width / 2 - 10;
-  //     smallerRectHeight = height;
-  //     smallerRect1X = x;
-  //     smallerRect2X = x + width / 2 + 10;
-  //     smallerRect1 = this._konvaDesignService.createRect(
-  //       smallerRect1X,
-  //       y,
-  //       smallerRectWidth,
-  //       smallerRectHeight,
-  //       designConst.defaultRectColor,
-  //       designConst.strokeDefaultColor
-  //     );
-  //     smallerRect2 = this._konvaDesignService.createRect(
-  //       smallerRect2X,
-  //       y,
-  //       smallerRectWidth,
-  //       smallerRectHeight,
-  //       designConst.defaultRectColor,
-  //       designConst.strokeDefaultColor
-  //     );
-
-  //     // Create the direction lines and text for width
-  //     directionLine1 = new Konva.Line({
-  //       points: [
-  //         smallerRect1X + smallerRectWidth,
-  //         y,
-  //         smallerRect1X + smallerRectWidth,
-  //         y + height,
-  //       ],
-  //       stroke: 'black',
-  //       strokeWidth: 2,
-  //     });
-
-  //     directionLine2 = new Konva.Line({
-  //       points: [smallerRect2X, y, smallerRect2X, y + height],
-  //       stroke: 'black',
-  //       strokeWidth: 2,
-  //     });
-
-  //     text1 = new Konva.Text({
-  //       x: smallerRect1X + smallerRectWidth / 2,
-  //       y: y - 20,
-  //       text: smallerRectWidth.toString(),
-  //       fontSize: 14,
-  //       fill: 'black',
-  //     });
-
-  //     text2 = new Konva.Text({
-  //       x: smallerRect2X + smallerRectWidth / 2,
-  //       y: y - 20,
-  //       text: smallerRectWidth.toString(),
-  //       fontSize: 14,
-  //       fill: 'black',
-  //     });
-  //   } else {
-  //     smallerRectWidth = width;
-  //     smallerRectHeight = height / 2 - 10;
-  //     smallerRect1Y = y;
-  //     smallerRect2Y = y + height / 2 + 10;
-  //     smallerRect1 = this._konvaDesignService.createRect(
-  //       x,
-  //       smallerRect1Y,
-  //       smallerRectWidth,
-  //       smallerRectHeight,
-  //       designConst.defaultRectColor,
-  //       designConst.strokeDefaultColor
-  //     );
-  //     smallerRect2 = this._konvaDesignService.createRect(
-  //       x,
-  //       smallerRect2Y,
-  //       smallerRectWidth,
-  //       smallerRectHeight,
-  //       designConst.defaultRectColor,
-  //       designConst.strokeDefaultColor
-  //     );
-  //     // Create the direction lines and text for height
-  //     directionLine1 = new Konva.Line({
-  //       points: [
-  //         x,
-  //         smallerRect1Y + smallerRectHeight,
-  //         x + width,
-  //         smallerRect1Y + smallerRectHeight,
-  //       ],
-  //       stroke: 'black',
-  //       strokeWidth: 2,
-  //     });
-
-  //     directionLine2 = new Konva.Line({
-  //       points: [x, smallerRect2Y, x + width, smallerRect2Y],
-  //       stroke: 'black',
-  //       strokeWidth: 2,
-  //     });
-
-  //     text1 = new Konva.Text({
-  //       x: x - 30,
-  //       y: smallerRect1Y + smallerRectHeight / 2,
-  //       text: smallerRectHeight.toString(),
-  //       fontSize: 14,
-  //       fill: 'black',
-  //     });
-
-  //     text2 = new Konva.Text({
-  //       x: x - 30,
-  //       y: smallerRect2Y + smallerRectHeight / 2,
-  //       text: smallerRectHeight.toString(),
-  //       fontSize: 14,
-  //       fill: 'black',
-  //     });
-  //   }
-  //   smallerRect1.on('click', () => {
-  //     this._handleInnerRectClick(smallerRect1);
-  //   });
-  //   smallerRect1.on('tap', () => {
-  //     this._handleInnerRectClick(smallerRect1);
-  //   });
-  //   smallerRect2.on('click', () => {
-  //     this._handleInnerRectClick(smallerRect2);
-  //   });
-  //   smallerRect2.on('tap', () => {
-  //     this._handleInnerRectClick(smallerRect2);
-  //   });
-  //   this.selectedRect.remove();
-  //   this.layer.add(smallerRect1);
-  //   this.layer.add(smallerRect2);
-  //   this.layer.add(directionLine1);
-  //   this.layer.add(directionLine2);
-  //   this.layer.add(text1);
-  //   this.layer.add(text2);
-  //   const allRects = this.layer.find('Rect');
-  //   allRects?.forEach((e: any) => {
-  //     if (e.fill() === designConst.selectedRectColor) {
-  //       e.fill(designConst.defaultRectColor);
-  //     }
-  //   });
-  //   this.mullionForm.reset();
-  //   this.mullionForm.updateValueAndValidity();
-  //   this.isMullion = false;
-  //   this.rectSelected = false;
-  // }
-
   public submitMullion() {
-    const height = this.selectedRect.height();
-    const width = this.selectedRect.width();
-    const y = this.selectedRect.y();
-    const x = this.selectedRect.x();
-
-    let smallerRect1: Konva.Rect;
-    let smallerRect2: Konva.Rect;
-    let directionLine1: Konva.Line;
-    let directionLine2: Konva.Line;
-    let text1: Konva.Text;
-    let text2: Konva.Text;
-
-    const { xPos, yPos, ratio } = this._designService.calculations(
-      this.stage,
-      width,
-      height
-    );
-
-    const direction = this.mullionForm.value.direction;
-
-    if (direction === 'vertical') {
-      const smallerRectWidth = width / 2 - 10;
-      const smallerRectHeight = height;
-
-      smallerRect1 = this._konvaDesignService.createRect(
-        x,
-        y,
-        smallerRectWidth,
+    this.mullionSubmitted = true;
+    if (this.mullionForm.valid && this.selectedRect) {
+      let data = this.selectedRect.getAttr('data');
+      let ogHeight = data.height;
+      let ogWidth = data.width;
+      var height = ogHeight * this.ratio - 2 * designConst.innerRectGap;
+      var width = ogWidth * this.ratio - 2 * designConst.innerRectGap;
+      console.log(data);
+      var y = this.selectedRect.y();
+      var x = this.selectedRect.x();
+      var smallerRectWidth,
         smallerRectHeight,
-        designConst.defaultRectColor,
-        designConst.strokeDefaultColor
-      );
+        smallerRect1X,
+        smallerRect2X,
+        smallerRect1: Konva.Rect,
+        smallerRect2: Konva.Rect,
+        smallerRect1Y,
+        smallerRect2Y,
+        directionLine1: any,
+        directionLine2: any,
+        text1: any,
+        text2: any;
+      if (this.mullionForm.value.direction === 'vertical') {
+        smallerRectWidth = width / 2 - 10;
+        smallerRectHeight = height;
+        smallerRect1X = x;
+        smallerRect2X = x + width / 2 + 10;
+        smallerRect1 = this._konvaDesignService.createRect(
+          smallerRect1X,
+          y,
+          smallerRectWidth,
+          smallerRectHeight,
+          designConst.defaultRectColor,
+          designConst.strokeDefaultColor,
+          ogHeight,
+          ogWidth / 2 + 1.5 * designConst.innerRectGap
+        );
+        smallerRect2 = this._konvaDesignService.createRect(
+          smallerRect2X,
+          y,
+          smallerRectWidth,
+          smallerRectHeight,
+          designConst.defaultRectColor,
+          designConst.strokeDefaultColor,
+          ogHeight,
+          ogWidth / 2 + 1.5 * designConst.innerRectGap
+        );
 
-      smallerRect2 = this._konvaDesignService.createRect(
-        x + width / 2 + 10,
-        y,
-        smallerRectWidth,
-        smallerRectHeight,
-        designConst.defaultRectColor,
-        designConst.strokeDefaultColor
-      );
+        // Create the direction lines and text for width
+        directionLine1 = new Konva.Line({
+          points: [
+            smallerRect1X + smallerRectWidth,
+            y,
+            smallerRect1X + smallerRectWidth,
+            y + height,
+          ],
+          stroke: 'black',
+          strokeWidth: 2,
+        });
 
-      directionLine1 = new Konva.Line({
-        points: [x + smallerRectWidth, y, x + smallerRectWidth, y + height],
-        stroke: 'black',
-        strokeWidth: 2,
+        directionLine2 = new Konva.Line({
+          points: [smallerRect2X, y, smallerRect2X, y + height],
+          stroke: 'black',
+          strokeWidth: 2,
+        });
+
+        text1 = new Konva.Text({
+          x: smallerRect1X + smallerRectWidth / 2,
+          y: y - 20,
+          text: smallerRectWidth.toString(),
+          fontSize: 14,
+          fill: 'black',
+        });
+
+        text2 = new Konva.Text({
+          x: smallerRect2X + smallerRectWidth / 2,
+          y: y - 20,
+          text: smallerRectWidth.toString(),
+          fontSize: 14,
+          fill: 'black',
+        });
+        let mullion = {
+          direction: this.mullionForm.value.direction,
+          length: height / this.ratio + 2 * designConst.innerRectGap,
+          product_id: this.mullionForm.value.profile_id,
+        };
+        this.mullionArray.push(mullion);
+        console.log(this.mullionArray);
+      } else {
+        smallerRectWidth = width;
+        smallerRectHeight = height / 2 - 10;
+        smallerRect1Y = y;
+        smallerRect2Y = y + height / 2 + 10;
+        smallerRect1 = this._konvaDesignService.createRect(
+          x,
+          smallerRect1Y,
+          smallerRectWidth,
+          smallerRectHeight,
+          designConst.defaultRectColor,
+          designConst.strokeDefaultColor,
+          ogHeight / 2 + 1.5 * designConst.innerRectGap,
+          ogWidth
+        );
+        smallerRect2 = this._konvaDesignService.createRect(
+          x,
+          smallerRect2Y,
+          smallerRectWidth,
+          smallerRectHeight,
+          designConst.defaultRectColor,
+          designConst.strokeDefaultColor,
+          ogHeight / 2 + 1.5 * designConst.innerRectGap,
+          ogWidth
+        );
+        // Create the direction lines and text for height
+        directionLine1 = new Konva.Line({
+          points: [
+            x,
+            smallerRect1Y + smallerRectHeight,
+            x + width,
+            smallerRect1Y + smallerRectHeight,
+          ],
+          stroke: 'black',
+          strokeWidth: 2,
+        });
+
+        directionLine2 = new Konva.Line({
+          points: [x, smallerRect2Y, x + width, smallerRect2Y],
+          stroke: 'black',
+          strokeWidth: 2,
+        });
+
+        text1 = new Konva.Text({
+          x: x - 30,
+          y: smallerRect1Y + smallerRectHeight / 2,
+          text: smallerRectHeight.toString(),
+          fontSize: 14,
+          fill: 'black',
+        });
+
+        text2 = new Konva.Text({
+          x: x - 30,
+          y: smallerRect2Y + smallerRectHeight / 2,
+          text: smallerRectHeight.toString(),
+          fontSize: 14,
+          fill: 'black',
+        });
+        let mullion = {
+          direction: this.mullionForm.value.direction,
+          length: width / this.ratio + 2 * designConst.innerRectGap,
+          product_id: this.mullionForm.value.profile_id,
+        };
+        this.mullionArray.push(mullion);
+        console.log(this.mullionArray);
+      }
+      smallerRect1.on('click', () => {
+        this._handleInnerRectClick(smallerRect1);
       });
-
-      directionLine2 = new Konva.Line({
-        points: [x + width / 2 + 10, y, x + width / 2 + 10, y + height],
-        stroke: 'black',
-        strokeWidth: 2,
+      smallerRect1.on('tap', () => {
+        this._handleInnerRectClick(smallerRect1);
       });
-
-      text1 = new Konva.Text({
-        x: x + smallerRectWidth / 2,
-        y: y - 20,
-        text: smallerRectWidth.toString(),
-        fontSize: 14,
-        fill: 'black',
+      smallerRect2.on('click', () => {
+        this._handleInnerRectClick(smallerRect2);
       });
-
-      text2 = new Konva.Text({
-        x: x + width / 2 + 10 + smallerRectWidth / 2,
-        y: y - 20,
-        text: smallerRectWidth.toString(),
-        fontSize: 14,
-        fill: 'black',
+      smallerRect2.on('tap', () => {
+        this._handleInnerRectClick(smallerRect2);
       });
+      this.selectedRect.remove();
+      this.layer.add(smallerRect1);
+      this.layer.add(smallerRect2);
+      this.layer.add(directionLine1);
+      this.layer.add(directionLine2);
+      // this.layer.add(text1);
+      // this.layer.add(text2);
+      const allRects = this.layer.find('Rect');
+      allRects?.forEach((e: any) => {
+        if (e.fill() === designConst.selectedRectColor) {
+          e.fill(designConst.defaultRectColor);
+        }
+      });
+      this.mullionForm.reset();
+      this.mullionForm.updateValueAndValidity();
+      this.isMullion = false;
+      this.rectSelected = false;
     } else {
-      const smallerRectWidth = width;
-      const smallerRectHeight = height / 2 - 10;
-
-      smallerRect1 = this._konvaDesignService.createRect(
-        x,
-        y,
-        smallerRectWidth,
-        smallerRectHeight,
-        designConst.defaultRectColor,
-        designConst.strokeDefaultColor
-      );
-
-      smallerRect2 = this._konvaDesignService.createRect(
-        x,
-        y + height / 2 + 10,
-        smallerRectWidth,
-        smallerRectHeight,
-        designConst.defaultRectColor,
-        designConst.strokeDefaultColor
-      );
-
-      directionLine1 = new Konva.Line({
-        points: [x, y + smallerRectHeight, x + width, y + smallerRectHeight],
-        stroke: 'black',
-        strokeWidth: 2,
-      });
-
-      directionLine2 = new Konva.Line({
-        points: [x, y + height / 2 + 10, x + width, y + height / 2 + 10],
-        stroke: 'black',
-        strokeWidth: 2,
-      });
-
-      text1 = new Konva.Text({
-        x: x - 30,
-        y: y + smallerRectHeight / 2,
-        text: smallerRectHeight.toString(),
-        fontSize: 14,
-        fill: 'black',
-      });
-
-      text2 = new Konva.Text({
-        x: x - 30,
-        y: y + height / 2 + 10 + smallerRectHeight / 2,
-        text: smallerRectHeight.toString(),
-        fontSize: 14,
-        fill: 'black',
-      });
+      if (this.selectedRect) {
+        this._toastService.showError('Please fill all the required fields');
+      } else {
+        this._toastService.showError('Please select area first');
+      }
     }
-
-    // Add event listeners for smaller rectangles
-    smallerRect1.on('click', () => {
-      this._handleInnerRectClick(smallerRect1);
-    });
-
-    // Add other event listeners for smallerRect1 (e.g., 'tap')
-
-    // Add the shapes to the layer
-    this.layer.add(smallerRect1);
-    this.layer.add(smallerRect2);
-    this.layer.add(directionLine1);
-    this.layer.add(directionLine2);
-    this.layer.add(text1);
-    this.layer.add(text2);
-
-    // Remove the original rectangle
-    this.selectedRect.remove();
-
-    // Reset form and update canvas
-    this.mullionForm.reset();
-    this.mullionForm.updateValueAndValidity();
-    this.isMullion = false;
-    this.rectSelected = false;
+    this._manageProduct();
   }
 
   public cancelMullion() {
@@ -439,7 +326,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
    */
   ngAfterViewInit() {
     this.designSpecificationForm = this._designSpecFormInit();
-    this.designSpecArray = [this.designSpecificationForm.value];
+    // this.
+    //  = [this.designSpecificationForm.value];
     this._manageProduct();
     this.stage = new Konva.Stage({
       container: this.container.nativeElement,
@@ -463,6 +351,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
 
   get df() {
     return this.designSpecificationForm.controls;
+  }
+
+  get mf() {
+    return this.mullionForm.controls;
   }
   /**
    * Form Getters end
@@ -512,9 +404,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         this.clearLayerChildren();
         this.form = this._initForm();
         this.rectSelected = false;
-        this._handleInnerRectDeselect(this.mainRect);
+        // this._handleInnerRectDeselect(this.mainRect);
         this.designSpecificationForm = this._designSpecFormInit();
-        this.designSpecArray = [this.designSpecificationForm.value];
+        // this.designSpecArray = [this.designSpecificationForm.value];
         this._manageProduct();
         this.stage = new Konva.Stage({
           container: this.container.nativeElement,
@@ -569,7 +461,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   public saveDesign() {
-    this._handleInnerRectDeselect(this.mainRect);
+    this._handleInnerRectDeselect(this.selectedRect);
   }
 
   /**
@@ -682,8 +574,22 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       this._updateCanvas();
       this._manageProduct();
     };
-    height?.valueChanges.subscribe(handleValueChange);
-    width?.valueChanges.subscribe(handleValueChange);
+    // height?.valueChanges.subscribe(handleValueChange);
+    // width?.valueChanges.subscribe(handleValueChange);
+    height?.valueChanges.subscribe((res) => {
+      if (res) {
+        this.clearLayerChildren();
+        this._updateCanvas();
+        this._manageProduct();
+      }
+    });
+    width?.valueChanges.subscribe((res) => {
+      if (res) {
+        this.clearLayerChildren();
+        this._updateCanvas();
+        this._manageProduct();
+      }
+    });
     quantity?.valueChanges.subscribe((res) => {
       if (res) {
         this._manageProduct();
@@ -876,6 +782,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.designSpecificationForm.get('height')?.setValue(data.height);
     this.designSpecificationForm.get('width')?.setValue(data.width);
     this.designSpecificationForm.get('color')?.setValue(data.color);
+    data.mullions = this.mullionArray;
     this.designSpecArray[0] = this.designSpecificationForm.value;
     data.parts = [this.designSpecificationForm.value];
     this._dataService.quotationManageProduct(data).subscribe((res) => {
@@ -955,24 +862,51 @@ export class SubQuotationDesignComponent implements AfterViewInit {
    */
 
   private _updateCanvas() {
-    const frameWidth = this.f['width'].value;
-    const frameHeight = this.f['height'].value;
-    const profile_color = this.f['profile_color'].value;
-    if (this.isFrameSizeValid(frameWidth, frameHeight)) {
-      // this.clearLayerChildren();
-      const { xPos, yPos, ratio } = this._designService.calculations(
+    let frameWidth = this.f['width'].value;
+    let frameHeight = this.f['height'].value;
+    let xPos, yPos, ratio;
+    let data = this.selectedRect?.getAttr('data');
+    if (this.selectedRect && this.ratio && data) {
+      frameWidth = data.width;
+      frameHeight = data.height;
+      xPos = this.selectedRect.x() - designConst.innerRectGap;
+      yPos = this.selectedRect.y() - designConst.innerRectGap;
+      ratio = this.ratio;
+    } else {
+      xPos = this._designService.calculations(
         this.stage,
         frameWidth,
         frameHeight
-      );
-      this._createFrame(
-        xPos,
-        yPos,
-        ratio,
+      ).xPos;
+      yPos = this._designService.calculations(
+        this.stage,
         frameWidth,
-        frameHeight,
-        profile_color
-      );
+        frameHeight
+      ).yPos;
+      ratio = this._designService.calculations(
+        this.stage,
+        frameWidth,
+        frameHeight
+      ).ratio;
+      this.ratio = ratio;
+    }
+    console.log(frameHeight, frameWidth);
+    const profile_color = this.f['profile_color'].value;
+    if (this.isFrameSizeValid(frameWidth, frameHeight)) {
+      // this.clearLayerChildren();
+      if (!data) {
+        this._createOuterFrame(
+          1,
+          xPos,
+          yPos,
+          ratio,
+          frameWidth,
+          frameHeight,
+          profile_color,
+          true
+        );
+        this._createInnerFrame(xPos, yPos, ratio, frameWidth, frameHeight);
+      }
       this._createPalla(
         xPos,
         yPos,
@@ -990,13 +924,15 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     return true;
   }
 
-  private _createFrame(
+  private _createOuterFrame(
+    i: number,
     xPos: number,
     yPos: number,
     ratio: number,
     frameWidth: number,
     frameHeight: number,
-    profile_color: string
+    profile_color: string,
+    is_direction: boolean
   ) {
     const windowRect = this._createRect(
       xPos,
@@ -1004,9 +940,31 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       frameWidth * ratio,
       frameHeight * ratio,
       profile_color,
-      designConst.strokeDefaultColor
+      designConst.strokeDefaultColor,
+      frameWidth,
+      frameHeight
     );
-    this.mainRect = this._createRect(
+    if (false) {
+      const directionInfo = this._designService.addLineAndArrow(
+        xPos,
+        yPos,
+        frameWidth,
+        frameHeight,
+        ratio
+      );
+      this.layer.add(directionInfo);
+    }
+    this.layer.add(windowRect);
+  }
+
+  private _createInnerFrame(
+    xPos: number,
+    yPos: number,
+    ratio: number,
+    frameWidth: number,
+    frameHeight: number
+  ) {
+    const rect = this._createRect(
       xPos + designConst.innerRectGap,
       yPos + designConst.innerRectGap,
       frameWidth * ratio - 2 * designConst.innerRectGap,
@@ -1016,42 +974,56 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         : this.df['glazz_id'].value == 20
         ? 'black'
         : designConst.defaultRectColor,
-      designConst.strokeDefaultColor
+      designConst.strokeDefaultColor,
+      frameHeight,
+      frameWidth,
+      'main'
     );
-
     if (isMobile) {
       // Attach touch event handlers for mobile
-      this.mainRect.on('tap', () => {
-        this._handleInnerRectClick(this.mainRect);
+      rect.on('tap', () => {
+        this._handleInnerRectClick(rect);
       });
     } else {
       // Attach click event handlers for non-mobile
-      this.mainRect.on('click', () => {
-        this._handleInnerRectClick(this.mainRect);
+      rect.on('click', () => {
+        this._handleInnerRectClick(rect);
       });
     }
     const lineConnectors = this._designService.cornerConnectors(
-      this.mainRect,
+      rect,
       xPos,
       yPos,
       frameWidth,
       frameHeight,
       ratio
     );
-    const directionInfo = this._designService.addLineAndArrow(
-      xPos,
-      yPos,
-      frameWidth,
-      frameHeight,
-      ratio
-    );
-    this.layer.add(windowRect);
-    this.layer.add(this.mainRect);
+    this.layer.add(rect);
     this.layer.add(lineConnectors);
-    this.layer.add(directionInfo);
   }
 
   private _handleInnerRectClick(innerRect: Konva.Rect) {
+    // if (palla) {
+    //   if (
+    //     innerRect.fill() === designConst.defaultRectColor ||
+    //     innerRect.fill() === designConst.noGlassRectColor
+    //   ) {
+    //     const allRects = this.layer.find('Rect');
+    //     allRects?.forEach((e: any) => {
+    //       if (e.fill() === designConst.selectedRectColor) {
+    //         e.fill(designConst.defaultRectColor);
+    //       }
+    //     });
+    //     this.isAddMullion = true;
+    //     this.rectSelected = true;
+    //     innerRect.fill(designConst.selectedRectColor);
+    //     this.selectedRect = innerRect;
+    //   } else {
+    //     this.isAddMullion = false;
+    //     this.rectSelected = false;
+    //     innerRect.fill(designConst.defaultRectColor);
+    //   }
+    // } else {
     if (
       innerRect.fill() === designConst.defaultRectColor ||
       innerRect.fill() === designConst.noGlassRectColor
@@ -1060,22 +1032,29 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     } else {
       this._handleInnerRectDeselect(innerRect);
     }
+    // }
   }
 
   private _handleInnerRectSelect(innerRect: Konva.Rect) {
-    const allRects = this.layer.find('Rect');
-    allRects?.forEach((e: any) => {
-      if (e.fill() === designConst.selectedRectColor) {
-        e.fill(designConst.defaultRectColor);
-      }
-    });
-    this.selectedRect = innerRect;
-    innerRect.fill(designConst.selectedRectColor);
-    this.rectSelected = true;
-    this.isAddMullion = true;
-    this.designSpecificationForm = this._designSpecFormInit(
-      this.designSpecArray[0]
-    );
+    if (this.rectSelected && this.designSpecificationForm.invalid) {
+      this._toastService.showError('Please fill all the required fields first');
+    } else {
+      const allRects = this.layer.find('Rect');
+      allRects?.forEach((e: any) => {
+        if (e.fill() === designConst.selectedRectColor) {
+          e.fill(designConst.defaultRectColor);
+        }
+      });
+      this.selectedRect = innerRect;
+      innerRect.fill(designConst.selectedRectColor);
+      this.designSpecificationForm = this._designSpecFormInit();
+      // this.designSpecificationForm.updateValueAndValidity();
+      this.rectSelected = true;
+      this.isAddMullion = true;
+      this.designSpecificationForm = this._designSpecFormInit(
+        this.designSpecArray[0]
+      );
+    }
   }
 
   private _handleInnerRectDeselect(innerRect: Konva.Rect) {
@@ -1090,7 +1069,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           ? designConst.noGlassRectColor
           : designConst.defaultRectColor
       );
-      this.mainRect.off('Click');
+      this.designSpecificationForm.reset();
+      this.designSpecificationForm.updateValueAndValidity();
       this.rectSelected = false;
     }
   }
@@ -1101,16 +1081,23 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     width: number,
     height: number,
     fill: string,
-    stroke: string
+    stroke: string,
+    frameWidth: number,
+    frameHeight: number,
+    type?: string
   ): Konva.Rect {
-    return this._konvaDesignService.createRect(
+    const rect = this._konvaDesignService.createRect(
       x,
       y,
       width,
       height,
       fill,
-      stroke
+      stroke,
+      frameWidth,
+      frameHeight,
+      type
     );
+    return rect;
   }
 
   private _createPalla(
@@ -1126,15 +1113,15 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       (frameWidth * ratio - 2 * designConst.innerRectGap) / divisions;
     for (let i = 0; i < divisions; i++) {
       const divisionXPos = xPos + designConst.innerRectGap + i * divisionWidth;
+      const divisionYPos = yPos + designConst.innerRectGap;
       this._drawDivisionRect(
         i,
         divisionXPos,
-        yPos + designConst.innerRectGap,
+        divisionYPos,
         ratio,
         divisionWidth,
         frameHeight,
-        profile_color,
-        frameHeight
+        profile_color
       );
     }
   }
@@ -1146,8 +1133,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     ratio: number,
     frameWidth: number,
     frameHeight: number,
-    profile_color: string,
-    orignalFrameHeight: number
+    profile_color: string
   ) {
     this.isAddMullion = false;
     const windowRect = this._konvaDesignService.createRect(
@@ -1156,7 +1142,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       frameWidth,
       frameHeight * ratio - designConst.innerRectGap * 2,
       profile_color,
-      designConst.strokeDefaultColor
+      designConst.strokeDefaultColor,
+      frameWidth,
+      frameHeight
     );
     const innerRect = this._konvaDesignService.createRect(
       xPos + designConst.innerRectGap,
@@ -1166,7 +1154,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       this.df['glazz_id'].value == 20
         ? designConst.noGlassRectColor
         : designConst.defaultRectColor,
-      designConst.strokeDefaultColor
+      designConst.strokeDefaultColor,
+      frameWidth,
+      frameHeight
     );
     innerRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
       this._handlePallaRectClick(innerRect);
@@ -1174,40 +1164,41 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     innerRect.on('tap', (e: KonvaEventObject<MouseEvent>) => {
       this._handlePallaRectClick(innerRect);
     });
-    const handle = this._designService.handle({
-      x: xPos + frameWidth - designConst.innerRectGap,
-      y: frameHeight * ratio - designConst.innerRectGap * 3,
-      rotationDeg: 180,
-    });
+    // const handle = this._designService.handle({
+    //   x: xPos + frameWidth - designConst.innerRectGap,
+    //   y: frameHeight * ratio - designConst.innerRectGap * 3,
+    //   rotationDeg: 180,
+    // });
     this.layer.add(windowRect);
     this.layer.add(innerRect);
-    this.layer.add(handle);
+    // this.layer.add(handle);
   }
 
   private _handlePallaRectClick(innerRect: Konva.Rect) {
-    if (this.designSpecificationForm.invalid) {
-    } else {
-      const allRects = this.layer.find('Rect');
-      allRects?.forEach((e: any) => {
-        if (e.fill() === designConst.selectedRectColor) {
-          e.fill(designConst.defaultRectColor);
-        }
-      });
-      this.selectedRect = innerRect;
-      if (
-        innerRect.fill() === designConst.defaultRectColor ||
-        innerRect.fill() === designConst.noGlassRectColor
-      ) {
-        innerRect.fill(designConst.selectedRectColor);
-        this.isAddMullion = true;
-      } else {
-        innerRect.fill(
-          this.df['glazz_id'].value == 20
-            ? designConst.noGlassRectColor
-            : designConst.defaultRectColor
-        );
+    // if (this.designSpecificationForm.invalid) {
+    // } else {
+    const allRects = this.layer.find('Rect');
+    allRects?.forEach((e: any) => {
+      if (e.fill() === designConst.selectedRectColor) {
+        e.fill(designConst.defaultRectColor);
       }
+    });
+    this.selectedRect = innerRect;
+    if (
+      innerRect.fill() === designConst.defaultRectColor ||
+      innerRect.fill() === designConst.noGlassRectColor
+    ) {
+      innerRect.fill(designConst.selectedRectColor);
+      this.isAddMullion = true;
+    } else {
+      innerRect.fill(
+        this.df['glazz_id'].value == 20
+          ? designConst.noGlassRectColor
+          : designConst.defaultRectColor
+      );
+      this.isAddMullion = false;
     }
+    // }
   }
 
   private clearLayerChildren() {

@@ -500,16 +500,6 @@
                   </button>
                 </div>
               </form>
-              <c-row style="margin-top: 45px">
-                <c-col *ngIf="isAddMullion">
-                  <div>
-                    <button cButton color="primary" (click)="addMullion()">
-                      Add Mullion
-                    </button>
-                  </div>
-                </c-col>
-                <c-col></c-col>
-              </c-row>
             </div>
           </ng-container>
           <div></div>
@@ -520,7 +510,16 @@
       </c-row>
     </c-container>
   </c-row>
-
+  <c-row>
+    <c-col *ngIf="isAddMullion">
+      <div>
+        <button cButton color="primary" (click)="addMullion()">
+          Add Mullion
+        </button>
+      </div>
+    </c-col>
+    <c-col></c-col>
+  </c-row>
   <c-row class="align-items-end" style="padding-top: 50px">
     <p-table
       #dt1
@@ -626,8 +625,8 @@
             <small
               class="error"
               *ngIf="
-            (f['profile_id']?.errors?.['required'] && f['profile_id'].touched) ||
-            (f['profile_id']?.errors?.['required'] && submitted)
+            (mf['profile_id']?.errors?.['required'] && mf['profile_id'].touched) ||
+            (mf['profile_id']?.errors?.['required'] && mullionSubmitted)
           "
               >Profile is required</small
             >
@@ -650,8 +649,8 @@
             <small
               class="error"
               *ngIf="
-            (f['direction']?.errors?.['required'] && f['direction'].touched) ||
-            (f['direction']?.errors?.['required'] && submitted)
+            (mf['direction']?.errors?.['required'] && mf['direction'].touched) ||
+            (mf['direction']?.errors?.['required'] && mullionSubmitted)
           "
               >Direction is required</small
             >

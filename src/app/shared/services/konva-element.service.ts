@@ -16,7 +16,10 @@ export class KonvaElementService {
     frameWidth: number,
     frameHeight: number,
     fillColor: string,
-    strokeColor: string
+    strokeColor: string,
+    orignalHeight: number,
+    originalWidth: number,
+    type?: string
   ): Konva.Rect {
     const rect = new Konva.Rect({
       x: xPos,
@@ -29,6 +32,16 @@ export class KonvaElementService {
       cornerRadius: designConst.cornerRadius,
       pointerEvent: 'auto',
     });
+    console.log(frameWidth, frameHeight);
+    if (type) {
+      rect.setAttr('data', {
+        width: originalWidth,
+        height: orignalHeight,
+        type: type,
+      });
+    } else {
+      rect.setAttr('data', { width: originalWidth, height: orignalHeight });
+    }
     return rect;
   }
 

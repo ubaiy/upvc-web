@@ -33,9 +33,7 @@ import { DetailComponent } from './sub-quotation/detail/detail.component';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { DetailDesignComponent } from './sub-quotation/detail-design/detail-design.component';
-import { FinalComponent } from './sub-quotation/final/final.component';
 import { DropdownModule } from 'primeng/dropdown';
-import { DesignComponent } from './sub-quotation/design/design.component';
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 import { ButtonModule } from '@coreui/angular';
 @NgModule({
@@ -46,8 +44,6 @@ import { ButtonModule } from '@coreui/angular';
     PrintQuotationPdfComponent,
     DetailComponent,
     DetailDesignComponent,
-    FinalComponent,
-    DesignComponent,
     SubQuotationDesignComponent,
   ],
   imports: [

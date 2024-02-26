@@ -56,6 +56,7 @@ export class FinalService {
     const widthRatio = availableWidth / frameWidth;
     const heightRatio = availableHeight / frameHeight;
     const ratio = Math.min(widthRatio, heightRatio);
+    console.log(ratio);
     const centerX = totalWidth / 2;
     const centerY = totalHeight / 2;
     const xPos = centerX - (frameWidth * ratio) / 2;
