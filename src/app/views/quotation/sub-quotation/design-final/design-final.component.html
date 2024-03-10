@@ -12,7 +12,7 @@
       <c-row>
         <c-col>
           <div *ngIf="!rectSelected">
-            <form cForm [formGroup]="form">
+            <form cForm [formGroup]="mainForm">
               <c-row>
                 <c-col>
                   <div class="mb-3">
@@ -115,7 +115,7 @@
           <ng-container *ngIf="rectSelected">
             <h4 style="padding: 20px 0px">Design Specification</h4>
             <div>
-              <form cForm [formGroup]="designSpecificationForm">
+              <form cForm [formGroup]="designForm">
                 <c-row>
                   <c-col>
                     <div class="mb-3">
@@ -502,7 +502,7 @@
               </form>
             </div>
           </ng-container>
-          <!-- <ng-container *ngIf="showHeightWidthOption">
+          <ng-container *ngIf="showHeightWidthOption">
             <h4 style="padding: 20px 0px">Change Height/Width</h4>
             <div>
               <form cForm [formGroup]="pallaForm">
@@ -559,66 +559,8 @@
                 </div>
               </form>
             </div>
-          </ng-container> -->
+          </ng-container>
           <c-col *ngIf="isAddMullion">
-            <ng-container *ngIf="pallaSelected">
-              <h4 style="padding: 20px 0px">Change Height/Width</h4>
-              <div>
-                <form cForm [formGroup]="pallaForm">
-                  <c-row>
-                    <c-col>
-                      <div class="mb-3">
-                        <label cLabel="" for="width">Width</label>
-                        <input
-                          aria-describedby="width"
-                          cFormControl
-                          id="width"
-                          type="number"
-                          formControlName="width"
-                        />
-                        <small
-                          class="error"
-                          *ngIf="
-              (pf['width']?.errors?.['required'] && pf['width'].touched) ||
-              (pf['width']?.errors?.['required'] && submitted)
-            "
-                          >Width is required</small
-                        >
-                      </div></c-col
-                    >
-                    <c-col>
-                      <div class="mb-3">
-                        <label cLabel="" for="height">Height</label>
-                        <input
-                          aria-describedby="height"
-                          cFormControl
-                          id="height"
-                          type="number"
-                          formControlName="height"
-                        />
-                        <small
-                          class="error"
-                          *ngIf="
-              (pf['height']?.errors?.['required'] && pf['height'].touched) ||
-              (pf['height']?.errors?.['required'] && submitted)
-            "
-                          >Height is required</small
-                        >
-                      </div></c-col
-                    >
-                  </c-row>
-                  <div style="display: flex; gap: 10px">
-                    <button
-                      cButton
-                      color="primary"
-                      (click)="updateAdjacentRects()"
-                    >
-                      Change
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </ng-container>
             <div>
               <button
                 cButton

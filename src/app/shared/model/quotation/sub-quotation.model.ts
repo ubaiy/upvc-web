@@ -16,6 +16,7 @@ export interface ISubQuotation {
     {
       id: number;
       selected: boolean;
+      srno: number;
       height: string;
       width: string;
       total: number;
@@ -25,6 +26,8 @@ export interface ISubQuotation {
       costhead_information: IMasterDetailDto[];
       product_id: number;
       quatation_id: number;
+      total_sq_ft: string;
+      average_total: string;
       product: {
         id: number;
         category: string;

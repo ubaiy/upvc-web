@@ -36,6 +36,7 @@ import { DetailDesignComponent } from './sub-quotation/detail-design/detail-desi
 import { DropdownModule } from 'primeng/dropdown';
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 import { ButtonModule } from '@coreui/angular';
+import { DesignFinalComponent } from './sub-quotation/design-final/design-final.component';
 @NgModule({
   declarations: [
     QuotationComponent,
@@ -45,6 +46,7 @@ import { ButtonModule } from '@coreui/angular';
     DetailComponent,
     DetailDesignComponent,
     SubQuotationDesignComponent,
+    DesignFinalComponent,
   ],
   imports: [
     QuotationRoutingModule,

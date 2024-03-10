@@ -10,6 +10,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { ISubQuotation } from 'src/app/shared/model/quotation/sub-quotation.model';
 import { IOpenDirectionDrpDto } from 'src/app/shared/model/quotation/open-directionDrp.model';
+import Konva from 'konva';
 
 @Injectable({
   providedIn: 'root',

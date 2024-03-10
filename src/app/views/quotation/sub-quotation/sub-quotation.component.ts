@@ -32,6 +32,9 @@ export class SubQuotationComponent {
   ) {
     let data = this._activeRoute.snapshot.data['data'];
     this.data = data;
+    this.data.quatation_product.forEach((e, i: number) => {
+      e.srno = i + 1;
+    });
   }
 
   public customSort(event: SortEvent) {
@@ -43,7 +46,7 @@ export class SubQuotationComponent {
     this.inputValue = '';
   }
 
-  public deleteQuotationProduct(data: ISubQuotation) {
+  public deleteQuotationProduct(data: any) {
     this.confirmationDialogService.confirm(
       'Are you sure!',
       `Are you sure you want to Delete ? `,

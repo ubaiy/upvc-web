@@ -28,6 +28,7 @@ import { ConfirmationDialogService } from 'src/app/shared/services/confirmationd
 import { ProfileService } from 'src/app/views/masters/profile/profile.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { cilLoopCircular } from '@coreui/icons';
+import { WindowFrame, Partition } from '../../../../shared/class/designClass';
 const isMobile =
   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
@@ -43,6 +44,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   quotationId: string = '';
   submitted: boolean = false;
   public circleIcon = cilLoopCircular;
+  windowFrame: WindowFrame;
   /**
    * Table variables start
    */
@@ -97,6 +99,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   mullionSubmitted: boolean;
   ratio: number;
   mullionArray: any[] = [];
+  pallaSelected: boolean;
+  pallaForm: FormGroup;
+  showHeightWidthOption: boolean;
+  ouerRect: Konva.Rect;
   /**
    * Dropdown variables end
    */
@@ -117,10 +123,15 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.mullionForm = this._mullionFormInit();
     this.quotationId = this._activeRoute.snapshot.paramMap.get('id') || '';
     this.product_id = this._activeRoute.snapshot.paramMap.get('subId') || '';
+    this.pallaForm = this._initPallaForm();
   }
 
   public handleFormModal(event: any) {
     this.isMullion = event;
+    if (this.isMullion == true) {
+      this.mullionForm = this._mullionFormInit();
+      this.mullionForm.updateValueAndValidity();
+    }
   }
 
   public submitMullion() {
@@ -129,9 +140,14 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       let data = this.selectedRect.getAttr('data');
       let ogHeight = data.height;
       let ogWidth = data.width;
-      var height = ogHeight * this.ratio - 2 * designConst.innerRectGap;
-      var width = ogWidth * this.ratio - 2 * designConst.innerRectGap;
-      console.log(data);
+      // if (this.pallaSelected) {
+      //   var height = ogHeight * this.ratio - 2 * designConst.innerRectGap;
+      //   var width = ogWidth * this.ratio - 2 * designConst.innerRectGap;
+      // } else {
+      var height = this.selectedRect.height();
+      var width = this.selectedRect.width();
+      // }
+      console.log(this.selectedRect);
       var y = this.selectedRect.y();
       var x = this.selectedRect.x();
       var smallerRectWidth,
@@ -159,7 +175,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           designConst.defaultRectColor,
           designConst.strokeDefaultColor,
           ogHeight,
-          ogWidth / 2 + 1.5 * designConst.innerRectGap
+          ogWidth / 2
         );
         smallerRect2 = this._konvaDesignService.createRect(
           smallerRect2X,
@@ -169,9 +185,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           designConst.defaultRectColor,
           designConst.strokeDefaultColor,
           ogHeight,
-          ogWidth / 2 + 1.5 * designConst.innerRectGap
+          ogWidth / 2
         );
-
         // Create the direction lines and text for width
         directionLine1 = new Konva.Line({
           points: [
@@ -183,35 +198,31 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           stroke: 'black',
           strokeWidth: 2,
         });
-
         directionLine2 = new Konva.Line({
           points: [smallerRect2X, y, smallerRect2X, y + height],
           stroke: 'black',
           strokeWidth: 2,
         });
-
         text1 = new Konva.Text({
           x: smallerRect1X + smallerRectWidth / 2,
           y: y - 20,
-          text: smallerRectWidth.toString(),
+          text: (ogWidth / 2).toString(),
           fontSize: 14,
-          fill: 'black',
+          fill: 'red',
         });
-
         text2 = new Konva.Text({
           x: smallerRect2X + smallerRectWidth / 2,
           y: y - 20,
-          text: smallerRectWidth.toString(),
+          text: (ogWidth / 2).toString(),
           fontSize: 14,
-          fill: 'black',
+          fill: 'red',
         });
         let mullion = {
           direction: this.mullionForm.value.direction,
-          length: height / this.ratio + 2 * designConst.innerRectGap,
+          length: ogHeight - 30,
           product_id: this.mullionForm.value.profile_id,
         };
         this.mullionArray.push(mullion);
-        console.log(this.mullionArray);
       } else {
         smallerRectWidth = width;
         smallerRectHeight = height / 2 - 10;
@@ -224,7 +235,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           smallerRectHeight,
           designConst.defaultRectColor,
           designConst.strokeDefaultColor,
-          ogHeight / 2 + 1.5 * designConst.innerRectGap,
+          ogHeight / 2,
           ogWidth
         );
         smallerRect2 = this._konvaDesignService.createRect(
@@ -234,7 +245,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           smallerRectHeight,
           designConst.defaultRectColor,
           designConst.strokeDefaultColor,
-          ogHeight / 2 + 1.5 * designConst.innerRectGap,
+          ogHeight / 2,
           ogWidth
         );
         // Create the direction lines and text for height
@@ -258,45 +269,78 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         text1 = new Konva.Text({
           x: x - 30,
           y: smallerRect1Y + smallerRectHeight / 2,
-          text: smallerRectHeight.toString(),
+          text: (ogHeight / 2).toString(),
           fontSize: 14,
-          fill: 'black',
+          fill: 'red',
         });
 
         text2 = new Konva.Text({
           x: x - 30,
           y: smallerRect2Y + smallerRectHeight / 2,
-          text: smallerRectHeight.toString(),
+          text: (ogHeight / 2).toString(),
           fontSize: 14,
-          fill: 'black',
+          fill: 'red',
         });
         let mullion = {
           direction: this.mullionForm.value.direction,
-          length: width / this.ratio + 2 * designConst.innerRectGap,
+          length: ogWidth - 30,
           product_id: this.mullionForm.value.profile_id,
         };
         this.mullionArray.push(mullion);
-        console.log(this.mullionArray);
       }
       smallerRect1.on('click', () => {
-        this._handleInnerRectClick(smallerRect1);
+        this._handleMullionRectClick(smallerRect1);
       });
       smallerRect1.on('tap', () => {
-        this._handleInnerRectClick(smallerRect1);
+        this._handleMullionRectClick(smallerRect1);
       });
       smallerRect2.on('click', () => {
-        this._handleInnerRectClick(smallerRect2);
+        this._handleMullionRectClick(smallerRect2);
       });
       smallerRect2.on('tap', () => {
-        this._handleInnerRectClick(smallerRect2);
+        this._handleMullionRectClick(smallerRect2);
+      });
+      smallerRect1.setAttr('data', {
+        width:
+          this.mullionForm.value.direction === 'vertical'
+            ? ogWidth / 2
+            : ogWidth,
+        height:
+          this.mullionForm.value.direction === 'vertical'
+            ? ogHeight
+            : ogHeight / 2,
+        otherElements: {
+          rect: smallerRect2,
+          text1: text1,
+          text2: text2,
+        },
+        direction: this.mullionForm.value.direction,
+      });
+
+      smallerRect2.setAttr('data', {
+        width:
+          this.mullionForm.value.direction === 'vertical'
+            ? ogWidth / 2
+            : ogWidth,
+        height:
+          this.mullionForm.value.direction === 'vertical'
+            ? ogHeight
+            : ogHeight / 2,
+        otherElements: {
+          rect: smallerRect1,
+          text1: text1,
+          text2: text2,
+        },
+        direction: this.mullionForm.value.direction,
       });
       this.selectedRect.remove();
+      this.isAddMullion = false;
       this.layer.add(smallerRect1);
       this.layer.add(smallerRect2);
-      this.layer.add(directionLine1);
-      this.layer.add(directionLine2);
-      // this.layer.add(text1);
-      // this.layer.add(text2);
+      // this.layer.add(directionLine1);
+      // this.layer.add(directionLine2);
+      this.layer.add(text1);
+      this.layer.add(text2);
       const allRects = this.layer.find('Rect');
       allRects?.forEach((e: any) => {
         if (e.fill() === designConst.selectedRectColor) {
@@ -356,6 +400,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   get mf() {
     return this.mullionForm.controls;
   }
+
+  get pf() {
+    return this.pallaForm.controls;
+  }
   /**
    * Form Getters end
    */
@@ -407,6 +455,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         // this._handleInnerRectDeselect(this.mainRect);
         this.designSpecificationForm = this._designSpecFormInit();
         // this.designSpecArray = [this.designSpecificationForm.value];
+        this._profileList();
         this._manageProduct();
         this.stage = new Konva.Stage({
           container: this.container.nativeElement,
@@ -414,7 +463,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           height: 800,
         });
         this.stage.add(this.layer);
-        this._updateCanvas();
+        this.isAddMullion = false;
+        this._updateCanvas(true);
       },
       () => {
         console.log('Action rejected');
@@ -426,10 +476,11 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     if (this.rectSelected) {
       this._toastService.showError('Please complete the design first.');
     } else {
-      let data = this.form.value;
+      let data = this.form.getRawValue();
+      data.mullion = this.mullionArray;
+      data.parts = this.designSpecArray;
       data.is_saved = true;
       data.quatation_id = this.quotationId ? this.quotationId : null;
-      data.parts = this.designSpecArray;
       data.image = this.stage.toDataURL();
       this._dataService.quotationManageProduct(data).subscribe((res) => {
         if (res.success) {
@@ -518,7 +569,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         Validators.max(5800),
       ]),
       profile_color: new FormControl('#ffffff', [Validators.required]),
-      mullions: new FormControl([]),
+      mullion: new FormControl([]),
       parts: new FormControl([]),
       image: new FormControl(),
     });
@@ -579,14 +630,14 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     height?.valueChanges.subscribe((res) => {
       if (res) {
         this.clearLayerChildren();
-        this._updateCanvas();
+        this._updateCanvas(true);
         this._manageProduct();
       }
     });
     width?.valueChanges.subscribe((res) => {
       if (res) {
         this.clearLayerChildren();
-        this._updateCanvas();
+        this._updateCanvas(true);
         this._manageProduct();
       }
     });
@@ -598,7 +649,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     color?.valueChanges.subscribe((value: any) => {
       if (value.id) {
         profile_color?.patchValue(value.color_code);
-        handleValueChange(value);
+        this.clearLayerChildren();
+        this._updateCanvas(true);
+        this._manageProduct();
+        // handleValueChange(value);
       }
     });
   }
@@ -782,9 +836,11 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.designSpecificationForm.get('height')?.setValue(data.height);
     this.designSpecificationForm.get('width')?.setValue(data.width);
     this.designSpecificationForm.get('color')?.setValue(data.color);
-    data.mullions = this.mullionArray;
+    data.mullion = this.mullionArray;
+    // if (!this.designSpecArray.length) {
     this.designSpecArray[0] = this.designSpecificationForm.value;
-    data.parts = [this.designSpecificationForm.value];
+    // }
+    data.parts = this.designSpecArray;
     this._dataService.quotationManageProduct(data).subscribe((res) => {
       if (res.success) {
         this.costheadInfo = res.data.costhead_information.costhead;
@@ -818,6 +874,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       if (res.success) {
         this.profileList = res.data;
         this.df['product_id'].patchValue(this.profileList[0].id);
+        this._manageProduct();
       }
     });
   }
@@ -861,12 +918,12 @@ export class SubQuotationDesignComponent implements AfterViewInit {
    * Design Functions start
    */
 
-  private _updateCanvas() {
+  private _updateCanvas(change?: boolean) {
     let frameWidth = this.f['width'].value;
     let frameHeight = this.f['height'].value;
     let xPos, yPos, ratio;
     let data = this.selectedRect?.getAttr('data');
-    if (this.selectedRect && this.ratio && data) {
+    if (this.selectedRect && this.ratio && data && !change) {
       frameWidth = data.width;
       frameHeight = data.height;
       xPos = this.selectedRect.x() - designConst.innerRectGap;
@@ -890,11 +947,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       ).ratio;
       this.ratio = ratio;
     }
-    console.log(frameHeight, frameWidth);
     const profile_color = this.f['profile_color'].value;
     if (this.isFrameSizeValid(frameWidth, frameHeight)) {
       // this.clearLayerChildren();
-      if (!data) {
+      if (!data || change) {
         this._createOuterFrame(
           1,
           xPos,
@@ -934,7 +990,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     profile_color: string,
     is_direction: boolean
   ) {
-    const windowRect = this._createRect(
+    this.ouerRect = this._createRect(
       xPos,
       yPos,
       frameWidth * ratio,
@@ -942,19 +998,20 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       profile_color,
       designConst.strokeDefaultColor,
       frameWidth,
-      frameHeight
+      frameHeight,
+      'type'
     );
-    if (false) {
-      const directionInfo = this._designService.addLineAndArrow(
-        xPos,
-        yPos,
-        frameWidth,
-        frameHeight,
-        ratio
-      );
-      this.layer.add(directionInfo);
-    }
-    this.layer.add(windowRect);
+    // if (false) {
+    const directionInfo = this._designService.addLineAndArrow(
+      xPos,
+      yPos,
+      frameWidth,
+      frameHeight,
+      ratio
+    );
+    this.layer.add(directionInfo);
+    // }
+    this.layer.add(this.ouerRect);
   }
 
   private _createInnerFrame(
@@ -1003,27 +1060,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   private _handleInnerRectClick(innerRect: Konva.Rect) {
-    // if (palla) {
-    //   if (
-    //     innerRect.fill() === designConst.defaultRectColor ||
-    //     innerRect.fill() === designConst.noGlassRectColor
-    //   ) {
-    //     const allRects = this.layer.find('Rect');
-    //     allRects?.forEach((e: any) => {
-    //       if (e.fill() === designConst.selectedRectColor) {
-    //         e.fill(designConst.defaultRectColor);
-    //       }
-    //     });
-    //     this.isAddMullion = true;
-    //     this.rectSelected = true;
-    //     innerRect.fill(designConst.selectedRectColor);
-    //     this.selectedRect = innerRect;
-    //   } else {
-    //     this.isAddMullion = false;
-    //     this.rectSelected = false;
-    //     innerRect.fill(designConst.defaultRectColor);
-    //   }
-    // } else {
     if (
       innerRect.fill() === designConst.defaultRectColor ||
       innerRect.fill() === designConst.noGlassRectColor
@@ -1032,7 +1068,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     } else {
       this._handleInnerRectDeselect(innerRect);
     }
-    // }
   }
 
   private _handleInnerRectSelect(innerRect: Konva.Rect) {
@@ -1047,13 +1082,14 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       });
       this.selectedRect = innerRect;
       innerRect.fill(designConst.selectedRectColor);
-      this.designSpecificationForm = this._designSpecFormInit();
-      // this.designSpecificationForm.updateValueAndValidity();
+      // this.designSpecificationForm = this._designSpecFormInit();
+      this.designSpecArray[0] = this.designSpecificationForm.getRawValue();
       this.rectSelected = true;
       this.isAddMullion = true;
-      this.designSpecificationForm = this._designSpecFormInit(
-        this.designSpecArray[0]
-      );
+      // this.designSpecificationForm = this._designSpecFormInit(
+      //   this.designSpecArray[0]
+      // );
+      this.pallaSelected = false;
     }
   }
 
@@ -1069,8 +1105,9 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           ? designConst.noGlassRectColor
           : designConst.defaultRectColor
       );
-      this.designSpecificationForm.reset();
-      this.designSpecificationForm.updateValueAndValidity();
+      this.designSpecArray[0] = this.designSpecificationForm.getRawValue();
+      // this.designSpecificationForm.reset();
+      // this.designSpecificationForm.updateValueAndValidity();
       this.rectSelected = false;
     }
   }
@@ -1121,7 +1158,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         ratio,
         divisionWidth,
         frameHeight,
-        profile_color
+        profile_color,
+        frameWidth / divisions
       );
     }
   }
@@ -1133,7 +1171,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     ratio: number,
     frameWidth: number,
     frameHeight: number,
-    profile_color: string
+    profile_color: string,
+    ogWidth: number
   ) {
     this.isAddMullion = false;
     const windowRect = this._konvaDesignService.createRect(
@@ -1143,8 +1182,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       frameHeight * ratio - designConst.innerRectGap * 2,
       profile_color,
       designConst.strokeDefaultColor,
-      frameWidth,
-      frameHeight
+      frameHeight,
+      ogWidth
     );
     const innerRect = this._konvaDesignService.createRect(
       xPos + designConst.innerRectGap,
@@ -1155,8 +1194,8 @@ export class SubQuotationDesignComponent implements AfterViewInit {
         ? designConst.noGlassRectColor
         : designConst.defaultRectColor,
       designConst.strokeDefaultColor,
-      frameWidth,
-      frameHeight
+      frameHeight - 2 * designConst.innerRectGap,
+      ogWidth - 2 * designConst.innerRectGap
     );
     innerRect.on('click', (e: KonvaEventObject<MouseEvent>) => {
       this._handlePallaRectClick(innerRect);
@@ -1175,34 +1214,193 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   private _handlePallaRectClick(innerRect: Konva.Rect) {
-    // if (this.designSpecificationForm.invalid) {
-    // } else {
-    const allRects = this.layer.find('Rect');
-    allRects?.forEach((e: any) => {
-      if (e.fill() === designConst.selectedRectColor) {
-        e.fill(designConst.defaultRectColor);
-      }
-    });
-    this.selectedRect = innerRect;
-    if (
-      innerRect.fill() === designConst.defaultRectColor ||
-      innerRect.fill() === designConst.noGlassRectColor
-    ) {
-      innerRect.fill(designConst.selectedRectColor);
-      this.isAddMullion = true;
+    if (this.rectSelected) {
+      this._toastService.showError('Please save the design first');
     } else {
-      innerRect.fill(
-        this.df['glazz_id'].value == 20
-          ? designConst.noGlassRectColor
-          : designConst.defaultRectColor
-      );
-      this.isAddMullion = false;
+      const allRects = this.layer.find('Rect');
+      allRects?.forEach((e: any) => {
+        if (e.fill() === designConst.selectedRectColor) {
+          e.fill(designConst.defaultRectColor);
+        }
+      });
+      this.selectedRect = innerRect;
+      if (
+        innerRect.fill() === designConst.defaultRectColor ||
+        innerRect.fill() === designConst.noGlassRectColor
+      ) {
+        innerRect.fill(designConst.selectedRectColor);
+        this.isAddMullion = true;
+        this.pallaSelected = false;
+      } else {
+        this.pallaSelected = true;
+        innerRect.fill(
+          this.df['glazz_id'].value == 20
+            ? designConst.noGlassRectColor
+            : designConst.defaultRectColor
+        );
+        this.isAddMullion = false;
+      }
     }
-    // }
+  }
+
+  private _handleMullionRectClick(innerRect: Konva.Rect) {
+    if (this.rectSelected) {
+      this._toastService.showError('Please save the design first');
+    } else {
+      const allRects = this.layer.find('Rect');
+      allRects?.forEach((e: any) => {
+        if (e.fill() === designConst.selectedRectColor) {
+          e.fill(designConst.defaultRectColor);
+        }
+      });
+      this.selectedRect = innerRect;
+      if (
+        innerRect.fill() === designConst.defaultRectColor ||
+        innerRect.fill() === designConst.noGlassRectColor
+      ) {
+        innerRect.fill(designConst.selectedRectColor);
+        const data = innerRect.getAttr('data');
+        this.pallaForm.patchValue(data);
+        this.isAddMullion = true;
+        this.pallaSelected = true;
+        this.showHeightWidthOption = true;
+        this.pallaForm.patchValue(this.selectedRect.getAttr('data'));
+      } else {
+        this.pallaSelected = false;
+        innerRect.fill(
+          this.df['glazz_id'].value == 20
+            ? designConst.noGlassRectColor
+            : designConst.defaultRectColor
+        );
+        this.isAddMullion = false;
+        this.showHeightWidthOption = false;
+      }
+    }
   }
 
   private clearLayerChildren() {
     this.layer.removeChildren();
+  }
+
+  private _initPallaForm(): FormGroup {
+    let fg = this._fb.group({
+      height: new FormControl('', [Validators.required]),
+      width: new FormControl('', [Validators.required]),
+    });
+    return fg;
+  }
+
+  // Function to update adjacent rectangles based on resizing of a rectangle
+  updateAdjacentRects() {
+    const data: {
+      width: number;
+      height: number;
+      direction: string;
+      otherElements: {
+        rect: Konva.Rect;
+        text1: Konva.Text;
+        text2: Konva.Text;
+      };
+    } = this.selectedRect.getAttr('data');
+    const rect2 = data.otherElements.rect.getAttr('data');
+    if (this.pallaForm.get('height')?.value > this.form.get('height')?.value) {
+      this._toastService.showError('Please incress main height');
+    } else if (
+      this.pallaForm.get('width')?.value > this.form.get('width')?.value
+    ) {
+      this._toastService.showError('Please incress main width');
+    } else {
+      if (data.direction === 'vertical') {
+        data.otherElements.text1.setText(this.pallaForm.get('width')?.value);
+        data.otherElements.text2.setText(
+          (
+            rect2.width +
+            (data.width - this.pallaForm.get('width')?.value)
+          ).toString()
+        );
+        var rect2Width =
+          (rect2.width + (data.width - this.pallaForm.get('width')?.value)) *
+            this.ratio -
+          designConst.innerRectGap;
+        var rect1Width =
+          this.pallaForm.get('width')?.value * this.ratio -
+          2 * designConst.innerRectGap;
+        data.otherElements.rect.x(
+          this.selectedRect.x() + rect1Width + designConst.innerRectGap
+        );
+        this.selectedRect.width(rect1Width);
+        data.otherElements.rect.width(rect2Width);
+        this.selectedRect.setAttr('data', {
+          width: this.pallaForm.get('width')?.value,
+          height: data.height,
+          otherElements: {
+            rect: data.otherElements.rect,
+            text1: data.otherElements.text1,
+            text2: data.otherElements.text2,
+          },
+        });
+        data.otherElements.rect.setAttr('data', {
+          width:
+            rect2.width + (data.width - this.pallaForm.get('width')?.value),
+          height: data.height,
+          otherElements: {
+            rect: this.selectedRect,
+            text1: data.otherElements.text1,
+            text2: data.otherElements.text2,
+          },
+        });
+      } else {
+        data.otherElements.text1.setText(this.pallaForm.get('height')?.value);
+        data.otherElements.text2.setText(
+          (
+            rect2.height +
+            (data.height - this.pallaForm.get('height')?.value)
+          ).toString()
+        );
+        var rect2height =
+          (rect2.height + (data.height - this.pallaForm.get('height')?.value)) *
+            this.ratio -
+          designConst.innerRectGap;
+        var rect1height =
+          this.pallaForm.get('height')?.value * this.ratio -
+          2 * designConst.innerRectGap;
+        data.otherElements.rect.y(
+          this.selectedRect.y() + rect1height + designConst.innerRectGap
+        );
+        this.selectedRect.height(rect1height);
+        data.otherElements.rect.height(rect2height);
+        this.selectedRect.setAttr('data', {
+          width: data.width,
+          height: this.pallaForm.get('height')?.value,
+          otherElements: {
+            rect: data.otherElements.rect,
+            text1: data.otherElements.text1,
+            text2: data.otherElements.text2,
+          },
+        });
+        data.otherElements.rect.setAttr('data', {
+          width: data.width,
+          height:
+            rect2.height + (data.height - this.pallaForm.get('height')?.value),
+          otherElements: {
+            rect: this.selectedRect,
+            text1: data.otherElements.text1,
+            text2: data.otherElements.text2,
+          },
+        });
+      }
+      const allRects = this.layer.find('Rect');
+      allRects?.forEach((e: any) => {
+        if (e.fill() === designConst.selectedRectColor) {
+          e.fill(designConst.defaultRectColor);
+        }
+      });
+      this.pallaForm.reset();
+      this.pallaForm.updateValueAndValidity();
+      this.isAddMullion = false;
+      this.rectSelected = false;
+      this.pallaSelected = false;
+    }
   }
 
   /**
