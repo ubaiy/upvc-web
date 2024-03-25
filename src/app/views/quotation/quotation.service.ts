@@ -11,6 +11,7 @@ import { environment } from 'src/environments/environment';
 import { ISubQuotation } from 'src/app/shared/model/quotation/sub-quotation.model';
 import { IOpenDirectionDrpDto } from 'src/app/shared/model/quotation/open-directionDrp.model';
 import Konva from 'konva';
+import { IResponseDtoOfProduct } from './sub-quotation/sub-quotation-design/response.model';
 
 @Injectable({
   providedIn: 'root',
@@ -75,7 +76,7 @@ export class QuotationService {
 
   public getSubQuotationDetail(
     id: number
-  ): Observable<IResponseDto<IQuotationDetailDto>> {
+  ): Observable<IResponseDto<IResponseDtoOfProduct>> {
     return this._apiHttpService.get(
       `${API_END_POINT.quatation.subQuotationDetail}/${id}`
     );
@@ -100,5 +101,12 @@ export class QuotationService {
     IResponseDto<IOpenDirectionDrpDto[]>
   > {
     return this._apiHttpService.get(API_END_POINT.quatation.openningDirection);
+  }
+
+  public updateBulkPrice(ids: any): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(
+      API_END_POINT.quatation.bulkpriceUpdate,
+      ids
+    );
   }
 }

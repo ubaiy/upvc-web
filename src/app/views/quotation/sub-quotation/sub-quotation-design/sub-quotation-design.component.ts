@@ -29,6 +29,8 @@ import { ProfileService } from 'src/app/views/masters/profile/profile.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { cilLoopCircular } from '@coreui/icons';
 import { WindowFrame, Partition } from '../../../../shared/class/designClass';
+import { Subscription, debounceTime, throttleTime } from 'rxjs';
+import { IResponseDtoOfProduct } from './response.model';
 const isMobile =
   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
@@ -39,6 +41,7 @@ const isMobile =
   styleUrls: ['./sub-quotation-design.component.scss'],
 })
 export class SubQuotationDesignComponent implements AfterViewInit {
+  private formValueChangesSubscription: Subscription | undefined;
   edit: boolean = false;
   price: number = 0;
   quotationId: string = '';
@@ -103,6 +106,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   pallaForm: FormGroup;
   showHeightWidthOption: boolean;
   ouerRect: Konva.Rect;
+  quotDetails: IResponseDtoOfProduct;
   /**
    * Dropdown variables end
    */
@@ -119,14 +123,10 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     private _toastService: ToastService
   ) {
     this._setUpData();
-    this.form = this._initForm();
-    this.mullionForm = this._mullionFormInit();
-    this.quotationId = this._activeRoute.snapshot.paramMap.get('id') || '';
-    this.product_id = this._activeRoute.snapshot.paramMap.get('subId') || '';
-    this.pallaForm = this._initPallaForm();
   }
 
   public handleFormModal(event: any) {
+    console.log(event);
     this.isMullion = event;
     if (this.isMullion == true) {
       this.mullionForm = this._mullionFormInit();
@@ -369,17 +369,62 @@ export class SubQuotationDesignComponent implements AfterViewInit {
    * Lifecycle method start
    */
   ngAfterViewInit() {
-    this.designSpecificationForm = this._designSpecFormInit();
     // this.
     //  = [this.designSpecificationForm.value];
+
+    if (this.edit) {
+      this.patchFormValues();
+
+      console.log(this.form.value);
+    }
     this._manageProduct();
     this.stage = new Konva.Stage({
       container: this.container.nativeElement,
       width: 700,
       height: 800,
     });
+    console.log(this.stage);
     this.stage.add(this.layer);
     this._updateCanvas();
+  }
+
+  private patchFormValues() {
+    // Unsubscribe from form value changes temporarily
+    if (this.formValueChangesSubscription) {
+      this.formValueChangesSubscription.unsubscribe();
+    }
+
+    this.form.patchValue({
+      quatation_id: this.quotDetails.quatation.id,
+      quatation_product_id: this.quotDetails.id,
+      is_saved: false,
+      quantity: this.quotDetails.quantity,
+      color: this.colors.find(
+        (e) =>
+          e.id === this.quotDetails.costhead_information.old_post_data.color_id
+      ),
+      width: this.quotDetails.width,
+      height: this.quotDetails.height,
+      profile_color: '#ffffff',
+    });
+    this.designSpecificationForm.patchValue(
+      this.quotDetails.costhead_information.old_post_data
+    );
+    this.costheadInfo = this.quotDetails.costhead_information.costhead;
+    this.quotDetails.product_information.forEach((e) => {
+      let data: any = {
+        id: e.id,
+        product_no: e.id,
+        name: `${e.profile_code} - ${e.profile_name}`,
+        type: e.category,
+        costhead: e.category,
+        cost: e.rate_meter,
+        totalCost: e.totalCost,
+        quantity: e.quantity,
+      };
+      this.costheadInfo.push(data);
+    });
+    this.price = this.quotDetails.total;
   }
   /**
    * Lifecycle method end
@@ -419,6 +464,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   }
 
   public addMullion() {
+    console.log('mullion');
     this.isMullion = true;
   }
 
@@ -539,6 +585,13 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.openningDirections = this.dropdowns.opening_direction;
     this.colors = this.dropdowns.profile_color;
     this.mullionList = data['mullionList'];
+    this.quotDetails = data['details'];
+    this.quotationId = this._activeRoute.snapshot.paramMap.get('id') || '';
+    this.product_id = this._activeRoute.snapshot.paramMap.get('subId') || '';
+    this.form = this._initForm();
+    this.designSpecificationForm = this._designSpecFormInit();
+    this.mullionForm = this._mullionFormInit();
+    this.pallaForm = this._initPallaForm();
   }
   /**
    * Data initialization end
@@ -625,36 +678,47 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       this._updateCanvas();
       this._manageProduct();
     };
+    if (this.formValueChangesSubscription) {
+      this.formValueChangesSubscription.unsubscribe();
+    }
     // height?.valueChanges.subscribe(handleValueChange);
     // width?.valueChanges.subscribe(handleValueChange);
-    height?.valueChanges.subscribe((res) => {
-      if (res) {
-        this.clearLayerChildren();
-        this._updateCanvas(true);
-        this._manageProduct();
-      }
-    });
-    width?.valueChanges.subscribe((res) => {
-      if (res) {
-        this.clearLayerChildren();
-        this._updateCanvas(true);
-        this._manageProduct();
-      }
-    });
-    quantity?.valueChanges.subscribe((res) => {
-      if (res) {
-        this._manageProduct();
-      }
-    });
-    color?.valueChanges.subscribe((value: any) => {
-      if (value.id) {
-        profile_color?.patchValue(value.color_code);
-        this.clearLayerChildren();
-        this._updateCanvas(true);
-        this._manageProduct();
-        // handleValueChange(value);
-      }
-    });
+    this.formValueChangesSubscription = height?.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this.clearLayerChildren();
+          this._updateCanvas(true);
+          this._manageProduct();
+        }
+      });
+    this.formValueChangesSubscription = width?.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this.clearLayerChildren();
+          this._updateCanvas(true);
+          this._manageProduct();
+        }
+      });
+    this.formValueChangesSubscription = quantity?.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._manageProduct();
+        }
+      });
+    this.formValueChangesSubscription = color?.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((value: any) => {
+        if (value.id) {
+          profile_color?.patchValue(value.color_code);
+          this.clearLayerChildren();
+          this._updateCanvas(true);
+          this._manageProduct();
+          // handleValueChange(value);
+        }
+      });
   }
 
   private _designFormValueChange(fg: FormGroup) {
@@ -668,161 +732,186 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     const glass_id = fg.controls['glazz_id'];
     const fly_mesh = fg.controls['fly_mesh'];
     const product_type = fg.controls['product_type'];
-    category.valueChanges.subscribe((res) => {
-      if (res) {
-        casementTypeControl.setValue(res === 'Casement' ? 'Fixed' : '');
-        casementTypeControl.setValidators(
-          res === 'Casement' ? [Validators.required] : []
-        );
-        if (
-          (res === 'Casement' && casementTypeControl.value === 'Openable') ||
-          res === 'Slidding'
-        ) {
-          this.isAddMullion = false;
-          sashIdControl.setValidators([Validators.required]);
+    this.formValueChangesSubscription = category.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          casementTypeControl.setValue(res === 'Casement' ? 'Fixed' : '');
+          casementTypeControl.setValidators(
+            res === 'Casement' ? [Validators.required] : []
+          );
+          if (
+            (res === 'Casement' && casementTypeControl.value === 'Openable') ||
+            res === 'Slidding'
+          ) {
+            this.isAddMullion = false;
+            sashIdControl.setValidators([Validators.required]);
+            if (
+              res === 'Casement' &&
+              casementTypeControl.value === 'Openable'
+            ) {
+              pallaTypeControl.setValue(1);
+            } else if (res === 'Slidding') {
+              pallaTypeControl.setValue(2);
+            }
+            pallaTypeControl.setValidators([Validators.required]);
+            handleIdControl.setValidators([Validators.required]);
+            this._profileList();
+            this._sashList();
+            this._handleList();
+          } else {
+            this.isAddMullion = true;
+            [
+              sashIdControl,
+              pallaTypeControl,
+              hingesTypeControl,
+              isTrackControl,
+              handleIdControl,
+            ].forEach((control) => {
+              control.setValue('');
+              control.clearValidators();
+            });
+          }
+
+          if (res === 'Slidding') {
+            pallaTypeControl.setValue(2);
+            pallaTypeControl.setValidators([Validators.required]);
+            isTrackControl.setValue('2 Track');
+            isTrackControl.setValidators([Validators.required]);
+            hingesTypeControl.setValue('');
+            hingesTypeControl.clearValidators();
+            hingesTypeControl.updateValueAndValidity();
+          }
+
           if (res === 'Casement' && casementTypeControl.value === 'Openable') {
             pallaTypeControl.setValue(1);
-          } else if (res === 'Slidding') {
-            pallaTypeControl.setValue(2);
+            pallaTypeControl.setValidators([Validators.required]);
+            hingesTypeControl.setValidators([Validators.required]);
           }
-          pallaTypeControl.setValidators([Validators.required]);
-          handleIdControl.setValidators([Validators.required]);
-          this._profileList();
-          this._sashList();
-          this._handleList();
-        } else {
-          this.isAddMullion = true;
+          [
+            casementTypeControl,
+            sashIdControl,
+            pallaTypeControl,
+            hingesTypeControl,
+            isTrackControl,
+            handleIdControl,
+          ].forEach((control) => control.updateValueAndValidity());
+        }
+        this._manageProduct();
+        this._updateCanvas();
+      });
+
+    this.formValueChangesSubscription = casementTypeControl.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          if (category.value === 'Casement' && res === 'Openable') {
+            pallaTypeControl.setValue(1);
+            pallaTypeControl.setValidators([Validators.required]);
+            this._profileList();
+            this._sashList();
+            this._handleList();
+            [
+              sashIdControl,
+              hingesTypeControl,
+              isTrackControl,
+              handleIdControl,
+            ].forEach((control) => {
+              control.setValue('');
+              control.clearValidators();
+            });
+            hingesTypeControl.setValidators([Validators.required]);
+          } else {
+            this._profileList();
+          }
           [
             sashIdControl,
             pallaTypeControl,
             hingesTypeControl,
             isTrackControl,
             handleIdControl,
-          ].forEach((control) => {
-            control.setValue('');
-            control.clearValidators();
-          });
+          ].forEach((control) => control.updateValueAndValidity());
         }
+        this._manageProduct();
+        this._updateCanvas();
+      });
 
-        if (res === 'Slidding') {
-          pallaTypeControl.setValue(2);
-          pallaTypeControl.setValidators([Validators.required]);
-          isTrackControl.setValue('2 Track');
-          isTrackControl.setValidators([Validators.required]);
-          hingesTypeControl.setValue('');
-          hingesTypeControl.clearValidators();
-          hingesTypeControl.updateValueAndValidity();
+    this.formValueChangesSubscription = sashIdControl.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._manageProduct();
         }
+      });
 
-        if (res === 'Casement' && casementTypeControl.value === 'Openable') {
-          pallaTypeControl.setValue(1);
-          pallaTypeControl.setValidators([Validators.required]);
-          hingesTypeControl.setValidators([Validators.required]);
+    this.formValueChangesSubscription = pallaTypeControl.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._updateCanvas();
+          this._manageProduct();
         }
-        [
-          casementTypeControl,
-          sashIdControl,
-          pallaTypeControl,
-          hingesTypeControl,
-          isTrackControl,
-          handleIdControl,
-        ].forEach((control) => control.updateValueAndValidity());
-      }
-      this._manageProduct();
-      this._updateCanvas();
-    });
-
-    casementTypeControl.valueChanges.subscribe((res) => {
-      if (res) {
-        if (category.value === 'Casement' && res === 'Openable') {
-          pallaTypeControl.setValue(1);
-          pallaTypeControl.setValidators([Validators.required]);
+      });
+    this.formValueChangesSubscription = isTrackControl.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          if (res === '2.5 Track' || res === '3 Track') {
+            fly_mesh.setValue(true);
+            fly_mesh.setValidators([Validators.required]);
+          } else {
+            fly_mesh.setValue('');
+            fly_mesh.clearValidators();
+          }
+          fly_mesh.updateValueAndValidity();
           this._profileList();
           this._sashList();
+          this._manageProduct();
+        }
+      });
+    this.formValueChangesSubscription = fly_mesh.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        this._updateCanvas();
+        this._manageProduct();
+      });
+    this.formValueChangesSubscription = handleIdControl.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._manageProduct();
+        }
+      });
+    this.formValueChangesSubscription = glass_id.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._manageProduct();
+          this._updateCanvas();
+        }
+      });
+    this.formValueChangesSubscription = handleIdControl.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._manageProduct();
+        }
+      });
+    this.formValueChangesSubscription = hingesTypeControl.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._manageProduct();
+        }
+      });
+    this.formValueChangesSubscription = product_type.valueChanges
+      .pipe(throttleTime(300))
+      .subscribe((res) => {
+        if (res) {
+          this._manageProduct();
           this._handleList();
-          [
-            sashIdControl,
-            hingesTypeControl,
-            isTrackControl,
-            handleIdControl,
-          ].forEach((control) => {
-            control.setValue('');
-            control.clearValidators();
-          });
-          hingesTypeControl.setValidators([Validators.required]);
-        } else {
-          this._profileList();
         }
-        [
-          sashIdControl,
-          pallaTypeControl,
-          hingesTypeControl,
-          isTrackControl,
-          handleIdControl,
-        ].forEach((control) => control.updateValueAndValidity());
-      }
-      this._manageProduct();
-      this._updateCanvas();
-    });
-
-    sashIdControl.valueChanges.subscribe((res) => {
-      if (res) {
-        this._manageProduct();
-      }
-    });
-
-    pallaTypeControl.valueChanges.subscribe((res) => {
-      if (res) {
-        this._updateCanvas();
-        this._manageProduct();
-      }
-    });
-    isTrackControl.valueChanges.subscribe((res) => {
-      if (res) {
-        if (res === '2.5 Track' || res === '3 Track') {
-          fly_mesh.setValue(true);
-          fly_mesh.setValidators([Validators.required]);
-        } else {
-          fly_mesh.setValue('');
-          fly_mesh.clearValidators();
-        }
-        fly_mesh.updateValueAndValidity();
-        this._profileList();
-        this._sashList();
-        this._manageProduct();
-      }
-    });
-    fly_mesh.valueChanges.subscribe((res) => {
-      this._updateCanvas();
-      this._manageProduct();
-    });
-    handleIdControl.valueChanges.subscribe((res) => {
-      if (res) {
-        this._manageProduct();
-      }
-    });
-    glass_id.valueChanges.subscribe((res) => {
-      if (res) {
-        this._manageProduct();
-        this._updateCanvas();
-      }
-    });
-    handleIdControl.valueChanges.subscribe((res) => {
-      if (res) {
-        this._manageProduct();
-      }
-    });
-    hingesTypeControl.valueChanges.subscribe((res) => {
-      if (res) {
-        this._manageProduct();
-      }
-    });
-    product_type.valueChanges.subscribe((res) => {
-      if (res) {
-        this._manageProduct();
-        this._handleList();
-      }
-    });
+      });
   }
   /**
    * Form Function end
@@ -961,7 +1050,55 @@ export class SubQuotationDesignComponent implements AfterViewInit {
           profile_color,
           true
         );
-        this._createInnerFrame(xPos, yPos, ratio, frameWidth, frameHeight);
+        const rect = this._createRect(
+          xPos + designConst.innerRectGap,
+          yPos + designConst.innerRectGap,
+          frameWidth * ratio - 2 * designConst.innerRectGap,
+          frameHeight * ratio - 2 * designConst.innerRectGap,
+          this.rectSelected
+            ? designConst.selectedRectColor
+            : this.df['glazz_id'].value == 20
+            ? 'black'
+            : designConst.defaultRectColor,
+          designConst.strokeDefaultColor,
+          frameHeight,
+          frameWidth,
+          'main'
+        );
+        if (isMobile) {
+          // Attach touch event handlers for mobile
+          rect.on('tap', () => {
+            this._handleInnerRectClick(rect);
+          });
+        } else {
+          // Attach click event handlers for non-mobile
+          rect.on('click', () => {
+            this._handleInnerRectClick(rect);
+          });
+        }
+        const lineConnectors = this._designService.cornerConnectors(
+          rect,
+          xPos,
+          yPos,
+          frameWidth,
+          frameHeight,
+          ratio
+        );
+        this.layer.add(rect);
+        this.layer.add(lineConnectors);
+        // }
+        if (isMobile) {
+          // Attach touch event handlers for mobile
+          this.ouerRect.on('tap', () => {
+            this._handleInnerRectClick(rect);
+          });
+        } else {
+          // Attach click event handlers for non-mobile
+          this.ouerRect.on('click', () => {
+            this._handleInnerRectClick(rect);
+          });
+        }
+        // this._createInnerFrame(xPos, yPos, ratio, frameWidth, frameHeight);
       }
       this._createPalla(
         xPos,
@@ -1010,7 +1147,6 @@ export class SubQuotationDesignComponent implements AfterViewInit {
       ratio
     );
     this.layer.add(directionInfo);
-    // }
     this.layer.add(this.ouerRect);
   }
 
@@ -1020,44 +1156,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     ratio: number,
     frameWidth: number,
     frameHeight: number
-  ) {
-    const rect = this._createRect(
-      xPos + designConst.innerRectGap,
-      yPos + designConst.innerRectGap,
-      frameWidth * ratio - 2 * designConst.innerRectGap,
-      frameHeight * ratio - 2 * designConst.innerRectGap,
-      this.rectSelected
-        ? designConst.selectedRectColor
-        : this.df['glazz_id'].value == 20
-        ? 'black'
-        : designConst.defaultRectColor,
-      designConst.strokeDefaultColor,
-      frameHeight,
-      frameWidth,
-      'main'
-    );
-    if (isMobile) {
-      // Attach touch event handlers for mobile
-      rect.on('tap', () => {
-        this._handleInnerRectClick(rect);
-      });
-    } else {
-      // Attach click event handlers for non-mobile
-      rect.on('click', () => {
-        this._handleInnerRectClick(rect);
-      });
-    }
-    const lineConnectors = this._designService.cornerConnectors(
-      rect,
-      xPos,
-      yPos,
-      frameWidth,
-      frameHeight,
-      ratio
-    );
-    this.layer.add(rect);
-    this.layer.add(lineConnectors);
-  }
+  ) {}
 
   private _handleInnerRectClick(innerRect: Konva.Rect) {
     if (
@@ -1247,17 +1346,17 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     if (this.rectSelected) {
       this._toastService.showError('Please save the design first');
     } else {
-      const allRects = this.layer.find('Rect');
-      allRects?.forEach((e: any) => {
-        if (e.fill() === designConst.selectedRectColor) {
-          e.fill(designConst.defaultRectColor);
-        }
-      });
-      this.selectedRect = innerRect;
       if (
         innerRect.fill() === designConst.defaultRectColor ||
         innerRect.fill() === designConst.noGlassRectColor
       ) {
+        const allRects = this.layer.find('Rect');
+        allRects?.forEach((e: any) => {
+          if (e.fill() === designConst.selectedRectColor) {
+            e.fill(designConst.defaultRectColor);
+          }
+        });
+        this.selectedRect = innerRect;
         innerRect.fill(designConst.selectedRectColor);
         const data = innerRect.getAttr('data');
         this.pallaForm.patchValue(data);

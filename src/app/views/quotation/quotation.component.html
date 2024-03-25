@@ -1,13 +1,17 @@
 <div class="d-flex mb-5 justify-content-between align-items-center">
   <h4 class="">Quotations</h4>
-  <p-button routerLink="add">Add New</p-button>
+  <div style="gap: 10px; display: flex">
+    <p-button (onClick)="bulkUpdate(true)">Update All</p-button>
+    <p-button (onClick)="bulkUpdate(false)">Update Selected</p-button>
+    <p-button routerLink="add">Add New</p-button>
+  </div>
 </div>
 <div class="card">
   <p-table
     #dt1
     [value]="quotationList"
     [paginator]="true"
-    [rows]="5"
+    [rows]="25"
     [globalFilterFields]="[
       'quatation_identity',
       'name',
@@ -18,7 +22,7 @@
     (sortFunction)="customSort($event)"
     [customSort]="true"
     [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[5, 10, 15]"
+    [rowsPerPageOptions]="[25, 50, 75, 100]"
   >
     <ng-template pTemplate="caption">
       <button
@@ -40,6 +44,7 @@
     </ng-template>
     <ng-template pTemplate="header">
       <tr>
+        <th style="width: 5%" scope="row">Select</th>
         <th pSortableColumn="quatation_identity" style="width: 20%" scope="row">
           Quatation Identity
           <p-sortIcon field="quatation_identity"></p-sortIcon>
@@ -60,6 +65,13 @@
     </ng-template>
     <ng-template pTemplate="body" let-quotation>
       <tr>
+        <td>
+          <p-checkbox
+            [binary]="true"
+            inputId="binary"
+            [(ngModel)]="quotation.selected"
+          ></p-checkbox>
+        </td>
         <td>{{ quotation.quatation_identity }}</td>
         <td>{{ quotation.name }}</td>
         <td>{{ quotation.grand_total | currency : "INR" }}</td>

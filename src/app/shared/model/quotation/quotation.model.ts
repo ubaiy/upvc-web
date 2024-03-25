@@ -10,4 +10,5 @@ export interface IQuotationDto {
   name: string;
   phone: string;
   email: string;
+  selected: boolean;
 }

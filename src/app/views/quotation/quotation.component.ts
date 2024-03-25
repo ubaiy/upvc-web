@@ -85,4 +85,43 @@ export class QuotationComponent {
       }
     );
   }
+
+  public bulkUpdate(all: boolean) {
+    const quotationIds: {
+      quatation_ids: string[];
+    } = {
+      quatation_ids: [],
+    };
+    if (all) {
+      this.quotationList.forEach((e) => {
+        quotationIds.quatation_ids.push(e.id.toString());
+      });
+    } else {
+      this.quotationList.forEach((e) => {
+        if (e.selected) {
+          quotationIds.quatation_ids.push(e.id.toString());
+        }
+      });
+    }
+
+    if (quotationIds.quatation_ids.length) {
+      this._dataService.updateBulkPrice(quotationIds).subscribe(
+        (res) => {
+          if (res.success) {
+            this._toastService.showSuccess(res.message);
+            this.quotationList.forEach((e) => {
+              e.selected = false;
+            });
+          } else {
+            this._toastService.showError(res.message);
+          }
+        },
+        (err) => {
+          this._toastService.showError(err.error.message);
+        }
+      );
+    } else {
+      this._toastService.showError('Please select quotation!');
+    }
+  }
 }

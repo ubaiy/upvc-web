@@ -13,6 +13,7 @@ import { AllDropdownsResolver } from 'src/app/shared/resolver/all-dropdowns.reso
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 import { MullionResolver } from '../../shared/resolver/mullion.resolver';
 import { DesignFinalComponent } from './sub-quotation/design-final/design-final.component';
+import { SubQuotationDesignResolver } from './sub-quotation/sub-quotation-design/sub-quotation-design.resolver';
 const routes: Routes = [
   {
     path: '',
@@ -62,10 +63,21 @@ const routes: Routes = [
     data: { edit: false },
   },
   {
+    path: 'design/:id/edit/:subId',
+    component: DesignFinalComponent,
+    resolve: {
+      profileList: ProfileListResolver,
+      dropdowns: AllDropdownsResolver,
+      mullionList: MullionResolver,
+      details: SubQuotationDesignResolver,
+    },
+    data: { edit: false },
+  },
+  {
     path: 'detail/:id/edit/:subId',
     component: SubQuotationDesignComponent,
     resolve: {
-      details: SubQuotationResolver,
+      details: SubQuotationDesignResolver,
       profileList: ProfileListResolver,
       dropdowns: AllDropdownsResolver,
       mullionList: MullionResolver,

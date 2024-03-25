@@ -7,7 +7,7 @@
     #dt1
     [value]="data.quatation_product"
     [paginator]="true"
-    [rows]="5"
+    [rows]="25"
     [globalFilterFields]="[
       'product.category',
       'product_type',
@@ -18,7 +18,7 @@
     (sortFunction)="customSort($event)"
     [customSort]="true"
     [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[5, 10, 15]"
+    [rowsPerPageOptions]="[25, 50, 75, 100]"
   >
     <ng-template pTemplate="caption">
       <div>
@@ -92,12 +92,12 @@
         <td>{{ subquotation.total_sq_ft | slice : 0 : 4 }} ft</td>
         <td>{{ subquotation.average_total | currency : "INR" }}</td>
         <td class="d-flex">
-          <!-- <p-button
+          <p-button
             icon="pi pi-pencil"
             [routerLink]="['edit', subquotation.id]"
             [rounded]="true"
             [outlined]="true"
-          ></p-button> -->
+          ></p-button>
           <p-button
             icon="pi pi-trash"
             (onClick)="deleteQuotationProduct(subquotation)"

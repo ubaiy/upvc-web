@@ -90,6 +90,7 @@ export const API_END_POINT = {
     pdf: 'quatation/pdf',
     manageProduct: 'quatation/manage-product',
     openningDirection: 'product/opening-direction',
+    bulkpriceUpdate: 'quatation/updateOldQuatation',
   },
   profile_color: {
     list: 'profile-color/list',

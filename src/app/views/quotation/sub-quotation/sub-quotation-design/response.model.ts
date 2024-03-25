@@ -1,0 +1,110 @@
+export interface IResponseDtoOfProduct {
+  id: number;
+  height: string;
+  width: string;
+  total: number;
+  product_type: string;
+  product_information: {
+    id: number;
+    category: string;
+    profile_code: string;
+    profile_name: string;
+    rate_meter: number;
+    sub_category: string;
+    totalCost: number;
+    quantity: number;
+  }[];
+  costhead_information: {
+    costhead: {
+      id: number;
+      product_no: string;
+      name: string;
+      type: string;
+      costhead: string;
+      cost: number;
+      totalCost: number;
+      quantity: number;
+    }[];
+    old_post_data: {
+      designId: number;
+      category_type: string;
+      mullion_quantity: number;
+      product_id: number;
+      color_id: number;
+      sash_id: number;
+      casement_type: string;
+      palla_type: number;
+      hinges_type: number;
+      is_track: string;
+      product_type: string;
+      handle_id: number;
+      is_cupler: boolean;
+      is_louvers: boolean;
+      is_lshape: boolean;
+      height: number;
+      width: number;
+      total: number;
+      glazz_id: number;
+      ventilation_id: number;
+      ventilation_height: number;
+      ventilation_width: number;
+      ventilation_glazz_id: number;
+      fly_mesh: boolean;
+      palla: number;
+    };
+  };
+  product_id: number;
+  quatation_id: number;
+  average_total: number;
+  quantity: number;
+  total_sq_ft: string;
+  image: string;
+  product: {
+    id: number;
+    category: string;
+    profile_code: string;
+    profile_name: string;
+    kg_meter: number;
+    rate_meter: number;
+    rate_bar: number;
+    created_at: string;
+    updated_at: string;
+    sub_category: string;
+    is_2track: string;
+    is_mono: string;
+    is_3track: string;
+    origin_name: string;
+    kg_meter_color: number;
+    rate_meter_color: number;
+    rate_bar_color: number;
+  };
+  quatation: {
+    id: number;
+    quatation_identity: string;
+    area_name: string;
+    customer_address: string;
+    grand_total: number;
+    customer_id: number;
+    area_id: number;
+    customer: {
+      id: number;
+      identity: string;
+      name: string;
+      is_dealer: number;
+      phone: string;
+      email: string;
+      created_at: string;
+      updated_at: string;
+    };
+  };
+  customer: {
+    id: number;
+    identity: string;
+    name: string;
+    is_dealer: number;
+    phone: string;
+    email: string;
+    created_at: string;
+    updated_at: string;
+  };
+}
