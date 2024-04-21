@@ -2,6 +2,7 @@ export const API_END_POINT = {
   auth: {
     login: 'login',
   },
+  home: 'dashboard',
   user: {
     getProfile: 'get-profile',
     updateProfile: 'update-profile',
@@ -33,6 +34,9 @@ export const API_END_POINT = {
     add: 'area/add',
     get: 'area/show',
     update: 'area/update',
+  },
+  bills: {
+    list: 'bills/list',
   },
   paymentType: {
     list: 'payment-term/list',

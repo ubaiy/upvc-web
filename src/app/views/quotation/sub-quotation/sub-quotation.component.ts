@@ -78,6 +78,41 @@ export class SubQuotationComponent {
     );
   }
 
+  convertToBill() {
+    let ids: number[] = [];
+    this.data.quatation_product.forEach((e) => {
+      if (e?.selected) {
+        ids.push(e.id);
+      }
+    });
+    let paymentTerms: IPaymentTypeDto[];
+    let margin;
+    this._paymentTermsService.getPaymentTypeList().subscribe((res) => {
+      if (res.success) {
+        paymentTerms = res.data;
+        this._typeMarginService.getTypeMarginList().subscribe((res) => {
+          if (res.success) {
+            margin = res.data;
+            this.ref = this.dialogService.open(PrintQuotationPdfComponent, {
+              header: 'Convert To Bill',
+              contentStyle: { overflow: 'auto' },
+              width: '30%',
+              baseZIndex: 10000,
+              data: {
+                bill: true,
+                quatation_id: this.data.id,
+                name: this.data.customer.name,
+                quatation_products: ids,
+                terms: paymentTerms,
+                margin: margin,
+              },
+            });
+          }
+        });
+      }
+    });
+  }
+
   show() {
     let ids: number[] = [];
     this.data.quatation_product.forEach((e) => {
@@ -99,6 +134,7 @@ export class SubQuotationComponent {
               width: '30%',
               baseZIndex: 10000,
               data: {
+                bill: false,
                 quatation_id: this.data.id,
                 name: this.data.customer.name,
                 quatation_products: ids,

@@ -119,7 +119,7 @@
     </c-row>
   </form>
   <div class="mt-5 d-flex gap-4">
-    <p-button (click)="submit()"> Print</p-button>
+    <p-button (click)="submit()"> {{ is_bill ? "Convert" : "Print" }}</p-button>
     <p-button
       color="secondary"
       styleClass="p-button-secondary"

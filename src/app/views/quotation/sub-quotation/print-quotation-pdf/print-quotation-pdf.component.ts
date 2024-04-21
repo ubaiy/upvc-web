@@ -18,6 +18,7 @@ export class PrintQuotationPdfComponent {
   form: FormGroup;
   submitted: boolean;
   name: string;
+  is_bill: boolean;
   constructor(
     private _fb: FormBuilder,
     public ref: DynamicDialogRef,
@@ -30,6 +31,7 @@ export class PrintQuotationPdfComponent {
     this.name = this.config.data.name;
     this.paymentTerms = this.config.data.terms;
     this.margins = this.config.data.margin;
+    this.is_bill = this.config.data.bill;
   }
 
   get f() {
@@ -50,6 +52,7 @@ export class PrintQuotationPdfComponent {
           igst: this.form.value.igst,
           payment_terms: this.form.value.payment_terms,
           order_type_margin: this.form.value.order_type_margin,
+          is_download: true,
         };
       } else {
         data = {
@@ -60,21 +63,42 @@ export class PrintQuotationPdfComponent {
           igst: this.form.value.igst,
           payment_terms: this.form.value.payment_terms,
           order_type_margin: this.form.value.order_type_margin,
+          is_download: true,
         };
       }
       this._dataService.getPDF(data).subscribe(
-        (res) => {
-          const blobUrl = URL.createObjectURL(res);
+        (info) => {
+          const filename = 'document.pdf'; // Use the retrieved filename or a default filename
+
+          // Create a Blob URL for the PDF
+          const blobUrl = URL.createObjectURL(info);
 
           // Open the Blob URL in a new tab
-          window.open(blobUrl, '_blank');
+          const newTab = window.open(blobUrl, '_blank');
           this.ref.close();
+
+          // Set the filename for the new tab (works in some browsers)
+          if (newTab) {
+            newTab.document.title = filename;
+          }
         },
         (err) => {
           // Handle any errors here
         }
       );
     }
+  }
+
+  getFilenameFromUrlOrDefault(blob: Blob, defaultFilename: string): string {
+    // Extract filename from the Blob URL or use a default filename
+    // const url = (window.URL || window.webkitURL).createObjectURL(blob);
+    // const matches = url.match(/\/([^\/?#]+)[^\/]*$/);
+    // console.log(matches);
+    // if (matches && matches.length > 1) {
+    //   return matches[1];
+    // } else {
+    return defaultFilename;
+    // }
   }
 
   public cancel() {

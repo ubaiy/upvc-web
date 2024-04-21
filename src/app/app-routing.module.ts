@@ -52,6 +52,11 @@ const routes: Routes = [
         resolve: { data: BulkPriceUpdateResolver },
       },
       {
+        path: 'bills',
+        loadChildren: () =>
+          import('./views/bills/bills.module').then((m) => m.BillsModule),
+      },
+      {
         path: 'quotation',
         loadChildren: () =>
           import('./views/quotation/quotation.module').then(

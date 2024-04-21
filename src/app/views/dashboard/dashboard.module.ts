@@ -7,12 +7,15 @@ import {
   ButtonGroupModule,
   ButtonModule,
   CardModule,
+  DropdownModule,
   FormModule,
   GridModule,
   NavModule,
   ProgressModule,
+  SharedModule,
   TableModule,
-  TabsModule
+  TabsModule,
+  WidgetModule,
 } from '@coreui/angular';
 import { IconModule } from '@coreui/icons-angular';
 import { ChartjsModule } from '@coreui/angular-chartjs';
@@ -21,6 +24,7 @@ import { DashboardRoutingModule } from './dashboard-routing.module';
 import { DashboardComponent } from './dashboard.component';
 
 import { WidgetsModule } from '../widgets/widgets.module';
+import { DocsComponentsModule } from '@docs-components/docs-components.module';
 
 @NgModule({
   imports: [
@@ -40,9 +44,18 @@ import { WidgetsModule } from '../widgets/widgets.module';
     ChartjsModule,
     AvatarModule,
     TableModule,
-    WidgetsModule
+    WidgetsModule,
+    GridModule,
+    WidgetModule,
+    IconModule,
+    DropdownModule,
+    SharedModule,
+    ButtonModule,
+    CardModule,
+    DocsComponentsModule,
+    ProgressModule,
+    ChartjsModule,
   ],
-  declarations: [DashboardComponent]
+  declarations: [DashboardComponent],
 })
-export class DashboardModule {
-}
+export class DashboardModule {}
