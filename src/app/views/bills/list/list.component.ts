@@ -1,38 +1,69 @@
 import { Component } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { BillsService } from '../bills.service';
 import { Table } from 'primeng/table';
 import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
 import { SortEvent } from 'primeng/api';
+import { IBillListDto } from '../../../shared/model/bill/billList.model';
+import { ToastService } from 'src/app/shared/services/toast.service';
 @Component({
   selector: 'app-list',
   templateUrl: './list.component.html',
   styleUrls: ['./list.component.scss'],
 })
 export class ListComponent {
-  bills: any[] = [];
-  form: FormGroup;
-  visible: boolean = false;
-  edit: boolean = false;
-  submitted: boolean = false;
+  bills: IBillListDto[] = [];
   inputValue: string = '';
+  visible: boolean = false;
+  submitted: boolean = false;
+  selectedBill: IBillListDto;
+  customerGstin: FormControl = new FormControl();
   constructor(
     private _activeRoute: ActivatedRoute,
-    private _fb: FormBuilder,
-    private _dataService: BillsService,
-    private confirmationDialogService: ConfirmationDialogService
+    private _billService: BillsService,
+    private confirmationDialogService: ConfirmationDialogService,
+    private _toastService: ToastService
   ) {
     this.bills = this._activeRoute.snapshot.data['list'];
-    this.form = this._initForm();
+    console.log(this.bills);
   }
 
-  get f() {
-    return this.form.controls;
+  submit() {
+    let data = {
+      bill_id: this.selectedBill.id,
+      customer_gst_no: this.customerGstin.getRawValue(),
+    };
+    this._billService.downloadBillPdf(data).subscribe(
+      (info) => {
+        const filename = 'document.pdf'; // Use the retrieved filename or a default filename
+        this.visible = false;
+        // Create a Blob URL for the PDF
+        const blobUrl = URL.createObjectURL(info);
+        // Open the Blob URL in a new tab
+        const newTab = window.open(blobUrl, '_blank');
+        // Set the filename for the new tab (works in some browsers)
+        if (newTab) {
+          newTab.document.title = filename;
+        }
+      },
+      (err) => {
+        // Handle any errors here
+      }
+    );
   }
 
+  public downloadBill(bill: IBillListDto) {
+    this.selectedBill = bill;
+    this.visible = true;
+  }
   public toggleWarningModal() {
-    if (this.form.dirty && this.form.touched) {
+    if (this.customerGstin.dirty && this.customerGstin.touched) {
       this.confirmationDialogService.confirm(
         'Are you sure!',
         'Are you sure you want to Cancel ? ',
@@ -48,38 +79,9 @@ export class ListComponent {
       this.visible = false;
     }
   }
-
-  public handleFormModal(event: any) {
-    this.visible = event;
-  }
-
-  public openModel(bills?: any) {
-    if (bills) {
-      this.visible = true;
-      this.edit = true;
-      this.form = this._initForm(bills);
-    } else {
-      this.visible = true;
-      this.edit = false;
-      this.form = this._initForm();
-    }
-  }
-
   public clear(table: Table) {
     table.clear();
     this.inputValue = '';
-  }
-
-  private _initForm(bills?: any): FormGroup {
-    let fg: FormGroup = this._fb.group({
-      id: [''],
-      name: ['', [Validators.required]],
-      description: ['', [Validators.required]],
-    });
-    if (bills) {
-      fg.patchValue(bills);
-    }
-    return fg;
   }
 
   public customSort(event: SortEvent) {
@@ -103,5 +105,40 @@ export class ListComponent {
         }
       });
     }
+  }
+
+  public deleteBill(id: number) {
+    this.confirmationDialogService.confirm(
+      'Are you sure!',
+      `Are you sure you want to Delete ? `,
+      'pi-info-circle',
+      () => {
+        this._billService.deleteBill(id).subscribe(
+          (res) => {
+            if (res.success) {
+              this._toastService.showSuccess(res.message);
+              this._billService.getBillsList().subscribe((res) => {
+                if (res.success) {
+                  this.bills = res.data;
+                }
+              });
+            } else {
+              this._toastService.showError(res.message);
+            }
+          },
+          (err) => {
+            this._toastService.showError(err.error.message);
+          }
+        );
+      },
+      () => {
+        console.log('Action rejected');
+      }
+    );
+  }
+
+  public handleFormModal(event: any) {
+    this.customerGstin.patchValue('');
+    this.visible = event;
   }
 }

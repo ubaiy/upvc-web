@@ -7,6 +7,8 @@ import { PaymentTermsService } from 'src/app/views/payment-terms/payment-terms.s
 import { TypeMarginService } from 'src/app/views/type-margin/type-margin.service';
 import { QuotationService } from '../../quotation.service';
 import { saveAs } from 'file-saver';
+import { BillsService } from 'src/app/views/bills/bills.service';
+import { ToastService } from 'src/app/shared/services/toast.service';
 @Component({
   selector: 'app-print-quotation-pdf',
   templateUrl: './print-quotation-pdf.component.html',
@@ -25,7 +27,9 @@ export class PrintQuotationPdfComponent {
     private config: DynamicDialogConfig,
     private _typeMarginService: TypeMarginService,
     private _paymentTermsService: PaymentTermsService,
-    private _dataService: QuotationService
+    private _toastService: ToastService,
+    private _dataService: QuotationService,
+    private _billService: BillsService
   ) {
     this.form = this._initFrom();
     this.name = this.config.data.name;
@@ -66,26 +70,42 @@ export class PrintQuotationPdfComponent {
           is_download: true,
         };
       }
-      this._dataService.getPDF(data).subscribe(
-        (info) => {
-          const filename = 'document.pdf'; // Use the retrieved filename or a default filename
 
-          // Create a Blob URL for the PDF
-          const blobUrl = URL.createObjectURL(info);
-
-          // Open the Blob URL in a new tab
-          const newTab = window.open(blobUrl, '_blank');
-          this.ref.close();
-
-          // Set the filename for the new tab (works in some browsers)
-          if (newTab) {
-            newTab.document.title = filename;
+      if (this.is_bill) {
+        this._billService.getPDF(data).subscribe(
+          (res) => {
+            if (res.success) {
+              this._toastService.showSuccess(res.message);
+            } else {
+              this._toastService.showError(res.message);
+            }
+          },
+          (err) => {
+            this._toastService.showError(err.error.message);
           }
-        },
-        (err) => {
-          // Handle any errors here
-        }
-      );
+        );
+      } else {
+        this._dataService.getPDF(data).subscribe(
+          (info) => {
+            const filename = 'document.pdf'; // Use the retrieved filename or a default filename
+
+            // Create a Blob URL for the PDF
+            const blobUrl = URL.createObjectURL(info);
+
+            // Open the Blob URL in a new tab
+            const newTab = window.open(blobUrl, '_blank');
+            this.ref.close();
+
+            // Set the filename for the new tab (works in some browsers)
+            if (newTab) {
+              newTab.document.title = filename;
+            }
+          },
+          (err) => {
+            // Handle any errors here
+          }
+        );
+      }
     }
   }
 

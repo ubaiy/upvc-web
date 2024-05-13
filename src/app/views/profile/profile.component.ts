@@ -148,6 +148,7 @@ export class ProfileComponent {
       last_name: new FormControl('', [Validators.required]),
       email: new FormControl(''),
       phone: new FormControl('', [Validators.required]),
+      gst_no: new FormControl(''),
     });
     fg.patchValue(this.userDetail);
     fg.controls.email.disable();

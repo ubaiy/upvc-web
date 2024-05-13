@@ -34,7 +34,7 @@
     <ng-template pTemplate="header">
       <tr>
         <th pSortableColumn="name" style="width: 40%" scope="row">
-          Customer Name <p-sortIcon field="name"></p-sortIcon>
+          Quotation Name <p-sortIcon field="name"></p-sortIcon>
         </th>
         <th pSortableColumn="description" style="width: 40%" scope="row">
           Amount <p-sortIcon field="description"></p-sortIcon>
@@ -44,14 +44,19 @@
         </th>
       </tr>
     </ng-template>
-    <ng-template pTemplate="body" let-bills>
+    <ng-template pTemplate="body" let-bill>
       <tr>
-        <td>{{ bills.customer_name }}</td>
-        <td>{{ bills.amount }}</td>
+        <td>{{ bill.name }}</td>
+        <td>{{ bill.grand_total }}</td>
         <td>
           <p-button
-            icon="pi pi-pencil"
-            (click)="openModel(bills)"
+            icon="pi pi-download"
+            (click)="downloadBill(bill)"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+          <p-button
+            icon="pi pi-trash"
+            (click)="deleteBill(bill)"
             styleClass="p-button-rounded p-button-text"
           ></p-button>
         </td>
@@ -59,3 +64,37 @@
     </ng-template>
   </p-table>
 </div>
+<c-modal
+  id="liveDemoModal"
+  [visible]="visible"
+  backdrop="static"
+  alignment="center"
+  (visibleChange)="handleFormModal($event)"
+>
+  <c-modal-header>
+    <h5 cModalTitle color="warm">Print Bill</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div>
+      <c-row>
+        <label cLabel="col" class="col-sm-3" for="GSTIN">
+          Customer GSTIN
+        </label>
+        <c-col [sm]="9">
+          <input
+            cFormControl
+            id="GSTIN"
+            type="text"
+            [formControl]="customerGstin"
+          />
+        </c-col>
+      </c-row>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <p-button styleClass="p-button-secondary" (click)="toggleWarningModal()">
+      Cancel
+    </p-button>
+    <p-button (click)="submit()"> Print </p-button>
+  </c-modal-footer>
+</c-modal>

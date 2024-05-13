@@ -36,7 +36,10 @@ export const API_END_POINT = {
     update: 'area/update',
   },
   bills: {
-    list: 'bills/list',
+    list: 'bill/list',
+    converToBill: 'bill/convert-to-bill',
+    pdf: 'bill/pdf',
+    delete: 'bill/delete',
   },
   paymentType: {
     list: 'payment-term/list',

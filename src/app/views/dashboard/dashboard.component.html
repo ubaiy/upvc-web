@@ -48,7 +48,12 @@
       color="warning"
     >
       <ng-template cTemplateId="widgetValueTemplate" ngPreserveWhitespaces>
-        <span>₹ {{ dashboardDetail?.total_revenue_quatation }}</span>
+        <span
+          >₹
+          {{
+            dashboardDetail?.total_revenue_quatation | number : "1.2-3"
+          }}</span
+        >
         <span class="fs-6 fw-normal">
           <!-- (84.7% <svg cIcon name="cilArrowTop"></svg>) -->
         </span>
@@ -69,7 +74,10 @@
       <ng-template cTemplateId="widgetValueTemplate" ngPreserveWhitespaces>
         <span
           >₹
-          {{ dashboardDetail?.total_revenue_quatation_converted_to_bill }}</span
+          {{
+            dashboardDetail?.total_revenue_quatation_converted_to_bill
+              | number : "1.2-3"
+          }}</span
         >
         <span class="fs-6 fw-normal">
           <!-- (84.7% <svg cIcon name="cilArrowTop"></svg>) -->
@@ -89,7 +97,7 @@
 </c-row>
 
 <c-card class="mb-4">
-<c-card-body>
+  <c-card-body>
     <c-row>
       <c-col sm="5">
         <h4 class="card-title mb-0" id="traffic">Traffic</h4>
@@ -159,5 +167,4 @@
       Main chart
     </c-chart>
   </c-card-body>
-
 </c-card>

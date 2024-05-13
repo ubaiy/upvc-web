@@ -82,20 +82,20 @@ export class QuotationService {
     );
   }
 
-  public getPDF(data: any): Observable<Blob> {
-    const headers = new HttpHeaders({
-      'Cache-Control': 'no-cache, no-store, must-revalidate', // Disable caching
-    });
+    public getPDF(data: any): Observable<Blob> {
+      const headers = new HttpHeaders({
+        'Cache-Control': 'no-cache, no-store, must-revalidate', // Disable caching
+      });
 
-    return this.http.post(
-      `${environment.API_URL}/${API_END_POINT.quatation.pdf}`,
-      data,
-      {
-        responseType: 'blob', // Specify responseType as an option here
-        headers: headers,
-      }
-    );
-  }
+      return this.http.post(
+        `${environment.API_URL}/${API_END_POINT.quatation.pdf}`,
+        data,
+        {
+          responseType: 'blob', // Specify responseType as an option here
+          headers: headers,
+        }
+      );
+    }
 
   public getOpenningDirection(): Observable<
     IResponseDto<IOpenDirectionDrpDto[]>

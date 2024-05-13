@@ -23,7 +23,7 @@ export const navItems: INavData[] = [
   {
     name: 'Bills',
     url: '/bills',
-    iconComponent: { name: 'cil-invoice' },
+    iconComponent: { name: 'cil-calculator' },
   },
   {
     name: 'Order Type Margin',

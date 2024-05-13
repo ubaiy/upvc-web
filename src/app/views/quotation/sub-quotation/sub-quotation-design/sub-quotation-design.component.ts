@@ -979,9 +979,15 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this._profileService.productDropdown(query).subscribe((res) => {
       if (res.success) {
         this.sashList = res.data;
-        this.df['sash_id'].patchValue(
-          this.sashList[0] ? this.sashList[0].id : ''
-        );
+        if (this.edit) {
+          this.df['sash_id'].patchValue(
+            this.quotDetails.costhead_information.old_post_data.sash_id
+          );
+        } else {
+          this.df['sash_id'].patchValue(
+            this.sashList[0] ? this.sashList[0].id : ''
+          );
+        }
       }
     });
   }
