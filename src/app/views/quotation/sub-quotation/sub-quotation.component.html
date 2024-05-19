@@ -1,0 +1,125 @@
+<div class="d-flex mb-5 justify-content-between align-items-center">
+  <h4 class="">Quotation Detail - {{ data.customer.name }}</h4>
+  <span
+    class="d-flex mb-5 justify-content-between align-items-center gap-2 align-item-center"
+  >
+    <p-button routerLink="add">Add New</p-button>
+    <p-button routerLink="super-system">Super System</p-button>
+  </span>
+</div>
+<div class="card">
+  <p-table
+    #dt1
+    [value]="data.quatation_product"
+    [paginator]="true"
+    [rows]="25"
+    [globalFilterFields]="[
+      'product.category',
+      'product_type',
+      'total',
+      'total_sq_ft',
+      'average_total'
+    ]"
+    (sortFunction)="customSort($event)"
+    [customSort]="true"
+    [tableStyle]="{ 'min-width': '60rem' }"
+    [rowsPerPageOptions]="[25, 50, 75, 100]"
+  >
+    <ng-template pTemplate="caption">
+      <div>
+        <button
+          pButton
+          label="Print Quotation"
+          class="p-button-outlined"
+          style="margin-right: 10px"
+          icon="pi pi-print"
+          (click)="show()"
+          id="printButton"
+        ></button>
+        <button
+          pButton
+          label="Convert To Bill"
+          class="p-button-outlined"
+          style="margin-right: 10px"
+          icon="pi pi-money-bill"
+          (click)="convertToBill()"
+          id="printButton"
+        ></button>
+        <button
+          pButton
+          label="Clear"
+          class="p-button-outlined ml-3"
+          icon="pi pi-filter-slash"
+          (click)="clear(dt1)"
+          id="printButton"
+        ></button>
+      </div>
+
+      <span class="p-input-icon-left ml-auto">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          [(ngModel)]="inputValue"
+          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+        />
+      </span>
+    </ng-template>
+    <ng-template pTemplate="header">
+      <tr>
+        <th style="width: 5%" scope="row">Select</th>
+        <th style="width: 10%" scope="row">Sr No</th>
+        <th pSortableColumn="product.category" style="width: 20%" scope="row">
+          Category
+          <p-sortIcon field="product.category"></p-sortIcon>
+        </th>
+        <th pSortableColumn="product_type" style="width: 20%" scope="row">
+          Type <p-sortIcon field="product_type"></p-sortIcon>
+        </th>
+        <th pSortableColumn="total" style="width: 15%" scope="row">
+          Total <p-sortIcon field="total"></p-sortIcon>
+        </th>
+        <th pSortableColumn="total_sq_ft" style="width: 15%" scope="row">
+          Total Area <p-sortIcon field="total_sq_ft"></p-sortIcon>
+        </th>
+        <th pSortableColumn="average_total" style="width: 15%" scope="row">
+          Avg Price per sqft <p-sortIcon field="average_total"></p-sortIcon>
+        </th>
+        <th pSortableColumn="actions" style="width: 15%" scope="row">
+          Actions
+        </th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-subquotation>
+      <tr>
+        <td>
+          <p-checkbox
+            [(ngModel)]="subquotation.selected"
+            [binary]="true"
+            inputId="binary"
+          ></p-checkbox>
+        </td>
+        <td>{{ subquotation.srno }}</td>
+        <td>{{ subquotation.product.category }}</td>
+        <td>{{ subquotation.product_type }}</td>
+        <td>{{ subquotation.total | currency : "INR" }}</td>
+        <td>{{ subquotation.total_sq_ft | slice : 0 : 4 }} ft</td>
+        <td>{{ subquotation.average_total | currency : "INR" }}</td>
+        <td class="d-flex">
+          <p-button
+            icon="pi pi-pencil"
+            [routerLink]="['edit', subquotation.id]"
+            [rounded]="true"
+            [outlined]="true"
+          ></p-button>
+          <p-button
+            icon="pi pi-trash"
+            (onClick)="deleteQuotationProduct(subquotation)"
+            [rounded]="true"
+            [outlined]="true"
+          ></p-button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

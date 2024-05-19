@@ -1,0 +1,127 @@
+<div class="d-flex mb-5 justify-content-between align-items-center">
+  <h4 class="">Payment Types</h4>
+  <p-button (click)="openModel()">Add New</p-button>
+</div>
+<div class="card">
+  <p-table
+    #dt1
+    [value]="paymentTypes"
+    [paginator]="true"
+    [rows]="5"
+    [globalFilterFields]="['name', 'description']"
+    (sortFunction)="customSort($event)"
+    [customSort]="true"
+    [tableStyle]="{ 'min-width': '60rem' }"
+    [rowsPerPageOptions]="[5, 10, 15]"
+  >
+    <ng-template pTemplate="caption">
+      <button
+        pButton
+        label="Clear"
+        class="p-button-outlined"
+        icon="pi pi-filter-slash"
+        (click)="clear(dt1)"
+      ></button>
+      <span class="p-input-icon-left ml-auto">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          [(ngModel)]="inputValue"
+          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+        />
+      </span>
+    </ng-template>
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="name" style="width: 40%" scope="row">
+          Payment Type <p-sortIcon field="name"></p-sortIcon>
+        </th>
+        <th pSortableColumn="description" style="width: 40%" scope="row">
+          Description <p-sortIcon field="description"></p-sortIcon>
+        </th>
+        <th pSortableColumn="actions" style="width: 20%" scope="row">
+          Actions
+        </th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-paymentType>
+      <tr>
+        <td>{{ paymentType.name }}</td>
+        <td>{{ paymentType.description }}</td>
+        <td>
+          <p-button
+            icon="pi pi-pencil"
+            (click)="openModel(paymentType)"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+          <p-button
+            icon="pi pi-trash"
+            (onClick)="deletePaymentTerms(paymentType)"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+<c-modal
+  id="liveDemoModal"
+  [visible]="visible"
+  backdrop="static"
+  alignment="center"
+  (visibleChange)="handleFormModal($event)"
+>
+  <c-modal-header>
+    <h5 cModalTitle color="warm">{{ edit ? "Edit " : "Add " }}Payment Type</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div>
+      <form [formGroup]="form">
+        <c-row>
+          <label cLabel="col" class="col-sm-3" for="Name"> Name </label>
+          <c-col [sm]="9">
+            <input cFormControl id="Name" type="text" formControlName="name" />
+            <small
+              class="error"
+              *ngIf="
+            (f['name']?.errors?.['required'] && f['name'].touched) ||
+            (f['name']?.errors?.['required'] && submitted)
+          "
+              >Name is required</small
+            >
+          </c-col>
+        </c-row>
+        <c-row class="mt-3">
+          <label cLabel="col" class="col-sm-3" for="description">
+            Description
+          </label>
+          <c-col [sm]="9">
+            <input
+              cFormControl
+              id="description"
+              type="text"
+              formControlName="description"
+            />
+            <small
+              class="error"
+              *ngIf="
+            (f['description']?.errors?.['required'] && f['description'].touched) ||
+            (f['description']?.errors?.['required'] && submitted)
+          "
+              >Description is required</small
+            >
+          </c-col>
+        </c-row>
+      </form>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <p-button styleClass="p-button-secondary" (click)="toggleWarningModal()">
+      Cancel
+    </p-button>
+    <p-button (click)="submit()">
+      {{ edit ? "Save" : "Add" }}
+    </p-button>
+  </c-modal-footer>
+</c-modal>

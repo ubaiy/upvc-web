@@ -1,0 +1,77 @@
+<h4 class="mb-5">{{ editable ? "Edit Customer" : "Add Customer" }}</h4>
+<div>
+  <form [formGroup]="form">
+    <c-row>
+      <label cLabel="col" class="col-sm-2" for="customer_id">
+        Customer <span class="error">*</span></label
+      >
+      <c-col [sm]="4">
+        <select
+          aria-label="Default select example"
+          cSelect
+          formControlName="customer_id"
+        >
+          <option value="" disabled>select</option>
+          <option *ngFor="let customer of customerList" [value]="customer.id">
+            {{ customer.name }}
+          </option>
+        </select>
+      </c-col>
+      <label cLabel="col" class="col-sm-2" for="customer_address_id">
+        Customer Address <span class="error">*</span></label
+      >
+      <c-col [sm]="4">
+        <select
+          aria-label="Default select example"
+          cSelect
+          formControlName="customer_address_id"
+        >
+          <option value="" disabled>select</option>
+          <option
+            *ngFor="let customerAddress of customerAddressList"
+            [value]="customerAddress.id"
+          >
+            {{
+              customerAddress.address +
+                ", " +
+                customerAddress.address_line2 +
+                ", " +
+                customerAddress.city +
+                ", " +
+                customerAddress.state +
+                ", " +
+                customerAddress.zip_code
+            }}
+          </option>
+        </select>
+      </c-col>
+    </c-row>
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-2" for="area_id">
+        Area <span class="error">*</span></label
+      >
+      <c-col [sm]="4">
+        <select
+          aria-label="Default select example"
+          cSelect
+          formControlName="area_id"
+        >
+          <option value="" disabled>select</option>
+          <option *ngFor="let area of areaList" [value]="area.id">
+            {{ area.name }}
+          </option>
+        </select>
+      </c-col>
+    </c-row>
+    <div class="mt-5 d-flex gap-4">
+      <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
+      <p-button
+        color="secondary"
+        styleClass="p-button-secondary"
+        (click)="toggleWarningModal()"
+      >
+        Cancel</p-button
+      >
+    </div>
+  </form>
+</div>

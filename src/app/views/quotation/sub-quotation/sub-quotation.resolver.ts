@@ -1,0 +1,27 @@
+import { Injectable } from '@angular/core';
+import {
+  Resolve,
+  RouterStateSnapshot,
+  ActivatedRouteSnapshot,
+} from '@angular/router';
+import { Observable, of, switchMap, throwError } from 'rxjs';
+import { QuotationService } from '../quotation.service';
+@Injectable({
+  providedIn: 'root',
+})
+export class SubQuotationResolver implements Resolve<boolean> {
+  constructor(private _dataService: QuotationService) {}
+  resolve(
+    route: ActivatedRouteSnapshot,
+    state: RouterStateSnapshot
+  ): Observable<any> {
+    let id = route.params['id'];
+    return this._dataService
+      .getQuotationDetail(id)
+      .pipe(
+        switchMap((res) =>
+          res.success ? of(res.data) : throwError(res.message)
+        )
+      );
+  }
+}

@@ -1,0 +1,57 @@
+<h4 class="mb-5">
+  {{ editable ? "Edit Profile Color" : "Add Profile Color" }}
+</h4>
+<div>
+  <form [formGroup]="form">
+    <c-row class="mt-3">
+      <label cLabel="col" class="col-sm-1" for="color_name">
+        Color Name <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="color_name"
+          type="text"
+          formControlName="color_name"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['color_name']?.errors?.['required'] && f['color_name'].touched) ||
+            (f['color_name']?.errors?.['required'] && submitted)
+          "
+          >Color Name is required</small
+        >
+      </c-col>
+      <label cLabel="col" class="col-sm-1" for="color_code">
+        Color Code <span class="error">*</span></label
+      >
+      <c-col [sm]="5">
+        <input
+          cFormControl
+          id="color_code"
+          type="color"
+          formControlName="color_code"
+        />
+        <small
+          class="error"
+          *ngIf="
+            (f['color_code']?.errors?.['required'] && f['color_code'].touched) ||
+            (f['color_code']?.errors?.['required'] && submitted)
+          "
+          >Color Code is required</small
+        >
+      </c-col>
+    </c-row>
+    <div class="mt-5 d-flex gap-4">
+      <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
+      <p-button
+        color="secondary"
+        styleClass="p-button-secondary"
+        (click)="toggleWarningModal()"
+      >
+        Cancel</p-button
+      >
+    </div>
+  </form>
+</div>

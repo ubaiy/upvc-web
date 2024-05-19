@@ -1,0 +1,45 @@
+<ng-container>
+  <c-container [fluid]="true">
+    <button
+      toggle="visible"
+      cHeaderToggler
+      [cSidebarToggle]="sidebarId"
+      class="ps-1"
+    >
+      <svg cIcon name="cilMenu" size="lg"></svg>
+    </button>
+    <c-header-nav class="ms-3">
+      <ng-container *ngTemplateOutlet="userDropdown"></ng-container>
+    </c-header-nav>
+  </c-container>
+</ng-container>
+
+<ng-template #userDropdown>
+  <c-dropdown alignment="end" variant="nav-item">
+    <button cButton color="" [caret]="false" cDropdownToggle class="py-0">
+      <c-avatar
+        cTextColor="primary"
+        shape="rounded-1"
+        size="md"
+        [src]="imageSrc"
+      >
+      </c-avatar>
+    </button>
+    <ul cDropdownMenu class="pt-0 pr-5 w-auto">
+      <li></li>
+      <li style="cursor: pointer">
+        <a cDropdownItem (click)="profileRedirect()">
+          <svg cIcon class="me-2" name="cilUser"></svg>
+          Profile
+        </a>
+      </li>
+      <li class="cursor-pointer" style="cursor: pointer">
+        <a (click)="logout()" cDropdownItem>
+          <svg cIcon class="me-2" name="cilSettings"></svg>
+          Logout
+        </a>
+      </li>
+      <li></li>
+    </ul>
+  </c-dropdown>
+</ng-template>

@@ -1,0 +1,62 @@
+<p-toast></p-toast>
+<div class="bg-light min-vh-100 d-flex flex-row align-items-center">
+  <c-container>
+    <c-row class="justify-content-center">
+      <c-col md="4">
+        <c-alert
+          (visibleChange)="onVisibleAlertChange($event)"
+          [visible]="visibleAlert"
+          [color]="alertType"
+          dismissible
+          fade
+          variant="solid"
+        >
+          <ng-template cTemplateId="alertButtonCloseTemplate">
+            <button (click)="visibleAlert = false" cButtonClose white></button>
+          </ng-template>
+          <strong>{{ alertMessage }}</strong>
+        </c-alert>
+        <c-card-group>
+          <c-card class="p-4">
+            <c-card-body>
+              <form cForm [formGroup]="form" (ngSubmit)="submit()">
+                <h1>Login</h1>
+                <p class="text-medium-emphasis">Sign In to your account</p>
+                <c-input-group class="mb-3">
+                  <span cInputGroupText>
+                    <svg cIcon name="cilUser"></svg>
+                  </span>
+                  <input
+                    autoComplete="email"
+                    cFormControl
+                    placeholder="Email"
+                    formControlName="email"
+                  />
+                </c-input-group>
+                <c-input-group class="mb-4">
+                  <span cInputGroupText>
+                    <svg cIcon name="cilLockLocked"></svg>
+                  </span>
+                  <input
+                    autoComplete="current-password"
+                    cFormControl
+                    placeholder="Password"
+                    type="password"
+                    formControlName="password"
+                  />
+                </c-input-group>
+                <c-row>
+                  <c-col xs="6">
+                    <button cButton class="px-4" color="dark" type="submit">
+                      Login
+                    </button>
+                  </c-col>
+                </c-row>
+              </form>
+            </c-card-body>
+          </c-card>
+        </c-card-group>
+      </c-col>
+    </c-row>
+  </c-container>
+</div>

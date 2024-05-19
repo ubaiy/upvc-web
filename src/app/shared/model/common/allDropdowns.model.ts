@@ -1,0 +1,30 @@
+import { IOpenDirectionDrpDto } from '../quotation/open-directionDrp.model';
+import { IProfileColorDto } from '../profile/profile-color.model';
+import { IMasterListDto } from '../masters/masterList.model';
+export interface IAllDropDownsDto {
+  product_type: string[];
+  slidding_type: string[];
+  casement_type: string[];
+  palla_type_openable: number[];
+  palla_type_slidding: number[];
+  opening_direction: IOpenDirectionDrpDto[];
+  hinges_type: string[];
+  costhead_unit_type: string[];
+  profile_color: IProfileColorDto[];
+  costhead: IMasterListDto[];
+  category: string[];
+}
+
+export class AllDropdowns implements IAllDropDownsDto {
+  product_type: string[] = [];
+  slidding_type: string[] = [];
+  casement_type: string[] = [];
+  palla_type_openable: number[];
+  palla_type_slidding: number[];
+  opening_direction: IOpenDirectionDrpDto[] = [];
+  hinges_type: string[] = [];
+  costhead_unit_type: string[] = [];
+  profile_color: IProfileColorDto[] = [];
+  costhead: IMasterListDto[] = [];
+  category: string[] = [];
+}

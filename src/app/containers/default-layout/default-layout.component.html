@@ -1,0 +1,54 @@
+<!--sidebar-->
+<c-sidebar
+  #sidebar="cSidebar"
+  class="d-print-none sidebar sidebar-fixed"
+  id="sidebar"
+  visible
+>
+  <c-sidebar-brand
+    class="sidebarClass"
+    style="object-fit: contain; object-fit: contain"
+    [brandFull]="{
+      style: 'object-fit:contain',
+      src: 'assets/images/logoLong.png',
+      width: 200,
+      height: 40,
+      alt: 'Full Logo'
+    }"
+    [brandNarrow]="{
+      style: 'object-fit:contain',
+      src: 'assets/images/smalllogo.png',
+      width: 46,
+      height: 46,
+      alt: 'Small Logo'
+    }"
+    routerLink="./"
+  />
+
+  <ng-scrollbar pointerEventsMethod="scrollbar">
+    <c-sidebar-nav [navItems]="navItems" dropdownMode="close" />
+  </ng-scrollbar>
+  <c-sidebar-toggler
+    *ngIf="!sidebar.narrow"
+    toggle="unfoldable"
+    cSidebarToggle="sidebar"
+  />
+</c-sidebar>
+
+<!--main-->
+<div class="wrapper d-flex flex-column min-vh-100 bg-light dark:bg-transparent">
+  <!--app-header-->
+  <app-default-header
+    class="mb-4 d-print-none header header-sticky"
+    position="sticky"
+    sidebarId="sidebar"
+  />
+  <!--app-body-->
+  <div class="body flex-grow-1 px-3">
+    <c-container breakpoint="lg" class="h-auto">
+      <router-outlet />
+    </c-container>
+  </div>
+  <!--app footer-->
+  <app-default-footer />
+</div>

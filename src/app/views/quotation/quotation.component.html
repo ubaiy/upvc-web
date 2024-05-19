@@ -1,0 +1,102 @@
+<div class="d-flex mb-5 justify-content-between align-items-center">
+  <h4 class="">Quotations</h4>
+  <div style="gap: 10px; display: flex">
+    <p-button (onClick)="bulkUpdate(true)">Update All</p-button>
+    <p-button (onClick)="bulkUpdate(false)">Update Selected</p-button>
+    <p-button routerLink="add">Add New</p-button>
+  </div>
+</div>
+<div class="card">
+  <p-table
+    #dt1
+    [value]="quotationList"
+    [paginator]="true"
+    [rows]="25"
+    [globalFilterFields]="[
+      'quatation_identity',
+      'name',
+      'grand_total',
+      'description',
+      'actions'
+    ]"
+    (sortFunction)="customSort($event)"
+    [customSort]="true"
+    [tableStyle]="{ 'min-width': '60rem' }"
+    [rowsPerPageOptions]="[25, 50, 75, 100]"
+  >
+    <ng-template pTemplate="caption">
+      <button
+        pButton
+        label="Clear"
+        class="p-button-outlined"
+        icon="pi pi-filter-slash"
+        (click)="clear(dt1)"
+      ></button>
+      <span class="p-input-icon-left ml-auto">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          [(ngModel)]="inputValue"
+          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+        />
+      </span>
+    </ng-template>
+    <ng-template pTemplate="header">
+      <tr>
+        <th style="width: 5%" scope="row">Select</th>
+        <th pSortableColumn="quatation_identity" style="width: 20%" scope="row">
+          Quatation Identity
+          <p-sortIcon field="quatation_identity"></p-sortIcon>
+        </th>
+        <th pSortableColumn="name" style="width: 20%" scope="row">
+          Customer Name <p-sortIcon field="name"></p-sortIcon>
+        </th>
+        <th pSortableColumn="grand_total" style="width: 20%" scope="row">
+          Grand Total <p-sortIcon field="grand_total"></p-sortIcon>
+        </th>
+        <th pSortableColumn="phone" style="width: 20%" scope="row">
+          Phone <p-sortIcon field="phone"></p-sortIcon>
+        </th>
+        <th pSortableColumn="actions" style="width: 20%" scope="row">
+          Actions
+        </th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-quotation>
+      <tr>
+        <td>
+          <p-checkbox
+            [binary]="true"
+            inputId="binary"
+            [(ngModel)]="quotation.selected"
+          ></p-checkbox>
+        </td>
+        <td>{{ quotation.quatation_identity }}</td>
+        <td>{{ quotation.name }}</td>
+        <td>{{ quotation.grand_total | currency : "INR" }}</td>
+        <td>{{ quotation.phone }}</td>
+        <td>
+          <p-button
+            icon="pi pi-pencil"
+            [rounded]="true"
+            [outlined]="true"
+            [routerLink]="['edit', quotation.id]"
+          ></p-button>
+          <p-button
+            icon="pi pi-calculator"
+            [rounded]="true"
+            [outlined]="true"
+            [routerLink]="['detail', quotation.id]"
+          ></p-button>
+          <p-button
+            icon="pi pi-trash"
+            (onClick)="deleteQuotation(quotation)"
+            [rounded]="true"
+            [outlined]="true"
+          ></p-button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>

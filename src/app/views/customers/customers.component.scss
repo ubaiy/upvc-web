@@ -1,0 +1,13 @@
+.table-container {
+  margin-top: 50px;
+}
+/* Set header and pagination background color */
+.p-table .p-tableheader {
+  background-color: #4f5d73;
+  color: white;
+}
+
+/* Set pagination font color and icons */
+.p-paginator .p-paginator-pages .p-paginator-page a {
+  color: white !important;
+}

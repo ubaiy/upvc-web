@@ -1,0 +1,164 @@
+<div class="d-flex mb-5 justify-content-between align-items-center">
+  <h4 class="">Order Type Margins</h4>
+  <p-button color="dark" (click)="openModel()">Add New</p-button>
+</div>
+<div class="card">
+  <p-table
+    #dt1
+    [value]="typeMargins"
+    [paginator]="true"
+    [rows]="5"
+    [globalFilterFields]="['name']"
+    (sortFunction)="customSort($event)"
+    [customSort]="true"
+    [tableStyle]="{ 'min-width': '60rem' }"
+    [rowsPerPageOptions]="[5, 10, 15]"
+  >
+    <ng-template pTemplate="caption">
+      <button
+        pButton
+        label="Clear"
+        class="p-button-outlined"
+        icon="pi pi-filter-slash"
+        (click)="clear(dt1)"
+      ></button>
+      <span class="p-input-icon-left ml-auto">
+        <i class="pi pi-search"></i>
+        <input
+          pInputText
+          type="text"
+          [(ngModel)]="inputValue"
+          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+        />
+      </span>
+    </ng-template>
+    <ng-template pTemplate="header">
+      <tr>
+        <th pSortableColumn="name" style="width: 25%" scope="row">
+          Name <p-sortIcon field="name"></p-sortIcon>
+        </th>
+        <th pSortableColumn="mark_up" style="width: 25%" scope="row">
+          Mark Up <p-sortIcon field="mark_up"></p-sortIcon>
+        </th>
+        <th pSortableColumn="pricing" style="width: 25%" scope="row">
+          Pricing <p-sortIcon field="pricing"></p-sortIcon>
+        </th>
+        <th pSortableColumn="action" style="width: 25%" scope="row">Action</th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-typeMargin>
+      <tr>
+        <td>{{ typeMargin.name }}</td>
+        <td>{{ typeMargin.mark_up }}</td>
+        <td>{{ typeMargin.pricing }}</td>
+        <td>
+          <p-button
+            icon="pi pi-pencil"
+            (click)="openModel(typeMargin)"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+          <p-button
+            icon="pi pi-trash"
+            (onClick)="deleteTypeMargin(typeMargin)"
+            styleClass="p-button-rounded p-button-text"
+          ></p-button>
+        </td>
+      </tr>
+    </ng-template>
+  </p-table>
+</div>
+<c-modal
+  id="liveDemoModal"
+  [visible]="visible"
+  backdrop="static"
+  alignment="center"
+  (visibleChange)="handleFormModal($event)"
+>
+  <c-modal-header>
+    <h5 cModalTitle color="warm">
+      {{ edit ? "Edit " : "Add " }}Order Type Margin
+    </h5>
+  </c-modal-header>
+  <c-modal-body>
+    <div>
+      <form [formGroup]="form">
+        <c-row>
+          <label cLabel="col" class="col-sm-2" for="Name"> Name </label>
+          <c-col [sm]="10">
+            <input cFormControl id="Name" type="text" formControlName="name" />
+            <small
+              class="error"
+              *ngIf="
+            (f['name']?.errors?.['required'] && f['name'].touched) ||
+            (f['name']?.errors?.['required'] && submitted)
+          "
+              >Name is required</small
+            >
+          </c-col>
+        </c-row>
+        <c-row class="mt-3">
+          <label cLabel="col" class="col-sm-2" for="mark_up"> Mark Up </label>
+          <c-col [sm]="10">
+            <input
+              cFormControl
+              id="mark_up"
+              type="text"
+              formControlName="mark_up"
+            />
+            <small
+              class="error"
+              *ngIf="
+            (f['mark_up']?.errors?.['required'] && f['mark_up'].touched) ||
+            (f['mark_up']?.errors?.['required'] && submitted)
+          "
+              >Mark up is required</small
+            >
+            <small
+              class="error"
+              *ngIf="
+            (!f['mark_up']?.errors?.['required'] && this.f['mark_up']?.errors?.['pattern'] && f['mark_up'].touched) ||
+            (!f['mark_up']?.errors?.['required'] && this.f['mark_up']?.errors?.['pattern'] && submitted)
+          "
+              >Mark up should be a number</small
+            >
+          </c-col>
+        </c-row>
+        <c-row class="mt-3">
+          <label cLabel="col" class="col-sm-2" for="pricing"> Pricing </label>
+          <c-col [sm]="10">
+            <input
+              cFormControl
+              id="pricing"
+              type="text"
+              formControlName="pricing"
+            />
+            <small
+              class="error"
+              *ngIf="
+            (f['pricing']?.errors?.['required'] && f['pricing'].touched) ||
+            (f['pricing']?.errors?.['required'] && submitted)
+          "
+              >Mark up is required</small
+            >
+            <small
+              class="error"
+              *ngIf="
+            (!f['pricing']?.errors?.['required'] && this.f['pricing']?.errors?.['pattern'] && f['pricing'].touched) ||
+            (!f['pricing']?.errors?.['required'] && this.f['pricing']?.errors?.['pattern'] && submitted)
+          "
+              >Pricing should be a number</small
+            >
+          </c-col>
+        </c-row>
+      </form>
+    </div>
+  </c-modal-body>
+  <c-modal-footer>
+    <p-button (click)="toggleWarningModal()" styleClass="p-button-secondary">
+      Cancel
+    </p-button>
+    <p-button (click)="submit()">
+      {{ edit ? "Save" : "Add" }}
+    </p-button>
+  </c-modal-footer>
+</c-modal>
