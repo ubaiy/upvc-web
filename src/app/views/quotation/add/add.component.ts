@@ -46,6 +46,7 @@ export class AddComponent {
         area_id: this.quotationDetail.area_id,
         customer_id: this.quotationDetail.customer_id,
         customer_address_id: this.quotationDetail.customer_address.id,
+        quatation_name: this.quotationDetail.quatation_name
       };
       this.form.patchValue(detail);
     }
@@ -74,7 +75,7 @@ export class AddComponent {
           .addQuotationDetail(this.form.getRawValue())
           .subscribe((res) => {
             if (res.success) {
-              this._toastService.showSuccess(res.message);  
+              this._toastService.showSuccess(res.message);
               this._router.navigate([`quotation/detail/${res.data.id}`]);
             } else {
               this._toastService.showError(res.message);
@@ -108,6 +109,7 @@ export class AddComponent {
       area_id: ['', [Validators.required]],
       customer_id: ['', [Validators.required]],
       customer_address_id: ['', [Validators.required]],
+      quatation_name: ['', Validators.required],
     });
     fg.controls.customer_id.valueChanges.subscribe((res) => {
       if (res) {

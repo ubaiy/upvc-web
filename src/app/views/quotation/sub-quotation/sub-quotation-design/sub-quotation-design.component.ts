@@ -927,6 +927,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.designSpecificationForm.get('color')?.setValue(data.color);
     data.mullion = this.mullionArray;
     // if (!this.designSpecArray.length) {
+    this.designSpecificationForm.get('color_id')?.patchValue(data.color.id);
     this.designSpecArray[0] = this.designSpecificationForm.value;
     // }
     data.parts = this.designSpecArray;

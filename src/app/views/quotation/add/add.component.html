@@ -1,7 +1,13 @@
-<h4 class="mb-5">{{ editable ? "Edit Customer" : "Add Customer" }}</h4>
+<h4 class="mb-5">{{ editable ? "Edit Quotation" : "Add Quotation" }}</h4>
 <div>
   <form [formGroup]="form">
     <c-row>
+      <label cLabel="col" class="col-sm-2" for="customer_id">
+        Quotation Name <span class="error">*</span></label
+      >
+      <c-col [sm]="4">
+        <input pInputText type="text" formControlName="quatation_name" />
+      </c-col>
       <label cLabel="col" class="col-sm-2" for="customer_id">
         Customer <span class="error">*</span></label
       >
@@ -17,6 +23,8 @@
           </option>
         </select>
       </c-col>
+    </c-row>
+    <c-row class="mt-3">
       <label cLabel="col" class="col-sm-2" for="customer_address_id">
         Customer Address <span class="error">*</span></label
       >
@@ -45,8 +53,6 @@
           </option>
         </select>
       </c-col>
-    </c-row>
-    <c-row class="mt-3">
       <label cLabel="col" class="col-sm-2" for="area_id">
         Area <span class="error">*</span></label
       >

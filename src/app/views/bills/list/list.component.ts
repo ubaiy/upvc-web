@@ -38,15 +38,19 @@ export class ListComponent {
     let data = {
       bill_id: this.selectedBill.id,
       customer_gst_no: this.customerGstin.getRawValue(),
+      download: true,
     };
     this._billService.downloadBillPdf(data).subscribe(
       (info) => {
         const filename = 'document.pdf'; // Use the retrieved filename or a default filename
-        this.visible = false;
+
         // Create a Blob URL for the PDF
         const blobUrl = URL.createObjectURL(info);
+        this.visible = false;
+        this.customerGstin.reset();
         // Open the Blob URL in a new tab
         const newTab = window.open(blobUrl, '_blank');
+        // this.ref.close();
         // Set the filename for the new tab (works in some browsers)
         if (newTab) {
           newTab.document.title = filename;

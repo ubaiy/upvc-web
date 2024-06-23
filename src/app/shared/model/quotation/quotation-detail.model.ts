@@ -7,4 +7,5 @@ export interface IQuotationDetailDto {
   customer_id: number;
   customer_address: ICustomerAdddressDto;
   id: number;
+  quatation_name: string;
 }
