@@ -107,6 +107,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
   showHeightWidthOption: boolean;
   ouerRect: Konva.Rect;
   quotDetails: IResponseDtoOfProduct;
+  index_no: string;
   /**
    * Dropdown variables end
    */
@@ -588,6 +589,7 @@ export class SubQuotationDesignComponent implements AfterViewInit {
     this.quotDetails = data['details'];
     this.quotationId = this._activeRoute.snapshot.paramMap.get('id') || '';
     this.product_id = this._activeRoute.snapshot.paramMap.get('subId') || '';
+    this.index_no = this._activeRoute.snapshot.paramMap.get('index') || '';
     this.form = this._initForm();
     this.designSpecificationForm = this._designSpecFormInit();
     this.mullionForm = this._mullionFormInit();

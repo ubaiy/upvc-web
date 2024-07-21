@@ -43,7 +43,7 @@ const routes: Routes = [
     data: { edit: false },
   },
   {
-    path: 'detail/:id/add',
+    path: 'detail/:id/add/:index',
     component: SubQuotationDesignComponent,
     resolve: {
       profileList: ProfileListResolver,
@@ -63,7 +63,7 @@ const routes: Routes = [
     data: { edit: false },
   },
   {
-    path: 'detail/:id/edit/:subId',
+    path: 'detail/:id/edit/:subId/:index',
     component: SubQuotationDesignComponent,
     resolve: {
       details: SubQuotationDesignResolver,

@@ -3,7 +3,9 @@
   <span
     class="d-flex mb-5 justify-content-between align-items-center gap-2 align-item-center"
   >
-    <p-button routerLink="add">Add New</p-button>
+    <p-button [routerLink]="['add', data.quatation_product.length + 1]"
+      >Add New</p-button
+    >
     <p-button routerLink="super-system">Super System</p-button>
   </span>
 </div>
@@ -108,7 +110,7 @@
         <td class="d-flex">
           <p-button
             icon="pi pi-pencil"
-            [routerLink]="['edit', subquotation.id]"
+            [routerLink]="['edit', subquotation.id, subquotation.srno]"
             [rounded]="true"
             [outlined]="true"
           ></p-button>

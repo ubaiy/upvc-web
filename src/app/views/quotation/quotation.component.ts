@@ -112,6 +112,11 @@ export class QuotationComponent {
             this.quotationList.forEach((e) => {
               e.selected = false;
             });
+            this._dataService.getQuotationList().subscribe((res) => {
+              if (res.success) {
+                this.quotationList = res.data;
+              }
+            });
           } else {
             this._toastService.showError(res.message);
           }
