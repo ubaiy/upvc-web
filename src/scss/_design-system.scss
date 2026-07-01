@@ -1,0 +1,234 @@
+// ═══════════════════════════════════════════════════════════════════
+//  UPVC Portal — Shared Design System
+//  Reusable tokens + utility classes that mirror the window-designer
+//  language (soft shadows, rounded corners, refined palette). Layered
+//  over CoreUI `--cui-*` vars so light / dark theming keeps working.
+//  This file is ADDITIVE — it introduces new `.app-*` classes and does
+//  not override existing global rules.
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Design tokens (exposed as CSS vars for reuse anywhere) ───────────
+:root {
+  // Radii
+  --app-radius:        0.75rem;
+  --app-radius-sm:     0.5rem;
+  --app-radius-pill:   2rem;
+
+  // Surfaces & lines (fall back to CoreUI vars, then sane defaults)
+  --app-surface:       var(--cui-card-bg, #ffffff);
+  --app-surface-muted: var(--cui-tertiary-bg, #f8f9fa);
+  --app-border:        var(--cui-border-color, #dee2e6);
+  --app-body:          var(--cui-body-color, #212529);
+  --app-muted:         var(--cui-secondary-color, #6c757d);
+  --app-primary:       var(--cui-primary, #0d6efd);
+
+  // Soft elevation
+  --app-shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --app-shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08), 0 2px 4px rgba(16, 24, 40, 0.04);
+  --app-shadow-lg: 0 12px 28px rgba(16, 24, 40, 0.10), 0 6px 12px rgba(16, 24, 40, 0.05);
+
+  // Spacing scale (consistent rhythm)
+  --app-space-1: 0.25rem;
+  --app-space-2: 0.5rem;
+  --app-space-3: 0.75rem;
+  --app-space-4: 1rem;
+  --app-space-5: 1.5rem;
+  --app-space-6: 2rem;
+}
+
+// ── Page surface ─────────────────────────────────────────────────────
+// Soft tinted background behind page content. Apply to the page root
+// wrapper when a page wants the elevated-card-on-canvas look.
+.app-page-surface {
+  padding-top: 0.5rem;
+  padding-bottom: 2rem;
+}
+
+// ── Card ─────────────────────────────────────────────────────────────
+// The core surface: soft shadow, rounded, subtle border. Works as a
+// drop-in wrapper for any block of content.
+.app-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+  overflow: hidden;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+
+  &--hover:hover {
+    box-shadow: var(--app-shadow-md);
+  }
+
+  &__body {
+    padding: 1.1rem 1.25rem;
+  }
+}
+
+// ── Section heading strip ────────────────────────────────────────────
+// Tertiary-tinted header band that sits at the top of a card / section.
+.app-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: var(--app-surface-muted);
+  border-bottom: 1px solid var(--app-border);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--app-muted);
+
+  i,
+  svg {
+    color: var(--app-primary);
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__spacer {
+    margin-left: auto;
+  }
+}
+
+// ── KPI / stat card ──────────────────────────────────────────────────
+// Polished metric card: icon badge, label, large value. Tinted accent
+// via modifier classes that key off CoreUI subtle backgrounds.
+.app-stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  height: 100%;
+  padding: 1.1rem 1.25rem;
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+
+  &:hover {
+    box-shadow: var(--app-shadow-md);
+    transform: translateY(-2px);
+  }
+
+  &__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--app-radius-sm);
+    background: var(--app-surface-muted);
+    color: var(--app-primary);
+
+    svg {
+      width: 1.4rem;
+      height: 1.4rem;
+    }
+  }
+
+  &__body {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--app-muted);
+  }
+
+  &__value {
+    font-size: 1.55rem;
+    font-weight: 800;
+    line-height: 1.15;
+    color: var(--app-body);
+    word-break: break-word;
+  }
+
+  &__hint {
+    margin-top: 0.1rem;
+    font-size: 0.78rem;
+    color: var(--app-muted);
+  }
+
+  // Accent variants — soft tinted icon badge + top accent bar.
+  &--primary { border-top: 3px solid var(--cui-primary, #0d6efd); }
+  &--info    { border-top: 3px solid var(--cui-info, #3399ff); }
+  &--warning { border-top: 3px solid var(--cui-warning, #f9b115); }
+  &--success { border-top: 3px solid var(--cui-success, #2eb85c); }
+  &--danger  { border-top: 3px solid var(--cui-danger, #e55353); }
+
+  &--primary .app-stat-card__icon { background: var(--cui-primary-bg-subtle, #e7f1ff); color: var(--cui-primary, #0d6efd); }
+  &--info    .app-stat-card__icon { background: var(--cui-info-bg-subtle, #e7f6ff);   color: var(--cui-info, #3399ff); }
+  &--warning .app-stat-card__icon { background: var(--cui-warning-bg-subtle, #fff3cd);color: var(--cui-warning, #f9b115); }
+  &--success .app-stat-card__icon { background: var(--cui-success-bg-subtle, #d1e7dd);color: var(--cui-success, #2eb85c); }
+  &--danger  .app-stat-card__icon { background: var(--cui-danger-bg-subtle, #f8d7da); color: var(--cui-danger, #e55353); }
+}
+
+// ── Table card wrapper ───────────────────────────────────────────────
+// Wrap a data table / PrimeNG table in this for the consistent elevated
+// surface used across list pages.
+.app-table-card {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  box-shadow: var(--app-shadow-sm);
+  overflow: hidden;
+
+  .p-datatable,
+  .table {
+    margin-bottom: 0;
+  }
+}
+
+// ── Button refinements (scoped, additive) ────────────────────────────
+// Slightly larger radius + icon alignment for buttons used inside the
+// new design-system surfaces. Does not touch global `.btn`.
+.app-card,
+.app-stat-card,
+.app-page-header {
+  .btn {
+    border-radius: var(--app-radius-sm);
+  }
+
+  .btn svg,
+  .btn i {
+    vertical-align: -0.125em;
+  }
+}
+
+// ── Soft pill (e.g. live totals / status) ────────────────────────────
+.app-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--app-radius-pill);
+  background: linear-gradient(
+    135deg,
+    var(--cui-primary-bg-subtle, #e7f1ff),
+    var(--cui-info-bg-subtle, #cff4fc)
+  );
+  border: 1px solid var(--cui-primary-border-subtle, #9ec5fe);
+
+  &__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--app-muted);
+  }
+
+  &__value {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--cui-primary-text-emphasis, #052c65);
+  }
+}

@@ -1,0 +1,11 @@
+.app-field-label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--app-body, #212529);
+
+  .error {
+    color: var(--cui-danger, #e55353);
+  }
+}

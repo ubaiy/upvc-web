@@ -26,11 +26,13 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { InputTextModule } from 'primeng/inputtext';
 import { PanelModule } from 'primeng/panel';
+import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
 
 @NgModule({
   declarations: [ProfileComponent, DetailComponent],
   imports: [
     ProfileRoutingModule,
+    SharedComponentsModule,
     CardModule,
     NavModule,
     IconModule,

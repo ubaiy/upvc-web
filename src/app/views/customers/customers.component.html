@@ -1,18 +1,29 @@
-<div class="d-flex mb-5 justify-content-between align-items-center">
-  <h4 class="">Customers</h4>
-  <p-button routerLink="add">Add New</p-button>
-</div>
-<div class="card">
-  <p-table
+<div class="app-page-surface">
+  <app-page-header
+    eyebrow="Sales"
+    title="Customers"
+    subtitle="Manage your customer directory and contact details."
+  >
+    <p-button actions routerLink="add">Add New</p-button>
+  </app-page-header>
+
+  <div class="app-table-card">
+    <div class="app-section-heading">
+      <span class="app-section-heading__title">Customer list</span>
+    </div>
+    <div class="table-responsive">
+    <p-table
     #dt1
     [value]="customers"
     [paginator]="true"
-    [rows]="5"
+    [rows]="10"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
     [globalFilterFields]="['name', 'identity', 'phone', 'email', 'is_dealer']"
     (sortFunction)="customSort($event)"
     [customSort]="true"
     [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[5, 10, 15]"
+    [rowsPerPageOptions]="[10, 25, 50]"
   >
     <ng-template pTemplate="caption">
       <button
@@ -34,22 +45,22 @@
     </ng-template>
     <ng-template pTemplate="header">
       <tr>
-        <th pSortableColumn="identity" style="width: 10%" scope="row">
+        <th pSortableColumn="identity" style="width: 10%" scope="col">
           Identity <p-sortIcon field="identity"></p-sortIcon>
         </th>
-        <th pSortableColumn="name" style="width: 20%" scope="row">
+        <th pSortableColumn="name" style="width: 20%" scope="col">
           Name <p-sortIcon field="name"></p-sortIcon>
         </th>
-        <th pSortableColumn="phone" style="width: 20%" scope="row">
+        <th pSortableColumn="phone" style="width: 20%" scope="col">
           Phone <p-sortIcon field="phone"></p-sortIcon>
         </th>
-        <th pSortableColumn="email" style="width: 20%" scope="row">
+        <th pSortableColumn="email" style="width: 20%" scope="col">
           Email <p-sortIcon field="email"></p-sortIcon>
         </th>
-        <th pSortableColumn="is_dealer" style="width: 10%" scope="row">
+        <th pSortableColumn="is_dealer" style="width: 10%" scope="col">
           Is dealer <p-sortIcon field="is_dealer"></p-sortIcon>
         </th>
-        <th style="width: 20%" scope="row">Actions</th>
+        <th style="width: 20%" scope="col">Actions</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-customer>
@@ -62,6 +73,8 @@
         <td>
           <p-button
             icon="pi pi-pencil"
+            pTooltip="Edit customer"
+            aria-label="Edit customer"
             [routerLink]="['edit', customer.id]"
             styleClass="p-button-rounded p-button-text"
           ></p-button>
@@ -72,11 +85,20 @@
           ></p-button> -->
           <p-button
             icon="pi pi-trash"
+            pTooltip="Delete customer"
+            aria-label="Delete customer"
             (onClick)="deleteCustomer(customer)"
-            styleClass="p-button-rounded p-button-text"
+            styleClass="p-button-rounded p-button-text p-button-danger"
           ></p-button>
         </td>
       </tr>
     </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="6">No records yet</td>
+      </tr>
+    </ng-template>
   </p-table>
+    </div>
+  </div>
 </div>

@@ -1,17 +1,28 @@
-<div class="d-flex mb-5 justify-content-between align-items-center">
-  <h4 class="">Quotations</h4>
-  <div style="gap: 10px; display: flex">
-    <p-button (onClick)="bulkUpdate(true)">Update All</p-button>
-    <p-button (onClick)="bulkUpdate(false)">Update Selected</p-button>
-    <p-button routerLink="add">Add New</p-button>
-  </div>
-</div>
-<div class="card">
-  <p-table
+<div class="app-page-surface">
+  <app-page-header
+    eyebrow="Sales"
+    title="Quotations"
+    subtitle="Create, update and convert customer quotations."
+  >
+    <div actions style="gap: 10px; display: flex">
+      <p-button (onClick)="bulkUpdate(true)">Update All</p-button>
+      <p-button (onClick)="bulkUpdate(false)">Update Selected</p-button>
+      <p-button routerLink="add">Add New</p-button>
+    </div>
+  </app-page-header>
+
+  <div class="app-table-card">
+    <div class="app-section-heading">
+      <span class="app-section-heading__title">Quotation list</span>
+    </div>
+    <div class="table-responsive">
+    <p-table
     #dt1
     [value]="quotationList"
     [paginator]="true"
-    [rows]="25"
+    [rows]="10"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
     [globalFilterFields]="[
       'quatation_identity',
       'quatation_name',
@@ -23,7 +34,7 @@
     (sortFunction)="customSort($event)"
     [customSort]="true"
     [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[25, 50, 75, 100]"
+    [rowsPerPageOptions]="[10, 25, 50]"
   >
     <ng-template pTemplate="caption">
       <button
@@ -45,27 +56,25 @@
     </ng-template>
     <ng-template pTemplate="header">
       <tr>
-        <th style="width: 5%" scope="row">Select</th>
-        <th pSortableColumn="quatation_identity" style="width: 10%" scope="row">
-          Quatation Identity
+        <th style="width: 5%" scope="col">Select</th>
+        <th pSortableColumn="quatation_identity" style="width: 10%" scope="col">
+          Quotation Identity
           <p-sortIcon field="quatation_identity"></p-sortIcon>
         </th>
-        <th pSortableColumn="quatation_name" style="width: 20%" scope="row">
-          Quatation Name
+        <th pSortableColumn="quatation_name" style="width: 20%" scope="col">
+          Quotation Name
           <p-sortIcon field="quatation_name"></p-sortIcon>
         </th>
-        <th pSortableColumn="name" style="width: 20%" scope="row">
+        <th pSortableColumn="name" style="width: 20%" scope="col">
           Customer Name <p-sortIcon field="name"></p-sortIcon>
         </th>
-        <th pSortableColumn="grand_total" style="width: 15%" scope="row">
+        <th pSortableColumn="grand_total" style="width: 15%" scope="col">
           Grand Total <p-sortIcon field="grand_total"></p-sortIcon>
         </th>
-        <th pSortableColumn="phone" style="width: 10%" scope="row">
+        <th pSortableColumn="phone" style="width: 10%" scope="col">
           Phone <p-sortIcon field="phone"></p-sortIcon>
         </th>
-        <th pSortableColumn="actions" style="width: 20%" scope="row">
-          Actions
-        </th>
+        <th style="width: 20%" scope="col">Actions</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-quotation>
@@ -85,24 +94,46 @@
         <td>
           <p-button
             icon="pi pi-pencil"
+            pTooltip="Edit quotation"
+            aria-label="Edit quotation"
             [rounded]="true"
             [outlined]="true"
             [routerLink]="['edit', quotation.id]"
           ></p-button>
           <p-button
             icon="pi pi-calculator"
+            pTooltip="Open quotation details"
+            aria-label="Open quotation details"
+            [rounded]="true"
+            [outlined]="true"
+            [routerLink]="['detail', quotation.id]"
+          ></p-button>
+          <p-button
+            icon="pi pi-money-bill"
+            pTooltip="Convert to Bill"
+            aria-label="Convert to Bill"
             [rounded]="true"
             [outlined]="true"
             [routerLink]="['detail', quotation.id]"
           ></p-button>
           <p-button
             icon="pi pi-trash"
+            pTooltip="Delete quotation"
+            aria-label="Delete quotation"
             (onClick)="deleteQuotation(quotation)"
             [rounded]="true"
             [outlined]="true"
+            severity="danger"
           ></p-button>
         </td>
       </tr>
     </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="7">No records yet</td>
+      </tr>
+    </ng-template>
   </p-table>
+    </div>
+  </div>
 </div>

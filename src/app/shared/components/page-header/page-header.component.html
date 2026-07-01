@@ -1,0 +1,10 @@
+<div class="app-page-header" [class.app-page-header--sticky]="sticky">
+  <div class="app-page-header__lead">
+    <span class="app-page-header__eyebrow" *ngIf="eyebrow">{{ eyebrow }}</span>
+    <h1 class="app-page-header__title">{{ title }}</h1>
+    <p class="app-page-header__subtitle" *ngIf="subtitle">{{ subtitle }}</p>
+  </div>
+  <div class="app-page-header__actions">
+    <ng-content select="[actions]"></ng-content>
+  </div>
+</div>

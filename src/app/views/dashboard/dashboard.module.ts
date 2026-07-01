@@ -25,6 +25,7 @@ import { DashboardComponent } from './dashboard.component';
 
 import { WidgetsModule } from '../widgets/widgets.module';
 import { DocsComponentsModule } from '@docs-components/docs-components.module';
+import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 
 @NgModule({
   imports: [
@@ -55,6 +56,7 @@ import { DocsComponentsModule } from '@docs-components/docs-components.module';
     DocsComponentsModule,
     ProgressModule,
     ChartjsModule,
+    SharedComponentsModule,
   ],
   declarations: [DashboardComponent],
 })

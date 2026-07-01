@@ -1,9 +1,10 @@
-<div class="d-flex mb-5 justify-content-between align-items-center">
-  <h4 class="">Profile Colors</h4>
-  <p-button routerLink="add">Add New</p-button>
-</div>
-<div class="card">
-  <p-table
+<div class="app-page-surface">
+  <app-page-header eyebrow="Masters" title="Profile Colors">
+    <p-button actions routerLink="add">Add New</p-button>
+  </app-page-header>
+  <div class="app-table-card">
+    <div class="table-responsive">
+      <p-table
     #dt1
     [value]="profileList"
     dataKey="id"
@@ -39,18 +40,16 @@
     </ng-template>
     <ng-template pTemplate="header">
       <tr>
-        <th pSortableColumn="color_name" style="width: 22%" scope="row">
+        <th pSortableColumn="color_name" style="width: 22%" scope="col">
           Color Name <p-sortIcon field="color_name"></p-sortIcon>
         </th>
-        <th pSortableColumn="color_code" style="width: 22%" scope="row">
+        <th pSortableColumn="color_code" style="width: 22%" scope="col">
           Color Code <p-sortIcon field="color_code"></p-sortIcon>
         </th>
-        <th pSortableColumn="is_default" style="width: 22%" scope="row">
+        <th pSortableColumn="is_default" style="width: 22%" scope="col">
           Default <p-sortIcon field="is_default"></p-sortIcon>
         </th>
-        <th pSortableColumn="actions" style="width: 12%" scope="row">
-          Actions
-        </th>
+        <th style="width: 12%" scope="col">Actions</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-profile>
@@ -61,17 +60,28 @@
         <td>
           <p-button
             icon="pi pi-pencil"
+            pTooltip="Edit color"
+            aria-label="Edit color"
             [routerLink]="['edit', profile.id]"
             styleClass="p-button-rounded p-button-text"
           ></p-button>
           <p-button
             icon="pi pi-trash"
             *ngIf="profile.is_default === 0"
+            pTooltip="Delete color"
+            aria-label="Delete color"
             (click)="deleteColor(profile)"
-            styleClass="p-button-rounded p-button-text"
+            styleClass="p-button-rounded p-button-text p-button-danger"
           ></p-button>
         </td>
       </tr>
     </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="4">No records yet</td>
+      </tr>
+    </ng-template>
   </p-table>
+    </div>
+  </div>
 </div>

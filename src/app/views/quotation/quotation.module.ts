@@ -19,6 +19,7 @@ import { ChartjsModule } from '@coreui/angular-chartjs';
 import { IconModule } from '@coreui/icons-angular';
 import { WidgetsModule } from '../widgets/widgets.module';
 import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 import { PaginatorModule } from 'primeng/paginator';
 // import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -38,6 +39,7 @@ import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-desig
 import { ButtonModule } from '@coreui/angular';
 import { DesignFinalComponent } from './sub-quotation/design-final/design-final.component';
 import { SuperSystemComponent } from './sub-quotation/super-system/super-system.component';
+import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 @NgModule({
   declarations: [
     QuotationComponent,
@@ -52,6 +54,7 @@ import { SuperSystemComponent } from './sub-quotation/super-system/super-system.
   ],
   imports: [
     QuotationRoutingModule,
+    SharedComponentsModule,
     CardModule,
     NavModule,
     IconModule,
@@ -70,6 +73,7 @@ import { SuperSystemComponent } from './sub-quotation/super-system/super-system.
     ChartjsModule,
     AvatarModule,
     TableModule,
+    TooltipModule,
     WidgetsModule,
     ModalModule,
     AlertModule,

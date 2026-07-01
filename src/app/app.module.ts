@@ -58,6 +58,7 @@ import { LoaderInterceptor } from 'src/app/shared/interceptors/loader.intercepto
 import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ProfileComponent } from './views/profile/profile.component';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
+import { SharedComponentsModule } from './shared/components/shared-components.module';
 const APP_CONTAINERS = [
   DefaultFooterComponent,
   DefaultHeaderComponent,
@@ -100,6 +101,7 @@ const APP_CONTAINERS = [
     AlertModule,
     ProgressBarModule,
     ProgressSpinnerModule,
+    SharedComponentsModule,
   ],
   providers: [
     ConfirmationDialogService,

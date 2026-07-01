@@ -5,3 +5,122 @@
   will-change: auto;
   @include transition(padding .15s);
 }
+
+// ═══════════════════════════════════════════════════════════════════
+//  App-shell polish (additive — refines the CoreUI shell chrome)
+// ═══════════════════════════════════════════════════════════════════
+
+// ── Body canvas: soft tinted surface so elevated cards read clearly ──
+.wrapper.bg-light {
+  background-color: #f4f6fb !important;
+}
+
+// ── Header bar ───────────────────────────────────────────────────────
+.header.header-sticky {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--cui-border-color, #dee2e6);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+
+  .header-toggler {
+    border-radius: 0.5rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background-color: var(--cui-tertiary-bg, #f0f2f7);
+      color: var(--cui-primary, #0d6efd);
+    }
+  }
+
+  .c-avatar,
+  c-avatar {
+    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
+    transition: box-shadow 0.15s ease;
+  }
+
+  .dropdown-toggle:hover .c-avatar,
+  .dropdown-toggle:hover c-avatar {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.22);
+  }
+}
+
+// ── Sidebar shell ────────────────────────────────────────────────────
+.sidebar {
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+
+  .sidebar-brand {
+    padding-block: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
+}
+
+// ── Sidebar nav items ────────────────────────────────────────────────
+.sidebar-nav {
+  padding: 0.75rem 0.6rem;
+
+  // Section / group titles
+  .nav-title {
+    padding-top: 1rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.6;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    margin: 0.12rem 0;
+    padding: 0.6rem 0.85rem;
+    border-radius: 0.6rem;
+    font-weight: 500;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    .nav-icon {
+      transition: color 0.15s ease;
+    }
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    // Clear active highlight: tinted pill + accent bar + bold icon
+    &.active {
+      position: relative;
+      background-color: rgba(255, 255, 255, 0.12);
+      font-weight: 600;
+      color: #fff;
+
+      &::before {
+        content: "";
+        position: absolute;
+        inset-block: 0.45rem;
+        inset-inline-start: 0;
+        width: 3px;
+        border-radius: 0 3px 3px 0;
+        background: var(--cui-primary, #0d6efd);
+      }
+
+      .nav-icon {
+        color: var(--cui-primary, #5b8def);
+      }
+    }
+  }
+
+  // Expandable groups
+  .nav-group.show > .nav-group-toggle {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  .nav-group-items .nav-link {
+    padding-block: 0.45rem;
+    font-size: 0.92rem;
+  }
+}
+
+// ── Footer ───────────────────────────────────────────────────────────
+.footer {
+  border-top: 1px solid var(--cui-border-color, #dee2e6);
+  background: transparent;
+}

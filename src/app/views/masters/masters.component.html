@@ -1,9 +1,10 @@
-<div class="d-flex mb-5 justify-content-between align-items-center">
-  <h4 class="">{{ title }}</h4>
-  <p-button (click)="redirectToEdit()">Add New</p-button>
-</div>
-<div class="card">
-  <p-table
+<div class="app-page-surface">
+  <app-page-header eyebrow="Masters" [title]="title">
+    <p-button actions (click)="redirectToEdit()">Add New</p-button>
+  </app-page-header>
+  <div class="app-table-card">
+    <div class="table-responsive">
+      <p-table
     #dt1
     [value]="masterData"
     dataKey="id"
@@ -41,28 +42,26 @@
     </ng-template>
     <ng-template pTemplate="header">
       <tr>
-        <th pSortableColumn="product_no" style="width: 10%" scope="row">
+        <th pSortableColumn="product_no" style="width: 10%" scope="col">
           Product No <p-sortIcon field="product_no"></p-sortIcon>
         </th>
-        <th pSortableColumn="name" style="width: 15%" scope="row">
+        <th pSortableColumn="name" style="width: 15%" scope="col">
           Name <p-sortIcon field="name"></p-sortIcon>
         </th>
 
-        <th pSortableColumn="description" style="width: 30%" scope="row">
+        <th pSortableColumn="description" style="width: 30%" scope="col">
           Description <p-sortIcon field="description"></p-sortIcon>
         </th>
-        <th pSortableColumn="type" style="width: 15%" scope="row">
+        <th pSortableColumn="type" style="width: 15%" scope="col">
           Type <p-sortIcon field="type"></p-sortIcon>
         </th>
-        <th pSortableColumn="cost" style="width: 10%" scope="row">
+        <th pSortableColumn="cost" style="width: 10%" scope="col">
           Cost <p-sortIcon field="cost"></p-sortIcon>
         </th>
-        <th pSortableColumn="unit" style="width: 10%" scope="row">
+        <th pSortableColumn="unit" style="width: 10%" scope="col">
           Unit <p-sortIcon field="unit"></p-sortIcon>
         </th>
-        <th pSortableColumn="actions" style="width: 10%" scope="row">
-          Actions
-        </th>
+        <th style="width: 10%" scope="col">Actions</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-masterData>
@@ -76,11 +75,20 @@
         <td>
           <p-button
             icon="pi pi-pencil"
+            pTooltip="Edit"
+            aria-label="Edit"
             (click)="redirectToEdit(masterData)"
             styleClass="p-button-rounded p-button-text"
           ></p-button>
         </td>
       </tr>
     </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="7">No records yet</td>
+      </tr>
+    </ng-template>
   </p-table>
+    </div>
+  </div>
 </div>

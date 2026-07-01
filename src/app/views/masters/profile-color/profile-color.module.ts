@@ -20,18 +20,22 @@ import {
 } from '@coreui/angular';
 import { IconModule } from '@coreui/icons-angular';
 import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 import { PaginatorModule } from 'primeng/paginator';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { InputTextModule } from 'primeng/inputtext';
+import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
 @NgModule({
   declarations: [ListComponent, DetailComponent],
   imports: [
     CommonModule,
     ProfileColorRoutingModule,
+    SharedComponentsModule,
     IconModule,
     TableModule,
+    TooltipModule,
     PaginatorModule,
     ButtonModule,
     ConfirmDialogModule,

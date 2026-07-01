@@ -56,6 +56,14 @@ export class LoaderInterceptor implements HttpInterceptor {
             if (err.status == 401) {
               this._toastService.showError('Session Expired.');
               this.authService.logout();
+            } else if (!req.url.includes('i18n')) {
+              // Surface failed requests (400/500/network) so actions aren't silent.
+              const detail =
+                err?.error?.message ||
+                (err?.status === 0
+                  ? 'Network error. Please check your connection.'
+                  : err?.statusText || 'Something went wrong. Please try again.');
+              this._toastService.showError(detail);
             }
             this.removeRequest(req);
             observer.error(err);

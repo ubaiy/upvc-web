@@ -19,6 +19,7 @@ import {
 import { IconModule } from '@coreui/icons-angular';
 import { ChartjsModule } from '@coreui/angular-chartjs';
 import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 import { PaginatorModule } from 'primeng/paginator';
 import { ButtonModule } from 'primeng/button';
 import { WidgetsModule } from '../widgets/widgets.module';
@@ -27,9 +28,11 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
+import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 @NgModule({
   imports: [
     CustomersRoutingModule,
+    SharedComponentsModule,
     ToastModule,
     CardModule,
     PaginatorModule,
@@ -47,6 +50,7 @@ import { InputTextModule } from 'primeng/inputtext';
     ChartjsModule,
     AvatarModule,
     TableModule,
+    TooltipModule,
     WidgetsModule,
     ModalModule,
     AlertModule,

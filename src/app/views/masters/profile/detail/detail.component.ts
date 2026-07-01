@@ -140,6 +140,12 @@ export class DetailComponent {
         '',
         [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
       ],
+      // Phase 1 — profile geometry (optional; drives accurate rendering + deductions)
+      role: [null],
+      face_width_mm: [null, [Validators.pattern(/^\d+(\.\d{1,4})?$/)]],
+      profile_depth_mm: [null, [Validators.pattern(/^\d+(\.\d{1,4})?$/)]],
+      rebate_mm: [null, [Validators.pattern(/^\d+(\.\d{1,4})?$/)]],
+      sightline_mm: [null, [Validators.pattern(/^\d+(\.\d{1,4})?$/)]],
     });
     return fg;
   }

@@ -21,14 +21,17 @@ import { WidgetsModule } from '../widgets/widgets.module';
 import { TypeMarginRoutingModule } from './type-margin-routing.module';
 import { TypeMarginComponent } from './type-margin.component';
 import { TableModule } from 'primeng/table';
+import { TooltipModule } from 'primeng/tooltip';
 import { PaginatorModule } from 'primeng/paginator';
 import { ButtonModule } from 'primeng/button';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { InputTextModule } from 'primeng/inputtext';
+import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 @NgModule({
   imports: [
     TypeMarginRoutingModule,
+    SharedComponentsModule,
     CardModule,
     NavModule,
     IconModule,
@@ -48,6 +51,7 @@ import { InputTextModule } from 'primeng/inputtext';
     AlertModule,
     FormsModule,
     TableModule,
+    TooltipModule,
     PaginatorModule,
     ButtonModule,
     ConfirmDialogModule,

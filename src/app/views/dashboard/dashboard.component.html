@@ -1,170 +1,100 @@
-<h2 class="mb-5">Welcome {{ userDetail.name }}</h2>
-<!-- <app-widgets-dropdown></app-widgets-dropdown>
- -->
+<div class="app-page-surface dashboard">
+  <app-page-header
+    eyebrow="Dashboard"
+    [title]="'Welcome ' + (userDetail?.name || '')"
+    subtitle="Here is what is happening across your business."
+  ></app-page-header>
 
-<c-row>
-  <c-col sm="6" xl="3">
-    <c-widget-stat-a class="mb-4" color="primary" title="Total Customers">
-      <ng-template cTemplateId="widgetValueTemplate" ngPreserveWhitespaces>
-        {{ dashboardDetail?.total_customer }}
-        <span class="fs-6 fw-normal">
-          <!-- (-12.4% <svg cIcon name="cilArrowBottom"></svg>) -->
+  <!-- ── Primary KPIs ─────────────────────────────────────────────── -->
+  <c-row class="g-3">
+    <c-col sm="6" xl="3">
+      <div class="app-stat-card app-stat-card--primary">
+        <span class="app-stat-card__icon">
+          <svg cIcon name="cilPeople"></svg>
         </span>
-      </ng-template>
-      <ng-template cTemplateId="widgetChartTemplate">
-        <c-chart
-          [data]="data[0]"
-          [options]="options[0]"
-          class="mt-3 mx-3"
-          height="70"
-          [type]="'line'"
-        ></c-chart>
-      </ng-template>
-    </c-widget-stat-a>
-  </c-col>
-  <c-col sm="6" xl="3">
-    <c-widget-stat-a [title]="'Total Quotations'" class="mb-4" color="info">
-      <ng-template cTemplateId="widgetValueTemplate" ngPreserveWhitespaces>
-        <span>{{ dashboardDetail?.total_quatation }}</span>
-        <span class="fs-6 fw-normal">
-          <!-- (40.9%<svg cIcon name="cilArrowTop"></svg>) -->
+        <span class="app-stat-card__body">
+          <span class="app-stat-card__label">Total Customers</span>
+          <span class="app-stat-card__value">{{ dashboardDetail?.total_customer ?? 0 }}</span>
         </span>
-      </ng-template>
-      <ng-template cTemplateId="widgetChartTemplate">
-        <c-chart
-          [data]="data[1]"
-          [options]="options[1]"
-          class="mt-3 mx-3"
-          height="70"
-          type="line"
-        ></c-chart>
-      </ng-template>
-    </c-widget-stat-a>
-  </c-col>
-  <c-col sm="6" xl="3">
-    <c-widget-stat-a
-      [title]="'Total Quotation Amount'"
-      class="mb-4"
-      color="warning"
-    >
-      <ng-template cTemplateId="widgetValueTemplate" ngPreserveWhitespaces>
-        <span
-          >₹
-          {{
-            dashboardDetail?.total_revenue_quatation | number : "1.2-3"
-          }}</span
-        >
-        <span class="fs-6 fw-normal">
-          <!-- (84.7% <svg cIcon name="cilArrowTop"></svg>) -->
-        </span>
-      </ng-template>
-      <ng-template cTemplateId="widgetChartTemplate">
-        <c-chart
-          [data]="data[2]"
-          [options]="options[2]"
-          class="mt-3"
-          height="70"
-          type="line"
-        ></c-chart>
-      </ng-template>
-    </c-widget-stat-a>
-  </c-col>
-  <c-col sm="6" xl="3">
-    <c-widget-stat-a [title]="'Total Bill Amount'" class="mb-4" color="success">
-      <ng-template cTemplateId="widgetValueTemplate" ngPreserveWhitespaces>
-        <span
-          >₹
-          {{
-            dashboardDetail?.total_revenue_quatation_converted_to_bill
-              | number : "1.2-3"
-          }}</span
-        >
-        <span class="fs-6 fw-normal">
-          <!-- (84.7% <svg cIcon name="cilArrowTop"></svg>) -->
-        </span>
-      </ng-template>
-      <ng-template cTemplateId="widgetChartTemplate">
-        <c-chart
-          [data]="data[2]"
-          [options]="options[2]"
-          class="mt-3"
-          height="70"
-          type="line"
-        ></c-chart>
-      </ng-template>
-    </c-widget-stat-a>
-  </c-col>
-</c-row>
+      </div>
+    </c-col>
 
-<c-card class="mb-4">
-  <c-card-body>
-    <c-row>
-      <c-col sm="5">
-        <h4 class="card-title mb-0" id="traffic">Traffic</h4>
-        <div class="small text-medium-emphasis">January - December 2021</div>
-      </c-col>
-      <c-col class="d-none d-md-block" sm="7">
-        <button cButton class="float-end" color="primary">
-          <svg cIcon name="cilCloudDownload"></svg>
-        </button>
-        <form [formGroup]="trafficRadioGroup">
-          <c-button-group class="float-end me-3" role="group">
-            <input
-              class="btn-check"
-              formControlName="trafficRadio"
-              type="radio"
-              value="Day"
-            />
-            <label
-              (click)="setTrafficPeriod('Day')"
-              cButton
-              cFormCheckLabel
-              color="secondary"
-              variant="outline"
-              >Day</label
-            >
+    <c-col sm="6" xl="3">
+      <div class="app-stat-card app-stat-card--info">
+        <span class="app-stat-card__icon">
+          <svg cIcon name="cilCalculator"></svg>
+        </span>
+        <span class="app-stat-card__body">
+          <span class="app-stat-card__label">Total Quotations</span>
+          <span class="app-stat-card__value">{{ dashboardDetail?.total_quatation ?? 0 }}</span>
+        </span>
+      </div>
+    </c-col>
 
-            <input
-              class="btn-check"
-              formControlName="trafficRadio"
-              type="radio"
-              value="Month"
-            />
-            <label
-              (click)="setTrafficPeriod('Month')"
-              cButton
-              cFormCheckLabel
-              color="secondary"
-              variant="outline"
-              >Month</label
-            >
+    <c-col sm="6" xl="3">
+      <div class="app-stat-card app-stat-card--warning">
+        <span class="app-stat-card__icon">
+          <svg cIcon name="cilDollar"></svg>
+        </span>
+        <span class="app-stat-card__body">
+          <span class="app-stat-card__label">Total Quotation Amount</span>
+          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation | number : "1.2-3" }}</span>
+        </span>
+      </div>
+    </c-col>
 
-            <input
-              class="btn-check"
-              formControlName="trafficRadio"
-              type="radio"
-              value="Year"
-            />
-            <label
-              (click)="setTrafficPeriod('Year')"
-              cButton
-              cFormCheckLabel
-              color="secondary"
-              variant="outline"
-              >Year</label
-            >
-          </c-button-group>
-        </form>
-      </c-col>
-    </c-row>
-    <c-chart
-      [data]="mainChart.data"
-      [height]="300"
-      [ngStyle]="{ 'marginTop.px': 40 }"
-      [options]="mainChart.options"
-      [type]="mainChart.type"
-    >
-      Main chart
-    </c-chart>
-  </c-card-body>
-</c-card>
+    <c-col sm="6" xl="3">
+      <div class="app-stat-card app-stat-card--success">
+        <span class="app-stat-card__icon">
+          <svg cIcon name="cilCreditCard"></svg>
+        </span>
+        <span class="app-stat-card__body">
+          <span class="app-stat-card__label">Total Bill Amount</span>
+          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation_converted_to_bill | number : "1.2-3" }}</span>
+        </span>
+      </div>
+    </c-col>
+  </c-row>
+
+  <!-- ── This month / secondary metrics ───────────────────────────── -->
+  <c-row class="g-3 mt-1">
+    <c-col sm="6" xl="4">
+      <div class="app-stat-card app-stat-card--info">
+        <span class="app-stat-card__icon">
+          <svg cIcon name="cilLayers"></svg>
+        </span>
+        <span class="app-stat-card__body">
+          <span class="app-stat-card__label">Quotation Products</span>
+          <span class="app-stat-card__value">{{ dashboardDetail?.total_quatation_product ?? 0 }}</span>
+          <span class="app-stat-card__hint">Across all quotations</span>
+        </span>
+      </div>
+    </c-col>
+
+    <c-col sm="6" xl="4">
+      <div class="app-stat-card app-stat-card--warning">
+        <span class="app-stat-card__icon">
+          <svg cIcon name="cilChart"></svg>
+        </span>
+        <span class="app-stat-card__body">
+          <span class="app-stat-card__label">Quotation Revenue</span>
+          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation_current_month | number : "1.2-3" }}</span>
+          <span class="app-stat-card__hint">This month</span>
+        </span>
+      </div>
+    </c-col>
+
+    <c-col sm="12" xl="4">
+      <div class="app-stat-card app-stat-card--success">
+        <span class="app-stat-card__icon">
+          <svg cIcon name="cilChartPie"></svg>
+        </span>
+        <span class="app-stat-card__body">
+          <span class="app-stat-card__label">Billed Revenue</span>
+          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation_converted_to_bill_current_month | number : "1.2-3" }}</span>
+          <span class="app-stat-card__hint">This month</span>
+        </span>
+      </div>
+    </c-col>
+  </c-row>
+</div>

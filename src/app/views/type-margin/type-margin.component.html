@@ -1,18 +1,21 @@
-<div class="d-flex mb-5 justify-content-between align-items-center">
-  <h4 class="">Order Type Margins</h4>
-  <p-button color="dark" (click)="openModel()">Add New</p-button>
-</div>
-<div class="card">
-  <p-table
+<div class="app-page-surface">
+  <app-page-header eyebrow="Configuration" title="Order Type Margins">
+    <p-button actions (click)="openModel()">Add New</p-button>
+  </app-page-header>
+  <div class="app-table-card">
+    <div class="table-responsive">
+      <p-table
     #dt1
     [value]="typeMargins"
     [paginator]="true"
-    [rows]="5"
+    [rows]="10"
+    [showCurrentPageReport]="true"
+    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
     [globalFilterFields]="['name']"
     (sortFunction)="customSort($event)"
     [customSort]="true"
     [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[5, 10, 15]"
+    [rowsPerPageOptions]="[10, 25, 50]"
   >
     <ng-template pTemplate="caption">
       <button
@@ -34,16 +37,16 @@
     </ng-template>
     <ng-template pTemplate="header">
       <tr>
-        <th pSortableColumn="name" style="width: 25%" scope="row">
+        <th pSortableColumn="name" style="width: 25%" scope="col">
           Name <p-sortIcon field="name"></p-sortIcon>
         </th>
-        <th pSortableColumn="mark_up" style="width: 25%" scope="row">
+        <th pSortableColumn="mark_up" style="width: 25%" scope="col">
           Mark Up <p-sortIcon field="mark_up"></p-sortIcon>
         </th>
-        <th pSortableColumn="pricing" style="width: 25%" scope="row">
+        <th pSortableColumn="pricing" style="width: 25%" scope="col">
           Pricing <p-sortIcon field="pricing"></p-sortIcon>
         </th>
-        <th pSortableColumn="action" style="width: 25%" scope="row">Action</th>
+        <th style="width: 25%" scope="col">Action</th>
       </tr>
     </ng-template>
     <ng-template pTemplate="body" let-typeMargin>
@@ -54,18 +57,29 @@
         <td>
           <p-button
             icon="pi pi-pencil"
+            pTooltip="Edit margin"
+            aria-label="Edit margin"
             (click)="openModel(typeMargin)"
             styleClass="p-button-rounded p-button-text"
           ></p-button>
           <p-button
             icon="pi pi-trash"
+            pTooltip="Delete margin"
+            aria-label="Delete margin"
             (onClick)="deleteTypeMargin(typeMargin)"
-            styleClass="p-button-rounded p-button-text"
+            styleClass="p-button-rounded p-button-text p-button-danger"
           ></p-button>
         </td>
       </tr>
     </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="4">No records yet</td>
+      </tr>
+    </ng-template>
   </p-table>
+    </div>
+  </div>
 </div>
 <c-modal
   id="liveDemoModal"
@@ -83,7 +97,9 @@
     <div>
       <form [formGroup]="form">
         <c-row>
-          <label cLabel="col" class="col-sm-2" for="Name"> Name </label>
+          <label cLabel="col" class="col-sm-2" for="Name">
+            Name <span class="error">*</span>
+          </label>
           <c-col [sm]="10">
             <input cFormControl id="Name" type="text" formControlName="name" />
             <small
@@ -97,7 +113,9 @@
           </c-col>
         </c-row>
         <c-row class="mt-3">
-          <label cLabel="col" class="col-sm-2" for="mark_up"> Mark Up </label>
+          <label cLabel="col" class="col-sm-2" for="mark_up">
+            Mark Up <span class="error">*</span>
+          </label>
           <c-col [sm]="10">
             <input
               cFormControl
@@ -124,7 +142,9 @@
           </c-col>
         </c-row>
         <c-row class="mt-3">
-          <label cLabel="col" class="col-sm-2" for="pricing"> Pricing </label>
+          <label cLabel="col" class="col-sm-2" for="pricing">
+            Pricing <span class="error">*</span>
+          </label>
           <c-col [sm]="10">
             <input
               cFormControl

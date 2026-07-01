@@ -1,248 +1,325 @@
-<h2 class="mb-5">
-  {{ edit ? "Edit Quotation" : "Add Quotation" }} <br> Product Number -
-  {{ index_no }}
-</h2>
-<c-container>
-  <c-row class="align-items-center text-class">
-    <!-- <svg [cIcon]="circleIcon" width="10" title="Shield Icon"></svg> -->
-    <button cButton color="danger" class="classIner" (click)="resetDesign()">
-      Refresh Design
-    </button>
-    <strong class="classIner">Total - {{ price }}</strong>
-  </c-row>
-  <c-row class="align-items-start">
-    <c-container>
-      <c-row>
-        <c-col>
-          <div *ngIf="!rectSelected">
-            <form cForm [formGroup]="form">
-              <c-row>
-                <c-col>
-                  <div class="mb-3">
-                    <label cLabel="" for="quantity">Quantity</label>
-                    <input
-                      aria-describedby="quantity"
-                      cFormControl
-                      id="quantity"
-                      type="number"
-                      formControlName="quantity"
-                    />
-                    <small
-                      class="error"
-                      *ngIf="
-            (f['quantity']?.errors?.['required'] && f['quantity'].touched) ||
-            (f['quantity']?.errors?.['required'] && submitted)
-          "
-                      >Quantity is required</small
-                    >
-                  </div></c-col
-                >
-                <c-col>
-                  <div class="mb-3">
-                    <label cLabel="" for="quantity">Profile Color</label>
-                    <select
-                      aria-label="Default select example"
-                      cSelect
-                      formControlName="color"
-                    >
-                      <option disabled>Please select Profile Color</option>
-                      <option *ngFor="let color of colors" [ngValue]="color">
-                        {{ color.color_name }}
-                      </option>
-                    </select>
-                    <small
-                      class="error"
-                      *ngIf="
-            (f['color_name']?.errors?.['required'] && f['color_name'].touched) ||
-            (f['color_name']?.errors?.['required'] && submitted)
-          "
-                      >Color is required</small
-                    >
-                  </div></c-col
-                >
-              </c-row>
-              <c-row>
-                <c-col>
-                  <div class="mb-3">
-                    <label cLabel="" for="width">Width</label>
-                    <input
-                      aria-describedby="width"
-                      cFormControl
-                      id="width"
-                      type="number"
-                      formControlName="width"
-                    />
-                    <small
-                      class="error"
-                      *ngIf="
-            (f['width']?.errors?.['required'] && f['width'].touched) ||
-            (f['width']?.errors?.['required'] && submitted)
-          "
-                      >Width is required</small
-                    >
-                  </div></c-col
-                >
-                <c-col>
-                  <div class="mb-3">
-                    <label cLabel="" for="height">Height</label>
-                    <input
-                      aria-describedby="height"
-                      cFormControl
-                      id="height"
-                      type="number"
-                      formControlName="height"
-                    />
-                    <small
-                      class="error"
-                      *ngIf="
-            (f['height']?.errors?.['required'] && f['height'].touched) ||
-            (f['height']?.errors?.['required'] && submitted)
-          "
-                      >Height is required</small
-                    >
-                  </div></c-col
-                >
-              </c-row>
-              <div style="display: flex; gap: 10px">
-                <button cButton color="primary" (click)="submit()">Save</button>
-                <button
-                  cButton
-                  color="secondary"
-                  (click)="toggleWarningModal()"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
+<c-container [fluid]="true" class="sqd-shell">
+
+  <!-- ── Sticky toolbar header ───────────────────────────────────── -->
+  <div class="sqd-toolbar">
+    <div class="sqd-toolbar__lead">
+      <span class="sqd-toolbar__eyebrow">Window Designer</span>
+      <h2 class="sqd-toolbar__title">{{ edit ? "Edit Quotation" : "Add Quotation" }}</h2>
+    </div>
+    <div class="sqd-toolbar__actions">
+      <div class="sqd-total">
+        <span class="sqd-total__label">Total</span>
+        <span class="sqd-total__value">{{ price }}</span>
+      </div>
+      <button cButton color="primary" size="sm" (click)="resetDesign()">
+        <i class="pi pi-refresh"></i>
+        <span>Refresh Design</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Main workspace: canvas + control panel ──────────────────── -->
+  <c-row class="sqd-workspace align-items-start">
+
+    <!-- ── Canvas stage (centerpiece) ────────────────────────────── -->
+    <c-col [xs]="12" [lg]="7" [xxl]="8" class="sqd-stage-col">
+      <c-card class="sqd-stage">
+        <div class="sqd-stage__bar">
+          <div class="sqd-stage__title">
+            <span class="sqd-stage__dot"></span>
+            Design Preview
           </div>
-          <ng-container *ngIf="rectSelected">
-            <h4 style="padding: 20px 0px">Design Specification</h4>
-            <div>
-              <form cForm [formGroup]="designSpecificationForm">
+          <div class="sqd-stage__hint">
+            <i class="pi pi-info-circle"></i>
+            Click a pane on the drawing to edit its specification
+          </div>
+        </div>
+        <c-card-body class="sqd-stage__body">
+          <div id="design" #design class="design margin-class"></div>
+        </c-card-body>
+        <div class="sqd-stage__legend">
+          <span class="sqd-legend-item"><span class="chip chip--frame"></span> Frame</span>
+          <span class="sqd-legend-item"><span class="chip chip--glass"></span> Glass</span>
+          <span class="sqd-legend-item"><span class="chip chip--sash"></span> Sash / Pane</span>
+        </div>
+      </c-card>
+    </c-col>
+
+    <!-- ── Control panel ─────────────────────────────────────────── -->
+    <c-col [xs]="12" [lg]="5" [xxl]="4" class="sqd-panel-col">
+      <div class="sqd-panel">
+
+        <!-- FORM A: Initial window setup (no pane selected) -->
+        <div *ngIf="!rectSelected">
+          <div class="sqd-panel__head">
+            <h5 class="sqd-panel__title">Window Setup</h5>
+            <p class="sqd-panel__sub">Define overall size, quantity and colour to start.</p>
+          </div>
+
+          <form cForm [formGroup]="form">
+
+            <c-card class="sqd-card mb-3">
+              <div class="sqd-section-heading">
+                <i class="pi pi-arrows-alt"></i> Dimensions
+              </div>
+              <c-card-body>
                 <c-row>
-                  <c-col>
-                    <div class="mb-3">
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="width">Width</label>
+                      <input
+                        cFormControl
+                        id="width"
+                        type="number"
+                        formControlName="width"
+                        aria-describedby="width"
+                      />
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['width']?.errors?.['required'] && f['width'].touched) ||
+                          (f['width']?.errors?.['required'] && submitted)
+                        "
+                      >Width is required</small>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="height">Height</label>
+                      <input
+                        cFormControl
+                        id="height"
+                        type="number"
+                        formControlName="height"
+                        aria-describedby="height"
+                      />
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['height']?.errors?.['required'] && f['height'].touched) ||
+                          (f['height']?.errors?.['required'] && submitted)
+                        "
+                      >Height is required</small>
+                    </div>
+                  </c-col>
+                </c-row>
+                <c-row>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="quantity">Quantity</label>
+                      <input
+                        cFormControl
+                        id="quantity"
+                        type="number"
+                        formControlName="quantity"
+                        aria-describedby="quantity"
+                      />
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['quantity']?.errors?.['required'] && f['quantity'].touched) ||
+                          (f['quantity']?.errors?.['required'] && submitted)
+                        "
+                      >Quantity is required</small>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="quantity">Profile Color</label>
+                      <select
+                        cSelect
+                        formControlName="color"
+                        aria-label="Default select example"
+                      >
+                        <option disabled>Please select Profile Color</option>
+                        <option *ngFor="let color of colors" [ngValue]="color">
+                          {{ color.color_name }}
+                        </option>
+                      </select>
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['color_name']?.errors?.['required'] && f['color_name'].touched) ||
+                          (f['color_name']?.errors?.['required'] && submitted)
+                        "
+                      >Color is required</small>
+                    </div>
+                  </c-col>
+                </c-row>
+              </c-card-body>
+            </c-card>
+
+            <div class="sqd-action-bar">
+              <button cButton color="primary" (click)="submit()">
+                <i class="pi pi-check"></i> Save
+              </button>
+              <button cButton color="light" variant="outline" (click)="toggleWarningModal()">
+                Cancel
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        <!-- FORM B: Design specification (a pane is selected) -->
+        <ng-container *ngIf="rectSelected">
+          <div class="sqd-panel__head">
+            <h5 class="sqd-panel__title">Pane Specification</h5>
+            <p class="sqd-panel__sub">Configure the selected pane on the drawing.</p>
+          </div>
+
+          <form cForm [formGroup]="designSpecificationForm">
+
+            <!-- Section: Type & Frame -->
+            <c-card class="sqd-card mb-3">
+              <div class="sqd-section-heading">
+                <i class="pi pi-th-large"></i> Type &amp; Frame
+              </div>
+              <c-card-body>
+                <c-row>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="category">Category Type</label>
                       <select
-                        aria-label="Category Type"
-                        id="category"
                         cSelect
+                        id="category"
                         formControlName="category_type"
+                        aria-label="Category Type"
                       >
                         <option disabled>Please select Category Type</option>
-                        <option
-                          *ngFor="let category of categoryList"
-                          [value]="category"
-                        >
+                        <option *ngFor="let category of categoryList" [value]="category">
                           {{ category }}
                         </option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['category_type']?.errors?.['required'] && f['category_type'].touched) ||
-            (f['category_type']?.errors?.['required'] && submitted)
-          "
-                        >Category Type is required</small
-                      >
-                    </div></c-col
-                  >
-                  <c-col>
-                    <div class="mb-3">
-                      <label cLabel="" for="glass">Glass</label>
+                          (f['category_type']?.errors?.['required'] && f['category_type'].touched) ||
+                          (f['category_type']?.errors?.['required'] && submitted)
+                        "
+                      >Category Type is required</small>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6" *ngIf="df['category_type'].value === 'Casement'">
+                    <div class="sqd-field">
+                      <label cLabel="" for="casement_type">Casement Type</label>
                       <select
-                        aria-label="Glass"
-                        id="glass"
                         cSelect
-                        formControlName="glazz_id"
+                        id="casement_type"
+                        formControlName="casement_type"
+                        aria-label="Casement Type"
                       >
-                        <option disabled>Please select Glass</option>
-                        <option
-                          *ngFor="let glass of glassList"
-                          [value]="glass.id"
-                        >
-                          {{ glass.name }}
+                        <option disabled>Please select Casement Type</option>
+                        <option *ngFor="let casementType of casementTypes" [value]="casementType">
+                          {{ casementType }}
                         </option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['glazz_id']?.errors?.['required'] && f['glazz_id'].touched) ||
-            (f['glazz_id']?.errors?.['required'] && submitted)
-          "
-                        >Glass is required</small
-                      >
-                    </div></c-col
-                  >
+                          (f['casement_type']?.errors?.['required'] && f['casement_type'].touched) ||
+                          (f['casement_type']?.errors?.['required'] && submitted)
+                        "
+                      >Casement Type is required</small>
+                    </div>
+                  </c-col>
                 </c-row>
                 <c-row>
-                  <c-col>
-                    <div class="mb-3">
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="product_type">Product Type</label>
                       <select
-                        aria-label="Product Type"
-                        id="product_type"
                         cSelect
+                        id="product_type"
                         formControlName="product_type"
+                        aria-label="Product Type"
                       >
                         <option disabled>Please select Product Type</option>
-                        <option *ngFor="let type of typeList" [value]="type">
-                          {{ type }}
-                        </option>
+                        <option *ngFor="let type of typeList" [value]="type">{{ type }}</option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['product_type']?.errors?.['required'] && f['glazz_id'].touched) ||
-            (f['product_type']?.errors?.['required'] && submitted)
-          "
-                        >Product Type is required</small
-                      >
-                    </div></c-col
-                  >
-                  <c-col>
-                    <div class="mb-3">
+                          (f['product_type']?.errors?.['required'] && f['glazz_id'].touched) ||
+                          (f['product_type']?.errors?.['required'] && submitted)
+                        "
+                      >Product Type is required</small>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="product_id">Frame</label>
                       <select
-                        aria-label="Frame"
-                        id="product_id"
                         cSelect
+                        id="product_id"
                         formControlName="product_id"
+                        aria-label="Frame"
                       >
                         <option disabled>Please select Frame</option>
-                        <option
-                          *ngFor="let profile of profileList"
-                          [value]="profile.id"
-                        >
+                        <option *ngFor="let profile of profileList" [value]="profile.id">
                           {{ profile.profile_name }}
                         </option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['product_id']?.errors?.['required'] && f['product_id'].touched) ||
-            (f['product_id']?.errors?.['required'] && submitted)
-          "
-                        >Frame is required</small
-                      >
-                    </div></c-col
-                  >
+                          (f['product_id']?.errors?.['required'] && f['product_id'].touched) ||
+                          (f['product_id']?.errors?.['required'] && submitted)
+                        "
+                      >Frame is required</small>
+                    </div>
+                  </c-col>
                 </c-row>
-                <c-row
-                  *ngIf="
-                    df['category_type'].value === 'Slidding' ||
-                    (df['category_type'].value === 'Casement' &&
-                      df['casement_type'].value === 'Openable')
-                  "
-                >
-                  <c-col>
-                    <div class="mb-3">
+                <c-row>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="glass">Glass</label>
+                      <select
+                        cSelect
+                        id="glass"
+                        formControlName="glazz_id"
+                        aria-label="Glass"
+                      >
+                        <option disabled>Please select Glass</option>
+                        <option *ngFor="let glass of glassList" [value]="glass.id">
+                          {{ glass.name }}
+                        </option>
+                      </select>
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['glazz_id']?.errors?.['required'] && f['glazz_id'].touched) ||
+                          (f['glazz_id']?.errors?.['required'] && submitted)
+                        "
+                      >Glass is required</small>
+                    </div>
+                  </c-col>
+                </c-row>
+              </c-card-body>
+            </c-card>
+
+            <!-- Section: Sash & Handle (Sliding or Casement Openable) -->
+            <c-card
+              class="sqd-card mb-3"
+              *ngIf="
+                df['category_type'].value === 'Slidding' ||
+                (df['category_type'].value === 'Casement' &&
+                  df['casement_type'].value === 'Openable')
+              "
+            >
+              <div class="sqd-section-heading">
+                <i class="pi pi-sliders-h"></i> Sash &amp; Handle
+              </div>
+              <c-card-body>
+                <c-row>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="sash_id">Sash</label>
                       <select
-                        aria-label="Sash"
-                        id="sash"
                         cSelect
+                        id="sash"
                         formControlName="sash_id"
+                        aria-label="Sash"
                       >
                         <option disabled>Please select Sash</option>
                         <option *ngFor="let sash of sashList" [value]="sash.id">
@@ -252,471 +329,433 @@
                       <small
                         class="error"
                         *ngIf="
-            (f['sash_id']?.errors?.['required'] && f['sash_id'].touched) ||
-            (f['sash_id']?.errors?.['required'] && submitted)
-          "
-                        >Sash is required</small
-                      >
-                    </div></c-col
-                  >
-                  <c-col>
-                    <div class="mb-3">
+                          (f['sash_id']?.errors?.['required'] && f['sash_id'].touched) ||
+                          (f['sash_id']?.errors?.['required'] && submitted)
+                        "
+                      >Sash is required</small>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="handle_id">Handle</label>
                       <select
-                        aria-label="Handle"
-                        id="handle_id"
                         cSelect
+                        id="handle_id"
                         formControlName="handle_id"
+                        aria-label="Handle"
                       >
                         <option disabled>Please select Handle</option>
-                        <option
-                          *ngFor="let handle of handleList"
-                          [value]="handle.id"
-                        >
+                        <option *ngFor="let handle of handleList" [value]="handle.id">
                           {{ handle.name }}
                         </option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['handle_id']?.errors?.['required'] && f['handle_id'].touched) ||
-            (f['handle_id']?.errors?.['required'] && submitted)
-          "
-                        >Handle is required</small
-                      >
-                    </div></c-col
-                  >
+                          (f['handle_id']?.errors?.['required'] && f['handle_id'].touched) ||
+                          (f['handle_id']?.errors?.['required'] && submitted)
+                        "
+                      >Handle is required</small>
+                    </div>
+                  </c-col>
                 </c-row>
+              </c-card-body>
+            </c-card>
+
+            <!-- Section: Pane / Opening direction (per-pane, Sliding or Casement Openable) -->
+            <c-card
+              class="sqd-card mb-3"
+              *ngIf="
+                df['category_type'].value === 'Slidding' ||
+                (df['category_type'].value === 'Casement' &&
+                  df['casement_type'].value === 'Openable')
+              "
+            >
+              <div class="sqd-section-heading">
+                <i class="pi pi-directions"></i> Pane Direction
+              </div>
+              <c-card-body>
                 <c-row>
-                  <c-col *ngIf="df['category_type'].value === 'Slidding'">
-                    <div class="mb-3">
+                  <c-col>
+                    <div class="sqd-field">
+                      <label cLabel="" for="opening_direction">Opening Direction (applies to selected pane)</label>
+                      <select
+                        cSelect
+                        id="opening_direction"
+                        formControlName="opening_direction"
+                        aria-label="Opening Direction"
+                      >
+                        <option value="Left">Left (side-hung)</option>
+                        <option value="Right">Right (side-hung)</option>
+                        <option value="Top">Top (awning)</option>
+                        <option value="Bottom">Bottom (hopper)</option>
+                        <option value="Tilt & Turn Left">Tilt &amp; Turn (Left)</option>
+                        <option value="Tilt & Turn Right">Tilt &amp; Turn (Right)</option>
+                      </select>
+                    </div>
+                  </c-col>
+                </c-row>
+              </c-card-body>
+            </c-card>
+
+            <!-- Section: Sliding-specific settings -->
+            <c-card class="sqd-card mb-3" *ngIf="df['category_type'].value === 'Slidding'">
+              <div class="sqd-section-heading">
+                <i class="pi pi-arrows-h"></i> Sliding Settings
+              </div>
+              <c-card-body>
+                <c-row>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="palla_type">Palla Type</label>
                       <select
-                        aria-label="Palla Type"
-                        id="palla_type"
                         cSelect
+                        id="palla_type"
                         formControlName="palla_type"
+                        aria-label="Palla Type"
                       >
                         <option disabled>Please select Palla Count</option>
-                        <option
-                          *ngFor="let palla_type of palla_type_slidding"
-                          [value]="palla_type"
-                        >
+                        <option *ngFor="let palla_type of palla_type_slidding" [value]="palla_type">
                           {{ palla_type }}
                         </option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['palla_type']?.errors?.['required'] && f['palla_type'].touched) ||
-            (f['palla_type']?.errors?.['required'] && submitted)
-          "
-                        >Palla Type is required</small
-                      >
-                    </div></c-col
-                  >
-                  <c-col
-                    *ngIf="
-                      df['category_type'].value === 'Casement' &&
-                      df['casement_type'].value === 'Openable'
-                    "
-                  >
-                    <div class="mb-3">
-                      <label cLabel="" for="palla_type">Palla Type</label>
-                      <select
-                        aria-label="Palla Type"
-                        id="palla_type"
-                        cSelect
-                        formControlName="palla_type"
-                      >
-                        <option disabled>Please select Palla Count</option>
-                        <option
-                          *ngFor="let palla_type of palla_type_openable"
-                          [value]="palla_type"
-                        >
-                          {{ palla_type }}
-                        </option>
-                      </select>
-                      <small
-                        class="error"
-                        *ngIf="
-            (f['palla_type']?.errors?.['required'] && f['palla_type'].touched) ||
-            (f['palla_type']?.errors?.['required'] && submitted)
-          "
-                        >Palla Type is required</small
-                      >
-                    </div></c-col
-                  >
-                  <c-col *ngIf="df['category_type'].value === 'Slidding'">
-                    <div class="mb-3">
+                          (f['palla_type']?.errors?.['required'] && f['palla_type'].touched) ||
+                          (f['palla_type']?.errors?.['required'] && submitted)
+                        "
+                      >Palla Type is required</small>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="is_track">Track</label>
                       <select
-                        aria-label="Track"
-                        id="is_track"
                         cSelect
+                        id="is_track"
                         formControlName="is_track"
+                        aria-label="Track"
                       >
                         <option disabled>Please select Track</option>
-                        <option
-                          *ngFor="let sliddingType of sliddingTypes"
-                          [value]="sliddingType"
-                        >
+                        <option *ngFor="let sliddingType of sliddingTypes" [value]="sliddingType">
                           {{ sliddingType }}
                         </option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['is_track']?.errors?.['required'] && f['is_track'].touched) ||
-            (f['is_track']?.errors?.['required'] && submitted)
-          "
-                        >Track is required</small
-                      >
-                    </div></c-col
-                  >
+                          (f['is_track']?.errors?.['required'] && f['is_track'].touched) ||
+                          (f['is_track']?.errors?.['required'] && submitted)
+                        "
+                      >Track is required</small>
+                    </div>
+                  </c-col>
+                </c-row>
+                <c-row
+                  *ngIf="
+                    df['category_type'].value === 'Slidding' &&
+                    (df['is_track'].value === '2.5 Track' ||
+                      df['is_track'].value === '3 Track')
+                  "
+                >
+                  <c-col>
+                    <label class="sqd-toggle" for="fly_mesh">
+                      <input cFormCheckInput id="fly_mesh" type="checkbox" formControlName="fly_mesh" />
+                      <span class="sqd-toggle__label">Fly Mesh</span>
+                    </label>
+                  </c-col>
+                </c-row>
+              </c-card-body>
+            </c-card>
 
-                  <c-col
-                    *ngIf="
-                      df['category_type'].value === 'Casement' &&
-                      df['casement_type'].value === 'Openable'
-                    "
-                  >
-                    <div class="mb-3">
+            <!-- Section: Casement Openable-specific settings -->
+            <c-card
+              class="sqd-card mb-3"
+              *ngIf="df['category_type'].value === 'Casement' && df['casement_type'].value === 'Openable'"
+            >
+              <div class="sqd-section-heading">
+                <i class="pi pi-window-maximize"></i> Openable Settings
+              </div>
+              <c-card-body>
+                <c-row>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="palla_type">Palla Type</label>
+                      <select
+                        cSelect
+                        id="palla_type"
+                        formControlName="palla_type"
+                        aria-label="Palla Type"
+                      >
+                        <option disabled>Please select Palla Count</option>
+                        <option *ngFor="let palla_type of palla_type_openable" [value]="palla_type">
+                          {{ palla_type }}
+                        </option>
+                      </select>
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['palla_type']?.errors?.['required'] && f['palla_type'].touched) ||
+                          (f['palla_type']?.errors?.['required'] && submitted)
+                        "
+                      >Palla Type is required</small>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
                       <label cLabel="" for="hinges_type">Hinge Type</label>
                       <select
-                        aria-label="Hinge Type"
-                        id="hinges_type"
                         cSelect
+                        id="hinges_type"
                         formControlName="hinges_type"
+                        aria-label="Hinge Type"
                       >
                         <option disabled>Please select Hinge Type</option>
-                        <option
-                          *ngFor="let hinge of hingesType"
-                          [value]="hinge"
-                        >
-                          {{ hinge }}
-                        </option>
+                        <option *ngFor="let hinge of hingesType" [value]="hinge">{{ hinge }}</option>
                       </select>
                       <small
                         class="error"
                         *ngIf="
-            (f['hinges_type']?.errors?.['required'] && f['hinges_type'].touched) ||
-            (f['hinges_type']?.errors?.['required'] && submitted)
-          "
-                        >Hinge Type is required</small
-                      >
-                    </div></c-col
-                  >
+                          (f['hinges_type']?.errors?.['required'] && f['hinges_type'].touched) ||
+                          (f['hinges_type']?.errors?.['required'] && submitted)
+                        "
+                      >Hinge Type is required</small>
+                    </div>
+                  </c-col>
                 </c-row>
-                <c-row>
-                  <c-col *ngIf="df['category_type'].value === 'Casement'">
-                    <div class="mb-3">
-                      <label cLabel="" for="casement_type">Casement Type</label>
-                      <select
-                        aria-label="Casement Type"
-                        id="casement_type"
-                        cSelect
-                        formControlName="casement_type"
-                      >
-                        <option disabled>Please select Casement Type</option>
-                        <option
-                          *ngFor="let casementType of casementTypes"
-                          [value]="casementType"
-                        >
-                          {{ casementType }}
-                        </option>
-                      </select>
-                      <small
-                        class="error"
-                        *ngIf="
-            (f['casement_type']?.errors?.['required'] && f['casement_type'].touched) ||
-            (f['casement_type']?.errors?.['required'] && submitted)
-          "
-                        >Casement Type is required</small
-                      >
-                    </div></c-col
-                  >
-                  <c-col
-                    *ngIf="
-                      df['category_type'].value !== 'Slidding' &&
-                      (df['is_track'].value !== '2.5 Track' ||
-                        df['is_track'].value !== '3 Track')
-                    "
-                  ></c-col>
-                  <c-col
-                    style="margin-top: 45px"
-                    *ngIf="
-                      df['category_type'].value === 'Slidding' &&
-                      (df['is_track'].value === '2.5 Track' ||
-                        df['is_track'].value === '3 Track')
-                    "
-                  >
-                    <div class="mb-3">
-                      <label cLabel="" for="fly_mesh" style="margin-right: 10px"
-                        >Fly Mesh</label
-                      >
-                      <input
-                        cFormCheckInput
-                        id="fly_mesh"
-                        type="checkbox"
-                        formControlName="fly_mesh"
-                      /></div
-                  ></c-col>
-                </c-row>
-                <c-row style="margin-top: 45px">
-                  <c-col>
-                    <div class="mb-3">
-                      <label
-                        cLabel=""
-                        for="is_louvers"
-                        style="margin-right: 10px"
-                        >Is Louvers</label
-                      >
-                      <input
-                        cFormCheckInput
-                        id="is_louvers"
-                        type="checkbox"
-                        formControlName="is_louvers"
-                      /></div
-                  ></c-col>
+              </c-card-body>
+            </c-card>
 
-                  <c-col>
-                    <div class="mb-3">
-                      <label
-                        cLabel=""
-                        for="is_lshape"
-                        style="margin-right: 10px"
-                        >Is Lshape</label
-                      >
-                      <input
-                        cFormCheckInput
-                        id="is_lshape"
-                        type="checkbox"
-                        formControlName="is_lshape"
-                      /></div
-                  ></c-col>
-                </c-row>
-
-                <div style="display: flex; gap: 10px">
-                  <button cButton color="primary" (click)="saveDesign()">
-                    Save Design
-                  </button>
-                </div>
-              </form>
-            </div>
-          </ng-container>
-          <!-- <ng-container *ngIf="showHeightWidthOption">
-            <h4 style="padding: 20px 0px">Change Height/Width</h4>
-            <div>
-              <form cForm [formGroup]="pallaForm">
+            <!-- Section: Glazing Bars -->
+            <c-card class="sqd-card mb-3">
+              <div class="sqd-section-heading">
+                <i class="pi pi-table"></i> Glazing Bars
+              </div>
+              <c-card-body>
                 <c-row>
-                  <c-col>
-                    <div class="mb-3">
-                      <label cLabel="" for="width">Width</label>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="glazing_bars_vertical">Glazing bars &mdash; vertical</label>
                       <input
-                        aria-describedby="width"
                         cFormControl
-                        id="width"
+                        id="glazing_bars_vertical"
                         type="number"
-                        formControlName="width"
+                        min="0"
+                        max="10"
+                        formControlName="glazing_bars_vertical"
                       />
-                      <small
-                        class="error"
-                        *ngIf="
-              (pf['width']?.errors?.['required'] && pf['width'].touched) ||
-              (pf['width']?.errors?.['required'] && submitted)
-            "
-                        >Width is required</small
-                      >
-                    </div></c-col
-                  >
-                  <c-col>
-                    <div class="mb-3">
-                      <label cLabel="" for="height">Height</label>
+                    </div>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <div class="sqd-field">
+                      <label cLabel="" for="glazing_bars_horizontal">Glazing bars &mdash; horizontal</label>
                       <input
-                        aria-describedby="height"
                         cFormControl
-                        id="height"
+                        id="glazing_bars_horizontal"
                         type="number"
-                        formControlName="height"
+                        min="0"
+                        max="10"
+                        formControlName="glazing_bars_horizontal"
                       />
-                      <small
-                        class="error"
-                        *ngIf="
-              (pf['height']?.errors?.['required'] && pf['height'].touched) ||
-              (pf['height']?.errors?.['required'] && submitted)
-            "
-                        >Height is required</small
-                      >
-                    </div></c-col
-                  >
+                    </div>
+                  </c-col>
                 </c-row>
-                <div style="display: flex; gap: 10px">
-                  <button
-                    cButton
-                    color="primary"
-                    (click)="updateAdjacentRects()"
-                  >
-                    Change
-                  </button>
-                </div>
-              </form>
+              </c-card-body>
+            </c-card>
+
+            <!-- Section: Options (checkboxes) -->
+            <c-card class="sqd-card mb-3">
+              <div class="sqd-section-heading">
+                <i class="pi pi-cog"></i> Options
+              </div>
+              <c-card-body>
+                <c-row>
+                  <c-col [sm]="6">
+                    <label class="sqd-toggle" for="is_louvers">
+                      <input cFormCheckInput id="is_louvers" type="checkbox" formControlName="is_louvers" />
+                      <span class="sqd-toggle__label">Is Louvers</span>
+                    </label>
+                  </c-col>
+                  <c-col [sm]="6">
+                    <label class="sqd-toggle" for="is_lshape">
+                      <input cFormCheckInput id="is_lshape" type="checkbox" formControlName="is_lshape" />
+                      <span class="sqd-toggle__label">Is Lshape</span>
+                    </label>
+                  </c-col>
+                </c-row>
+              </c-card-body>
+            </c-card>
+
+            <!-- Design spec action bar -->
+            <div class="sqd-action-bar">
+              <button cButton color="primary" (click)="saveDesign()">
+                <i class="pi pi-save"></i> Save Design
+              </button>
             </div>
-          </ng-container> -->
-          <c-col *ngIf="isAddMullion">
-            <ng-container *ngIf="pallaSelected">
-              <h4 style="padding: 20px 0px">Change Height/Width</h4>
-              <div>
-                <form cForm [formGroup]="pallaForm">
+
+          </form>
+        </ng-container>
+
+        <!-- Mullion / portion-size section -->
+        <div *ngIf="isAddMullion" class="sqd-mullion mt-3">
+          <ng-container *ngIf="pallaSelected">
+            <div class="sqd-panel__head">
+              <h5 class="sqd-panel__title">Change Height / Width</h5>
+              <p class="sqd-panel__sub">Resize the selected portion of the window.</p>
+            </div>
+            <form cForm [formGroup]="pallaForm">
+              <c-card class="sqd-card mb-3">
+                <div class="sqd-section-heading">
+                  <i class="pi pi-expand"></i> Portion Size
+                </div>
+                <c-card-body>
                   <c-row>
-                    <c-col>
-                      <div class="mb-3">
+                    <c-col [sm]="6">
+                      <div class="sqd-field">
                         <label cLabel="" for="width">Width</label>
                         <input
-                          aria-describedby="width"
                           cFormControl
                           id="width"
                           type="number"
                           formControlName="width"
+                          aria-describedby="width"
                         />
                         <small
                           class="error"
                           *ngIf="
-              (pf['width']?.errors?.['required'] && pf['width'].touched) ||
-              (pf['width']?.errors?.['required'] && submitted)
-            "
-                          >Width is required</small
-                        >
-                      </div></c-col
-                    >
-                    <c-col>
-                      <div class="mb-3">
+                            (pf['width']?.errors?.['required'] && pf['width'].touched) ||
+                            (pf['width']?.errors?.['required'] && submitted)
+                          "
+                        >Width is required</small>
+                      </div>
+                    </c-col>
+                    <c-col [sm]="6">
+                      <div class="sqd-field">
                         <label cLabel="" for="height">Height</label>
                         <input
-                          aria-describedby="height"
                           cFormControl
                           id="height"
                           type="number"
                           formControlName="height"
+                          aria-describedby="height"
                         />
                         <small
                           class="error"
                           *ngIf="
-              (pf['height']?.errors?.['required'] && pf['height'].touched) ||
-              (pf['height']?.errors?.['required'] && submitted)
-            "
-                          >Height is required</small
-                        >
-                      </div></c-col
-                    >
+                            (pf['height']?.errors?.['required'] && pf['height'].touched) ||
+                            (pf['height']?.errors?.['required'] && submitted)
+                          "
+                        >Height is required</small>
+                      </div>
+                    </c-col>
                   </c-row>
-                  <div style="display: flex; gap: 10px">
-                    <button
-                      cButton
-                      color="primary"
-                      (click)="updateAdjacentRects()"
-                    >
-                      Change
-                    </button>
-                  </div>
-                </form>
+                </c-card-body>
+              </c-card>
+              <div class="sqd-action-bar mb-3">
+                <button cButton color="primary" (click)="updateAdjacentRects()">
+                  <i class="pi pi-check"></i> Change
+                </button>
               </div>
-            </ng-container>
-            <div>
-              <button
-                cButton
-                color="primary"
-                (click)="addMullion()"
-                style="margin-top: 15px"
-              >
-                Add Mullion
-              </button>
-            </div>
-          </c-col>
-          <c-col *ngIf="isAddMullion"></c-col>
-          <div></div>
-        </c-col>
-        <c-col>
-          <div id="design" #design class="design margin-class"></div>
-        </c-col>
-      </c-row>
-    </c-container>
-  </c-row>
-  <c-row> </c-row>
-  <c-row class="align-items-end" style="padding-top: 50px">
-    <p-table
-      #dt1
-      [value]="costheadInfo"
-      [paginator]="true"
-      [rows]="6"
-      [globalFilterFields]="[
-        'product_no',
-        'name',
-        'type',
-        'cost',
-        'totalCost',
-        'quantity'
-      ]"
-      (sortFunction)="customSort($event)"
-      [customSort]="true"
-      [tableStyle]="{ 'min-width': '60rem' }"
-      [rowsPerPageOptions]="[5, 10, 15]"
-    >
-      <ng-template pTemplate="caption">
-        <button
-          pButton
-          label="Clear"
-          class="p-button-outlined"
-          icon="pi pi-filter-slash"
-          (click)="clear(dt1)"
-        ></button>
+            </form>
+          </ng-container>
+          <div class="sqd-mullion-trigger">
+            <button cButton color="dark" variant="outline" (click)="addMullion()">
+              <i class="pi pi-plus"></i> Add Mullion
+            </button>
+          </div>
+        </div>
 
-        <span class="p-input-icon-left ml-auto">
-          <i class="pi pi-search"></i>
-          <input
-            pInputText
-            type="text"
-            [(ngModel)]="inputValue"
-            (input)="dt1?.filterGlobal(inputValue, 'contains')"
-          />
-        </span>
-      </ng-template>
-      <ng-template pTemplate="header">
-        <tr>
-          <th pSortableColumn="product_no" style="width: 15%" scope="row">
-            Product Number
-            <p-sortIcon field="product_no"></p-sortIcon>
-          </th>
-          <th pSortableColumn="name" style="width: 20%" scope="row">
-            Name <p-sortIcon field="name"></p-sortIcon>
-          </th>
-          <th pSortableColumn="type" style="width: 20%" scope="row">
-            Type <p-sortIcon field="type"></p-sortIcon>
-          </th>
-          <th pSortableColumn="cost" style="width: 20%" scope="row">
-            Cost <p-sortIcon field="cost"></p-sortIcon>
-          </th>
-          <th pSortableColumn="totalCost" style="width: 15%" scope="row">
-            Total Cost <p-sortIcon field="totalCost"></p-sortIcon>
-          </th>
-          <th pSortableColumn="quantity" style="width: 10%" scope="row">
-            Quantity <p-sortIcon field="quantity"></p-sortIcon>
-          </th>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="body" let-quotation>
-        <tr>
-          <td>{{ quotation.product_no }}</td>
-          <td>{{ quotation.name }}</td>
-          <td>{{ quotation.type }}</td>
-          <td>{{ quotation.cost | currency : "INR" }}</td>
-          <td>{{ quotation.totalCost | currency : "INR" }}</td>
-          <td>{{ quotation.quantity }}</td>
-        </tr>
-      </ng-template>
-    </p-table>
+      </div>
+    </c-col>
+
   </c-row>
+
+  <!-- ── Cost Breakdown Table ─────────────────────────────────────── -->
+  <c-row class="mt-4">
+    <c-col>
+      <c-card class="sqd-card sqd-cost-card">
+        <div class="sqd-section-heading">
+          <i class="pi pi-list"></i> Cost Breakdown
+        </div>
+        <c-card-body>
+          <p-table
+            #dt1
+            [value]="costheadInfo"
+            [paginator]="true"
+            [rows]="6"
+            [globalFilterFields]="[
+              'product_no',
+              'name',
+              'type',
+              'cost',
+              'totalCost',
+              'quantity'
+            ]"
+            (sortFunction)="customSort($event)"
+            [customSort]="true"
+            [tableStyle]="{ 'min-width': '60rem' }"
+            [rowsPerPageOptions]="[5, 10, 15]"
+          >
+            <ng-template pTemplate="caption">
+              <button
+                pButton
+                label="Clear"
+                class="p-button-outlined"
+                icon="pi pi-filter-slash"
+                (click)="clear(dt1)"
+              ></button>
+              <span class="p-input-icon-left ml-auto">
+                <i class="pi pi-search"></i>
+                <input
+                  pInputText
+                  type="text"
+                  [(ngModel)]="inputValue"
+                  (input)="dt1?.filterGlobal(inputValue, 'contains')"
+                />
+              </span>
+            </ng-template>
+            <ng-template pTemplate="header">
+              <tr>
+                <th pSortableColumn="product_no" style="width: 15%" scope="row">
+                  Product Number <p-sortIcon field="product_no"></p-sortIcon>
+                </th>
+                <th pSortableColumn="name" style="width: 20%" scope="row">
+                  Name <p-sortIcon field="name"></p-sortIcon>
+                </th>
+                <th pSortableColumn="type" style="width: 20%" scope="row">
+                  Type <p-sortIcon field="type"></p-sortIcon>
+                </th>
+                <th pSortableColumn="cost" style="width: 20%" scope="row">
+                  Cost <p-sortIcon field="cost"></p-sortIcon>
+                </th>
+                <th pSortableColumn="totalCost" style="width: 15%" scope="row">
+                  Total Cost <p-sortIcon field="totalCost"></p-sortIcon>
+                </th>
+                <th pSortableColumn="quantity" style="width: 10%" scope="row">
+                  Quantity <p-sortIcon field="quantity"></p-sortIcon>
+                </th>
+              </tr>
+            </ng-template>
+            <ng-template pTemplate="body" let-quotation>
+              <tr>
+                <td>{{ quotation.product_no }}</td>
+                <td>{{ quotation.name }}</td>
+                <td>{{ quotation.type }}</td>
+                <td>{{ quotation.cost | currency : "INR" }}</td>
+                <td>{{ quotation.totalCost | currency : "INR" }}</td>
+                <td>{{ quotation.quantity }}</td>
+              </tr>
+            </ng-template>
+          </p-table>
+        </c-card-body>
+      </c-card>
+    </c-col>
+  </c-row>
+
 </c-container>
+
+<!-- ── Add Mullion Modal ──────────────────────────────────────────── -->
 <c-modal
   id="liveDemoModal"
   [visible]="isMullion"
@@ -728,64 +767,42 @@
     <h5 cModalTitle color="warm">Add Mullion</h5>
   </c-modal-header>
   <c-modal-body>
-    <div>
-      <form [formGroup]="mullionForm">
-        <c-row>
-          <label cLabel="col" class="col-sm-3" for="profile_id">
-            Profile
-          </label>
-          <c-col [sm]="9">
-            <select
-              aria-label="Default select example"
-              cSelect
-              formControlName="profile_id"
-            >
-              <option disabled>Please select Profile</option>
-              <option *ngFor="let profile of mullionList" [value]="profile.id">
-                {{ profile.profile_code + " - " + profile.profile_name }}
-              </option>
-            </select>
-            <small
-              class="error"
-              *ngIf="
+    <form [formGroup]="mullionForm">
+      <div class="sqd-field mb-3">
+        <label cLabel="col" class="col-sm-3" for="profile_id">Profile</label>
+        <select cSelect formControlName="profile_id" aria-label="Default select example">
+          <option disabled>Please select Profile</option>
+          <option *ngFor="let profile of mullionList" [value]="profile.id">
+            {{ profile.profile_code + " - " + profile.profile_name }}
+          </option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
             (mf['profile_id']?.errors?.['required'] && mf['profile_id'].touched) ||
             (mf['profile_id']?.errors?.['required'] && mullionSubmitted)
           "
-              >Profile is required</small
-            >
-          </c-col>
-        </c-row>
-        <c-row style="margin-top: 25px">
-          <label cLabel="col" class="col-sm-3" for="direction">
-            Direction
-          </label>
-          <c-col [sm]="9">
-            <select
-              aria-label="Default select example"
-              cSelect
-              formControlName="direction"
-            >
-              <option disabled>Please select Direction</option>
-              <option value="vertical">Vertical |</option>
-              <option value="horizontal">Horizontal --</option>
-            </select>
-            <small
-              class="error"
-              *ngIf="
+        >Profile is required</small>
+      </div>
+      <div class="sqd-field mb-3">
+        <label cLabel="col" class="col-sm-3" for="direction">Direction</label>
+        <select cSelect formControlName="direction" aria-label="Default select example">
+          <option disabled>Please select Direction</option>
+          <option value="vertical">Vertical |</option>
+          <option value="horizontal">Horizontal --</option>
+        </select>
+        <small
+          class="error"
+          *ngIf="
             (mf['direction']?.errors?.['required'] && mf['direction'].touched) ||
             (mf['direction']?.errors?.['required'] && mullionSubmitted)
           "
-              >Direction is required</small
-            >
-          </c-col>
-        </c-row>
-      </form>
-    </div>
+        >Direction is required</small>
+      </div>
+    </form>
   </c-modal-body>
   <c-modal-footer>
-    <p-button styleClass="p-button-secondary" (click)="cancelMullion()">
-      Cancel
-    </p-button>
-    <p-button (click)="submitMullion()"> Add </p-button>
+    <p-button styleClass="p-button-secondary" (click)="cancelMullion()">Cancel</p-button>
+    <p-button (click)="submitMullion()">Add</p-button>
   </c-modal-footer>
 </c-modal>

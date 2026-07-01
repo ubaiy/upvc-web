@@ -24,6 +24,9 @@ $enable-rtl: true;
 @import "examples";
 @import "custom";
 
+// Shared design system (tokens + .app-* utility classes)
+@import "design-system";
+
 body {
   font-family: var(--font-family);
 }
