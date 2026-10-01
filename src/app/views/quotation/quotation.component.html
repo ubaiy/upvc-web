@@ -117,6 +117,13 @@
             [routerLink]="['detail', quotation.id]"
           ></p-button>
           <p-button
+            icon="pi pi-copy"
+            pTooltip="Copy Quotation"
+            (onClick)="openCopy(quotation)"
+            [rounded]="true"
+            [outlined]="true"
+          ></p-button>
+          <p-button
             icon="pi pi-trash"
             pTooltip="Delete quotation"
             aria-label="Delete quotation"
@@ -137,3 +144,129 @@
     </div>
   </div>
 </div>
+
+<c-modal
+  id="copyQuotationModal"
+  [visible]="copyVisible"
+  backdrop="static"
+  alignment="center"
+  size="lg"
+  (visibleChange)="handleCopyModal($event)"
+>
+  <c-modal-header>
+    <h5 cModalTitle>Copy Quotation</h5>
+  </c-modal-header>
+  <c-modal-body>
+    <form [formGroup]="copyForm">
+      <c-row class="mb-3">
+        <label cLabel="col" class="col-sm-4" for="copyCustomer">Customer</label>
+        <c-col [sm]="8">
+          <select cSelect id="copyCustomer" formControlName="customer_id">
+            <option value="">Select customer</option>
+            <option *ngFor="let customer of customerList" [value]="customer.id">
+              {{ customer.name }}
+            </option>
+          </select>
+          <small
+            class="error"
+            *ngIf="cf['customer_id']?.errors?.['required'] && copySubmitted"
+            >Customer is required</small
+          >
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-3">
+        <label cLabel="col" class="col-sm-4" for="copyAddress">Address</label>
+        <c-col [sm]="8">
+          <select cSelect id="copyAddress" formControlName="customer_address_id">
+            <option value="">Select address</option>
+            <option *ngFor="let address of customerAddressList" [value]="address.id">
+              {{ address.name }} - {{ address.flat_no }} {{ address.address }},
+              {{ address.city }}
+            </option>
+          </select>
+          <small
+            class="error"
+            *ngIf="cf['customer_address_id']?.errors?.['required'] && copySubmitted"
+            >Address is required</small
+          >
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-3">
+        <label cLabel="col" class="col-sm-4" for="copyArea">Area</label>
+        <c-col [sm]="8">
+          <select cSelect id="copyArea" formControlName="area_id">
+            <option value="">Select area</option>
+            <option *ngFor="let area of areaList" [value]="area.id">
+              {{ area.name }}
+            </option>
+          </select>
+          <small
+            class="error"
+            *ngIf="cf['area_id']?.errors?.['required'] && copySubmitted"
+            >Area is required</small
+          >
+        </c-col>
+      </c-row>
+
+      <hr />
+      <p class="text-medium-emphasis small mb-3">
+        Leave the options below as <strong>Keep original</strong> to duplicate the
+        quotation as-is, or pick a new profile color / glass to apply it to every
+        window &amp; door in the copy (prices are recalculated).
+      </p>
+
+      <c-row class="mb-3">
+        <label cLabel="col" class="col-sm-4" for="copyColor">Profile Color</label>
+        <c-col [sm]="8">
+          <select cSelect id="copyColor" formControlName="color_id">
+            <option value="">Keep original</option>
+            <option *ngFor="let color of colors" [value]="color.id">
+              {{ color.color_name }}
+            </option>
+          </select>
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-3">
+        <label cLabel="col" class="col-sm-4" for="copyGlass">Glass</label>
+        <c-col [sm]="8">
+          <select cSelect id="copyGlass" formControlName="glazz_id">
+            <option value="">Keep original</option>
+            <option *ngFor="let glass of glassList" [value]="glass.id">
+              {{ glass.name }}
+            </option>
+          </select>
+        </c-col>
+      </c-row>
+
+      <c-row class="mb-3" *ngIf="hasSliding">
+        <label cLabel="col" class="col-sm-4" for="copyTrack">Track</label>
+        <c-col [sm]="8">
+          <select cSelect id="copyTrack" formControlName="is_track">
+            <option value="">Keep original</option>
+            <option *ngFor="let track of slidingTypes" [value]="track">
+              {{ track }}
+            </option>
+          </select>
+          <small class="text-medium-emphasis d-block mt-1"
+            >Applies to sliding windows only.</small
+          >
+        </c-col>
+      </c-row>
+    </form>
+  </c-modal-body>
+  <c-modal-footer>
+    <p-button
+      styleClass="p-button-secondary"
+      [disabled]="copying"
+      (click)="closeCopy()"
+    >
+      Cancel
+    </p-button>
+    <p-button [disabled]="copying" (click)="submitCopy()">
+      {{ copying ? "Copying..." : "Copy" }}
+    </p-button>
+  </c-modal-footer>
+</c-modal>
