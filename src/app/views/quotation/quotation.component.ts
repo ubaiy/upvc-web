@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { SortEvent } from 'primeng/api';
@@ -23,11 +23,12 @@ import { DropdownService } from 'src/app/shared/services/dropdown.service';
   templateUrl: './quotation.component.html',
   styleUrls: ['./quotation.component.scss'],
 })
-export class QuotationComponent implements OnInit {
+export class QuotationComponent {
   quotationList: IQuotationDto[] = [];
   inputValue: string = '';
 
   // Copy-quotation dialog state
+  copyDropdownsLoaded: boolean = false;
   copyVisible: boolean = false;
   copySubmitted: boolean = false;
   copying: boolean = false;
@@ -59,10 +60,6 @@ export class QuotationComponent implements OnInit {
       e.customer_address = JSON.parse(e.customer_address);
     });
     this.copyForm = this._initCopyForm();
-  }
-
-  ngOnInit(): void {
-    this._loadCopyDropdowns();
   }
 
   get cf() {
@@ -174,7 +171,12 @@ export class QuotationComponent implements OnInit {
   /**
    * Copy Quotation start
    */
+  /** Fetch the dialog's dropdown data once, on the first open (not in ngOnInit). */
   private _loadCopyDropdowns(): void {
+    if (this.copyDropdownsLoaded) {
+      return;
+    }
+    this.copyDropdownsLoaded = true;
     this._areaService.getAreaList().subscribe((res) => {
       if (res.success) this.areaList = res.data;
     });
@@ -218,6 +220,7 @@ export class QuotationComponent implements OnInit {
   public openCopy(quotation: IQuotationDto): void {
     this.copySubmitted = false;
     this.sourceDetail = null;
+    this._loadCopyDropdowns();
     // Pull the full quotation (header + line items with their saved specs).
     this._dataService.getQuotationDetail(quotation.id).subscribe(
       (res) => {
