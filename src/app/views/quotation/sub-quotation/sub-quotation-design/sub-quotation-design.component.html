@@ -5,6 +5,7 @@
     <div class="sqd-toolbar__lead">
       <span class="sqd-toolbar__eyebrow">Window Designer</span>
       <h2 class="sqd-toolbar__title">{{ edit ? "Edit Quotation" : "Add Quotation" }}</h2>
+      <span class="sqd-toolbar__subtitle" *ngIf="index_no">Product Number - {{ index_no }}</span>
     </div>
     <div class="sqd-toolbar__actions">
       <div class="sqd-total">

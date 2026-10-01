@@ -59,6 +59,12 @@ $sqd-canvas-bg:     #ffffff;
     color: $sqd-body;
   }
 
+  &__subtitle {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: $sqd-muted;
+  }
+
   &__actions {
     display: flex;
     align-items: center;
