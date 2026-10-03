@@ -61,6 +61,11 @@ export class SubQuotationComponent {
                 .subscribe((res) => {
                   if (res.success) {
                     this.data = res.data;
+                    // re-derive srno like the constructor does, else the Sr No
+                    // column goes blank and the edit route's :index is undefined
+                    this.data.quatation_product.forEach((e, i: number) => {
+                      e.srno = i + 1;
+                    });
                   }
                 });
             } else {
