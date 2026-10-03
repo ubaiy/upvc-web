@@ -47,7 +47,6 @@ import {
   debounceTime,
   of,
   switchMap,
-  throttleTime,
 } from 'rxjs';
 import { IResponseDtoOfProduct } from './response.model';
 const isMobile =
@@ -605,7 +604,10 @@ export class SubQuotationDesignComponent
   }
 
   public submit() {
-    if (this.rectSelected) {
+    this.submitted = true;
+    if (this.form.invalid) {
+      this._toastService.showError('Please fix the highlighted fields before saving.');
+    } else if (this.rectSelected) {
       this._toastService.showError('Please complete the design first.');
     } else {
       let data = this.form.getRawValue();
@@ -793,7 +795,7 @@ export class SubQuotationDesignComponent
     // height?.valueChanges.subscribe(handleValueChange);
     // width?.valueChanges.subscribe(handleValueChange);
     this.formValueChangesSubscription = height?.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           this.clearLayerChildren();
@@ -802,7 +804,7 @@ export class SubQuotationDesignComponent
         }
       });
     this.formValueChangesSubscription = width?.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           this.clearLayerChildren();
@@ -811,14 +813,14 @@ export class SubQuotationDesignComponent
         }
       });
     this.formValueChangesSubscription = quantity?.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           this._manageProduct();
         }
       });
     this.formValueChangesSubscription = color?.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((value: any) => {
         if (value.id) {
           profile_color?.patchValue(value.color_code);
@@ -846,7 +848,7 @@ export class SubQuotationDesignComponent
     const glazingBarsH = fg.controls['glazing_bars_horizontal'];
     [glazingBarsV, glazingBarsH].forEach((ctrl) => {
       this.formValueChangesSubscription = ctrl.valueChanges
-        .pipe(throttleTime(300))
+        .pipe(debounceTime(300))
         .subscribe(() => {
           // Redraw so glazing bars update live.
           this.clearLayerChildren();
@@ -859,7 +861,7 @@ export class SubQuotationDesignComponent
     // mirror a freshly-selected pane uses `emitEvent: false`, so it never
     // re-enters here.
     this.formValueChangesSubscription = opening_direction.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((val) => {
         const leaf = this._selectedLeaf();
         if (leaf) {
@@ -872,7 +874,7 @@ export class SubQuotationDesignComponent
         }
       });
     this.formValueChangesSubscription = category.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (!res) {
           return;
@@ -981,7 +983,7 @@ export class SubQuotationDesignComponent
       });
 
     this.formValueChangesSubscription = casementTypeControl.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         const leaf = this._selectedLeaf();
 
@@ -1046,7 +1048,7 @@ export class SubQuotationDesignComponent
       });
 
     this.formValueChangesSubscription = sashIdControl.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           // SUPER SYSTEM: sash id is per-selected-section. With a leaf selected
@@ -1063,7 +1065,7 @@ export class SubQuotationDesignComponent
       });
 
     this.formValueChangesSubscription = pallaTypeControl.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         const n = Number(res) || 0;
         const leaf = this._selectedLeaf();
@@ -1081,7 +1083,7 @@ export class SubQuotationDesignComponent
         this._manageProduct();
       });
     this.formValueChangesSubscription = isTrackControl.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           if (res === '2.5 Track' || res === '3 Track') {
@@ -1098,7 +1100,7 @@ export class SubQuotationDesignComponent
         }
       });
     this.formValueChangesSubscription = fly_mesh.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         // Clear before redraw so pane rects don't accumulate (P0.4)
         this.clearLayerChildren();
@@ -1110,7 +1112,7 @@ export class SubQuotationDesignComponent
     // whole-window behaviour (apply to every leaf). The save payload still uses
     // the form's handle_id, so _manageProduct() runs regardless.
     this.formValueChangesSubscription = handleIdControl.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           const leaf = this._selectedLeaf();
@@ -1126,7 +1128,7 @@ export class SubQuotationDesignComponent
         }
       });
     this.formValueChangesSubscription = glass_id.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           this._manageProduct();
@@ -1143,7 +1145,7 @@ export class SubQuotationDesignComponent
     // Hinge type is now per-selected-pane (VISUAL: drives hinge tick count). Same
     // leaf-vs-whole-window fallback as opening_direction / handle_id.
     this.formValueChangesSubscription = hingesTypeControl.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           const leaf = this._selectedLeaf();
@@ -1159,7 +1161,7 @@ export class SubQuotationDesignComponent
         }
       });
     this.formValueChangesSubscription = product_type.valueChanges
-      .pipe(throttleTime(300))
+      .pipe(debounceTime(300))
       .subscribe((res) => {
         if (res) {
           this._manageProduct();
