@@ -80,12 +80,20 @@ export class AuthService {
 
   public setUserAndToken(user: IUserDto, isAuthenticated: Boolean) {
     this.isAuthenticated = isAuthenticated;
-    this.token = user.access_token;
+    // The API only returns access_token from login; get-profile now echoes
+    // null there (audit H2). Never overwrite a valid token with null, and
+    // keep the token under its own key only — not duplicated in the User
+    // blob. Tokens expire after 7 days server-side; expiry surfaces as a
+    // 401, which clearSession() handles.
+    if (user.access_token) {
+      this.token = user.access_token;
+      this._ls.setItem(this.TOKEN, this.token);
+    }
+    const { access_token, ...userWithoutToken } = user;
     this.user = user;
     this.user$.next(user);
     this.profile$.next(user.profile);
-    this._ls.setItem(this.TOKEN, this.token);
-    this._ls.setItem(this.USER, user);
+    this._ls.setItem(this.USER, userWithoutToken);
     this._ls.setItem('profile', user.profile);
   }
 }
