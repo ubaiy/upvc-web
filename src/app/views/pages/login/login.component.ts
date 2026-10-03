@@ -11,6 +11,7 @@ import { ToastService } from 'src/app/shared/services/toast.service';
 })
 export class LoginComponent {
   form: FormGroup;
+  submitted: boolean = false;
   public visibleAlert = false;
   alertMessage: string = '';
   alertType: string = 'dark';
@@ -28,6 +29,7 @@ export class LoginComponent {
   }
 
   public submit() {
+    this.submitted = true;
     if (this.form.valid) {
       this._authService.login(this.form.getRawValue()).subscribe(
         (res) => {
@@ -52,7 +54,8 @@ export class LoginComponent {
   private _initForm(): FormGroup {
     let fg = this._fb.group({
       email: ['', [Validators.required]],
-      password: ['', [Validators.required]],
+      // Minimum 8 matches the API password policy (audit H3).
+      password: ['', [Validators.required, Validators.minLength(8)]],
     });
     return fg;
   }

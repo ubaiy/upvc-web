@@ -35,6 +35,14 @@
                     formControlName="email"
                   />
                 </c-input-group>
+                <small
+                  class="error d-block mb-2"
+                  *ngIf="
+                    form.controls['email'].errors?.['required'] &&
+                    (form.controls['email'].touched || submitted)
+                  "
+                  >Email is required</small
+                >
                 <label cLabel for="loginPassword" class="mb-1">Password</label>
                 <c-input-group class="mb-4">
                   <span cInputGroupText>
@@ -49,6 +57,22 @@
                     formControlName="password"
                   />
                 </c-input-group>
+                <small
+                  class="error d-block mb-2"
+                  *ngIf="
+                    form.controls['password'].errors?.['required'] &&
+                    (form.controls['password'].touched || submitted)
+                  "
+                  >Password is required</small
+                >
+                <small
+                  class="error d-block mb-2"
+                  *ngIf="
+                    form.controls['password'].errors?.['minlength'] &&
+                    (form.controls['password'].touched || submitted)
+                  "
+                  >Password must be at least 8 characters</small
+                >
                 <c-row>
                   <c-col xs="6">
                     <button cButton class="px-4" color="dark" type="submit">
