@@ -48,8 +48,33 @@ export class AuthService {
     );
   }
 
+  /**
+   * Full logout: revoke the token server-side (audit H2), then clear local
+   * state. The revocation call is fire-and-forget — local state is cleared
+   * even if the API is unreachable or the token is already invalid.
+   */
   public logout() {
-    this._ls.clear();
+    this._apiHttpService.post(API_END_POINT.auth.logout).subscribe({
+      next: () => {},
+      error: () => {},
+    });
+    this.clearSession();
+  }
+
+  /**
+   * Clear local session state only (no API call). Used by the 401 handler so
+   * an expired/revoked token doesn't trigger a logout call that would 401
+   * again in a loop. Removes only our own keys (not localStorage.clear()).
+   */
+  public clearSession() {
+    this.token = '';
+    this.isAuthenticated = false;
+    this.user = new UserDto();
+    this.user$.next(this.user);
+    this.profile$.next('../../assets/images/defaultProfile.webp');
+    this._ls.remove(this.TOKEN);
+    this._ls.remove(this.USER);
+    this._ls.remove('profile');
     this._router.navigate(['/auth/login']);
   }
 

@@ -54,8 +54,12 @@ export class LoaderInterceptor implements HttpInterceptor {
           },
           (err) => {
             if (err.status == 401) {
-              this._toastService.showError('Session Expired.');
-              this.authService.logout();
+              // Clear local state only — calling logout() here would POST
+              // api/v1/logout with the same dead token and 401 in a loop.
+              if (!req.url.endsWith('/logout')) {
+                this._toastService.showError('Session Expired.');
+              }
+              this.authService.clearSession();
             } else if (!req.url.includes('i18n')) {
               // Surface failed requests (400/500/network) so actions aren't silent.
               const detail =

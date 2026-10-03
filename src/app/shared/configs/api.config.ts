@@ -1,6 +1,7 @@
 export const API_END_POINT = {
   auth: {
     login: 'login',
+    logout: 'logout',
   },
   home: 'dashboard',
   user: {
