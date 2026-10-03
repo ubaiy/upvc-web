@@ -4,6 +4,7 @@ import { Router, NavigationEnd } from '@angular/router';
 import { IconSetService } from '@coreui/icons-angular';
 import { iconSubset } from './icons/icon-subset';
 import { Title } from '@angular/platform-browser';
+import { delay } from 'rxjs/operators';
 import { LoaderService } from './shared/services/loader.service';
 
 @Component({
@@ -24,7 +25,8 @@ export class AppComponent implements OnInit {
     titleService.setTitle(this.title);
     // iconSet singleton
     iconSetService.icons = { ...iconSubset };
-    this.loaderService.isLoading.subscribe((v: boolean) => {
+    // interceptor emits synchronously inside change detection; defer a tick (NG0100)
+    this.loaderService.isLoading.pipe(delay(0)).subscribe((v: boolean) => {
       this.loading = v;
     });
     this.loaderService.value.subscribe((v: any) => {
