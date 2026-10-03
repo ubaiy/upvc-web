@@ -255,15 +255,21 @@ export class QuotationComponent {
             if (list.success) this.customerAddressList = list.data;
             // Coerce ids to strings so they match the <option> string values even
             // after the address list re-renders (avoids a first-open prefill miss).
-            this.copyForm.reset({
-              area_id: detail.area_id != null ? String(detail.area_id) : '',
-              customer_id: detail.customer_id != null ? String(detail.customer_id) : '',
-              customer_address_id:
-                addressId != null && addressId !== '' ? String(addressId) : '',
-              color_id: '',
-              glazz_id: '',
-              is_track: '',
-            });
+            // emitEvent:false — the address list is already loaded above; letting
+            // customer_id.valueChanges refetch replaces the options after the
+            // prefill and drops the selected address back to the placeholder.
+            this.copyForm.reset(
+              {
+                area_id: detail.area_id != null ? String(detail.area_id) : '',
+                customer_id: detail.customer_id != null ? String(detail.customer_id) : '',
+                customer_address_id:
+                  addressId != null && addressId !== '' ? String(addressId) : '',
+                color_id: '',
+                glazz_id: '',
+                is_track: '',
+              },
+              { emitEvent: false }
+            );
           });
 
         this.copyVisible = true;
