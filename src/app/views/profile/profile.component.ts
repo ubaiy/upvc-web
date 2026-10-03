@@ -13,12 +13,15 @@ import { ConfirmationDialogService } from 'src/app/shared/services/confirmationd
 import { LocalStoreService } from 'src/app/shared/services/local-storage.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { ProfileService } from './profile.service';
+// Raster formats the API accepts for profile/logo uploads (audit H4:
+// mimes:jpeg,jpg,png,webp) — SVG and anything scriptable stay out.
 export const validImageTypes = [
-  'image/gif',
   'image/jpeg',
   'image/png',
-  'image/jpg',
+  'image/webp',
 ];
+// 2 MB, matching the API's max:2048 rule.
+export const maxImageBytes = 2 * 1024 * 1024;
 
 @Component({
   selector: 'app-profile',
@@ -73,9 +76,13 @@ export class ProfileComponent {
     if (event.target.files && event.target.files.length) {
       const reader = new FileReader();
       if (!validImageTypes.includes(event.target.files[0]['type'])) {
-        this._toastService.showError('Image file is invalid.');
-      } else if (event.target.files[0].size > 5000001) {
-        this._toastService.showError('Please upload image of less than 5mb.');
+        this._toastService.showError(
+          'Only JPEG, PNG or WebP images are allowed.'
+        );
+      } else if (event.target.files[0].size > maxImageBytes) {
+        this._toastService.showError(
+          'Please upload an image smaller than 2 MB.'
+        );
       } else {
         const file = event.target.files[0];
         reader.onload = (e) => {
