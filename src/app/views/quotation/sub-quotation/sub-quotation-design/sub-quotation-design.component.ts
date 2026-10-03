@@ -1,5 +1,6 @@
 import {
   AfterViewInit,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   OnDestroy,
@@ -289,7 +290,8 @@ export class SubQuotationDesignComponent
     private confirmationDialogService: ConfirmationDialogService,
     private _router: Router,
     private _profileService: ProfileService,
-    private _toastService: ToastService
+    private _toastService: ToastService,
+    private _cdr: ChangeDetectorRef
   ) {
     this._setUpData();
   }
@@ -414,6 +416,9 @@ export class SubQuotationDesignComponent
     console.log(this.stage);
     this.stage.add(this.layer);
     this._updateCanvas();
+    // price/costheadInfo were set synchronously above after the view was
+    // checked (NG0100 on edit load); reconcile the bindings in this cycle
+    this._cdr.detectChanges();
   }
 
   /**
