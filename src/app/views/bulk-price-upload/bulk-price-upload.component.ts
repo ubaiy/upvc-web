@@ -25,16 +25,32 @@ export class BulkPriceUploadComponent {
   ) {
     let data = this._activeRoute.snapshot.data;
     this.editable = data['edit'];
-    // this.form = this._initForm();
-    console.log(data['data']);
-    if (this.editable) {
+    this.form = this._initForm();
+    if (this.editable && data['data']) {
       this.form.patchValue(data['data']);
-      console.log(this.form);
     }
   }
 
   get f() {
     return this.form.controls;
+  }
+
+  // These four factors reprice the ENTIRE catalogue server-side; the API
+  // rejects anything that is not > 0 and <= 1,000,000 (audit H5). Mirror
+  // that here so a typo of 0 is caught before it is ever sent.
+  private _initForm(): FormGroup {
+    const priceValidators = [
+      Validators.required,
+      Validators.pattern(/^\d+(\.\d{1,4})?$/),
+      Validators.min(0.0001),
+      Validators.max(1000000),
+    ];
+    return this._fb.group({
+      per_kg: ['', priceValidators],
+      rate_bar: ['', priceValidators],
+      color_per_kg: ['', priceValidators],
+      color_rate_bar: ['', priceValidators],
+    });
   }
   public toggleWarningModal() {
     if (this.form.dirty && this.form.touched) {

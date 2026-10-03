@@ -134,10 +134,10 @@
             <small
               class="error"
               *ngIf="
-            (!f['mark_up']?.errors?.['required'] && this.f['mark_up']?.errors?.['pattern'] && f['mark_up'].touched) ||
-            (!f['mark_up']?.errors?.['required'] && this.f['mark_up']?.errors?.['pattern'] && submitted)
+            (!f['mark_up']?.errors?.['required'] && (this.f['mark_up']?.errors?.['pattern'] || this.f['mark_up']?.errors?.['max']) && f['mark_up'].touched) ||
+            (!f['mark_up']?.errors?.['required'] && (this.f['mark_up']?.errors?.['pattern'] || this.f['mark_up']?.errors?.['max']) && submitted)
           "
-              >Mark up should be a number</small
+              >Mark up should be a number between 0 and 1000</small
             >
           </c-col>
         </c-row>

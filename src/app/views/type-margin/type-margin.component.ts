@@ -201,7 +201,15 @@ export class TypeMarginComponent {
     let fg: FormGroup = this._fb.group({
       id: [''],
       name: ['', [Validators.required]],
-      mark_up: ['', [Validators.required, Validators.pattern('^[0-9]*$')]],
+      // Mirrors the API guard: numeric, 0..1000 (audit H5).
+      mark_up: [
+        '',
+        [
+          Validators.required,
+          Validators.pattern(/^\d+(\.\d{1,2})?$/),
+          Validators.max(1000),
+        ],
+      ],
       pricing: ['', [Validators.required, Validators.pattern('^[0-9]*$')]],
     });
     if (typeMargin) {

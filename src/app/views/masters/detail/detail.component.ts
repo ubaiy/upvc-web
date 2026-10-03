@@ -105,7 +105,11 @@ export class DetailComponent {
       type: ['', [Validators.required]],
       cost: [
         '',
-        [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)],
+        [
+          Validators.required,
+          Validators.pattern(/^\d+(\.\d{1,2})?$/),
+          Validators.max(1000000),
+        ],
       ],
       unit: ['', [Validators.required]],
       category: [''],

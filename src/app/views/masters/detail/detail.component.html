@@ -169,8 +169,8 @@
         <small
           class="error"
           *ngIf="
-            (!f['cost']?.errors?.['required'] && f['cost']?.errors?.['pattern'] && f['cost'].touched) ||
-            (!f['cost']?.errors?.['required'] && f['cost']?.errors?.['pattern'] && submitted)
+            (!f['cost']?.errors?.['required'] && (f['cost']?.errors?.['pattern'] || f['cost']?.errors?.['max']) && f['cost'].touched) ||
+            (!f['cost']?.errors?.['required'] && (f['cost']?.errors?.['pattern'] || f['cost']?.errors?.['max']) && submitted)
           "
           >Please enter valid Cost Number</small
         >

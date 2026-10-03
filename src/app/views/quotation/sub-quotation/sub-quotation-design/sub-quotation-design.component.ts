@@ -717,7 +717,14 @@ export class SubQuotationDesignComponent
         this.product_id ? this.product_id : ''
       ),
       is_saved: new FormControl(false),
-      quantity: new FormControl(1, [Validators.required]),
+      // quantity is a bill multiplier server-side: whole positive number,
+      // bounded like the API guard (audit H5).
+      quantity: new FormControl(1, [
+        Validators.required,
+        Validators.pattern(/^\d+$/),
+        Validators.min(1),
+        Validators.max(10000),
+      ]),
       color: new FormControl(
         this.colors.find((e) => e.is_default),
         [Validators.required]
@@ -935,7 +942,7 @@ export class SubQuotationDesignComponent
             } else if (res === 'Slidding') {
               pallaTypeControl.setValue(2);
             }
-            pallaTypeControl.setValidators([Validators.required]);
+            pallaTypeControl.setValidators([Validators.required, Validators.min(1)]);
             handleIdControl.setValidators([Validators.required]);
             this._profileList();
             this._sashList();
@@ -959,7 +966,7 @@ export class SubQuotationDesignComponent
 
           if (res === 'Slidding') {
             pallaTypeControl.setValue(2);
-            pallaTypeControl.setValidators([Validators.required]);
+            pallaTypeControl.setValidators([Validators.required, Validators.min(1)]);
             isTrackControl.setValue('2 Track');
             isTrackControl.setValidators([Validators.required]);
             hingesTypeControl.setValue('');
@@ -969,7 +976,7 @@ export class SubQuotationDesignComponent
 
           if (res === 'Casement' && casementTypeControl.value === 'Openable') {
             pallaTypeControl.setValue(1);
-            pallaTypeControl.setValidators([Validators.required]);
+            pallaTypeControl.setValidators([Validators.required, Validators.min(1)]);
             hingesTypeControl.setValidators([Validators.required]);
           }
           [
@@ -1019,7 +1026,7 @@ export class SubQuotationDesignComponent
         if (res) {
           if (category.value === 'Casement' && res === 'Openable') {
             pallaTypeControl.setValue(1);
-            pallaTypeControl.setValidators([Validators.required]);
+            pallaTypeControl.setValidators([Validators.required, Validators.min(1)]);
             this._profileList();
             this._sashList();
             this._handleList();

@@ -82,6 +82,13 @@
                           (f['width']?.errors?.['required'] && submitted)
                         "
                       >Width is required</small>
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['width']?.errors?.['min'] || f['width']?.errors?.['max']) &&
+                          (f['width'].touched || submitted)
+                        "
+                      >Width must be between 200 and 5800 mm</small>
                     </div>
                   </c-col>
                   <c-col [sm]="6">
@@ -101,6 +108,13 @@
                           (f['height']?.errors?.['required'] && submitted)
                         "
                       >Height is required</small>
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['height']?.errors?.['min'] || f['height']?.errors?.['max']) &&
+                          (f['height'].touched || submitted)
+                        "
+                      >Height must be between 200 and 5800 mm</small>
                     </div>
                   </c-col>
                 </c-row>
@@ -122,6 +136,13 @@
                           (f['quantity']?.errors?.['required'] && submitted)
                         "
                       >Quantity is required</small>
+                      <small
+                        class="error"
+                        *ngIf="
+                          (f['quantity']?.errors?.['pattern'] || f['quantity']?.errors?.['min'] || f['quantity']?.errors?.['max']) &&
+                          (f['quantity'].touched || submitted)
+                        "
+                      >Quantity must be a whole number between 1 and 10000</small>
                     </div>
                   </c-col>
                   <c-col [sm]="6">

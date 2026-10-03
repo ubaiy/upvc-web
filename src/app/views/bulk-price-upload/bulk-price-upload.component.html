@@ -18,8 +18,8 @@
         <small
           class="error"
           *ngIf="
-            (!f['per_kg']?.errors?.['required'] && f['per_kg']?.errors?.['pattern'] && f['per_kg'].touched) ||
-            (!f['per_kg']?.errors?.['required'] && f['per_kg']?.errors?.['pattern'] && submitted)
+            (!f['per_kg']?.errors?.['required'] && (f['per_kg']?.errors?.['pattern'] || f['per_kg']?.errors?.['min'] || f['per_kg']?.errors?.['max']) && f['per_kg'].touched) ||
+            (!f['per_kg']?.errors?.['required'] && (f['per_kg']?.errors?.['pattern'] || f['per_kg']?.errors?.['min'] || f['per_kg']?.errors?.['max']) && submitted)
           "
           >Please enter valid Rate/kg Number</small
         >
@@ -45,8 +45,8 @@
         <small
           class="error"
           *ngIf="
-            (!f['rate_bar']?.errors?.['required'] && f['rate_bar']?.errors?.['pattern'] && f['rate_bar'].touched) ||
-            (!f['rate_bar']?.errors?.['required'] && f['rate_bar']?.errors?.['pattern'] && submitted)
+            (!f['rate_bar']?.errors?.['required'] && (f['rate_bar']?.errors?.['pattern'] || f['rate_bar']?.errors?.['min'] || f['rate_bar']?.errors?.['max']) && f['rate_bar'].touched) ||
+            (!f['rate_bar']?.errors?.['required'] && (f['rate_bar']?.errors?.['pattern'] || f['rate_bar']?.errors?.['min'] || f['rate_bar']?.errors?.['max']) && submitted)
           "
           >Please enter valid Rate/Bar Number</small
         >
@@ -74,8 +74,8 @@
         <small
           class="error"
           *ngIf="
-            (!f['color_per_kg']?.errors?.['required'] && f['color_per_kg']?.errors?.['pattern'] && f['color_per_kg'].touched) ||
-            (!f['color_per_kg']?.errors?.['required'] && f['color_per_kg']?.errors?.['pattern'] && submitted)
+            (!f['color_per_kg']?.errors?.['required'] && (f['color_per_kg']?.errors?.['pattern'] || f['color_per_kg']?.errors?.['min'] || f['color_per_kg']?.errors?.['max']) && f['color_per_kg'].touched) ||
+            (!f['color_per_kg']?.errors?.['required'] && (f['color_per_kg']?.errors?.['pattern'] || f['color_per_kg']?.errors?.['min'] || f['color_per_kg']?.errors?.['max']) && submitted)
           "
           >Please enter valid Color Kg/mtr Number</small
         >
@@ -102,8 +102,8 @@
         <small
           class="error"
           *ngIf="
-            (!f['color_rate_bar']?.errors?.['required'] && f['color_rate_bar']?.errors?.['pattern'] && f['color_rate_bar'].touched) ||
-            (!f['color_rate_bar']?.errors?.['required'] && f['color_rate_bar']?.errors?.['pattern'] && submitted)
+            (!f['color_rate_bar']?.errors?.['required'] && (f['color_rate_bar']?.errors?.['pattern'] || f['color_rate_bar']?.errors?.['min'] || f['color_rate_bar']?.errors?.['max']) && f['color_rate_bar'].touched) ||
+            (!f['color_rate_bar']?.errors?.['required'] && (f['color_rate_bar']?.errors?.['pattern'] || f['color_rate_bar']?.errors?.['min'] || f['color_rate_bar']?.errors?.['max']) && submitted)
           "
           >Please enter valid Color Rate/Meter Number</small
         >
