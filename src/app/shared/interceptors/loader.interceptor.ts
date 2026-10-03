@@ -49,6 +49,23 @@ export class LoaderInterceptor implements HttpInterceptor {
           (event) => {
             if (event instanceof HttpResponse) {
               this.removeRequest(req);
+              // Shared business-error handler (defects D4/A3): the API
+              // returns HTTP 200 with {status: 0, message} and no `success`
+              // key on validation/business failures. Components that only
+              // branch on res.success would swallow these silently — surface
+              // the API's message once, here, for every such response.
+              // ToastService de-duplicates if a component also toasts it.
+              const body: any = event.body;
+              if (
+                body &&
+                typeof body === 'object' &&
+                !(body instanceof Blob) &&
+                body.success === undefined &&
+                body.status === 0 &&
+                body.message
+              ) {
+                this._toastService.showError(body.message);
+              }
               observer.next(event);
             }
           },

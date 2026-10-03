@@ -6,6 +6,12 @@ import { MessageService } from 'primeng/api';
   providedIn: 'root',
 })
 export class ToastService {
+  // Suppress identical error toasts fired in quick succession (e.g. the
+  // shared status-0 interceptor handler and a component's own else-branch
+  // both reporting the same API message).
+  private lastErrorMessage = '';
+  private lastErrorAt = 0;
+
   constructor(private messageService: MessageService) {}
 
   showSuccess(message: string) {
@@ -17,6 +23,12 @@ export class ToastService {
   }
 
   showError(message: string) {
+    const now = Date.now();
+    if (message && message === this.lastErrorMessage && now - this.lastErrorAt < 1500) {
+      return;
+    }
+    this.lastErrorMessage = message;
+    this.lastErrorAt = now;
     this.messageService.add({
       severity: 'error',
       summary: 'Error',
