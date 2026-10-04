@@ -1,7 +1,203 @@
-/* Media query for screens less than 768 pixels wide */
-@media (max-width: 800px) {
-  .p-button .p-button-label {
-    /* Target the button's label */
-    display: none !important; /* Hide the button label */
+:host {
+  display: block;
+}
+
+app-callout {
+  margin-block-end: var(--s-4);
+}
+
+.head-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-block-start: var(--s-2);
+  flex-wrap: wrap;
+}
+
+// One window or door: drawing, name and specification, quantity, price, menu.
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-4) var(--s-5);
+  border-block-end: 1px solid var(--c-border);
+  color: var(--c-text);
+
+  &.is-link {
+    cursor: pointer;
+
+    &:hover {
+      background: var(--c-surface-2);
+    }
+  }
+
+  &[aria-busy='true'] {
+    opacity: 0.6;
+  }
+}
+
+.thumb {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 84px;
+  height: 64px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+
+  // The designer's saved drawing, whatever its proportions.
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+
+  &.skeleton {
+    border: 0;
+  }
+}
+
+.name {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: var(--fw-medium);
+  color: var(--c-text);
+  text-align: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+button.name {
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.price {
+  text-align: end;
+  min-width: 110px;
+}
+
+.add-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-2);
+  width: 100%;
+  padding: var(--s-4);
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: var(--fw-medium);
+  color: var(--c-accent-text);
+  cursor: pointer;
+  border-end-start-radius: inherit;
+  border-end-end-radius: inherit;
+
+  &:hover {
+    background: var(--c-accent-soft);
+  }
+}
+
+// The card ends on the last row when there is no "add" row under it.
+.item:last-child {
+  border-block-end: 0;
+}
+
+.side-title {
+  margin-block-end: var(--s-3);
+}
+
+.side-gap {
+  margin-block-start: var(--s-3);
+}
+
+.who {
+  display: flex;
+  gap: var(--s-3);
+  align-items: center;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--c-accent-soft);
+  color: var(--c-accent-text);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
+}
+
+// "Retail margin 20% · 50% advance" with "Change" beside it.
+.terms {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  margin-block-start: var(--s-4);
+}
+
+.link {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: var(--fs-13);
+  color: var(--c-accent-text);
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.versions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  li {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--s-3);
+  }
+
+  li + li {
+    margin-block-start: var(--s-2);
+  }
+}
+
+@media (max-width: 1024px) {
+  .qty {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .item {
+    gap: var(--s-3);
+    padding-inline: var(--s-4);
+  }
+
+  .thumb {
+    width: 64px;
+    height: 52px;
+  }
+
+  .price {
+    min-width: 0;
   }
 }

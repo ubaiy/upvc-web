@@ -1,0 +1,110 @@
+<p-dialog
+  header="Send quotation"
+  [visible]="visible"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!sending"
+  [style]="{ width: '960px', maxWidth: '96vw' }"
+  styleClass="send-dialog"
+>
+  <div class="send" *ngIf="quotation as q">
+    <!-- What the customer receives -->
+    <div class="pane" #pane [attr.aria-busy]="previewLoading">
+      <iframe
+        *ngIf="preview"
+        class="doc"
+        sandbox=""
+        [title]="'Preview of quotation ' + q.number"
+        [srcdoc]="preview"
+      ></iframe>
+      <div class="pane-note" *ngIf="previewLoading">
+        <span class="skeleton" style="width: 60%"></span>
+        <span class="skeleton" style="width: 80%"></span>
+        <span class="skeleton" style="width: 70%"></span>
+        <span class="sr-only" role="status">Loading the preview</span>
+      </div>
+      <div class="pane-note" *ngIf="previewFailed">
+        <app-callout tone="warn">
+          We could not load the preview. You can still send the quotation.
+          <button action type="button" class="btn btn-secondary btn-sm" (click)="loadPreview()">Try again</button>
+        </app-callout>
+      </div>
+    </div>
+
+    <div class="side">
+      <div>
+        <div class="muted small">To</div>
+        <div class="strong">{{ q.customer.name }}</div>
+        <div class="muted small">
+          <bdi>{{ q.number }}</bdi> · {{ q.total | inr }}
+        </div>
+      </div>
+
+      <div class="channel">
+        <label class="label" for="send-phone">WhatsApp number</label>
+        <input
+          class="input"
+          id="send-phone"
+          type="tel"
+          inputmode="tel"
+          autocomplete="off"
+          [class.is-invalid]="!!errorFor('whatsapp')"
+          [attr.aria-describedby]="errorFor('whatsapp') ? 'send-phone-error' : null"
+          [(ngModel)]="phone"
+        />
+        <span class="error" id="send-phone-error" role="alert" *ngIf="errorFor('whatsapp') as text">{{ text }}</span>
+        <button
+          type="button"
+          class="btn btn-primary btn-block"
+          [disabled]="!!sending"
+          [attr.aria-busy]="sending === 'whatsapp'"
+          (click)="send('whatsapp')"
+        >
+          <app-icon [name]="sending === 'whatsapp' ? 'loader' : 'send'"></app-icon>Send on WhatsApp
+        </button>
+        <span class="hint">Opens WhatsApp with a short message and a link to the PDF.</span>
+      </div>
+
+      <div class="channel">
+        <label class="label" for="send-email">Email</label>
+        <input
+          class="input"
+          id="send-email"
+          type="email"
+          autocomplete="off"
+          placeholder="name@example.com"
+          [class.is-invalid]="!!errorFor('email')"
+          [attr.aria-describedby]="errorFor('email') ? 'send-email-error' : null"
+          [(ngModel)]="email"
+        />
+        <span class="error" id="send-email-error" role="alert" *ngIf="errorFor('email') as text">{{ text }}</span>
+        <button
+          type="button"
+          class="btn btn-secondary btn-block"
+          [disabled]="!!sending"
+          [attr.aria-busy]="sending === 'email'"
+          (click)="send('email')"
+        >
+          <app-icon [name]="sending === 'email' ? 'loader' : 'mail'"></app-icon>Send by email
+        </button>
+        <span class="hint">The PDF is attached.</span>
+      </div>
+
+      <div class="channel">
+        <button
+          type="button"
+          class="btn btn-secondary btn-block"
+          [disabled]="!!sending"
+          [attr.aria-busy]="sending === 'download'"
+          (click)="send('download')"
+        >
+          <app-icon [name]="sending === 'download' ? 'loader' : 'download'"></app-icon>Download PDF
+        </button>
+        <span class="error" role="alert" *ngIf="errorFor('download') as text">{{ text }}</span>
+        <span class="hint">Any of the three marks the quotation as sent today.</span>
+      </div>
+    </div>
+  </div>
+</p-dialog>

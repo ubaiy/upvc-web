@@ -1,0 +1,77 @@
+<p-dialog
+  header="Pricing and terms"
+  [visible]="visible"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!saving"
+  [style]="{ width: '440px' }"
+>
+  <form id="summary-form" class="u-col" style="gap: var(--s-4)" (ngSubmit)="submit()" novalidate>
+    <app-callout tone="warn" *ngIf="loadError">
+      {{ loadError }}
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </app-callout>
+
+    <div class="field">
+      <label class="label" for="sum-margin">Price list</label>
+      <select class="select" id="sum-margin" name="margin" [(ngModel)]="marginId" [disabled]="loading || !margins.length">
+        <option *ngFor="let margin of margins" [ngValue]="margin.id">{{ margin.label }}</option>
+      </select>
+      <span class="hint">The margin added to every window on this quotation.</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="sum-terms">Payment terms</label>
+      <select class="select" id="sum-terms" name="terms" [(ngModel)]="termId" [disabled]="loading || !terms.length">
+        <option *ngFor="let term of terms" [ngValue]="term.id">{{ term.label }}</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="label" id="sum-discount-label">Discount</span>
+      <div class="u-row" style="gap: var(--s-3)">
+        <div class="seg" role="group" aria-labelledby="sum-discount-label">
+          <button type="button" [attr.aria-pressed]="discountType === 'none'" (click)="setDiscountType('none')">None</button>
+          <button type="button" [attr.aria-pressed]="discountType === 'percent'" (click)="setDiscountType('percent')">%</button>
+          <button type="button" [attr.aria-pressed]="discountType === 'amount'" (click)="setDiscountType('amount')">₹</button>
+        </div>
+        <label class="input-group grow" [class.is-invalid]="!!discountError" *ngIf="discountType !== 'none'">
+          <span class="unit" *ngIf="discountType === 'amount'">₹</span>
+          <input
+            type="number"
+            name="discount"
+            min="0"
+            step="any"
+            inputmode="decimal"
+            [attr.max]="discountType === 'percent' ? 100 : null"
+            [attr.aria-label]="discountType === 'percent' ? 'Discount in percent' : 'Discount in rupees'"
+            [attr.aria-describedby]="discountError ? 'sum-discount-error' : null"
+            [(ngModel)]="discountValue"
+          />
+          <span class="unit" *ngIf="discountType === 'percent'">%</span>
+        </label>
+      </div>
+      <span class="error" id="sum-discount-error" *ngIf="discountError">{{ discountError }}</span>
+      <span class="hint" *ngIf="!discountError">Taken off the whole quotation, before GST.</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="sum-valid">Valid until</label>
+      <input class="input" id="sum-valid" name="valid" type="date" [min]="today" [(ngModel)]="validUntil" />
+    </div>
+
+    <label class="check">
+      <input type="checkbox" name="inclusive" [(ngModel)]="pricesIncludeGst" />
+      <span>Prices include GST</span>
+    </label>
+
+    <p class="error" role="alert" *ngIf="saveError">{{ saveError }}</p>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
+    <p-button label="Save" [loading]="saving" [disabled]="loading" (onClick)="submit()"></p-button>
+  </ng-template>
+</p-dialog>

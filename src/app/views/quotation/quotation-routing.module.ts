@@ -2,7 +2,6 @@ import { inject, NgModule } from '@angular/core';
 import { ActivatedRouteSnapshot, Router, RouterModule, Routes } from '@angular/router';
 import { QuotationComponent } from './quotation.component';
 import { SubQuotationComponent } from './sub-quotation/sub-quotation.component';
-import { SubQuotationResolver } from './sub-quotation/sub-quotation.resolver';
 import { ProfileListResolver } from 'src/app/shared/resolver/profile-list.resolver';
 import { AllDropdownsResolver } from 'src/app/shared/resolver/all-dropdowns.resolver';
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
@@ -36,9 +35,9 @@ const routes: Routes = [
     component: QuotationComponent,
   },
   {
+    // The quotation page loads its own data: skeleton, inline error, "Try again".
     path: 'detail/:id',
     component: SubQuotationComponent,
-    resolve: { data: SubQuotationResolver },
     data: { edit: false },
   },
   {

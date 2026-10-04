@@ -1,127 +1,392 @@
-<div class="d-flex mb-5 justify-content-between align-items-center">
-  <h4 class="">Quotation Detail - {{ data.customer.name }}</h4>
-  <span
-    class="d-flex mb-5 justify-content-between align-items-center gap-2 align-item-center"
-  >
-    <p-button [routerLink]="['add', data.quatation_product.length + 1]"
-      >Add New</p-button
+<!-- Loading: the page's own shape, as a skeleton -->
+<ng-container *ngIf="loading && !view">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a routerLink="/quotation">Quotations</a><app-icon name="chev-right" [mirror]="true"></app-icon>
+    <span class="skeleton" style="width: 56px"></span>
+  </nav>
+  <header class="page-header">
+    <div class="grow">
+      <span class="skeleton" style="width: 280px; height: 24px"></span>
+      <span class="skeleton" style="width: 320px; margin-block-start: var(--s-4)"></span>
+    </div>
+  </header>
+  <div class="split" aria-busy="true">
+    <section class="card">
+      <div class="card-head"><span class="skeleton" style="width: 140px"></span></div>
+      <div class="item" *ngFor="let i of skeletonRows">
+        <span class="skeleton thumb"></span>
+        <div class="grow">
+          <span class="skeleton" [style.width]="['38%', '30%', '44%'][i]"></span>
+          <span class="skeleton" style="margin-block-start: var(--s-2)" [style.width]="['62%', '54%', '58%'][i]"></span>
+        </div>
+        <span class="skeleton" style="width: 84px"></span>
+      </div>
+    </section>
+    <aside class="stack-4">
+      <section class="card card-pad">
+        <span class="skeleton" style="width: 40%"></span>
+        <span class="skeleton" style="width: 70%; margin-block-start: var(--s-4)"></span>
+      </section>
+      <section class="card card-pad">
+        <span class="skeleton" style="width: 40%"></span>
+        <span class="skeleton" style="margin-block-start: var(--s-4)"></span>
+        <span class="skeleton" style="margin-block-start: var(--s-3)"></span>
+        <span class="skeleton" style="height: 20px; margin-block-start: var(--s-4)"></span>
+      </section>
+    </aside>
+  </div>
+  <span class="sr-only" role="status">Loading the quotation</span>
+</ng-container>
+
+<!-- Load error -->
+<ng-container *ngIf="loadFailed && !view">
+  <app-page-header title="Quotation" [crumbs]="crumbs"></app-page-header>
+  <app-callout tone="warn">
+    We could not load this quotation. Check your connection.
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+</ng-container>
+
+<ng-container *ngIf="view as q">
+  <app-page-header [title]="q.name" [crumbs]="crumbs">
+    <div meta class="head-meta">
+      <app-quote-status
+        variant="steps"
+        [status]="stepStatus"
+        [note]="(stepDate | date : 'd MMM') || undefined"
+      ></app-quote-status>
+      <span class="muted small" *ngIf="q.status === 'declined' && q.declinedAt">on {{ q.declinedAt | date : 'd MMM' }}</span>
+      <span class="badge badge-warning" *ngIf="q.status === 'expired'">
+        Expired<ng-container *ngIf="q.validUntil"> {{ q.validUntil | date : 'd MMM' }}</ng-container>
+      </span>
+    </div>
+
+    <button
+      actions
+      type="button"
+      class="btn btn-ghost btn-icon"
+      aria-haspopup="menu"
+      aria-label="More actions"
+      [disabled]="!!busy"
+      (click)="openMenu($event)"
     >
-    <p-button routerLink="super-system">Super System</p-button>
-  </span>
-</div>
-<div class="card">
-  <p-table
-    #dt1
-    [value]="data.quatation_product"
-    [paginator]="true"
-    [rows]="25"
-    [globalFilterFields]="[
-      'product.category',
-      'product_type',
-      'total',
-      'total_sq_ft',
-      'average_total'
-    ]"
-    (sortFunction)="customSort($event)"
-    [customSort]="true"
-    [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[25, 50, 75, 100]"
-  >
-    <ng-template pTemplate="caption">
-      <div>
-        <button
-          pButton
-          label="Print Quotation"
-          class="p-button-outlined"
-          style="margin-right: 10px"
-          icon="pi pi-print"
-          (click)="show()"
-          id="printButton"
-        ></button>
-        <button
-          pButton
-          label="Convert To Bill"
-          class="p-button-outlined"
-          style="margin-right: 10px"
-          icon="pi pi-money-bill"
-          (click)="convertToBill()"
-          id="printButton"
-        ></button>
-        <button
-          pButton
-          label="Clear"
-          class="p-button-outlined ml-3"
-          icon="pi pi-filter-slash"
-          (click)="clear(dt1)"
-          id="printButton"
-        ></button>
+      <app-icon name="more"></app-icon>
+    </button>
+    <button
+      actions
+      type="button"
+      class="btn btn-secondary"
+      *ngIf="q.lines.length"
+      [disabled]="!!busy"
+      [attr.aria-busy]="busy === 'pdf'"
+      (click)="downloadPdf()"
+    >
+      <app-icon [name]="busy === 'pdf' ? 'loader' : 'download'"></app-icon>PDF
+    </button>
+    <button
+      actions
+      type="button"
+      class="btn btn-primary"
+      *ngIf="primary"
+      [disabled]="!!busy"
+      [attr.aria-busy]="busy === 'accepted' || busy === 'bill' || busy === 'bill-pdf'"
+      (click)="runPrimary()"
+    >
+      <app-icon [name]="primaryIcon"></app-icon>{{ primaryLabel }}
+    </button>
+  </app-page-header>
+
+  <!-- Things the page has to say, most pressing first -->
+  <app-callout tone="danger" *ngIf="actionError">
+    {{ actionError }}
+    <button action type="button" class="btn btn-ghost btn-sm" (click)="actionError = ''">Dismiss</button>
+  </app-callout>
+
+  <app-callout *ngIf="q.supersededBy as newer">
+    This is an earlier version and can no longer be changed. <bdi>{{ newer.number }}</bdi> replaced it. Its PDF is
+    still available here.
+  </app-callout>
+
+  <app-callout *ngIf="q.bill as bill">
+    Billed as <bdi>{{ bill.number }}</bdi
+    ><ng-container *ngIf="bill.date"> on {{ bill.date | date : 'd MMM y' }}</ng-container> for {{ bill.total | inr }}.
+    <a action class="btn btn-secondary btn-sm" routerLink="/bills">Open bills</a>
+  </app-callout>
+
+  <app-callout tone="warn" *ngIf="q.pricesChanged && q.editable">
+    Prices have changed since this quotation was priced.
+    <button action type="button" class="btn btn-secondary btn-sm" [disabled]="!!busy" (click)="updatePrices()">
+      Update prices
+    </button>
+  </app-callout>
+
+  <app-callout *ngIf="copyRepriced && q.editable">
+    Prices have changed since the original. This copy uses today’s prices.
+    <button action type="button" class="btn btn-ghost btn-sm" (click)="dismissRepriced()">Dismiss</button>
+  </app-callout>
+
+  <div class="split">
+    <section class="card" aria-labelledby="h-items">
+      <div class="card-head">
+        <h2 id="h-items">Windows and doors</h2>
+        <span class="muted small" *ngIf="q.lines.length">
+          {{ q.itemCount === 1 ? '1 item' : q.itemCount + ' items'
+          }}<ng-container *ngIf="q.areaSqFt"> · {{ q.areaSqFt | number : '1.0-1' }} sq ft</ng-container>
+        </span>
       </div>
 
-      <span class="p-input-icon-left ml-auto">
-        <i class="pi pi-search"></i>
-        <input
-          pInputText
-          type="text"
-          [(ngModel)]="inputValue"
-          (input)="dt1?.filterGlobal(inputValue, 'contains')"
-        />
-      </span>
+      <!-- No windows yet: one button -->
+      <app-empty-state
+        *ngIf="empty"
+        icon="window"
+        title="No windows yet"
+        [text]="
+          q.editable
+            ? 'Draw the first window or door. The price is worked out as you draw.'
+            : 'This quotation has no windows or doors.'
+        "
+      >
+        <button type="button" class="btn btn-primary" *ngIf="q.editable" (click)="addWindow()">
+          <app-icon name="plus"></app-icon>Add a window
+        </button>
+      </app-empty-state>
+
+      <div
+        class="item"
+        *ngFor="let line of q.lines; trackBy: trackLine"
+        [class.is-link]="q.editable || q.revisable"
+        [attr.aria-busy]="busy === 'line-' + line.id"
+        (click)="onLineClick($event, line)"
+      >
+        <span class="thumb">
+          <img *ngIf="line.image; else drawn" [src]="line.image" [alt]="line.thumbLabel" />
+          <ng-template #drawn>
+            <app-window-thumb [spec]="line.spec" [width]="72" [height]="52" [label]="line.thumbLabel"></app-window-thumb>
+          </ng-template>
+        </span>
+        <div class="grow">
+          <a class="name" *ngIf="q.editable" [routerLink]="editLink(line)">{{ line.name }}</a>
+          <button type="button" class="name" *ngIf="!q.editable && q.revisable" (click)="openLine(line)">
+            {{ line.name }}
+          </button>
+          <span class="name" *ngIf="!q.editable && !q.revisable">{{ line.name }}</span>
+          <div class="muted small">{{ line.description }}</div>
+        </div>
+        <span class="muted small num qty">Qty {{ line.quantity }}</span>
+        <div class="price">
+          <div class="strong num">{{ line.amount | inr }}</div>
+          <div class="faint tiny num" *ngIf="line.ratePerSqFt !== null">{{ line.ratePerSqFt | inr }} / sq ft</div>
+        </div>
+        <button
+          type="button"
+          class="btn btn-ghost btn-icon btn-sm"
+          *ngIf="q.editable || q.revisable"
+          aria-haspopup="menu"
+          [attr.aria-label]="'More actions for ' + line.name"
+          [disabled]="!!busy"
+          (click)="openLineMenu($event, line)"
+        >
+          <app-icon name="more"></app-icon>
+        </button>
+      </div>
+
+      <button type="button" class="add-row" *ngIf="!empty && (q.editable || q.revisable)" (click)="addWindow()">
+        <app-icon name="plus"></app-icon>Add a window or door
+      </button>
+    </section>
+
+    <aside class="stack-4">
+      <section class="card card-pad" aria-labelledby="h-cust">
+        <h3 id="h-cust" class="muted side-title">Customer</h3>
+        <div class="who">
+          <span class="avatar" aria-hidden="true">{{ q.customer.initials }}</span>
+          <div class="grow">
+            <div class="strong">{{ q.customer.name || 'No customer' }}</div>
+            <div class="muted small" *ngIf="q.customer.phone"><bdi>{{ q.customer.phone }}</bdi></div>
+          </div>
+        </div>
+        <p class="muted small side-gap" *ngIf="q.customer.address">{{ q.customer.address }}</p>
+        <p class="muted small side-gap" *ngIf="!q.customer.address && q.customer.id">
+          No site address yet.
+          <a [routerLink]="['/customers/edit', q.customer.id]">Add it to the customer</a>
+        </p>
+      </section>
+
+      <section class="card card-pad" aria-labelledby="h-total">
+        <h3 id="h-total" class="muted side-title">Summary</h3>
+        <app-totals [lines]="q.summary" [total]="q.total"></app-totals>
+
+        <p class="muted small side-gap" *ngIf="q.taxNote">{{ q.taxNote }}</p>
+        <p class="muted small side-gap" *ngIf="q.placeOfSupplyAssumed && q.customer.id">
+          The customer’s state is not set, so GST is shown as a sale within your state.
+          <a [routerLink]="['/customers/edit', q.customer.id]">Set the state</a>
+        </p>
+
+        <div class="terms">
+          <div class="grow muted small">
+            <div *ngIf="q.marginText || q.termsText">
+              {{ q.marginText }}<ng-container *ngIf="q.marginText && q.termsText"> · </ng-container>{{ q.termsText }}
+            </div>
+            <div *ngIf="q.advance as advance">Advance {{ advance.percent }}%: {{ advance.amount | inr }}</div>
+            <div *ngIf="q.validUntil">Valid until {{ q.validUntil | date : 'd MMM y' }}</div>
+          </div>
+          <button
+            type="button"
+            class="link"
+            *ngIf="q.editable || q.revisable"
+            aria-label="Change margin, payment terms, discount and validity"
+            (click)="changeSummary()"
+          >
+            Change
+          </button>
+        </div>
+      </section>
+
+      <section class="card card-pad" aria-labelledby="h-versions" *ngIf="q.revisions.length > 1">
+        <h3 id="h-versions" class="muted side-title">Versions</h3>
+        <ul class="versions">
+          <li *ngFor="let version of q.revisions">
+            <a *ngIf="version.id !== q.id; else thisOne" [routerLink]="['/quotation/detail', version.id]"
+              ><bdi>{{ version.number }}</bdi></a
+            >
+            <ng-template #thisOne
+              ><span class="strong"><bdi>{{ version.number }}</bdi></span></ng-template
+            >
+            <span class="muted small">{{ version.id === q.id ? 'This version' : version.current ? 'Current' : 'Earlier' }}</span>
+          </li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+
+  <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+
+  <app-summary-dialog
+    [visible]="summaryOpen"
+    [quotation]="q"
+    (closed)="summaryOpen = false"
+    (saved)="onSummarySaved($event)"
+  ></app-summary-dialog>
+
+  <app-send-quotation-dialog
+    [visible]="sendOpen"
+    [quotation]="q"
+    (closed)="sendOpen = false"
+    (sent)="onSent()"
+  ></app-send-quotation-dialog>
+
+  <app-duplicate-dialog
+    [visible]="duplicateOpen"
+    [quotation]="q"
+    (closed)="duplicateOpen = false"
+    (saved)="onDuplicated($event)"
+  ></app-duplicate-dialog>
+
+  <app-quotation-dialog
+    [visible]="!!editRow"
+    [quotation]="editRow"
+    (closed)="editRow = null"
+    (saved)="editRow = null; load(true)"
+  ></app-quotation-dialog>
+
+  <!-- A sent quotation is never changed in place -->
+  <p-dialog
+    [header]="'Create revision ' + q.nextRevision + '?'"
+    [visible]="!!reviseIntent"
+    (visibleChange)="$event ? null : (reviseIntent = null)"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [closable]="busy !== 'revise'"
+    [style]="{ width: '440px' }"
+  >
+    <p class="muted">{{ reviseText }}</p>
+    <ng-template pTemplate="footer">
+      <p-button label="Cancel" [outlined]="true" [disabled]="busy === 'revise'" (onClick)="reviseIntent = null"></p-button>
+      <p-button
+        [label]="'Create revision ' + q.nextRevision"
+        [loading]="busy === 'revise'"
+        (onClick)="confirmRevise()"
+      ></p-button>
     </ng-template>
-    <ng-template pTemplate="header">
-      <tr>
-        <th style="width: 5%" scope="row">Select</th>
-        <th style="width: 10%" scope="row">Sr No</th>
-        <th pSortableColumn="product.category" style="width: 20%" scope="row">
-          Category
-          <p-sortIcon field="product.category"></p-sortIcon>
-        </th>
-        <th pSortableColumn="product_type" style="width: 20%" scope="row">
-          Type <p-sortIcon field="product_type"></p-sortIcon>
-        </th>
-        <th pSortableColumn="total" style="width: 15%" scope="row">
-          Total <p-sortIcon field="total"></p-sortIcon>
-        </th>
-        <th pSortableColumn="total_sq_ft" style="width: 15%" scope="row">
-          Total Area <p-sortIcon field="total_sq_ft"></p-sortIcon>
-        </th>
-        <th pSortableColumn="average_total" style="width: 15%" scope="row">
-          Avg Price per sqft <p-sortIcon field="average_total"></p-sortIcon>
-        </th>
-        <th pSortableColumn="actions" style="width: 15%" scope="row">
-          Actions
-        </th>
-      </tr>
+  </p-dialog>
+
+  <p-dialog
+    [header]="lineToRename?.label ? 'Rename this window' : 'Name this window'"
+    [visible]="!!lineToRename"
+    (visibleChange)="$event ? null : (lineToRename = null)"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '440px' }"
+  >
+    <form class="field" id="rename-form" (ngSubmit)="saveRename()">
+      <label class="label" for="line-label">Where it goes</label>
+      <input
+        class="input"
+        id="line-label"
+        name="label"
+        type="text"
+        maxlength="100"
+        autocomplete="off"
+        placeholder="Master bedroom"
+        aria-describedby="line-label-hint"
+        [(ngModel)]="renameValue"
+      />
+      <span class="hint" id="line-label-hint">Printed on the quotation above the window.</span>
+    </form>
+    <ng-template pTemplate="footer">
+      <p-button label="Cancel" [outlined]="true" (onClick)="lineToRename = null"></p-button>
+      <p-button label="Save" type="submit" form="rename-form" [loading]="busy === 'rename'" (onClick)="saveRename()"></p-button>
     </ng-template>
-    <ng-template pTemplate="body" let-subquotation>
-      <tr>
-        <td>
-          <p-checkbox
-            [(ngModel)]="subquotation.selected"
-            [binary]="true"
-            inputId="binary"
-          ></p-checkbox>
-        </td>
-        <td>{{ subquotation.srno }}</td>
-        <td>{{ subquotation.product.category }}</td>
-        <td>{{ subquotation.product_type }}</td>
-        <td>{{ subquotation.total | currency : "INR" }}</td>
-        <td>{{ subquotation.total_sq_ft | slice : 0 : 4 }} ft</td>
-        <td>{{ subquotation.average_total | currency : "INR" }}</td>
-        <td class="d-flex">
-          <p-button
-            icon="pi pi-pencil"
-            [routerLink]="['edit', subquotation.id, subquotation.srno]"
-            [rounded]="true"
-            [outlined]="true"
-          ></p-button>
-          <p-button
-            icon="pi pi-trash"
-            (onClick)="deleteQuotationProduct(subquotation)"
-            [rounded]="true"
-            [outlined]="true"
-          ></p-button>
-        </td>
-      </tr>
+  </p-dialog>
+
+  <p-dialog
+    header="Delete this window?"
+    [visible]="!!lineToDelete"
+    (visibleChange)="$event ? null : (lineToDelete = null)"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '440px' }"
+  >
+    <p class="muted" *ngIf="lineToDelete as line">
+      “{{ line.name }}”, {{ line.amount | inr }}, will be removed from this quotation. This cannot be undone.
+    </p>
+    <ng-template pTemplate="footer">
+      <p-button label="Keep it" [outlined]="true" (onClick)="lineToDelete = null"></p-button>
+      <p-button
+        label="Delete window"
+        severity="danger"
+        [loading]="busy === 'delete-line'"
+        (onClick)="confirmDeleteLine()"
+      ></p-button>
     </ng-template>
-  </p-table>
-</div>
+  </p-dialog>
+
+  <p-dialog
+    header="Delete this quotation?"
+    [visible]="deleteOpen"
+    (visibleChange)="$event ? null : (deleteOpen = false)"
+    [modal]="true"
+    [draggable]="false"
+    [resizable]="false"
+    [style]="{ width: '440px' }"
+  >
+    <p class="muted">
+      “{{ q.name }}” (<bdi>{{ q.number }}</bdi
+      >)<ng-container *ngIf="q.lines.length">
+        and its {{ q.lines.length === 1 ? 'window' : q.lines.length + ' windows' }}</ng-container
+      >, worth {{ q.total | inr }}, will be deleted. This cannot be undone.
+    </p>
+    <ng-template pTemplate="footer">
+      <p-button label="Keep it" [outlined]="true" (onClick)="deleteOpen = false"></p-button>
+      <p-button
+        label="Delete quotation"
+        severity="danger"
+        [loading]="busy === 'delete'"
+        (onClick)="confirmDelete()"
+      ></p-button>
+    </ng-template>
+  </p-dialog>
+</ng-container>

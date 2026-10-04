@@ -30,9 +30,10 @@ import { QuotationDialogComponent } from './add/quotation-dialog.component';
 import { DuplicateQuotationDialogComponent } from './add/duplicate-quotation-dialog.component';
 import { MenuModule } from 'primeng/menu';
 import { CheckboxModule } from 'primeng/checkbox';
-import { PrintQuotationPdfComponent } from './sub-quotation/print-quotation-pdf/print-quotation-pdf.component';
+import { SendQuotationDialogComponent } from './sub-quotation/print-quotation-pdf/send-quotation-dialog.component';
 import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
-import { DetailComponent } from './sub-quotation/detail/detail.component';
+import { SummaryDialogComponent } from './sub-quotation/detail/summary-dialog.component';
+import { DuplicateDialogComponent } from './sub-quotation/detail/duplicate-dialog.component';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { DetailDesignComponent } from './sub-quotation/detail-design/detail-design.component';
@@ -48,8 +49,9 @@ import { SharedComponentsModule } from '../../shared/components/shared-component
     SubQuotationComponent,
     QuotationDialogComponent,
     DuplicateQuotationDialogComponent,
-    PrintQuotationPdfComponent,
-    DetailComponent,
+    SendQuotationDialogComponent,
+    SummaryDialogComponent,
+    DuplicateDialogComponent,
     DetailDesignComponent,
     SubQuotationDesignComponent,
     DesignFinalComponent,
