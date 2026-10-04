@@ -88,8 +88,8 @@ describe('SettingsAdapter', () => {
       const [identityUrl, form] = api.post.calls.argsFor(0);
       expect(identityUrl).toBe(SETTINGS_API.identity);
       expect((form as FormData).get('name')).toBe('Hakimi Enterprise');
-      // The endpoint requires a second number; one number is repeated.
-      expect((form as FormData).get('phone_no2')).toBe('9510957900');
+      // No second number: the field is left out and the API stores none.
+      expect((form as FormData).has('phone_no2')).toBeFalse();
       expect((form as FormData).has('main_logo')).toBeFalse();
       expect(api.post.calls.argsFor(1)).toEqual([
         SETTINGS_API.settings,

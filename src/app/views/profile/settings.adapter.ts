@@ -71,8 +71,10 @@ export class SettingsAdapter {
     form.append('address', company.address.trim());
     form.append('email', company.email.trim());
     form.append('phone', company.phone.trim());
-    // The endpoint requires a second number; a company with one repeats it.
-    form.append('phone_no2', company.phone2.trim() || company.phone.trim());
+    // The second number is optional: left out, the API stores none.
+    if (company.phone2.trim()) {
+      form.append('phone_no2', company.phone2.trim());
+    }
     if (logo) {
       form.append('main_logo', logo);
     }
@@ -161,7 +163,7 @@ export function toSnapshot(data: any): SettingsSnapshot {
     address: text(d.address),
     email: text(d.email),
     phone: text(d.phone),
-    // A repeated first number is how "no second number" is stored (see saveCompany).
+    // Before the second number became optional, "none" was saved as the first number again.
     phone2: text(d.phone_no2) === text(d.phone) ? '' : text(d.phone_no2),
     logoUrl: d.main_logo || null,
     gstin: d.gstin || null,
