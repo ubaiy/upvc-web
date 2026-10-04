@@ -131,6 +131,7 @@ describe('home data adapter', () => {
     expect(view.empty).toBeTrue();
     expect(view.attention).toEqual([]);
     expect(view.stats.map((stat) => stat.amount)).toEqual([0, 0, 0]);
+    expect(view.stats[1].label).toBe('Waiting for customer');
   });
 
   it('words days and greetings', () => {

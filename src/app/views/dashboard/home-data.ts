@@ -101,9 +101,13 @@ function plural(count: number, one: string, many = one + 's'): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-/** True when the API sends quotation status (card A1). Until then Home knows drafts and bills only. */
+/**
+ * True when the API sends quotation status (card A1). Until then Home knows
+ * drafts and bills only. An empty list tells nothing, so it counts as true:
+ * a new account sees the same three figures it will see later.
+ */
 export function hasStatus(rows: HomeQuotationRow[]): boolean {
-  return rows.some((row) => typeof row.status === 'string' && row.status !== '');
+  return rows.length === 0 || rows.some((row) => typeof row.status === 'string' && row.status !== '');
 }
 
 export function toHomeQuotation(row: HomeQuotationRow, today: Date): HomeQuotation {
