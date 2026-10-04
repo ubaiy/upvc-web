@@ -1,0 +1,72 @@
+<div class="settings-col stack-6">
+  <section class="card" aria-labelledby="h-tax">
+    <div class="card-head">
+      <div>
+        <h2 id="h-tax">GST</h2>
+        <p>Used on every new quotation. Your accountant can confirm the rate and HSN code.</p>
+      </div>
+    </div>
+
+    <div class="card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading GST settings">
+      <span class="skeleton" style="width: 30%"></span>
+      <span class="skeleton" style="width: 100%"></span>
+      <span class="skeleton" style="width: 65%"></span>
+    </div>
+
+    <div class="card-pad" *ngIf="state === 'error'">
+      <app-callout tone="warn">
+        We could not load your GST settings. Check your connection.
+        <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+      </app-callout>
+    </div>
+
+    <form class="card-pad stack-4" *ngIf="state === 'ready'" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <app-callout *ngIf="!chargesGst">
+        Your company is set as {{ registrationType === 'composition' ? 'a composition dealer' : 'not registered for GST' }},
+        so documents carry no tax lines. Change this under
+        <a routerLink="/profile" [queryParams]="{ tab: 'company' }">Company</a>.
+      </app-callout>
+
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="tax-rate">GST rate</label>
+          <div class="input-group" [class.is-invalid]="invalid('gstRate')">
+            <input id="tax-rate" type="number" min="0" max="100" step="0.01" inputmode="decimal" formControlName="gstRate"
+              [attr.aria-invalid]="invalid('gstRate')" aria-describedby="tax-rate-err" />
+            <span class="unit">%</span>
+          </div>
+          <span class="error" id="tax-rate-err" *ngIf="invalid('gstRate')">Enter a rate from 0 to 100.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="tax-hsn">HSN code</label>
+          <input class="input" id="tax-hsn" type="text" inputmode="numeric" formControlName="hsnCode" placeholder="3925 20 00"
+            [class.is-invalid]="invalid('hsnCode')" [attr.aria-invalid]="invalid('hsnCode')" aria-describedby="tax-hsn-hint" />
+          <span class="error" id="tax-hsn-hint" *ngIf="invalid('hsnCode'); else hsnHint">An HSN code has 4 to 8 digits.</span>
+          <ng-template #hsnHint><span class="hint" id="tax-hsn-hint">Printed against each window on the quotation.</span></ng-template>
+        </div>
+        <div class="field span-2">
+          <label class="check" for="tax-incl">
+            <input id="tax-incl" type="checkbox" formControlName="pricesIncludeGst" aria-describedby="tax-incl-hint" />
+            <span class="label">My prices already include GST</span>
+          </label>
+          <span class="hint" id="tax-incl-hint" aria-live="polite">
+            Example: a window priced {{ samplePrice | inr }} is quoted as {{ sample.taxable | inr }} +
+            {{ sample.tax | inr }} GST = {{ sample.total | inr }}.
+          </span>
+        </div>
+      </div>
+
+      <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+
+      <div class="form-foot">
+        <button type="submit" class="btn btn-primary" [disabled]="saving">
+          {{ saving ? 'Saving…' : 'Save changes' }}
+        </button>
+        <span class="hint" *ngIf="form.dirty && !saving">You have unsaved changes.</span>
+      </div>
+    </form>
+  </section>
+
+  <app-margins-card></app-margins-card>
+  <app-payment-terms-card></app-payment-terms-card>
+</div>

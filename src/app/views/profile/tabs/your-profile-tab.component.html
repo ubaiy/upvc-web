@@ -1,0 +1,74 @@
+<div class="settings-col">
+  <section class="card card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading your profile">
+    <span class="skeleton" style="width: 30%"></span>
+    <span class="skeleton" style="width: 100%"></span>
+    <span class="skeleton" style="width: 60%"></span>
+  </section>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load your profile. Check your connection.
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <form class="stack-6" *ngIf="state === 'ready'" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <section class="card" aria-labelledby="h-you">
+      <div class="card-head">
+        <div>
+          <h2 id="h-you">Your profile</h2>
+          <p>Your name appears as "Prepared by" on quotations.</p>
+        </div>
+      </div>
+      <div class="card-pad stack-6">
+        <div class="photo-row">
+          <span class="photo">
+            <img *ngIf="photoUrl; else noPhoto" [src]="photoUrl" alt="Your photo" />
+            <ng-template #noPhoto>{{ initials }}</ng-template>
+          </span>
+          <div class="stack-2">
+            <input #photoInput type="file" hidden accept="image/jpeg,image/png,image/webp" (change)="onPhotoChosen($event)" />
+            <button type="button" class="btn btn-secondary" [disabled]="uploading" (click)="photoInput.click()">
+              <app-icon name="upload"></app-icon>{{ uploading ? 'Uploading…' : photoUrl ? 'Replace photo' : 'Upload photo' }}
+            </button>
+            <p class="hint" *ngIf="!photoError">JPEG, PNG or WebP, up to 2 MB.</p>
+            <p class="error" role="alert" *ngIf="photoError">{{ photoError }}</p>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label class="label" for="me-name">First name</label>
+            <input class="input" id="me-name" type="text" formControlName="name" autocomplete="given-name"
+              [class.is-invalid]="invalid('name')" [attr.aria-invalid]="invalid('name')" aria-describedby="me-name-err" />
+            <span class="error" id="me-name-err" *ngIf="invalid('name')">Enter your first name.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="me-last">Last name</label>
+            <input class="input" id="me-last" type="text" formControlName="last_name" autocomplete="family-name"
+              [class.is-invalid]="invalid('last_name')" [attr.aria-invalid]="invalid('last_name')" aria-describedby="me-last-err" />
+            <span class="error" id="me-last-err" *ngIf="invalid('last_name')">Enter your last name.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="me-email">Email</label>
+            <input class="input" id="me-email" type="email" formControlName="email" aria-describedby="me-email-hint" />
+            <span class="hint" id="me-email-hint">You sign in with this email. It cannot be changed here.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="me-phone">Phone</label>
+            <input class="input" id="me-phone" type="tel" formControlName="phone" autocomplete="tel"
+              [class.is-invalid]="invalid('phone')" [attr.aria-invalid]="invalid('phone')" aria-describedby="me-phone-err" />
+            <span class="error" id="me-phone-err" *ngIf="invalid('phone')">Enter a phone number of 8 to 15 digits.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+
+    <div class="form-foot">
+      <button type="submit" class="btn btn-primary" [disabled]="saving">
+        {{ saving ? 'Saving…' : 'Save changes' }}
+      </button>
+      <span class="hint" *ngIf="form.dirty && !saving">You have unsaved changes.</span>
+    </div>
+  </form>
+</div>

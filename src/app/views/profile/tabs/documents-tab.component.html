@@ -1,0 +1,193 @@
+<div class="stack-6 settings-col" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading document settings">
+  <section class="card card-pad sk-card" *ngFor="let widths of [['30%', '100%', '60%'], ['25%', '100%', '100%', '70%']]">
+    <span class="skeleton" *ngFor="let width of widths" [style.width]="width"></span>
+  </section>
+</div>
+
+<app-callout tone="warn" *ngIf="state === 'error'" class="settings-col">
+  We could not load your document settings. Check your connection.
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<div class="doc-split" *ngIf="state === 'ready'">
+  <form class="stack-6" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <app-callout *ngIf="!stored">
+      These details cannot be saved on this server yet. Use the preview to see how your documents will look.
+    </app-callout>
+
+    <section class="card" aria-labelledby="h-numbering">
+      <div class="card-head">
+        <div>
+          <h2 id="h-numbering">Numbering and validity</h2>
+          <p>How quotations are numbered and how long a price holds.</p>
+        </div>
+      </div>
+      <div class="card-pad form-grid">
+        <div class="field">
+          <label class="label" for="doc-prefix">Number prefix</label>
+          <input class="input" id="doc-prefix" type="text" formControlName="numberPrefix" maxlength="10"
+            [class.is-invalid]="invalid('numberPrefix')" [attr.aria-invalid]="invalid('numberPrefix')" aria-describedby="doc-prefix-hint" />
+          <span class="error" id="doc-prefix-hint" *ngIf="invalid('numberPrefix'); else prefixHint">Use letters, digits, "/" and "-" only.</span>
+          <ng-template #prefixHint>
+            <span class="hint" id="doc-prefix-hint">New quotations are numbered like {{ doc.numberPrefix }}0014.</span>
+          </ng-template>
+        </div>
+        <div class="field">
+          <label class="label" for="doc-validity">Valid for</label>
+          <div class="input-group" [class.is-invalid]="invalid('validityDays')">
+            <input id="doc-validity" type="number" min="1" max="365" step="1" inputmode="numeric" formControlName="validityDays"
+              [attr.aria-invalid]="invalid('validityDays')" aria-describedby="doc-validity-hint" />
+            <span class="unit">days</span>
+          </div>
+          <span class="error" id="doc-validity-hint" *ngIf="invalid('validityDays'); else validityHint">Enter a whole number of days from 1 to 365.</span>
+          <ng-template #validityHint>
+            <span class="hint" id="doc-validity-hint">A quotation made today is valid until {{ validUntil | date : 'd MMM y' }}.</span>
+          </ng-template>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-bank">
+      <div class="card-head">
+        <div>
+          <h2 id="h-bank">Bank and UPI</h2>
+          <p>So the customer can pay the advance straight from the quotation.</p>
+        </div>
+      </div>
+      <div class="card-pad form-grid">
+        <div class="field span-2">
+          <label class="label" for="doc-bank">Bank and branch</label>
+          <input class="input" id="doc-bank" type="text" formControlName="bankName" placeholder="State Bank of India, Dahod" />
+        </div>
+        <div class="field span-2">
+          <label class="label" for="doc-holder">Account holder name</label>
+          <input class="input" id="doc-holder" type="text" formControlName="bankAccountName" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label class="label" for="doc-account">Account number</label>
+          <input class="input" id="doc-account" type="text" formControlName="bankAccount" maxlength="40" autocomplete="off"
+            [class.is-invalid]="invalid('bankAccount')" [attr.aria-invalid]="invalid('bankAccount')" aria-describedby="doc-account-err" />
+          <span class="error" id="doc-account-err" *ngIf="invalid('bankAccount')">Use letters, digits, spaces and hyphens only.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="doc-ifsc">IFSC</label>
+          <input class="input upper" id="doc-ifsc" type="text" formControlName="bankIfsc" maxlength="11" autocomplete="off"
+            spellcheck="false" placeholder="SBIN0001234"
+            [class.is-invalid]="invalid('bankIfsc')" [attr.aria-invalid]="invalid('bankIfsc')" aria-describedby="doc-ifsc-err" />
+          <span class="error" id="doc-ifsc-err" *ngIf="invalid('bankIfsc')">An IFSC has 11 characters, like SBIN0001234.</span>
+        </div>
+        <div class="field span-2">
+          <label class="label" for="doc-upi">UPI ID</label>
+          <input class="input" id="doc-upi" type="text" formControlName="upiId" autocomplete="off" spellcheck="false"
+            placeholder="yourname@bank"
+            [class.is-invalid]="invalid('upiId')" [attr.aria-invalid]="invalid('upiId')" aria-describedby="doc-upi-err" />
+          <span class="error" id="doc-upi-err" *ngIf="invalid('upiId')">A UPI ID looks like yourname@bank.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-terms-text">
+      <div class="card-head">
+        <div>
+          <h2 id="h-terms-text">Terms and signature</h2>
+          <p>Printed at the end of every quotation.</p>
+        </div>
+      </div>
+      <div class="card-pad form-grid">
+        <div class="field span-2">
+          <label class="label" for="doc-terms">Terms and conditions</label>
+          <textarea class="input" id="doc-terms" rows="6" formControlName="terms" aria-describedby="doc-terms-hint"
+            placeholder="Delivery within 21 days of the advance.&#10;Installation included; masonry and scaffolding are not."></textarea>
+          <span class="hint" id="doc-terms-hint">One term per line: delivery period, installation, warranty, what is not included.</span>
+        </div>
+        <div class="field span-2">
+          <label class="label" for="doc-signatory">Signatory name</label>
+          <input class="input" id="doc-signatory" type="text" formControlName="signatory" autocomplete="name"
+            aria-describedby="doc-signatory-hint" />
+          <span class="hint" id="doc-signatory-hint">Printed under "For {{ company?.name || 'your company' }}".</span>
+        </div>
+      </div>
+    </section>
+
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+
+    <div class="form-foot">
+      <button type="submit" class="btn btn-primary" [disabled]="saving || !stored">
+        {{ saving ? 'Saving…' : 'Save changes' }}
+      </button>
+      <span class="hint" *ngIf="stored && form.dirty && !saving">You have unsaved changes.</span>
+    </div>
+  </form>
+
+  <aside class="preview" aria-labelledby="h-preview">
+    <h2 id="h-preview" class="preview-title">Preview</h2>
+    <div class="sheet" *ngIf="company as co">
+      <div class="sheet-head">
+        <div class="sheet-co">
+          <span class="sheet-logo">
+            <img *ngIf="co.logoUrl; else mark" [src]="co.logoUrl" alt="" />
+            <ng-template #mark>{{ initials }}</ng-template>
+          </span>
+          <div>
+            <p class="sheet-name">{{ co.name || 'Your company' }}</p>
+            <p>{{ co.address }}</p>
+            <p>{{ co.phone }}<ng-container *ngIf="co.email"> · {{ co.email }}</ng-container></p>
+            <p *ngIf="co.gstin || co.stateName">
+              <ng-container *ngIf="co.gstin"><span class="k">GSTIN</span> {{ co.gstin }}</ng-container>
+              <ng-container *ngIf="co.gstin && co.stateName"> · </ng-container>
+              <ng-container *ngIf="co.stateName"><span class="k">State</span> {{ co.stateName }} ({{ co.stateCode }})</ng-container>
+            </p>
+          </div>
+        </div>
+        <div class="sheet-doc">
+          <p class="sheet-title">QUOTATION</p>
+          <dl>
+            <dt>Number</dt>
+            <dd>{{ doc.numberPrefix }}0014</dd>
+            <dt>Date</dt>
+            <dd>{{ today | date : 'd MMM y' }}</dd>
+            <dt>Valid until</dt>
+            <dd>{{ validUntil | date : 'd MMM y' }}</dd>
+          </dl>
+        </div>
+      </div>
+
+      <div class="sheet-gap" aria-hidden="true"><span></span><span></span><span></span></div>
+
+      <div class="sheet-foot">
+        <div>
+          <p class="sheet-h">Payment</p>
+          <dl>
+            <dt>Bank</dt>
+            <dd>{{ doc.bankName || '—' }}</dd>
+            <dt>Name</dt>
+            <dd>{{ doc.bankAccountName || '—' }}</dd>
+            <dt>Account</dt>
+            <dd>{{ doc.bankAccount || '—' }}</dd>
+            <dt>IFSC</dt>
+            <dd>{{ (doc.bankIfsc | uppercase) || '—' }}</dd>
+            <dt>UPI ID</dt>
+            <dd>{{ doc.upiId || '—' }}</dd>
+          </dl>
+        </div>
+        <div>
+          <p class="sheet-h">Terms and conditions</p>
+          <ol *ngIf="termLines.length; else noTerms">
+            <li *ngFor="let line of termLines">{{ line }}</li>
+          </ol>
+          <ng-template #noTerms><p class="k">Your terms appear here.</p></ng-template>
+        </div>
+      </div>
+
+      <div class="sheet-sign">
+        <span class="sign-line"></span>
+        <p class="sheet-name">For {{ co.name || 'your company' }}</p>
+        <p class="k">{{ doc.signatory || 'Authorised signatory' }}</p>
+      </div>
+    </div>
+    <p class="hint">
+      Name, address, GSTIN and logo come from
+      <a routerLink="/profile" [queryParams]="{ tab: 'company' }">Company</a>.
+    </p>
+  </aside>
+</div>

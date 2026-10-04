@@ -1,0 +1,189 @@
+.doc-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 420px);
+  gap: var(--s-6);
+  align-items: start;
+}
+
+.upper {
+  text-transform: uppercase;
+
+  &::placeholder {
+    text-transform: none;
+  }
+}
+
+.preview {
+  position: sticky;
+  top: var(--s-5);
+  display: grid;
+  gap: var(--s-3);
+}
+
+.preview-title {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--c-text-3);
+}
+
+// A miniature of the printed page (mockups/quotation-pdf.html): paper stays
+// white in both themes, as it does when printed.
+.sheet {
+  --ink: #1b1f23;
+  --ink-2: #565c61;
+  --rule: #d9dde1;
+
+  padding: var(--s-5);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  background: #fff;
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+
+  p {
+    margin: 0;
+  }
+
+  .k {
+    color: var(--ink-2);
+  }
+
+  dl {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 2px var(--s-3);
+    margin: 0;
+  }
+
+  dt {
+    color: var(--ink-2);
+    font-weight: var(--fw-regular);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: var(--fw-medium);
+  }
+}
+
+.sheet-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding-block-end: var(--s-3);
+  border-block-end: 2px solid var(--c-accent);
+}
+
+.sheet-co {
+  display: flex;
+  gap: var(--s-3);
+  min-width: 0;
+}
+
+.sheet-logo {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background: var(--c-accent);
+  color: #fff;
+  font-weight: var(--fw-semibold);
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #fff;
+  }
+}
+
+.sheet-name {
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+
+.sheet-doc {
+  flex: none;
+  text-align: end;
+
+  dd {
+    text-align: end;
+  }
+}
+
+.sheet-title {
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.08em;
+  color: var(--c-accent);
+  margin-block-end: var(--s-1) !important;
+}
+
+// Stands for the windows of the quotation, which this page does not set.
+.sheet-gap {
+  display: grid;
+  gap: var(--s-2);
+  padding-block: var(--s-4);
+
+  span {
+    height: 8px;
+    border-radius: 4px;
+    background: #eef0f2;
+
+    &:nth-child(2) {
+      width: 82%;
+    }
+
+    &:nth-child(3) {
+      width: 64%;
+    }
+  }
+}
+
+.sheet-foot {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--s-4);
+  padding-block-start: var(--s-3);
+  border-block-start: 1px solid var(--rule);
+
+  ol {
+    margin: 0;
+    padding-inline-start: 16px;
+  }
+}
+
+.sheet-h {
+  font-weight: var(--fw-semibold);
+  margin-block-end: var(--s-1) !important;
+}
+
+.sheet-sign {
+  margin-block-start: var(--s-5);
+  margin-inline-start: auto;
+  width: 50%;
+  text-align: center;
+}
+
+.sign-line {
+  display: block;
+  height: 28px;
+  border-block-end: 1px solid var(--ink-2);
+  margin-block-end: var(--s-1);
+}
+
+@media (max-width: 1100px) {
+  .doc-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .preview {
+    position: static;
+    max-width: 520px;
+  }
+}

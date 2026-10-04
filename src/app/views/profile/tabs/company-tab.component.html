@@ -1,0 +1,128 @@
+<div class="settings-col">
+  <div class="stack-6" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading company details">
+    <section class="card card-pad sk-card" *ngFor="let widths of [['30%', '100%', '100%', '60%'], ['25%', '100%', '70%']]">
+      <span class="skeleton" *ngFor="let width of widths" [style.width]="width"></span>
+    </section>
+  </div>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load your company details. Check your connection.
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <form class="stack-6" *ngIf="state === 'ready'" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <section class="card" aria-labelledby="h-company">
+      <div class="card-head">
+        <div>
+          <h2 id="h-company">Company details</h2>
+          <p>Printed at the top of every quotation and bill.</p>
+        </div>
+      </div>
+      <div class="card-pad form-grid">
+        <div class="field span-2">
+          <label class="label" for="co-name">Legal name <span class="req" aria-hidden="true">*</span></label>
+          <input class="input" id="co-name" type="text" formControlName="name" autocomplete="organization"
+            [class.is-invalid]="invalid('name')" [attr.aria-invalid]="invalid('name')" aria-describedby="co-name-err" />
+          <span class="error" id="co-name-err" *ngIf="invalid('name')">Enter the company's legal name.</span>
+        </div>
+        <div class="field span-2">
+          <label class="label" for="co-address">Address <span class="req" aria-hidden="true">*</span></label>
+          <textarea class="input" id="co-address" rows="3" formControlName="address" autocomplete="street-address"
+            [class.is-invalid]="invalid('address')" [attr.aria-invalid]="invalid('address')" aria-describedby="co-address-err"></textarea>
+          <span class="error" id="co-address-err" *ngIf="invalid('address')">Enter the address, with city and PIN code.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="co-phone">Phone <span class="req" aria-hidden="true">*</span></label>
+          <input class="input" id="co-phone" type="tel" formControlName="phone" autocomplete="tel"
+            [class.is-invalid]="invalid('phone')" [attr.aria-invalid]="invalid('phone')" aria-describedby="co-phone-err" />
+          <span class="error" id="co-phone-err" *ngIf="invalid('phone')">Enter a phone number of 8 to 15 digits.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="co-phone2">Second phone</label>
+          <input class="input" id="co-phone2" type="tel" formControlName="phone2"
+            [class.is-invalid]="invalid('phone2')" [attr.aria-invalid]="invalid('phone2')" aria-describedby="co-phone2-err" />
+          <span class="error" id="co-phone2-err" *ngIf="invalid('phone2')">Enter a phone number of 8 to 15 digits, or leave it empty.</span>
+        </div>
+        <div class="field span-2">
+          <label class="label" for="co-email">Email <span class="req" aria-hidden="true">*</span></label>
+          <input class="input" id="co-email" type="email" formControlName="email" autocomplete="email"
+            [class.is-invalid]="invalid('email')" [attr.aria-invalid]="invalid('email')" aria-describedby="co-email-err" />
+          <span class="error" id="co-email-err" *ngIf="invalid('email')">Enter an email address customers can reply to.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-gst">
+      <div class="card-head">
+        <div>
+          <h2 id="h-gst">GST registration</h2>
+          <p>Decides the tax lines on your documents.</p>
+        </div>
+      </div>
+      <div class="card-pad form-grid">
+        <div class="field span-2">
+          <label class="label" for="co-reg">Registration type</label>
+          <select class="select" id="co-reg" formControlName="registrationType" aria-describedby="co-reg-hint">
+            <option *ngFor="let type of registrationTypes" [value]="type.value">{{ type.label }}</option>
+          </select>
+          <span class="hint" id="co-reg-hint">{{ registrationHint }}</span>
+        </div>
+        <div class="field" *ngIf="registered">
+          <label class="label" for="co-gstin">GSTIN</label>
+          <input class="input gstin" id="co-gstin" type="text" formControlName="gstin" maxlength="15"
+            autocomplete="off" spellcheck="false" placeholder="24ABCDE1234F1Z5"
+            [class.is-invalid]="invalid('gstin')" [attr.aria-invalid]="invalid('gstin')" aria-describedby="co-gstin-err" />
+          <span class="error" id="co-gstin-err" *ngIf="invalid('gstin')">A GSTIN has 15 characters, like 24ABCDE1234F1Z5.</span>
+        </div>
+        <div class="field" [class.span-2]="!registered">
+          <label class="label" for="co-state">State <span class="req" aria-hidden="true" *ngIf="registered">*</span></label>
+          <select class="select" id="co-state" formControlName="stateCode"
+            [class.is-invalid]="invalid('stateCode')" [attr.aria-invalid]="invalid('stateCode')" aria-describedby="co-state-hint">
+            <option value="">Choose a state</option>
+            <option *ngFor="let state of states" [value]="state.code">{{ state.name }} ({{ state.code }})</option>
+          </select>
+          <span class="error" *ngIf="invalid('stateCode'); else stateHint" id="co-state-hint">Choose your state.</span>
+          <ng-template #stateHint>
+            <span class="hint" id="co-state-hint">{{
+              stateFromGstin
+                ? 'Taken from your GSTIN.'
+                : 'A customer in the same state gets CGST and SGST; any other state gets IGST.'
+            }}</span>
+          </ng-template>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-logo">
+      <div class="card-head">
+        <div>
+          <h2 id="h-logo">Logo</h2>
+          <p>Shown beside your name on quotations and bills.</p>
+        </div>
+      </div>
+      <div class="card-pad logo-row">
+        <span class="logo-box">
+          <img *ngIf="logoUrl; else noLogo" [src]="logoUrl" alt="Current company logo" />
+          <ng-template #noLogo><app-icon name="image" [size]="20"></app-icon></ng-template>
+        </span>
+        <div class="stack-2">
+          <input #logoInput type="file" hidden accept="image/jpeg,image/png,image/webp" (change)="onLogoChosen($event)" />
+          <button type="button" class="btn btn-secondary" (click)="logoInput.click()">
+            <app-icon name="upload"></app-icon>{{ logoUrl ? 'Replace logo' : 'Upload logo' }}
+          </button>
+          <p class="hint" *ngIf="!logoError">JPEG, PNG or WebP, up to 2 MB.{{ logoFile ? ' Save to keep "' + logoFile.name + '".' : '' }}</p>
+          <p class="error" role="alert" *ngIf="logoError">{{ logoError }}</p>
+        </div>
+      </div>
+    </section>
+
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+
+    <div class="form-foot">
+      <button type="submit" class="btn btn-primary" [disabled]="saving">
+        {{ saving ? 'Saving…' : 'Save changes' }}
+      </button>
+      <span class="hint" *ngIf="form.dirty && !saving">You have unsaved changes.</span>
+    </div>
+  </form>
+</div>
