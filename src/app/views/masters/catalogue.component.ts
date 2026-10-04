@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { ToastService } from '../../shared/services/toast.service';
+import { UndoService } from '../../shared/services/undo.service';
 import { RatesUpdated } from '../bulk-price-upload/update-rates-dialog.component';
 import { CatalogueAdapter, isGlass } from './catalogue.adapter';
 import {
@@ -97,7 +98,8 @@ export class CatalogueComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private adapter: CatalogueAdapter,
-    private toast: ToastService
+    private toast: ToastService,
+    private undo: UndoService
   ) {}
 
   ngOnInit(): void {
@@ -353,23 +355,59 @@ export class CatalogueComponent implements OnInit, OnDestroy {
     this.toast.showSuccess(`Rates updated for ${result.count} ${result.count === 1 ? 'profile' : 'profiles'}`);
   }
 
-  /** Asks before deleting the row of the tab that is showing. */
+  /**
+   * Deletes the row of the tab that is showing. A profile or a colour goes
+   * at once with "Undo" in a toast. Glass and hardware are asked about first:
+   * the pricing rules add some of them to every window, and the dialog says so.
+   */
   askDelete(row: { id: number }): void {
     const name = (row as ColourRow).color_name ?? (row as ProfileRow).profile_name ?? (row as ItemRow).name;
-    this.deleting = { tab: this.tab, id: row.id, name: fixSpelling(name) };
+    const target: Deleting = { tab: this.tab, id: row.id, name: fixSpelling(name) };
+    if (target.tab === 'profile' || target.tab === 'profile-color') {
+      this.deleteWithUndo(target, row);
+      return;
+    }
+    this.deleting = target;
     this.deleteError = '';
   }
 
-  /** What the delete dialog says will happen, by tab. */
-  get deleteNote(): string {
-    switch (this.deleting?.tab) {
-      case 'profile':
-        return 'It leaves the catalogue and can no longer be picked for a window. Quotations already made keep their prices.';
-      case 'profile-color':
-        return 'It will be removed from the colour list and can no longer be picked for a window.';
-      default:
-        return 'It leaves the catalogue, and new windows are priced without it. Some hardware is added to every window by the pricing rules, so only delete an item you no longer fit. Quotations already made keep their prices.';
+  /** What the delete dialog says will happen. */
+  readonly deleteNote =
+    'It leaves the catalogue, and new windows are priced without it. Some hardware is added to every window by the pricing rules, so only delete an item you no longer fit. Quotations already made keep their prices.';
+
+  /**
+   * The row leaves the list now; the api is asked when the toast has gone
+   * without "Undo". If the api refuses (a quotation uses the row, or the colour
+   * is the default) the row comes back and the api's reason is shown.
+   */
+  private deleteWithUndo(target: Deleting, row: { id: number }): void {
+    const profile = target.tab === 'profile';
+    const list = (): { id: number }[] => (profile ? this.profiles : this.colours);
+    const set = (rows: { id: number }[]) =>
+      profile ? (this.profiles = rows as ProfileRow[]) : (this.colours = rows as ColourRow[]);
+    const at = list().findIndex((r) => r.id === target.id);
+    const restore = () => {
+      if (!list().some((r) => r.id === target.id)) {
+        const rows = [...list()];
+        rows.splice(Math.max(0, Math.min(at, rows.length)), 0, row);
+        set(rows);
+      }
+    };
+    set(list().filter((r) => r.id !== target.id));
+    if (this.page > 0 && !this.pageRows.length) {
+      this.page = this.page - 1;
     }
+    this.undo.offer({
+      message: `${target.name} deleted`,
+      commit: () =>
+        (profile ? this.adapter.deleteProfile(target.id) : this.adapter.deleteColour(target.id)).subscribe({
+          error: (err) => {
+            restore();
+            this.toast.showError(this.adapter.message(err, `${target.name} was not deleted. Try again.`));
+          },
+        }),
+      undo: restore,
+    });
   }
 
   confirmDelete(): void {
@@ -378,22 +416,12 @@ export class CatalogueComponent implements OnInit, OnDestroy {
       return;
     }
     this.deleteBusy = true;
-    const call =
-      target.tab === 'profile'
-        ? this.adapter.deleteProfile(target.id)
-        : target.tab === 'profile-color'
-        ? this.adapter.deleteColour(target.id)
-        : this.adapter.deleteItem(target.id);
-    call.subscribe({
+    this.adapter.deleteItem(target.id).subscribe({
       next: () => {
         this.deleteBusy = false;
         this.deleting = null;
         const keep = <T extends { id: number }>(rows: T[]) => rows.filter((r) => r.id !== target.id);
-        if (target.tab === 'profile') {
-          this.profiles = keep(this.profiles);
-        } else if (target.tab === 'profile-color') {
-          this.colours = keep(this.colours);
-        } else if (target.tab === 'glass') {
+        if (target.tab === 'glass') {
           this.glass = keep(this.glass);
         } else {
           this.hardware = keep(this.hardware);

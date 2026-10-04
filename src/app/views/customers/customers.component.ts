@@ -3,8 +3,8 @@ import { Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 import { catchError, forkJoin, of } from 'rxjs';
-import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { UndoService } from 'src/app/shared/services/undo.service';
 import { CustomerRow, GstState, toCustomerRow } from './customer.adapter';
 import { CustomerService } from './customer.service';
 
@@ -27,7 +27,7 @@ export class CustomersComponent implements OnInit {
 
   constructor(
     private _router: Router,
-    private _confirm: ConfirmationDialogService,
+    private _undo: UndoService,
     private _dataService: CustomerService,
     private _toastService: ToastService
   ) {}
@@ -106,27 +106,38 @@ export class CustomersComponent implements OnInit {
     this.rowMenu?.toggle(event);
   }
 
+  /**
+   * Undo instead of confirm: the row leaves at once and the request waits
+   * while the toast offers "Undo". Their quotations and bills stay as they are.
+   */
   deleteCustomer(customer: CustomerRow): void {
-    this._confirm.confirm(
-      `Delete ${customer.name}?`,
-      'Their quotations and bills stay as they are. This cannot be undone.',
-      'pi-exclamation-triangle',
-      () => {
+    const at = this.customers.indexOf(customer);
+    const restore = () => {
+      if (!this.customers.some((row) => row.id === customer.id)) {
+        const rows = [...this.customers];
+        rows.splice(Math.max(0, Math.min(at, rows.length)), 0, customer);
+        this.customers = rows;
+      }
+    };
+    const refused = (message?: string) => {
+      restore();
+      this._toastService.showError(message || `${customer.name} was not deleted. Try again.`);
+    };
+    this.customers = this.customers.filter((row) => row.id !== customer.id);
+    this.go(0);
+    this._undo.offer({
+      message: `${customer.name} deleted`,
+      commit: () =>
         this._dataService.deleteCustomer(customer.id).subscribe({
           next: (res) => {
-            if (res.success) {
-              this._toastService.showSuccess(`${customer.name} deleted`);
-              this.customers = this.customers.filter((row) => row.id !== customer.id);
-              this.go(0);
-            } else {
-              this._toastService.showError(res.message);
+            if (!res.success) {
+              refused(res.message);
             }
           },
-          error: (err) => this._toastService.showError(err?.error?.message || 'Could not delete the customer'),
-        });
-      },
-      () => {}
-    );
+          error: (err) => refused(err?.error?.message),
+        }),
+      undo: restore,
+    });
   }
 
   trackById(_: number, customer: CustomerRow): number {

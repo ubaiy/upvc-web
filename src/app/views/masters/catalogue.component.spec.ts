@@ -5,6 +5,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 
 import { ToastService } from '../../shared/services/toast.service';
+import { UndoService } from '../../shared/services/undo.service';
 import { CatalogueAdapter } from './catalogue.adapter';
 import { CatalogueComponent } from './catalogue.component';
 import { ColourRow, ItemRow, PriceFactors, ProfileRow } from './catalogue.model';
@@ -166,17 +167,44 @@ describe('CatalogueComponent', () => {
     expect(component.cell(67, 'cost').state).toBe('idle');
   }));
 
-  it('deletes a profile after asking, and takes it off the list', () => {
+  it('deletes a profile at once with "Undo" on offer, and asks the api only when the toast has gone', () => {
+    const undo = TestBed.inject(UndoService);
     adapter.deleteProfile.and.returnValue(of(undefined));
     el.querySelector<HTMLElement>('tbody [aria-label^="Delete"]')?.click();
     fixture.detectChanges();
-    expect(component.deleting?.id).toBe(PROFILES[0].id);
+    expect(component.deleting).toBeNull();
+    expect(component.profiles.map((p) => p.id)).toEqual([PROFILES[1].id]);
+    expect(undo.offer$.value?.message).toContain('deleted');
     expect(adapter.deleteProfile).not.toHaveBeenCalled();
-    component.confirmDelete();
-    fixture.detectChanges();
+    undo.flush();
     expect(adapter.deleteProfile).toHaveBeenCalledOnceWith(PROFILES[0].id);
     expect(component.profiles.map((p) => p.id)).toEqual([PROFILES[1].id]);
-    expect(component.deleting).toBeNull();
+  });
+
+  it('"Undo" puts the profile back in its place and nothing is sent', () => {
+    const undo = TestBed.inject(UndoService);
+    component.askDelete(component.profiles[0]);
+    undo.undo();
+    expect(component.profiles.map((p) => p.id)).toEqual(PROFILES.map((p) => p.id));
+    expect(adapter.deleteProfile).not.toHaveBeenCalled();
+  });
+
+  it('brings a colour back and says why when the api refuses the delete', () => {
+    const undo = TestBed.inject(UndoService);
+    const toast = TestBed.inject(ToastService) as jasmine.SpyObj<ToastService>;
+    const refusal = 'This colour is used by 2 quotations (Q-0005, Q-0007) and cannot be deleted.';
+    adapter.deleteColour.and.returnValue(throwError(() => new Error(refusal)));
+    adapter.message.and.callFake((err: unknown) => (err as Error).message);
+    params.next(convertToParamMap({ tab: 'profile-color' }));
+    fixture.detectChanges();
+    const before = component.colours.map((c) => c.id);
+    const row = component.colours[component.colours.length - 1];
+    component.askDelete(row);
+    expect(component.colours.length).toBe(before.length - 1);
+    undo.flush();
+    expect(adapter.deleteColour).toHaveBeenCalledOnceWith(row.id);
+    expect(component.colours.map((c) => c.id)).toEqual(before);
+    expect(toast.showError).toHaveBeenCalledOnceWith(refusal);
   });
 
   it('keeps the row and shows the quotations that use it when the API refuses the delete', () => {

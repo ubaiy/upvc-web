@@ -5,8 +5,8 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { MenuModule } from 'primeng/menu';
 import { of, Subject, throwError } from 'rxjs';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
-import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { UndoService } from 'src/app/shared/services/undo.service';
 import { CustomerService } from './customer.service';
 import { CustomersComponent } from './customers.component';
 
@@ -19,13 +19,12 @@ const STATES = { success: true, data: [{ code: '27', name: 'Maharashtra', abbrev
 describe('CustomersComponent', () => {
   let fixture: ComponentFixture<CustomersComponent>;
   let service: jasmine.SpyObj<CustomerService>;
-  let confirm: jasmine.SpyObj<ConfirmationDialogService>;
+  let undo: UndoService;
   let toast: jasmine.SpyObj<ToastService>;
   const el = (): HTMLElement => fixture.nativeElement;
 
   beforeEach(() => {
     service = jasmine.createSpyObj('CustomerService', ['getCustomerList', 'getStates', 'deleteCustomer']);
-    confirm = jasmine.createSpyObj('ConfirmationDialogService', ['confirm']);
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
     service.getStates.and.returnValue(of(STATES as any));
     TestBed.configureTestingModule({
@@ -33,7 +32,6 @@ describe('CustomersComponent', () => {
       imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule],
       providers: [
         { provide: CustomerService, useValue: service },
-        { provide: ConfirmationDialogService, useValue: confirm },
         { provide: ToastService, useValue: toast },
       ],
     });
@@ -118,14 +116,39 @@ describe('CustomersComponent', () => {
     expect(component.page).toBe(2);
   });
 
-  it('deletes after confirmation and drops the row', () => {
+  it('delete takes the row away at once and sends nothing while "Undo" is offered', () => {
     create(of({ success: true, data: CUSTOMERS }));
+    undo = TestBed.inject(UndoService);
     service.deleteCustomer.and.returnValue(of({ success: true, message: 'ok' } as any));
-    confirm.confirm.and.callFake((_h, _m, _i, accept) => accept());
     const modern = fixture.componentInstance.customers[0];
     fixture.componentInstance.deleteCustomer(modern);
-    expect(service.deleteCustomer).toHaveBeenCalledWith(4);
     expect(fixture.componentInstance.customers.map((row) => row.id)).toEqual([3]);
-    expect(toast.showSuccess).toHaveBeenCalledWith('Modern Homes LLP deleted');
+    expect(undo.offer$.value?.message).toBe('Modern Homes LLP deleted');
+    expect(service.deleteCustomer).not.toHaveBeenCalled();
+    // The toast went without "Undo": now the api is asked.
+    undo.flush();
+    expect(service.deleteCustomer).toHaveBeenCalledOnceWith(4);
+    expect(fixture.componentInstance.customers.map((row) => row.id)).toEqual([3]);
+  });
+
+  it('"Undo" puts the customer back where it was and nothing is sent', () => {
+    create(of({ success: true, data: CUSTOMERS }));
+    undo = TestBed.inject(UndoService);
+    const before = fixture.componentInstance.customers.map((row) => row.id);
+    fixture.componentInstance.deleteCustomer(fixture.componentInstance.customers[0]);
+    undo.undo();
+    expect(fixture.componentInstance.customers.map((row) => row.id)).toEqual(before);
+    expect(service.deleteCustomer).not.toHaveBeenCalled();
+  });
+
+  it('puts the customer back and says why when the api refuses the delete', () => {
+    create(of({ success: true, data: CUSTOMERS }));
+    undo = TestBed.inject(UndoService);
+    const before = fixture.componentInstance.customers.map((row) => row.id);
+    service.deleteCustomer.and.returnValue(of({ status: 0, message: 'This customer has bills.' } as any));
+    fixture.componentInstance.deleteCustomer(fixture.componentInstance.customers[0]);
+    undo.flush();
+    expect(fixture.componentInstance.customers.map((row) => row.id)).toEqual(before);
+    expect(toast.showError).toHaveBeenCalledWith('This customer has bills.');
   });
 });
