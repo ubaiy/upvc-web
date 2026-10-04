@@ -6,6 +6,8 @@ export const environment = {
   production: false,
   API_URL: 'http://127.0.0.1:8000/api/v1',
   // API_URL: 'https://api.hakimienterprice.co.in/public/api/v1',
+  // Dev-only /design-lab playground (off in production builds).
+  designLab: true,
 };
 
 /*

@@ -1,36 +1,116 @@
 <div class="lab-root">
   <header class="lab-header">
     <h1>Design Lab</h1>
-    <span class="lab-sub">dev playground — interactive design canvas (Phase 1)</span>
-  </header>
-
-  <div class="lab-controls">
-    <div class="lab-presets" role="group" aria-label="Preset designs">
-      <button
-        type="button"
-        *ngFor="let p of presets"
-        [class.active]="p.key === activePreset"
-        [attr.data-preset]="p.key"
-        (click)="loadPreset(p.key)"
-      >
-        {{ p.label }}
-      </button>
-    </div>
-    <label class="lab-readonly">
+    <span class="lab-sub">dev playground for the interactive design canvas</span>
+    <label class="lab-toggle">
+      <span>View from</span>
+      <select [(ngModel)]="viewFrom" data-lab="view-from" aria-label="View the window from">
+        <option value="outside">Outside</option>
+        <option value="inside">Inside</option>
+      </select>
+    </label>
+    <label class="lab-toggle">
       <input type="checkbox" [(ngModel)]="readOnly" />
       read-only
     </label>
-  </div>
+  </header>
+
+  <!-- Template picker: built-in presets + saved templates -->
+  <section class="lab-templates" aria-label="Templates">
+    <div class="lab-preset-groups">
+      <div class="lab-presets" role="group" *ngFor="let g of groups" [attr.aria-label]="g + ' presets'">
+        <span class="lab-group-name">{{ g }}</span>
+        <button
+          type="button"
+          *ngFor="let p of presetsOf(g)"
+          [class.active]="p.key === activePreset"
+          [attr.data-preset]="p.key"
+          (click)="loadPreset(p.key)"
+        >
+          {{ p.label }}
+        </button>
+      </div>
+    </div>
+
+    <div class="lab-saved">
+      <span class="lab-group-name">
+        Saved
+        <small>({{ storeMode === 'api' ? 'company library' : 'this browser' }})</small>
+      </span>
+      <span class="lab-none" *ngIf="!saved.length">none yet</span>
+      <div
+        class="lab-card"
+        *ngFor="let t of saved"
+        [class.active]="'saved-' + t.id === activePreset"
+        [attr.data-saved]="t.template.name"
+      >
+        <img
+          *ngIf="t.template.thumbnail.kind === 'dataUrl'"
+          [src]="t.template.thumbnail.value"
+          alt=""
+        />
+        <div class="lab-card-text">
+          <strong>{{ t.template.name }}</strong>
+          <span>{{ t.sizeText }}</span>
+          <span *ngIf="t.template.tags.length">{{ t.template.tags.join(', ') }}</span>
+        </div>
+        <div class="lab-card-actions">
+          <button type="button" data-lab="use-saved" (click)="useSaved(t)">Use</button>
+          <button
+            type="button"
+            data-lab="delete-saved"
+            (click)="deleteSaved(t)"
+            [attr.aria-label]="'Delete template ' + t.template.name"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lab-template-form">
+      <label>
+        Place at W
+        <input type="number" [(ngModel)]="placeW" data-lab="place-w" placeholder="own" />
+      </label>
+      <label>
+        H
+        <input type="number" [(ngModel)]="placeH" data-lab="place-h" placeholder="own" />
+      </label>
+      <span class="lab-form-sep"></span>
+      <label>
+        Save current as
+        <input type="text" [(ngModel)]="templateName" data-lab="template-name" placeholder="template name" maxlength="150" />
+      </label>
+      <label>
+        Tags
+        <input type="text" [(ngModel)]="templateTags" data-lab="template-tags" placeholder="bedroom, standard" />
+      </label>
+      <label class="lab-toggle" title="Keep typed (locked) divider positions when the template is placed at another size">
+        <input type="checkbox" [(ngModel)]="preserveLocks" />
+        keep locked sizes
+      </label>
+      <button type="button" data-lab="save-template" (click)="saveTemplate()">Save template</button>
+      <span class="lab-template-message" *ngIf="templateMessage" role="status">{{ templateMessage }}</span>
+    </div>
+  </section>
 
   <div class="lab-body">
     <div class="lab-canvas">
       <app-design-canvas
         [model]="model"
         [readOnly]="readOnly"
+        [viewFrom]="viewFrom"
+        [glassTints]="glassTints"
         (modelChange)="onModelChange($event)"
         (selectionChange)="onSelectionChange($event)"
       ></app-design-canvas>
-      <div class="lab-selection">selection: {{ selectionText }}</div>
+      <div class="lab-selection">
+        selection: {{ selectionText }}
+        <span class="lab-payload-state" [class.bad]="!payloadOk" data-lab="payload-state">
+          toPayload() {{ payloadOk ? 'ok' : 'failed' }}
+        </span>
+      </div>
     </div>
 
     <aside class="lab-side">
@@ -38,6 +118,17 @@
         <button
           type="button"
           role="tab"
+          data-tab="props"
+          [attr.aria-selected]="sidePanel === 'props'"
+          [class.active]="sidePanel === 'props'"
+          (click)="sidePanel = 'props'"
+        >
+          Properties
+        </button>
+        <button
+          type="button"
+          role="tab"
+          data-tab="model"
           [attr.aria-selected]="sidePanel === 'model'"
           [class.active]="sidePanel === 'model'"
           (click)="sidePanel = 'model'"
@@ -47,12 +138,23 @@
         <button
           type="button"
           role="tab"
+          data-tab="payload"
           [attr.aria-selected]="sidePanel === 'payload'"
           [class.active]="sidePanel === 'payload'"
           (click)="sidePanel = 'payload'"
         >
           toPayload()
         </button>
+      </div>
+      <div class="lab-props" *ngIf="sidePanel === 'props'">
+        <app-design-inspector
+          [design]="current"
+          [selection]="selection"
+          [glassOptions]="glassOptions"
+          [colorOptions]="colorOptions"
+          [readOnly]="readOnly"
+          (designChange)="onInspectorChange($event)"
+        ></app-design-inspector>
       </div>
       <pre class="lab-json" *ngIf="sidePanel === 'model'">{{ modelJson }}</pre>
       <pre class="lab-json" *ngIf="sidePanel === 'payload'">{{ payloadJson }}</pre>
