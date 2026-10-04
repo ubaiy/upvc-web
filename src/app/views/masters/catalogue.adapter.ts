@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { API_END_POINT } from '../../shared/configs/api.config';
+import { quiet } from '../../shared/interceptors/request-options';
 import { ApiHttpService } from '../../shared/services/api-http.service';
 import {
   ColourRow,
@@ -15,11 +16,6 @@ import {
   RateRequest,
   subCategoryFor,
 } from './catalogue.model';
-
-/** Endpoints of card T68 that `api.config.ts` does not list yet. */
-const CHANGE_RATES = 'setting/change-rates';
-const PROFILE_DELETE = 'product/delete';
-const ITEM_DELETE = 'costhead/delete';
 
 /**
  * The one place the Catalogue page talks to the API (card U5, wired to the
@@ -80,7 +76,7 @@ export class CatalogueAdapter {
 
   /** Refused, with the quotation numbers in the message, while a quotation uses the profile. */
   deleteProfile(id: number): Observable<void> {
-    return this.write<unknown>(`${PROFILE_DELETE}/${id}`).pipe(map(() => undefined));
+    return this.remove(`${API_END_POINT.product.delete}/${id}`);
   }
 
   /**
@@ -94,7 +90,7 @@ export class CatalogueAdapter {
     } else {
       Object.assign(body, request.factors);
     }
-    return this.write<RatePreview>(CHANGE_RATES, body);
+    return this.write<RatePreview>(API_END_POINT.bulkPriceUpdate.changeRates, body);
   }
 
   saveColour(colour: Partial<ColourRow>): Observable<ColourRow> {
@@ -102,8 +98,9 @@ export class CatalogueAdapter {
     return this.write<ColourRow>(url, { color_name: colour.color_name, color_code: colour.color_code });
   }
 
+  /** Refused for the default colour, and while a quotation uses the colour (the numbers are in the message). */
   deleteColour(id: number): Observable<void> {
-    return this.write<unknown>(API_END_POINT.profile_color.delete + id).pipe(map(() => undefined));
+    return this.remove(API_END_POINT.profile_color.delete + id);
   }
 
   saveItem(item: Partial<ItemRow>): Observable<ItemRow> {
@@ -124,7 +121,7 @@ export class CatalogueAdapter {
 
   /** A glass type or hardware item; refused like `deleteProfile` while in use. */
   deleteItem(id: number): Observable<void> {
-    return this.write<unknown>(`${ITEM_DELETE}/${id}`).pipe(map(() => undefined));
+    return this.remove(`${API_END_POINT.costHead.delete}/${id}`);
   }
 
   /** Words to show a person when a call fails. */
@@ -148,6 +145,14 @@ export class CatalogueAdapter {
 
   private write<T>(url: string, body?: unknown): Observable<T> {
     return this.api.post(url, body).pipe(map((res) => this.unwrap<T>(res)));
+  }
+
+  /**
+   * A delete. The dialog shows why one was refused ("… used by 2 quotations
+   * (Q-0005, Q-0007)"), so the global toast is told not to say it again.
+   */
+  private remove(url: string): Observable<void> {
+    return this.api.post(url, undefined, quiet('errors')).pipe(map((res) => void this.unwrap<unknown>(res)));
   }
 
   /** The API answers a refused request with HTTP 200 and no `success`. */

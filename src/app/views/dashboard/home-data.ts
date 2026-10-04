@@ -29,11 +29,8 @@ export interface HomeQuotationRow {
   updated_at?: string | null;
 }
 
-/** The figures of `dashboard`, with the two counts card T68 added. */
-export type HomeFigures = IDashboardModelDto & {
-  quatation_count_current_month?: number | string | null;
-  bill_count_current_month?: number | string | null;
-};
+/** The figures of `dashboard`, the two month counts included. */
+export type HomeFigures = IDashboardModelDto;
 
 export interface HomeQuotation {
   id: number;

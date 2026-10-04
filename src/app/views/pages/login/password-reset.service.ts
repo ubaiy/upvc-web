@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
+import { API_END_POINT } from 'src/app/shared/configs/api.config';
 import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 
 export interface NewPassword {
@@ -22,11 +23,11 @@ export class PasswordResetService {
 
   /** The API answers the same whether or not the address has an account. */
   requestLink(email: string): Observable<string> {
-    return this.api.post('forgot-password', { email }).pipe(map((res) => this.message(res)));
+    return this.api.post(API_END_POINT.auth.forgotPassword, { email }).pipe(map((res) => this.message(res)));
   }
 
   setPassword(body: NewPassword): Observable<string> {
-    return this.api.post('reset-password', body).pipe(map((res) => this.message(res)));
+    return this.api.post(API_END_POINT.auth.resetPassword, body).pipe(map((res) => this.message(res)));
   }
 
   private message(res: { success?: boolean; message?: string }): string {

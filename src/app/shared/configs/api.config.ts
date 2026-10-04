@@ -2,6 +2,8 @@ export const API_END_POINT = {
   auth: {
     login: 'login',
     logout: 'logout',
+    forgotPassword: 'forgot-password',
+    resetPassword: 'reset-password',
   },
   home: 'dashboard',
   user: {
@@ -22,6 +24,8 @@ export const API_END_POINT = {
     list: 'customer/address/list',
     get: 'customer/address/show',
     delete: 'customer/address/delete',
+    // Takes the address id as the next path segment.
+    default: 'customer/address/default',
   },
   type_margin: {
     list: 'order-type-margin/list',
@@ -41,6 +45,7 @@ export const API_END_POINT = {
     converToBill: 'bill/convert-to-bill',
     pdf: 'bill/pdf',
     delete: 'bill/delete',
+    cancel: 'bill/cancel',
   },
   paymentType: {
     list: 'payment-term/list',
@@ -69,6 +74,8 @@ export const API_END_POINT = {
     get: 'product',
     add: 'product/add',
     edit: 'product/update',
+    // Refused while a quotation uses the profile.
+    delete: 'product/delete',
     sliddingTypes: 'product/slidding-type',
     hingesType: 'product/hinges-type',
     allDropdowns: 'product/dropdowns',
@@ -82,6 +89,8 @@ export const API_END_POINT = {
     costHeadUpdate: 'costhead/update',
     get: 'costhead/show',
     unit: 'costhead/cal-type',
+    // Refused while a quotation uses the item.
+    delete: 'costhead/delete',
   },
   quatation: {
     list: 'quatation/list',
@@ -120,5 +129,7 @@ export const API_END_POINT = {
   bulkPriceUpdate: {
     get: 'setting/get-price',
     post: 'setting/update-price',
+    // A percentage or new rates per kg for every profile; `dry_run` previews.
+    changeRates: 'setting/change-rates',
   },
 };

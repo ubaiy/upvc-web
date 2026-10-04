@@ -53,7 +53,7 @@ export class QuotationListService {
 
   /** Quotations per status for the tabs: { all, draft, sent, accepted, declined, expired, billed }. */
   counts(): Observable<Record<string, number>> {
-    return this.api.get('quatation/status-counts', quiet()).pipe(
+    return this.api.get(API_END_POINT.quatation.statusCounts, quiet()).pipe(
       map((res: any) => {
         if (!res?.success || !res.data) {
           throw new Error(res?.message || 'The counts could not be loaded.');

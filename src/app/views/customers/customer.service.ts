@@ -79,7 +79,7 @@ export class CustomerService {
 
   /** Makes one saved address the default; the customer's others stop being it. */
   public makeDefaultAddress(addressId: number): Observable<IResponseDto<ICustomerAdddressDto[]>> {
-    return this._apiHttpSerivce.post(`customer/address/default/${addressId}`);
+    return this._apiHttpSerivce.post(`${API_END_POINT.customer_address.default}/${addressId}`);
   }
 
   /** This customer's quotations, billed ones included: the API filters by `customer_id`. */
