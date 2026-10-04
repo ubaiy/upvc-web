@@ -1923,6 +1923,21 @@ export class SubQuotationDesignComponent
     let cwMm = wMm;
     let chMm = hMm;
     if (node.framed) {
+      // B4: the sash band itself must select the pane. The bands below are
+      // non-listening and the glass rect is inset by frameGapPx, so without
+      // this full-region hit rect the band strip between two sashes (the
+      // centre of every 2-palla window) was a click dead zone.
+      if (!node.split) {
+        const hit = new Konva.Rect({
+          x,
+          y,
+          width: w,
+          height: h,
+          fill: 'rgba(0,0,0,0)',
+        });
+        hit.on(isMobile ? 'tap' : 'click', () => this._onPaneClick(node, hit));
+        this.layer.add(hit);
+      }
       if (this.usePolygonRenderer) {
         this._addPolygonFrameBands(x, y, w, h, this.frameGapPx, color);
       }
