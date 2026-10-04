@@ -1,4 +1,14 @@
 <app-page-header [title]="title" [crumbs]="crumbs">
+  <!-- Opens the New quotation dialog of the list with this customer chosen. -->
+  <a
+    actions
+    class="btn btn-secondary"
+    *ngIf="editable && customerId"
+    [routerLink]="['/quotation']"
+    [queryParams]="{ new: 1, customer: customerId }"
+  >
+    <app-icon name="plus"></app-icon>New quotation
+  </a>
   <button actions type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
   <button
     actions
@@ -143,6 +153,16 @@
       >
         <div class="u-row address-head">
           <h3 class="grow">{{ i === 0 ? 'Default address' : 'Address ' + (i + 1) }}</h3>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm"
+            *ngIf="canMakeDefault(i)"
+            [disabled]="defaultBusy !== null"
+            [attr.aria-label]="'Make address ' + (i + 1) + ' the default'"
+            (click)="makeDefault(i)"
+          >
+            {{ defaultBusy === i ? 'Saving…' : 'Make default' }}
+          </button>
           <button
             type="button"
             class="btn btn-ghost btn-sm"

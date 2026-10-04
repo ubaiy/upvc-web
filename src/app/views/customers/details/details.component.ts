@@ -14,7 +14,6 @@ import { IResponseDto } from 'src/app/shared/model/common/response.model';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
 import { BillRow, billsOf, toBillRows } from '../../bills/bills.adapter';
-import { BillsService } from '../../bills/bills.service';
 import {
   AddressValue,
   CustomerFormValue,
@@ -74,7 +73,6 @@ export class DetailsComponent implements OnInit {
     private _router: Router,
     private _fb: FormBuilder,
     private _dataService: CustomerService,
-    private _billsService: BillsService,
     private _confirm: ConfirmationDialogService,
     private _toastService: ToastService
   ) {}
@@ -138,8 +136,9 @@ export class DetailsComponent implements OnInit {
     const id = this.customerId as number;
     this.historyState = 'loading';
     forkJoin({
-      quotations: this._billsService.getQuotations(),
-      bills: this._billsService.getBillsList(),
+      // The API filters by customer, so only this customer's rows travel.
+      quotations: this._dataService.getCustomerQuotations(id),
+      bills: this._dataService.getCustomerBills(id),
     }).subscribe({
       next: ({ quotations, bills }) => {
         if (!quotations.success || !bills.success) {
@@ -170,6 +169,56 @@ export class DetailsComponent implements OnInit {
 
   addAddress(): void {
     this.addresses.push(this._addressGroup());
+  }
+
+  /** True while "Make default" is being saved for the address at this index. */
+  defaultBusy: number | null = null;
+
+  /**
+   * Makes a saved address the default: new quotations for this customer are
+   * written to it. The block moves to the top; anything typed in it is kept.
+   */
+  makeDefault(index: number): void {
+    const id = (this.addresses.at(index).value as AddressValue).id;
+    if (!id || this.defaultBusy !== null) {
+      return;
+    }
+    this.defaultBusy = index;
+    this._dataService.makeDefaultAddress(id).subscribe({
+      next: (res) => {
+        this.defaultBusy = null;
+        if (!res.success) {
+          this._toastService.showError(res.message || 'Could not change the default address');
+          return;
+        }
+        this._moveToTop(index);
+        this._toastService.showSuccess('Default address changed');
+      },
+      error: (err) => {
+        this.defaultBusy = null;
+        this._toastService.showError(err?.error?.message || 'Could not change the default address');
+      },
+    });
+  }
+
+  /**
+   * Puts the address at this index first. The values move, not the controls:
+   * the fields on screen are bound to a place in the list, so each place is
+   * given the values (and the unsaved-changes mark) of the address now in it.
+   */
+  private _moveToTop(index: number): void {
+    const groups = this.addresses.controls;
+    const order = groups.map((g) => ({ value: g.value as AddressValue, dirty: g.dirty }));
+    order.unshift(...order.splice(index, 1));
+    order.forEach((item, place) => {
+      groups[place].setValue(item.value);
+      item.dirty ? groups[place].markAsDirty() : groups[place].markAsPristine();
+    });
+  }
+
+  /** "Make default" needs an address the API already has. */
+  canMakeDefault(index: number): boolean {
+    return index > 0 && !!(this.addresses.at(index).value as AddressValue).id;
   }
 
   removeAddress(index: number): void {

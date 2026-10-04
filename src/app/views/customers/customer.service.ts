@@ -77,6 +77,21 @@ export class CustomerService {
     );
   }
 
+  /** Makes one saved address the default; the customer's others stop being it. */
+  public makeDefaultAddress(addressId: number): Observable<IResponseDto<ICustomerAdddressDto[]>> {
+    return this._apiHttpSerivce.post(`customer/address/default/${addressId}`);
+  }
+
+  /** This customer's quotations, billed ones included: the API filters by `customer_id`. */
+  public getCustomerQuotations(customerId: number): Observable<IResponseDto<any[]>> {
+    return this._apiHttpSerivce.get(`${API_END_POINT.quatation.list}?status=all&customer_id=${customerId}`);
+  }
+
+  /** This customer's bills, cancelled ones included. */
+  public getCustomerBills(customerId: number): Observable<IResponseDto<any[]>> {
+    return this._apiHttpSerivce.get(`${API_END_POINT.bills.list}?status=all&customer_id=${customerId}`);
+  }
+
   /** GST state list: the same one the API uses to decide the tax split. */
   public getStates(): Observable<IResponseDto<GstState[]>> {
     return this._apiHttpSerivce.get('gst/states');

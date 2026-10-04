@@ -6,7 +6,6 @@ import { of, throwError } from 'rxjs';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
-import { BillsService } from '../../bills/bills.service';
 import { CustomerService } from '../customer.service';
 import { DetailsComponent } from './details.component';
 
@@ -31,7 +30,6 @@ describe('DetailsComponent (customer page)', () => {
   let fixture: ComponentFixture<DetailsComponent>;
   let component: DetailsComponent;
   let service: jasmine.SpyObj<CustomerService>;
-  let bills: jasmine.SpyObj<BillsService>;
   let toast: jasmine.SpyObj<ToastService>;
   let router: Router;
   const el = (): HTMLElement => fixture.nativeElement;
@@ -46,8 +44,10 @@ describe('DetailsComponent (customer page)', () => {
       'addCustomerAddress',
       'editCustomerAddress',
       'deleteCustomerAddress',
+      'makeDefaultAddress',
+      'getCustomerQuotations',
+      'getCustomerBills',
     ]);
-    bills = jasmine.createSpyObj('BillsService', ['getQuotations', 'getBillsList']);
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
     service.getStates.and.returnValue(ok(STATES));
     service.getCompanySettings.and.returnValue(ok({ state_code: '24' }));
@@ -56,20 +56,19 @@ describe('DetailsComponent (customer page)', () => {
     service.editCustomer.and.returnValue(ok({ id: 3 }));
     service.addCustomerAddress.and.returnValue(ok());
     service.editCustomerAddress.and.returnValue(ok());
-    bills.getQuotations.and.returnValue(
+    service.getCustomerQuotations.and.returnValue(
       ok([
         { id: 17, customer_id: 3, quatation_name: 'Sharma Flat Renovation', quatation_identity: 'abc', number: 'Q-0005', total: 16708, is_convert_bill: 1 },
         { id: 18, customer_id: 4, quatation_name: 'Someone else', quatation_identity: 'zzz' },
       ])
     );
-    bills.getBillsList.and.returnValue(ok([{ id: 2, customer_id: 3, quatation_identity: 'abc', grand_total: 14159.58 }]));
+    service.getCustomerBills.and.returnValue(ok([{ id: 2, customer_id: 3, quatation_identity: 'abc', grand_total: 14159.58 }]));
 
     TestBed.configureTestingModule({
       declarations: [DetailsComponent],
       imports: [RouterTestingModule, ReactiveFormsModule, SharedComponentsModule],
       providers: [
         { provide: CustomerService, useValue: service },
-        { provide: BillsService, useValue: bills },
         { provide: ToastService, useValue: toast },
         { provide: ConfirmationDialogService, useValue: jasmine.createSpyObj('ConfirmationDialogService', ['confirm']) },
         {
@@ -95,7 +94,7 @@ describe('DetailsComponent (customer page)', () => {
       );
       expect(component.addresses.at(0).value.state_code).toBe('24');
       expect(el().querySelectorAll('.btn-primary').length).toBe(1);
-      expect(bills.getQuotations).not.toHaveBeenCalled();
+      expect(service.getCustomerQuotations).not.toHaveBeenCalled();
     });
 
     it('saves with a name and a phone only, in one request', () => {
@@ -205,7 +204,7 @@ describe('DetailsComponent (customer page)', () => {
     });
 
     it('shows an inline error with "Try again" when the history fails, and keeps the form', () => {
-      bills.getBillsList.and.returnValue(throwError(() => new Error('offline')));
+      service.getCustomerBills.and.returnValue(throwError(() => new Error('offline')));
       component.loadHistory();
       fixture.detectChanges();
       expect(el().querySelector('.callout')?.textContent).toContain('quotations and bills');
@@ -220,5 +219,47 @@ describe('DetailsComponent (customer page)', () => {
     fixture.detectChanges();
     expect(el().querySelector('.callout')?.textContent).toContain('We could not load this customer');
     expect(el().querySelector('#cust-name')).toBeNull();
+  });
+
+  describe('wired to the customer endpoints (T76)', () => {
+    beforeEach(() => create({ id: 3, edit: true }));
+
+    it('asks the API for this customer only', () => {
+      expect(service.getCustomerQuotations).toHaveBeenCalledOnceWith(3);
+      expect(service.getCustomerBills).toHaveBeenCalledOnceWith(3);
+    });
+
+    it('links to a new quotation for this customer', () => {
+      const link = Array.from(el().querySelectorAll('a')).find((a) => (a.textContent || '').includes('New quotation'));
+      expect(link?.getAttribute('href')).toBe('/quotation?new=1&customer=3');
+    });
+
+    it('makes a saved address the default and moves it to the top', () => {
+      const count = component.addresses.length;
+      if (count < 2) {
+        component.addAddress();
+        component.addresses.at(count).patchValue({ id: 99, address: '12 MG Road', city: 'Pune', zip_code: '411001' });
+      }
+      const last = component.addresses.length - 1;
+      const id = component.addresses.at(last).value.id;
+      expect(component.canMakeDefault(0)).toBeFalse();
+      expect(component.canMakeDefault(last)).toBeTrue();
+      service.makeDefaultAddress.and.returnValue(ok([]));
+      component.makeDefault(last);
+      expect(service.makeDefaultAddress).toHaveBeenCalledOnceWith(id);
+      expect(component.addresses.at(0).value.id).toBe(id);
+      expect(toast.showSuccess).toHaveBeenCalledWith('Default address changed');
+    });
+
+    it('leaves the order alone when the API refuses', () => {
+      component.addAddress();
+      const last = component.addresses.length - 1;
+      component.addresses.at(last).patchValue({ id: 98, address: '1 Ring Road', city: 'Surat', zip_code: '395001' });
+      const first = component.addresses.at(0).value.id;
+      service.makeDefaultAddress.and.returnValue(of({ success: false, message: 'Invalid address id' } as any));
+      component.makeDefault(last);
+      expect(component.addresses.at(0).value.id).toBe(first);
+      expect(toast.showError).toHaveBeenCalledWith('Invalid address id');
+    });
   });
 });
