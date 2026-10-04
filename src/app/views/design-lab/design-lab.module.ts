@@ -11,6 +11,8 @@ import { designLabGuard } from './design-lab.guard';
 
 const routes: Routes = [
   { path: '', component: DesignLabComponent, canMatch: [designLabGuard] },
+  // Guard said no (production): answer like any unknown page.
+  { path: '**', redirectTo: '/404' },
 ];
 
 @NgModule({
