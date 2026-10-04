@@ -216,15 +216,55 @@ button.name {
     width: 8px;
   }
 
-  .qty {
-    display: none;
-  }
 }
 
+// Phone: the drawing, the full name and the menu on one line; quantity and price under them.
 @media (max-width: 640px) {
   .item {
-    gap: var(--s-3);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'thumb text menu'
+      'qty price price';
+    align-items: start;
+    gap: var(--s-2) var(--s-3);
     padding-inline: var(--s-4);
+
+    > .thumb,
+    > .sk-thumb {
+      grid-area: thumb;
+    }
+
+    > .grow {
+      grid-area: text;
+    }
+
+    > .btn {
+      grid-area: menu;
+    }
+
+    > .qty {
+      grid-area: qty;
+      align-self: baseline;
+      color: var(--c-text);
+      font-weight: var(--fw-medium);
+    }
+
+    > .price {
+      grid-area: price;
+      align-self: baseline;
+      display: flex;
+      align-items: baseline;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 0 var(--s-2);
+    }
+  }
+
+  // Two windows of one room differ at the end of the name: show all of it.
+  .name {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   .thumb,
