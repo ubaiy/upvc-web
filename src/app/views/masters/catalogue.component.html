@@ -131,6 +131,9 @@
                 <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + p.profile_name" (click)="edit(p)">
                   <app-icon name="pencil"></app-icon>
                 </button>
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + p.profile_name" (click)="askDelete(p)">
+                  <app-icon name="trash"></app-icon>
+                </button>
               </td>
             </tr>
           </tbody>
@@ -197,6 +200,9 @@
                 <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + g.name" (click)="edit(g)">
                   <app-icon name="pencil"></app-icon>
                 </button>
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + g.name" (click)="askDelete(g)">
+                  <app-icon name="trash"></app-icon>
+                </button>
               </td>
             </tr>
           </tbody>
@@ -236,6 +242,9 @@
               <td class="row-actions">
                 <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + h.name" (click)="edit(h)">
                   <app-icon name="pencil"></app-icon>
+                </button>
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + h.name" (click)="askDelete(h)">
+                  <app-icon name="trash"></app-icon>
                 </button>
               </td>
             </tr>
@@ -278,20 +287,20 @@
 ></app-item-dialog>
 
 <p-dialog
-  header="Delete this colour?"
+  [header]="'Delete this ' + (deleting ? def.noun : 'item') + '?'"
   [visible]="!!deleting"
   (visibleChange)="$event ? null : (deleting = null)"
   [modal]="true"
   closeAriaLabel="Close"
   [draggable]="false"
   [resizable]="false"
-  [style]="{ width: '440px' }"
+  [style]="{ width: '480px' }"
   [breakpoints]="{ '640px': '94vw' }"
 >
-  <p>"{{ deleting?.color_name }}" will be removed from the colour list and can no longer be picked for a window.</p>
+  <p>"{{ deleting?.name }}": {{ deleteNote }}</p>
   <app-callout class="delete-error" tone="danger" *ngIf="deleteError" role="alert">{{ deleteError }}</app-callout>
   <ng-template pTemplate="footer">
     <p-button label="Keep it" [outlined]="true" [disabled]="deleteBusy" (onClick)="deleting = null"></p-button>
-    <p-button label="Delete colour" severity="danger" [loading]="deleteBusy" (onClick)="confirmDelete()"></p-button>
+    <p-button [label]="'Delete ' + def.noun" severity="danger" [loading]="deleteBusy" (onClick)="confirmDelete()"></p-button>
   </ng-template>
 </p-dialog>

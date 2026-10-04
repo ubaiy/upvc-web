@@ -178,57 +178,6 @@ export function withMetreRate(
 
 export type RateChangeMode = 'percent' | 'rate';
 
-export interface RateChange {
-  mode: RateChangeMode;
-  /** null = every profile. */
-  category: string | null;
-  /** Signed: 5 raises by 5%, -3 lowers by 3%. */
-  percent: number;
-  /** The factors to use in "rate" mode. */
-  factors: PriceFactors;
-}
-
-/** The company factors after a change to every profile. */
-export function changedFactors(current: PriceFactors, change: RateChange): PriceFactors {
-  if (change.mode === 'rate') {
-    return { ...change.factors };
-  }
-  const by = 1 + change.percent / 100;
-  return {
-    ...current,
-    per_kg: round4(current.per_kg * by),
-    color_per_kg: round4(current.color_per_kg * by),
-  };
-}
-
-function round4(value: number): number {
-  return Math.round((value + Number.EPSILON) * 10000) / 10000;
-}
-
-/**
- * The rates one profile will have after the change.
- *
- * Every profile: the API recalculates from the weight, so this does too.
- * One category: each profile is saved on its own, so a percentage moves the
- * rate the profile has now, hand edits included.
- */
-export function changedRates(profile: ProfileRow, change: RateChange, current: PriceFactors | null): ProfileRates {
-  const colourKg = Number(profile.kg_meter_color) || Number(profile.kg_meter);
-  if (change.mode === 'rate') {
-    return deriveRates(Number(profile.kg_meter), colourKg, change.factors);
-  }
-  if (change.category === null && hasFactors(current)) {
-    return deriveRates(Number(profile.kg_meter), colourKg, changedFactors(current, change));
-  }
-  const by = 1 + change.percent / 100;
-  return {
-    rate_meter: round2(profile.rate_meter * by),
-    rate_bar: round2(profile.rate_bar * by),
-    rate_meter_color: round2(profile.rate_meter_color * by),
-    rate_bar_color: round2(profile.rate_bar_color * by),
-  };
-}
-
 /** The sample window of the "Update rates" preview: one casement, 1200 × 1500 mm. */
 export const SAMPLE_WINDOW = { widthMm: 1200, heightMm: 1500, frameMetres: 5.4, sashMetres: 5.0 };
 
@@ -272,3 +221,42 @@ export function parseAmount(text: string | number | null | undefined): number {
 
 /** The API refuses rates above this (audit H5). */
 export const MAX_RATE = 1000000;
+
+/** What `setting/change-rates` is asked: a percentage, or new rates per kg. */
+export interface RateRequest {
+  mode: RateChangeMode;
+  /** null = every profile. */
+  category: string | null;
+  percent?: number;
+  factors?: PriceFactors;
+}
+
+/** The answer of `setting/change-rates`; with `dry_run` nothing was saved. */
+export interface RatePreview {
+  dry_run: boolean;
+  saved: boolean;
+  count: number;
+  factors: { before: PriceFactors | null; after: PriceFactors | null };
+  profiles: { id: number; before: ProfileRates; after: ProfileRates }[];
+}
+
+/** The stored `sub_category` each "used as" role belongs to in the catalogue. */
+const SUB_CATEGORY_OF: Record<string, string> = {
+  frame: 'Frame',
+  sash: 'Sash',
+  shutter: 'Sash',
+  mullion: 'Mullion',
+  transom: 'Mullion',
+  bead: 'Beading',
+  interlock: 'Accessories',
+  coupler: 'Accessories',
+};
+
+/**
+ * The `sub_category` to save with a profile: the one it has, or the one its
+ * role belongs to. The designer's profile lists are filtered by it, so a
+ * profile saved without one is never offered for a frame or sash.
+ */
+export function subCategoryFor(profile: Pick<ProfileRow, 'role' | 'sub_category'>): string | null {
+  return profile.sub_category || SUB_CATEGORY_OF[(profile.role ?? '').toLowerCase()] || null;
+}

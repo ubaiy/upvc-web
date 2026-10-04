@@ -125,29 +125,29 @@
         </p>
       </ng-container>
       <ng-template #noPreview>
-        <span class="hint">
-          {{ mode === 'percent' ? 'Enter a percentage to see what a sample window will cost.' : 'Enter the rates to see what a sample window will cost.' }}
-        </span>
+        <span class="error" *ngIf="previewError; else waiting">{{ previewError }}</span>
+        <ng-template #waiting>
+          <span class="hint" *ngIf="previewing" role="status">Working out the new rates…</span>
+          <span class="hint" *ngIf="!previewing">
+            {{ mode === 'percent' ? 'Enter a percentage to see what a sample window will cost.' : 'Enter the rates to see what a sample window will cost.' }}
+          </span>
+        </ng-template>
       </ng-template>
     </section>
 
     <app-callout tone="warn" *ngIf="!category">
       All {{ profiles.length }} profile rates are worked out again from their weight. Rates typed by hand in the list are replaced.
     </app-callout>
-    <app-callout tone="info" *ngIf="category && affected.length > 40">
-      {{ affected.length }} profiles are saved one at a time. This takes about a minute; keep this window open.
-    </app-callout>
     <app-callout tone="danger" *ngIf="error" role="alert">{{ error }}</app-callout>
   </form>
 
   <ng-template pTemplate="footer">
-    <span class="hint progress-text" *ngIf="saving && category" role="status">Saved {{ done }} of {{ affected.length }}</span>
     <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
     <button
       pButton
       type="submit"
       form="rates-form"
-      [label]="'Update ' + affected.length + (affected.length === 1 ? ' profile' : ' profiles')"
+      [label]="'Update ' + count + (count === 1 ? ' profile' : ' profiles')"
       [loading]="saving"
       [disabled]="!profiles.length"
     ></button>

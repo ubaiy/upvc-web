@@ -23,6 +23,13 @@ import { RateCellState } from './rate-cell.component';
 type Source = 'profiles' | 'colours' | 'items';
 type LoadState = 'loading' | 'ready' | 'error';
 
+/** The row the delete dialog is asking about. */
+interface Deleting {
+  tab: CatalogueTab;
+  id: number;
+  name: string;
+}
+
 interface CellStatus {
   state: RateCellState;
   error: string;
@@ -80,7 +87,7 @@ export class CatalogueComponent implements OnInit, OnDestroy {
     colour: null,
     item: null,
   };
-  deleting: ColourRow | null = null;
+  deleting: Deleting | null = null;
   deleteBusy = false;
   deleteError = '';
 
@@ -342,35 +349,65 @@ export class CatalogueComponent implements OnInit, OnDestroy {
 
   onRatesUpdated(result: RatesUpdated): void {
     this.cells = {};
-    if (result.all) {
-      this.load('profiles');
-    } else {
-      result.rows.forEach((row) => (this.profiles = this.upsert(this.profiles, row)));
-    }
+    this.load('profiles');
     this.toast.showSuccess(`Rates updated for ${result.count} ${result.count === 1 ? 'profile' : 'profiles'}`);
   }
 
-  askDelete(colour: ColourRow): void {
-    this.deleting = colour;
+  /** Asks before deleting the row of the tab that is showing. */
+  askDelete(row: { id: number }): void {
+    const name = (row as ColourRow).color_name ?? (row as ProfileRow).profile_name ?? (row as ItemRow).name;
+    this.deleting = { tab: this.tab, id: row.id, name: fixSpelling(name) };
     this.deleteError = '';
   }
 
+  /** What the delete dialog says will happen, by tab. */
+  get deleteNote(): string {
+    switch (this.deleting?.tab) {
+      case 'profile':
+        return 'It leaves the catalogue and can no longer be picked for a window. Quotations already made keep their prices.';
+      case 'profile-color':
+        return 'It will be removed from the colour list and can no longer be picked for a window.';
+      default:
+        return 'It leaves the catalogue, and new windows are priced without it. Some hardware is added to every window by the pricing rules, so only delete an item you no longer fit. Quotations already made keep their prices.';
+    }
+  }
+
   confirmDelete(): void {
-    const colour = this.deleting;
-    if (!colour || this.deleteBusy) {
+    const target = this.deleting;
+    if (!target || this.deleteBusy) {
       return;
     }
     this.deleteBusy = true;
-    this.adapter.deleteColour(colour.id).subscribe({
+    const call =
+      target.tab === 'profile'
+        ? this.adapter.deleteProfile(target.id)
+        : target.tab === 'profile-color'
+        ? this.adapter.deleteColour(target.id)
+        : this.adapter.deleteItem(target.id);
+    call.subscribe({
       next: () => {
         this.deleteBusy = false;
         this.deleting = null;
-        this.colours = this.colours.filter((c) => c.id !== colour.id);
-        this.toast.showSuccess(`${colour.color_name} deleted`);
+        const keep = <T extends { id: number }>(rows: T[]) => rows.filter((r) => r.id !== target.id);
+        if (target.tab === 'profile') {
+          this.profiles = keep(this.profiles);
+        } else if (target.tab === 'profile-color') {
+          this.colours = keep(this.colours);
+        } else if (target.tab === 'glass') {
+          this.glass = keep(this.glass);
+        } else {
+          this.hardware = keep(this.hardware);
+        }
+        // The last row of the last page went: step back so the table is not empty.
+        if (this.page > 0 && !this.pageRows.length) {
+          this.page = this.page - 1;
+        }
+        this.toast.showSuccess(`${target.name} deleted`);
       },
       error: (err) => {
         this.deleteBusy = false;
-        this.deleteError = this.adapter.message(err, 'The colour was not deleted. Try again.');
+        // While a quotation uses the row the API refuses and names the quotations ("… used by 3 quotations (Q-0005, …)").
+        this.deleteError = this.adapter.message(err, 'Not deleted. Try again.');
       },
     });
   }

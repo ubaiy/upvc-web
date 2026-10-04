@@ -1,8 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Subject, Subscription, of, timer } from 'rxjs';
+import { catchError, distinctUntilChanged, map, switchMap, tap } from 'rxjs/operators';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 
@@ -10,14 +10,12 @@ import { SharedComponentsModule } from '../../shared/components/shared-component
 import { CatalogueAdapter } from '../masters/catalogue.adapter';
 import {
   PriceFactors,
-  ProfileRates,
   ProfileRow,
-  RateChange,
   RateChangeMode,
+  RatePreview,
+  RateRequest,
   SAMPLE_WINDOW,
   SampleCost,
-  changedFactors,
-  changedRates,
   fixSpelling,
   hasFactors,
   sampleCost,
@@ -26,10 +24,10 @@ import {
 /** What the dialog tells the page after a save. */
 export interface RatesUpdated {
   count: number;
-  /** True when every profile was repriced, so the page reloads the list. */
-  all: boolean;
-  rows: ProfileRow[];
 }
+
+/** Typing pauses this long before the API is asked for a preview. */
+export const PREVIEW_DELAY_MS = 350;
 
 const FACTOR = [
   Validators.required,
@@ -43,9 +41,9 @@ const FACTOR = [
  * percentage, or set a new rate per kg, for every profile or one category,
  * with the effect on one sample window shown before anything is saved.
  *
- * This is the old Bulk Price page as a dialog. Its four factors are the fields
- * of "New rate per kg"; the API still rejects anything that is not above 0 and
- * at most 10,00,000 (audit H5), and the same limits are checked here first.
+ * The figures are the API's: `setting/change-rates` is asked with `dry_run`
+ * for the preview and once more, without it, to save (card T76). The limits of
+ * the API (audit H5) are checked here first.
  */
 @Component({
   selector: 'app-update-rates-dialog',
@@ -54,7 +52,7 @@ const FACTOR = [
   templateUrl: './update-rates-dialog.component.html',
   styleUrls: ['./update-rates-dialog.component.scss'],
 })
-export class UpdateRatesDialogComponent implements OnChanges {
+export class UpdateRatesDialogComponent implements OnChanges, OnDestroy {
   @Input() visible = false;
   @Output() visibleChange = new EventEmitter<boolean>();
   @Input() profiles: ProfileRow[] = [];
@@ -64,23 +62,69 @@ export class UpdateRatesDialogComponent implements OnChanges {
   readonly fixSpelling = fixSpelling;
   readonly sample = SAMPLE_WINDOW;
   form: FormGroup = this.build();
+  categories: { value: string; count: number }[] = [];
   submitted = false;
   saving = false;
-  done = 0;
   error = '';
+  /** The API's answer to the change as typed; null until it arrives. */
+  result: RatePreview | null = null;
+  previewing = false;
+  previewError = '';
 
-  constructor(private fb: FormBuilder, private adapter: CatalogueAdapter) {}
+  private asked = new Subject<RateRequest | null>();
+  private subs = new Subscription();
+  private formSub?: Subscription;
+
+  constructor(private fb: FormBuilder, private adapter: CatalogueAdapter) {
+    this.subs.add(
+      this.asked
+        .pipe(
+          map((request) => (request ? JSON.stringify(request) : '')),
+          distinctUntilChanged(),
+          tap((key) => {
+            this.result = null;
+            this.previewError = '';
+            this.previewing = !!key;
+          }),
+          // Each new entry drops the one before it, so only the last pause asks the API.
+          switchMap((key) =>
+            key
+              ? timer(PREVIEW_DELAY_MS).pipe(
+                  switchMap(() => this.adapter.changeRates(JSON.parse(key), true)),
+                  catchError((err) => {
+                    this.previewError = this.adapter.message(err, 'The preview could not be worked out.');
+                    return of(null);
+                  })
+                )
+              : of(null)
+          )
+        )
+        .subscribe((result) => {
+          this.result = result;
+          this.previewing = false;
+        })
+    );
+    this.watch();
+  }
+
+  ngOnDestroy(): void {
+    this.subs.unsubscribe();
+    this.formSub?.unsubscribe();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['profiles']) {
+      this.categories = this.listCategories();
+    }
     // Opened from /bulk-price-update the dialog can show before the rates have
     // loaded; start again when they arrive, unless something was typed.
     const lateFactors = changes['factors'] && this.visible && this.form.pristine && !this.saving;
     if ((changes['visible'] && this.visible) || lateFactors) {
       this.submitted = false;
       this.saving = false;
-      this.done = 0;
       this.error = '';
       this.form = this.build();
+      this.watch();
     }
   }
 
@@ -98,7 +142,8 @@ export class UpdateRatesDialogComponent implements OnChanges {
     return hasFactors(this.factors);
   }
 
-  get categories(): { value: string; count: number }[] {
+  /** Kept as one array between renders, so the options (and the choice made) are not redrawn. */
+  private listCategories(): { value: string; count: number }[] {
     const counts = new Map<string, number>();
     this.profiles.forEach((p) => counts.set(p.category, (counts.get(p.category) ?? 0) + 1));
     return [...counts].map(([value, count]) => ({ value, count }));
@@ -110,14 +155,14 @@ export class UpdateRatesDialogComponent implements OnChanges {
   }
 
   /** The change as typed, or null while the fields in use are not valid. */
-  get change(): RateChange | null {
+  get change(): RateRequest | null {
     const v = this.form.value;
     if (this.mode === 'percent') {
       const percent = Number(v.percent);
-      if (this.form.get('percent')?.invalid || !percent || !this.factors) {
+      if (this.form.get('percent')?.invalid || !percent) {
         return null;
       }
-      return { mode: 'percent', category: this.category, percent, factors: this.factors };
+      return { mode: 'percent', category: this.category, percent };
     }
     if (['per_kg', 'rate_bar', 'color_per_kg', 'color_rate_bar'].some((k) => this.form.get(k)?.invalid)) {
       return null;
@@ -125,7 +170,6 @@ export class UpdateRatesDialogComponent implements OnChanges {
     return {
       mode: 'rate',
       category: this.category,
-      percent: 0,
       factors: {
         per_kg: Number(v.per_kg),
         rate_bar: Number(v.rate_bar),
@@ -135,21 +179,24 @@ export class UpdateRatesDialogComponent implements OnChanges {
     };
   }
 
-  /** The stored factors after the change; only a change to every profile moves them. */
+  /** The stored rates per kg after the change; the API moves them only for every profile. */
   get nextFactors(): PriceFactors | null {
-    const change = this.change;
-    if (!change || change.category !== null) {
-      return null;
-    }
-    return change.mode === 'rate' ? change.factors : this.factors ? changedFactors(this.factors, change) : null;
+    return this.result?.factors.after ?? null;
   }
 
+  /** The sample window at today's rates and at the rates the API answered. */
   get preview(): SampleCost | null {
-    const change = this.change;
-    if (!change || !this.affected.length) {
+    const result = this.result;
+    if (!result) {
       return null;
     }
-    return sampleCost(this.affected, (p) => this.ratesFor(p, change));
+    const after = new Map(result.profiles.map((p) => [p.id, p.after]));
+    return sampleCost(this.affected, (p) => after.get(p.id) ?? p);
+  }
+
+  /** How many profiles the API will change; the rows on the page until it answers. */
+  get count(): number {
+    return this.result?.count ?? this.affected.length;
   }
 
   bad(name: string): boolean {
@@ -184,41 +231,31 @@ export class UpdateRatesDialogComponent implements OnChanges {
       }
       return;
     }
-    const rows = this.affected;
-    if (!rows.length) {
+    if (!this.affected.length) {
       this.error = 'There are no profiles to update.';
       return;
     }
 
     this.saving = true;
-    this.done = 0;
-    const next = this.nextFactors;
-    const save$: Observable<ProfileRow[]> = next
-      ? this.adapter.updateAllRates(next).pipe(map(() => []))
-      : this.adapter.saveProfileRates(rows, (p) => this.ratesFor(p, change), (done) => (this.done = done));
-    save$.subscribe({
+    this.adapter.changeRates(change, false).subscribe({
       next: (saved) => {
         this.saving = false;
-        this.updated.emit({ count: rows.length, all: !!next, rows: saved });
+        this.updated.emit({ count: saved.count });
         this.visible = false;
         this.visibleChange.emit(false);
       },
       error: (err) => {
         this.saving = false;
-        const text = this.adapter.message(err, 'The rates were not updated. Try again.');
-        this.error =
-          !next && this.done
-            ? `${text} ${this.done} of ${rows.length} profiles were updated before this; the rest are unchanged.`
-            : text;
-        if (!next && this.done) {
-          this.updated.emit({ count: this.done, all: true, rows: [] });
-        }
+        this.error = this.adapter.message(err, 'The rates were not updated. Try again.');
       },
     });
   }
 
-  private ratesFor(profile: ProfileRow, change: RateChange): ProfileRates {
-    return changedRates(profile, change, this.factors);
+  /** Asks for a new preview whenever what is typed changes. */
+  private watch(): void {
+    this.formSub?.unsubscribe();
+    this.asked.next(null);
+    this.formSub = this.form.valueChanges.subscribe(() => this.asked.next(this.visible ? this.change : null));
   }
 
   private build(): FormGroup {

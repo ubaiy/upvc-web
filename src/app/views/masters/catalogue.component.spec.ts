@@ -43,7 +43,7 @@ describe('CatalogueComponent', () => {
 
   beforeEach(async () => {
     adapter = jasmine.createSpyObj<CatalogueAdapter>('CatalogueAdapter', [
-      'profiles', 'colours', 'items', 'factors', 'units', 'saveProfile', 'saveItem', 'deleteColour', 'message',
+      'profiles', 'colours', 'items', 'factors', 'units', 'saveProfile', 'saveItem', 'deleteColour', 'deleteProfile', 'deleteItem', 'message',
     ]);
     adapter.profiles.and.callFake(() => of(PROFILES.map((p) => ({ ...p }))));
     adapter.colours.and.returnValue(of(COLOURS));
@@ -165,4 +165,33 @@ describe('CatalogueComponent', () => {
     tick(3000);
     expect(component.cell(67, 'cost').state).toBe('idle');
   }));
+
+  it('deletes a profile after asking, and takes it off the list', () => {
+    adapter.deleteProfile.and.returnValue(of(undefined));
+    el.querySelector<HTMLElement>('tbody [aria-label^="Delete"]')?.click();
+    fixture.detectChanges();
+    expect(component.deleting?.id).toBe(PROFILES[0].id);
+    expect(adapter.deleteProfile).not.toHaveBeenCalled();
+    component.confirmDelete();
+    fixture.detectChanges();
+    expect(adapter.deleteProfile).toHaveBeenCalledOnceWith(PROFILES[0].id);
+    expect(component.profiles.map((p) => p.id)).toEqual([PROFILES[1].id]);
+    expect(component.deleting).toBeNull();
+  });
+
+  it('keeps the row and shows the quotations that use it when the API refuses the delete', () => {
+    const refusal = 'This item is used by 2 quotations (Q-0005, Q-0007) and cannot be deleted.';
+    adapter.deleteItem.and.returnValue(throwError(() => new Error(refusal)));
+    adapter.message.and.callFake((err: unknown) => (err as Error).message);
+    params.next(convertToParamMap({ tab: 'hardware' }));
+    fixture.detectChanges();
+    const before = component.hardware.length;
+    component.askDelete(component.hardware[0]);
+    component.confirmDelete();
+    fixture.detectChanges();
+    expect(adapter.deleteItem).toHaveBeenCalledOnceWith(component.hardware[0].id);
+    expect(component.hardware.length).toBe(before);
+    expect(component.deleteError).toBe(refusal);
+    expect(document.body.textContent).toContain('Q-0005, Q-0007');
+  });
 });

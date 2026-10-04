@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Observable, concat, defer, of, throwError, timer } from 'rxjs';
-import { catchError, last, map, switchMap, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 import { API_END_POINT } from '../../shared/configs/api.config';
 import { ApiHttpService } from '../../shared/services/api-http.service';
@@ -10,27 +10,20 @@ import {
   GLASS_COSTHEAD,
   ItemRow,
   PriceFactors,
-  ProfileRates,
   ProfileRow,
+  RatePreview,
+  RateRequest,
+  subCategoryFor,
 } from './catalogue.model';
 
-/** Thrown when the API has no endpoint for what the screen asked. */
-export class NotAvailableError extends Error {}
-
-/** Above this many saves in one go, calls are spaced to stay under 60 a minute. */
-const PACE_ABOVE = 40;
-const PACE_MS = 1100;
+/** Endpoints of card T68 that `api.config.ts` does not list yet. */
+const CHANGE_RATES = 'setting/change-rates';
+const PROFILE_DELETE = 'product/delete';
+const ITEM_DELETE = 'costhead/delete';
 
 /**
- * The one place the Catalogue page talks to the API (card U5).
- *
- * It uses today's endpoints. What the target flow needs and the API does not
- * have yet is kept behind this class and listed in
- * docs/review/phase-10-u5-log.md:
- *  - `product/add` is switched off in the API, so `addProfile` reports
- *    NotAvailableError;
- *  - a rate change for one category has no endpoint, so `saveProfileRates`
- *    saves the profiles one after another.
+ * The one place the Catalogue page talks to the API (card U5, wired to the
+ * endpoints of docs/review/phase-17-screen-api-gaps-log.md by card T76).
  */
 @Injectable({ providedIn: 'root' })
 export class CatalogueAdapter {
@@ -81,49 +74,27 @@ export class CatalogueAdapter {
 
   addProfile(profile: Omit<ProfileRow, 'id'>): Observable<ProfileRow> {
     return this.write<ProfileRow>(API_END_POINT.product.add, this.profileBody(profile)).pipe(
-      map((saved) => this.numbers(saved)),
-      catchError((err) =>
-        throwError(() =>
-          err instanceof HttpErrorResponse && (err.status === 404 || err.status === 405)
-            ? new NotAvailableError('Adding a profile is not switched on yet.')
-            : err
-        )
-      )
+      map((saved) => this.numbers(saved))
     );
   }
 
-  /** Reprices every profile from its weight and stores the factors. One call. */
-  updateAllRates(factors: PriceFactors): Observable<void> {
-    return this.write<unknown>(API_END_POINT.bulkPriceUpdate.post, factors).pipe(map(() => undefined));
+  /** Refused, with the quotation numbers in the message, while a quotation uses the profile. */
+  deleteProfile(id: number): Observable<void> {
+    return this.write<unknown>(`${PROFILE_DELETE}/${id}`).pipe(map(() => undefined));
   }
 
   /**
-   * Saves new rates on each profile in turn and reports how many are done.
-   * Completes with the saved rows; stops at the first failure.
+   * A rate change for every profile or one category, in one call. With
+   * `dryRun` nothing is saved and the answer is the preview.
    */
-  saveProfileRates(
-    profiles: ProfileRow[],
-    rates: (profile: ProfileRow) => ProfileRates,
-    progress: (done: number) => void = () => {}
-  ): Observable<ProfileRow[]> {
-    if (!profiles.length) {
-      return of([]);
+  changeRates(request: RateRequest, dryRun: boolean): Observable<RatePreview> {
+    const body: Record<string, unknown> = { mode: request.mode, category: request.category || 'all', dry_run: dryRun };
+    if (request.mode === 'percent') {
+      body['percent'] = request.percent;
+    } else {
+      Object.assign(body, request.factors);
     }
-    const saved: ProfileRow[] = [];
-    const pace = profiles.length > PACE_ABOVE ? PACE_MS : 0;
-    const steps = profiles.map((profile, index) =>
-      defer(() => (index && pace ? timer(pace) : of(0))).pipe(
-        switchMap(() => this.saveProfile({ ...profile, ...rates(profile) })),
-        tap((row) => {
-          saved.push(row);
-          progress(saved.length);
-        })
-      )
-    );
-    return concat(...steps).pipe(
-      last(),
-      map(() => saved)
-    );
+    return this.write<RatePreview>(CHANGE_RATES, body);
   }
 
   saveColour(colour: Partial<ColourRow>): Observable<ColourRow> {
@@ -145,8 +116,15 @@ export class CatalogueAdapter {
       costhead: item.costhead,
       description: item.description ?? '',
       category: item.category ?? null,
+      // The "used for" text; the API keeps what is stored when it is not sent.
+      ...(item.conditions != null ? { conditions: item.conditions } : {}),
     };
     return this.write<ItemRow>(url, body).pipe(map((saved) => ({ ...item, ...saved, cost: Number(saved.cost) } as ItemRow)));
+  }
+
+  /** A glass type or hardware item; refused like `deleteProfile` while in use. */
+  deleteItem(id: number): Observable<void> {
+    return this.write<unknown>(`${ITEM_DELETE}/${id}`).pipe(map(() => undefined));
   }
 
   /** Words to show a person when a call fails. */
@@ -158,7 +136,8 @@ export class CatalogueAdapter {
       if (err.status === 429) {
         return 'Too many changes at once. Wait a minute, then try again.';
       }
-      return err.error?.message || fallback;
+      // A 5xx carries the server's own exception text, which is not for the screen.
+      return err.status >= 500 ? fallback : err.error?.message || fallback;
     }
     return (err as Error)?.message || fallback;
   }
@@ -190,6 +169,8 @@ export class CatalogueAdapter {
       kg_meter_color: profile.kg_meter_color,
       rate_meter_color: profile.rate_meter_color,
       rate_bar_color: profile.rate_bar_color,
+      // The designer offers a profile for a frame or sash by this value.
+      ...(subCategoryFor(profile) ? { sub_category: subCategoryFor(profile) } : {}),
       role: profile.role ?? null,
       face_width_mm: profile.face_width_mm ?? null,
       profile_depth_mm: profile.profile_depth_mm ?? null,

@@ -1,11 +1,11 @@
 import { SimpleChange } from '@angular/core';
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 
 import { CatalogueAdapter } from '../masters/catalogue.adapter';
-import { PriceFactors, ProfileRow } from '../masters/catalogue.model';
-import { RatesUpdated, UpdateRatesDialogComponent } from './update-rates-dialog.component';
+import { PriceFactors, ProfileRow, RatePreview, RateRequest } from '../masters/catalogue.model';
+import { PREVIEW_DELAY_MS, RatesUpdated, UpdateRatesDialogComponent } from './update-rates-dialog.component';
 
 const FACTORS: PriceFactors = { per_kg: 190, rate_bar: 5.8, color_per_kg: 410, color_rate_bar: 5.8 };
 
@@ -24,6 +24,23 @@ const PROFILES = [
   profile(3, 'Slidding', 'Frame', 1.5),
 ];
 
+/** Stands in for `setting/change-rates`: the affected profiles, each rate moved by 5%. */
+function answer(request: RateRequest, dryRun: boolean): RatePreview {
+  const rows = PROFILES.filter((p) => !request.category || p.category === request.category);
+  const up = (n: number) => +(n * 1.05).toFixed(2);
+  return {
+    dry_run: dryRun,
+    saved: !dryRun,
+    count: rows.length,
+    factors: { before: FACTORS, after: request.category ? null : { ...FACTORS, per_kg: 199.5, color_per_kg: 430.5 } },
+    profiles: rows.map((p) => ({
+      id: p.id,
+      before: { rate_meter: p.rate_meter, rate_bar: p.rate_bar, rate_meter_color: p.rate_meter_color, rate_bar_color: p.rate_bar_color },
+      after: { rate_meter: up(p.rate_meter), rate_bar: up(p.rate_bar), rate_meter_color: up(p.rate_meter_color), rate_bar_color: up(p.rate_bar_color) },
+    })),
+  };
+}
+
 describe('UpdateRatesDialogComponent', () => {
   let fixture: ComponentFixture<UpdateRatesDialogComponent>;
   let component: UpdateRatesDialogComponent;
@@ -34,12 +51,12 @@ describe('UpdateRatesDialogComponent', () => {
     component.profiles = PROFILES;
     component.factors = factors;
     component.visible = true;
-    component.ngOnChanges({ visible: new SimpleChange(false, true, false) });
+    component.ngOnChanges({ visible: new SimpleChange(false, true, false), profiles: new SimpleChange([], PROFILES, false) });
     fixture.detectChanges();
   }
 
   beforeEach(async () => {
-    adapter = jasmine.createSpyObj<CatalogueAdapter>('CatalogueAdapter', ['updateAllRates', 'saveProfileRates', 'message']);
+    adapter = jasmine.createSpyObj<CatalogueAdapter>('CatalogueAdapter', ['changeRates', 'message']);
     adapter.message.and.callFake((_err: unknown, fallback?: string) => fallback ?? 'failed');
     await TestBed.configureTestingModule({
       imports: [UpdateRatesDialogComponent, NoopAnimationsModule],
@@ -51,43 +68,45 @@ describe('UpdateRatesDialogComponent', () => {
     component.updated.subscribe((u) => updated.push(u));
   });
 
-  it('previews a sample window before saving a percentage', () => {
+  it('asks the API for the preview and shows its figures for a sample window', fakeAsync(() => {
+    adapter.changeRates.and.callFake((request, dryRun) => of(answer(request, dryRun)));
     open();
     expect(component.preview).toBeNull();
     component.form.patchValue({ percent: '5' });
-    const preview = component.preview;
-    // 5.4 m of frame at 191.90 + 5.0 m of sash at 245.10, then both re-derived at 5% more per kg.
-    expect(preview?.before).toBe(2261.76);
-    expect(preview?.after).toBe(2374.9); // each rate is rounded to paise first, as the API does
+    expect(component.previewing).toBeTrue();
+    expect(adapter.changeRates).not.toHaveBeenCalled(); // waits for the typing to pause
+    tick(PREVIEW_DELAY_MS);
+    expect(adapter.changeRates).toHaveBeenCalledOnceWith({ mode: 'percent', category: null, percent: 5 }, true);
+    // 5.4 m of frame and 5.0 m of sash, at the rates on the page and at the rates the API answered.
+    expect(component.preview?.before).toBe(2261.76);
+    expect(component.preview?.after).toBe(2374.9);
     expect(component.nextFactors).toEqual({ per_kg: 199.5, rate_bar: 5.8, color_per_kg: 430.5, color_rate_bar: 5.8 });
-  });
+    expect(component.previewing).toBeFalse();
+  }));
 
-  it('raises every profile with one call that carries the new factors', () => {
-    adapter.updateAllRates.and.returnValue(of(undefined));
+  it('saves with one call and reports the count the API answers', () => {
+    adapter.changeRates.and.callFake((request, dryRun) => of(answer(request, dryRun)));
     open();
     component.form.patchValue({ percent: '5' });
     component.submit();
-    expect(adapter.updateAllRates).toHaveBeenCalledOnceWith({ per_kg: 199.5, rate_bar: 5.8, color_per_kg: 430.5, color_rate_bar: 5.8 });
-    expect(adapter.saveProfileRates).not.toHaveBeenCalled();
-    expect(updated).toEqual([{ count: 3, all: true, rows: [] }]);
+    expect(adapter.changeRates).toHaveBeenCalledOnceWith({ mode: 'percent', category: null, percent: 5 }, false);
+    expect(updated).toEqual([{ count: 3 }]);
     expect(component.visible).toBeFalse();
   });
 
-  it('changes one category profile by profile and leaves the factors alone', () => {
-    adapter.saveProfileRates.and.callFake((rows, rates) => of(rows.map((r) => ({ ...r, ...rates(r) }))));
+  it('changes one category with the same single call', fakeAsync(() => {
+    adapter.changeRates.and.callFake((request, dryRun) => of(answer(request, dryRun)));
     open();
     component.form.patchValue({ category: 'Casement', percent: '-10' });
-    expect(component.affected.length).toBe(2);
+    tick(PREVIEW_DELAY_MS);
+    expect(component.count).toBe(2);
     expect(component.nextFactors).toBeNull();
     component.submit();
-    expect(adapter.updateAllRates).not.toHaveBeenCalled();
-    const [rows] = adapter.saveProfileRates.calls.mostRecent().args;
-    expect(rows.map((r) => r.id)).toEqual([1, 2]);
-    expect(updated[0].all).toBeFalse();
-    expect(updated[0].rows[0].rate_meter).toBe(172.71); // 191.90 less 10%
-  });
+    expect(adapter.changeRates.calls.mostRecent().args).toEqual([{ mode: 'percent', category: 'Casement', percent: -10 }, false]);
+    expect(updated).toEqual([{ count: 2 }]);
+  }));
 
-  it('sends nothing for a zero, an empty or an out-of-range entry', () => {
+  it('sends nothing for a zero, an empty or an out-of-range entry', fakeAsync(() => {
     open();
     for (const percent of ['', '0', 'abc', '-95', '900']) {
       component.form.patchValue({ percent });
@@ -98,19 +117,32 @@ describe('UpdateRatesDialogComponent', () => {
     component.submit();
     component.form.patchValue({ per_kg: '2000000' });
     component.submit();
-    expect(adapter.updateAllRates).not.toHaveBeenCalled();
-    expect(adapter.saveProfileRates).not.toHaveBeenCalled();
+    tick(PREVIEW_DELAY_MS);
+    expect(adapter.changeRates).not.toHaveBeenCalled();
     expect(component.visible).toBeTrue();
-  });
+  }));
 
   it('sets a new rate per kg for every profile', () => {
-    adapter.updateAllRates.and.returnValue(of(undefined));
+    adapter.changeRates.and.callFake((request, dryRun) => of(answer(request, dryRun)));
     open();
     component.setMode('rate');
     component.form.patchValue({ per_kg: '200' });
     component.submit();
-    expect(adapter.updateAllRates).toHaveBeenCalledOnceWith({ per_kg: 200, rate_bar: 5.8, color_per_kg: 410, color_rate_bar: 5.8 });
+    expect(adapter.changeRates).toHaveBeenCalledOnceWith(
+      { mode: 'rate', category: null, factors: { per_kg: 200, rate_bar: 5.8, color_per_kg: 410, color_rate_bar: 5.8 } },
+      false
+    );
   });
+
+  it('says so when the preview cannot be worked out, and still lets the change be saved', fakeAsync(() => {
+    adapter.changeRates.and.returnValue(throwError(() => new Error('down')));
+    open();
+    component.form.patchValue({ percent: '5' });
+    tick(PREVIEW_DELAY_MS);
+    expect(component.preview).toBeNull();
+    expect(component.previewError).toBe('The preview could not be worked out.');
+    expect(component.count).toBe(3);
+  }));
 
   it('names its close button for screen readers', () => {
     open();
@@ -124,7 +156,7 @@ describe('UpdateRatesDialogComponent', () => {
   });
 
   it('stays open and says what happened when the save fails', () => {
-    adapter.updateAllRates.and.returnValue(throwError(() => new Error('down')));
+    adapter.changeRates.and.returnValue(throwError(() => new Error('down')));
     open();
     component.form.patchValue({ percent: '5' });
     component.submit();

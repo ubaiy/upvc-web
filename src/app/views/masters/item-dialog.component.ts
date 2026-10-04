@@ -88,6 +88,12 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
           </select>
         </div>
 
+        <div class="field span-2" *ngIf="!glass">
+          <label class="label" for="it-rule">How many per window <span class="muted">(optional)</span></label>
+          <input class="input" id="it-rule" formControlName="conditions" autocomplete="off" placeholder="Each window 2 pc" />
+          <span class="hint">Shown under the item name. It is a note for your team; it does not change the price.</span>
+        </div>
+
         <div class="field span-2">
           <label class="label" for="it-note">Note <span class="muted">(optional)</span></label>
           <input class="input" id="it-note" formControlName="description" autocomplete="off" />
@@ -176,6 +182,7 @@ export class ItemDialogComponent implements OnChanges {
       unit: v.unit,
       category: v.category || null,
       description: (v.description ?? '').trim(),
+      ...(this.glass ? {} : { conditions: (v.conditions ?? '').trim() }),
     };
     this.saving = true;
     this.adapter.saveItem(body).subscribe({
@@ -197,7 +204,12 @@ export class ItemDialogComponent implements OnChanges {
     this.error = '';
     this.form = this.build();
     if (this.item) {
-      this.form.patchValue({ ...this.item, category: this.item.category ?? '', description: this.item.description ?? '' });
+      this.form.patchValue({
+        ...this.item,
+        category: this.item.category ?? '',
+        description: this.item.description ?? '',
+        conditions: this.item.conditions ?? '',
+      });
     } else {
       this.form.patchValue({ unit: this.glass ? 'Sq M' : 'Unit' });
     }
@@ -212,6 +224,7 @@ export class ItemDialogComponent implements OnChanges {
       cost: ['', [Validators.required, Validators.pattern(MONEY), Validators.min(0), Validators.max(MAX_RATE)]],
       unit: ['Unit', [Validators.required]],
       description: ['', [Validators.maxLength(250)]],
+      conditions: ['', [Validators.maxLength(255)]],
     });
   }
 }

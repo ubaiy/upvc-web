@@ -5,7 +5,7 @@ import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
-import { CatalogueAdapter, NotAvailableError } from './catalogue.adapter';
+import { CatalogueAdapter } from './catalogue.adapter';
 import {
   PROFILE_ROLES,
   PriceFactors,
@@ -130,10 +130,7 @@ export class ProfileDialogComponent implements OnChanges {
       },
       error: (err) => {
         this.saving = false;
-        this.error =
-          err instanceof NotAvailableError
-            ? 'New profiles cannot be added from this screen yet. The profiles of your catalogue can be edited; to add one, contact support.'
-            : this.adapter.message(err, 'The profile was not saved. Try again.');
+        this.error = this.adapter.message(err, 'The profile was not saved. Try again.');
       },
     });
   }

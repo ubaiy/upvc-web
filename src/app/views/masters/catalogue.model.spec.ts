@@ -1,11 +1,9 @@
 import {
   PriceFactors,
   ProfileRow,
-  RateChange,
-  changedFactors,
-  changedRates,
   deriveRates,
   fixSpelling,
+  subCategoryFor,
   parseAmount,
   sampleCost,
   unitLabel,
@@ -80,24 +78,12 @@ describe('catalogue rules', () => {
     expect(rates.rate_bar_color).toBe(580);
   });
 
-  it('raises the factors by a percentage for a change to every profile', () => {
-    const change: RateChange = { mode: 'percent', category: null, percent: 5, factors: FACTORS };
-    expect(changedFactors(FACTORS, change)).toEqual({ per_kg: 199.5, rate_bar: 5.8, color_per_kg: 430.5, color_rate_bar: 5.8 });
-    expect(changedRates(profile(), change, FACTORS).rate_meter).toBe(201.5); // 1.01 × 199.5
-  });
-
-  it('moves the rate a profile has now when only one category changes', () => {
-    const edited = profile({ rate_meter: 250, rate_bar: 1450 });
-    const change: RateChange = { mode: 'percent', category: 'Casement', percent: -10, factors: FACTORS };
-    const rates = changedRates(edited, change, FACTORS);
-    expect(rates.rate_meter).toBe(225);
-    expect(rates.rate_bar).toBe(1305);
-    expect(rates.rate_meter_color).toBe(372.69);
-  });
-
-  it('prices from the weight when a new rate per kg is set', () => {
-    const change: RateChange = { mode: 'rate', category: 'Casement', percent: 0, factors: { ...FACTORS, per_kg: 200 } };
-    expect(changedRates(profile({ rate_meter: 250 }), change, FACTORS).rate_meter).toBe(202);
+  it('saves a new profile under the sub-category its role belongs to', () => {
+    expect(subCategoryFor({ role: 'frame', sub_category: null })).toBe('Frame');
+    expect(subCategoryFor({ role: 'shutter', sub_category: null })).toBe('Sash');
+    expect(subCategoryFor({ role: 'bead', sub_category: null })).toBe('Beading');
+    expect(subCategoryFor({ role: 'sash', sub_category: 'Accessories' })).toBe('Accessories'); // what is stored wins
+    expect(subCategoryFor({ role: null, sub_category: null })).toBeNull();
   });
 
   it('costs the sample window from the frame and the sash of the same category', () => {
