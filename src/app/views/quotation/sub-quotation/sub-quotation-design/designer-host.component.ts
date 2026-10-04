@@ -62,9 +62,8 @@ import { DesignerCatalogService } from './designer-catalog.service';
 import {
   PriceLine,
   buildManageProductBody,
+  livePriceOf,
   priceLinesOf,
-  ratePerSqFt,
-  sellingAmount,
 } from './designer-request';
 import { OpenedLine, openSavedLine } from './saved-line';
 import { DesignThumb, STARTING_DESIGNS, StartingDesign, thumbOf } from './starting-designs';
@@ -286,18 +285,19 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
 
   private totalsItems: any[] = [];
 
-  /** The price a saved line carries, as the api reports it. */
-  private storedPrice(details: any): PriceView {
-    const cost = Number(details?.total) || 0;
-    const area = Number(details?.total_sq_ft) || 0;
+  /**
+   * The price a saved line carries, as the api reports it. A line the
+   * quotation's totals do not list has no stored price; the live call prices it.
+   */
+  private storedPrice(details: any): PriceView | null {
     const item = this.totalsItems.find((i) => String(i.id) === String(this.lineId));
-    const amount = item ? Number(item.amount) : sellingAmount(cost, this.marginPercent);
+    if (!item) return null;
     return {
       state: 'stored',
-      amount,
-      cost,
-      areaSqFt: item ? Number(item.area_sq_ft) : area,
-      rate: item ? Number(item.rate_per_sq_ft) : ratePerSqFt(amount, area),
+      amount: Number(item.amount) || 0,
+      cost: Number(details?.total) || 0,
+      areaSqFt: Number(item.area_sq_ft) || 0,
+      rate: Number(item.rate_per_sq_ft) || 0,
       lines: priceLinesOf(details),
       message: '',
     };
@@ -384,15 +384,9 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       // The user undid back to the saved window while the request was out.
       this.price = this.stored;
     } else if (res?.success) {
-      const cost = Number(res.data.total) || 0;
-      const area = Number(res.data.total_sq_ft) || 0;
-      const amount = sellingAmount(cost, this.marginPercent);
       this.price = {
         state: 'live',
-        amount,
-        cost,
-        areaSqFt: Math.round(area * 100) / 100,
-        rate: ratePerSqFt(amount, area),
+        ...livePriceOf(res.data),
         lines: priceLinesOf(res.data),
         message: '',
       };
@@ -415,7 +409,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       if (!res?.success || this.changed) return;
       const today = Number(res.data.total) || 0;
       if (Math.abs(today - stored.cost) >= 0.01) {
-        this.repriceNote = String(sellingAmount(today, this.marginPercent));
+        this.repriceNote = String(livePriceOf(res.data).amount);
         this.cdr.markForCheck();
       }
     } catch {

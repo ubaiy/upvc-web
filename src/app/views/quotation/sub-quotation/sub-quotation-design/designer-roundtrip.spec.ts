@@ -23,10 +23,9 @@ import { DesignerCatalog, completeDesign } from './designer-catalog';
 import {
   ManageProductBody,
   buildManageProductBody,
+  livePriceOf,
   priceLinesOf,
   pricedPayloadOf,
-  ratePerSqFt,
-  sellingAmount,
 } from './designer-request';
 import { openSavedLine } from './saved-line';
 import { STARTING_DESIGNS } from './starting-designs';
@@ -160,16 +159,13 @@ describe('designer round trip: save, reopen, same payload and same total', () =>
     expect(arch.shape?.kind).toBe('arch_segmental');
   });
 
-  it('selling price mirrors the api rule: cost plus the margin, each rounded to paise', () => {
-    // The figures of quotation 22 on the demo (Retail 20%).
-    expect(sellingAmount(6158.18, 20)).toBe(7389.82);
-    expect(sellingAmount(6316.83, 20)).toBe(7580.2);
-    expect(sellingAmount(12882.35, 20)).toBe(15458.82);
-    expect(sellingAmount(7376.55, 20)).toBe(8851.86);
-    expect(sellingAmount(100, 0)).toBe(100);
-    // The api divides by the unrounded area.
-    expect(ratePerSqFt(8851.86, 23.2500465072)).toBe(380.72);
-    expect(ratePerSqFt(100, 0)).toBe(0);
+  it('the live price is the one the api returns: amount and rate are read, never worked out', () => {
+    // Quotation 22 on the demo (Retail 20%): cost 7376.55, sold at 8851.86.
+    const data = { total: 7376.55, amount: 8851.86, rate_per_sq_ft: 380.72, total_sq_ft: 23.2500465072 };
+    expect(livePriceOf(data)).toEqual({ cost: 7376.55, amount: 8851.86, areaSqFt: 23.25, rate: 380.72 });
+    // A figure the api did not send stays 0; the web adds no margin of its own.
+    expect(livePriceOf({ total: 100, total_sq_ft: 10 })).toEqual({ cost: 100, amount: 0, areaSqFt: 10, rate: 0 });
+    expect(livePriceOf(null)).toEqual({ cost: 0, amount: 0, areaSqFt: 0, rate: 0 });
   });
 
   it('price details list each item once, without the rows that cost nothing', () => {

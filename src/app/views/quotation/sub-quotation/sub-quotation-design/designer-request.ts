@@ -82,21 +82,28 @@ export function pricedPayloadOf(body: ManageProductBody): unknown {
   return priced;
 }
 
-/**
- * Selling price of one line: cost plus the quotation's margin.
- *
- * This is the API's own rule (`App\Services\QuotationTotals::sellingAmount`),
- * mirrored here for the LIVE price only, because the preview call returns
- * the cost and no selling price. A saved line always shows the API's
- * `totals.items[].amount`. Remove this once the preview returns the amount.
- */
-export function sellingAmount(cost: number, marginPercent: number): number {
-  const round2 = (v: number): number => Math.round((v + Number.EPSILON) * 100) / 100;
-  return round2(cost + round2((cost * marginPercent) / 100));
+/** The figures of the live price call, exactly as the api returns them. */
+export interface LivePrice {
+  /** Cost of the line, all pieces. */
+  cost: number;
+  /** What the line sells for on its quotation, before discount and tax. */
+  amount: number;
+  areaSqFt: number;
+  rate: number;
 }
 
-export function ratePerSqFt(amount: number, areaSqFt: number): number {
-  return areaSqFt > 0 ? Math.round((amount / areaSqFt + Number.EPSILON) * 100) / 100 : 0;
+/**
+ * Reads `quatation/manage-product` (is_saved false). The api adds the
+ * quotation's margin itself (`data.amount`, `data.rate_per_sq_ft`); the web
+ * works out neither.
+ */
+export function livePriceOf(data: any): LivePrice {
+  return {
+    cost: Number(data?.total) || 0,
+    amount: Number(data?.amount) || 0,
+    areaSqFt: Math.round((Number(data?.total_sq_ft) || 0) * 100) / 100,
+    rate: Number(data?.rate_per_sq_ft) || 0,
+  };
 }
 
 /** One row of the "Price details" panel. */
