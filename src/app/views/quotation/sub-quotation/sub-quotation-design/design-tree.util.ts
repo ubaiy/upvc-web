@@ -171,15 +171,17 @@ function leafFromPart(part: any, framed: boolean, nextId: () => string): PaneNod
   const node: PaneNode = { id: nextId(), framed };
   if (part && typeof part === 'object') {
     if (part.opening_direction) node.openingDirection = part.opening_direction;
-    if (part.handle_id !== undefined && part.handle_id !== null && part.handle_id !== '')
-      node.handleId = part.handle_id;
     if (part.hinges_type) node.hingesType = part.hinges_type;
     if (part.casement_type === 'Openable' || part.casement_type === 'Fixed')
       node.casementType = part.casement_type;
     if (part.category_type === 'Slidding' || part.category_type === 'Casement')
       node.category = part.category_type;
-    if (part.sash_id !== undefined && part.sash_id !== null && part.sash_id !== '')
-      node.sashId = part.sash_id;
+    // ALWAYS pin the priced per-section ids, mapping an absent/nullified
+    // value to '' — leaving them undefined would make the restored leaf
+    // inherit the GLOBAL control (e.g. price a sash into a Fixed section).
+    node.sashId = part.sash_id === undefined || part.sash_id === null ? '' : part.sash_id;
+    node.handleId =
+      part.handle_id === undefined || part.handle_id === null ? '' : part.handle_id;
     if (part.product_id !== undefined && part.product_id !== null && part.product_id !== '')
       node.productId = part.product_id;
   }

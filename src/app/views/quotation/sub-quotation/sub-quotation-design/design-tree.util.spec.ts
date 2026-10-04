@@ -297,6 +297,12 @@ describe('design-tree.util (B1/B2 regression)', () => {
       const [a, b] = rec.root.split!.children;
       expect(a.casementType).toBe('Openable');
       expect(b.casementType).toBe('Fixed');
+      // The Fixed section's sash/handle must be pinned to '' (not undefined):
+      // undefined would inherit the GLOBAL sash control and reprice the
+      // reopened window higher than it was saved (copy-reopen regression).
+      expect(a.sashId).toBe(7);
+      expect(b.sashId).toBe('');
+      expect(b.handleId).toBe('');
     });
 
     it('flags nested legacy layouts as approximate instead of guessing silently', () => {
