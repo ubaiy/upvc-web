@@ -69,6 +69,12 @@ describe('LoginComponent', () => {
     expect(el.querySelector('.btn-primary')!.textContent).toContain('Sign in');
   });
 
+  it('says the password was changed when it is opened after a reset', () => {
+    query = { reset: '1' };
+    create();
+    expect(el.querySelector('.signin-notice')!.textContent).toContain('Your password was changed');
+  });
+
   it('links to the forgot-password page and to sign up', () => {
     create();
     const links = Array.from(el.querySelectorAll('a')).map((a) => a.getAttribute('href'));

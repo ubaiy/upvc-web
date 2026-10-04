@@ -24,6 +24,8 @@ export class LoginComponent implements OnInit {
   showPassword = false;
   capsLock = false;
   error: SignInError | null = null;
+  /** True when the user has just set a new password and is sent here to use it. */
+  passwordChanged = false;
 
   @ViewChild('emailInput') emailInput?: ElementRef<HTMLInputElement>;
   @ViewChild('passwordInput') passwordInput?: ElementRef<HTMLInputElement>;
@@ -43,6 +45,7 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.passwordChanged = this._route.snapshot.queryParamMap.has('reset');
     // Someone who is already signed in has nothing to do here.
     if (this._authService.getToken()) {
       this._router.navigateByUrl(this._destination());

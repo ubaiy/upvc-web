@@ -1,5 +1,8 @@
 <app-auth-layout heading="Welcome back" lead="Sign in to your workshop." pageTitle="Sign in">
   <form class="stack-4 signin" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-callout *ngIf="passwordChanged && !error" tone="info" class="signin-notice">
+      Your password was changed. Sign in with the new one.
+    </app-callout>
     <app-callout *ngIf="error" tone="danger" class="signin-error">
       {{ error.text }}
       <button *ngIf="error.retry" action type="button" class="btn btn-secondary btn-sm" (click)="submit()">

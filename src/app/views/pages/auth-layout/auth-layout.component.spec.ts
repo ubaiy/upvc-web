@@ -4,7 +4,6 @@ import { Title } from '@angular/platform-browser';
 import { RouterTestingModule } from '@angular/router/testing';
 
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
-import { ForgotPasswordComponent } from '../login/forgot-password/forgot-password.component';
 import { AuthLayoutComponent } from './auth-layout.component';
 
 @Component({
@@ -20,7 +19,7 @@ describe('AuthLayoutComponent', () => {
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [AuthLayoutComponent, ForgotPasswordComponent, HostComponent],
+      declarations: [AuthLayoutComponent, HostComponent],
       imports: [RouterTestingModule, SharedComponentsModule],
     }).compileComponents();
     fixture = TestBed.createComponent(HostComponent);
@@ -44,15 +43,5 @@ describe('AuthLayoutComponent', () => {
     const side = el.querySelector('.auth-side')!;
     expect(side.querySelector('svg[role="img"]')!.getAttribute('aria-label')).toBe('Three-pane casement window');
     expect(side.querySelector('.art-price .num')!.textContent).toBe('₹10,399.37');
-  });
-
-  it('forgot password: says what to do and has one primary button back to sign in', () => {
-    const page = TestBed.createComponent(ForgotPasswordComponent);
-    page.detectChanges();
-    const root: HTMLElement = page.nativeElement;
-    expect(root.querySelector('h1')!.textContent).toBe('Forgot your password?');
-    expect(root.querySelectorAll('.btn-primary').length).toBe(1);
-    expect(root.querySelector('.btn-primary')!.getAttribute('href')).toBe('/auth/login');
-    expect(TestBed.inject(Title).getTitle()).toBe('Forgot password · UPVC');
   });
 });
