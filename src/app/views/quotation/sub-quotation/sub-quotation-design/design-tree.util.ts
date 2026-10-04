@@ -79,12 +79,17 @@ const LEAF_KEYS: (keyof SerializedPaneNode)[] = [
   'productId',
 ];
 
-/** JSON-safe snapshot of the pane tree (ids and transient fields stripped). */
+/**
+ * JSON-safe snapshot of the pane tree (ids and transient fields stripped).
+ * Empty strings are kept on purpose: a leaf whose sashId/handleId is '' must
+ * reopen as '' — dropping it would make the restored leaf fall back to the
+ * GLOBAL control value, silently pricing e.g. a sash into a Fixed section.
+ */
 export function serializePaneTree(node: PaneNode): SerializedPaneNode {
   const out: SerializedPaneNode = {};
   for (const key of LEAF_KEYS) {
     const v = (node as any)[key];
-    if (v !== undefined && v !== null && v !== '') {
+    if (v !== undefined && v !== null) {
       (out as any)[key] = v;
     }
   }
@@ -115,7 +120,8 @@ export function deserializePaneTree(
   const node: PaneNode = { id: nextId() };
   for (const key of LEAF_KEYS) {
     const v = data[key];
-    if (v !== undefined && v !== null && v !== '') {
+    // '' is a meaningful value (see serializePaneTree) — only skip absent.
+    if (v !== undefined && v !== null) {
       (node as any)[key] = v;
     }
   }

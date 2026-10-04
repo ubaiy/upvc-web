@@ -111,6 +111,33 @@ describe('design-tree.util (B1/B2 regression)', () => {
       expect(rightRestored.casementType).toBe('Fixed');
     });
 
+    it("keeps empty-string config ('' sashId on a Fixed section) through the round trip", () => {
+      // Regression: '' used to be dropped from the snapshot, so the restored
+      // leaf fell back to the GLOBAL sash control and the reopened price of a
+      // mixed (mullion + Openable|Fixed) window came back higher than saved —
+      // the API priced a sash into the Fixed section.
+      const tree: PaneNode = {
+        id: 'root',
+        framed: false,
+        split: {
+          direction: 'vertical',
+          kind: 'mullion',
+          profileId: 29,
+          mullionWidthMm: 60,
+          fractions: [0.5, 0.5],
+          children: [
+            { id: 'a', casementType: 'Openable', sashId: 27 },
+            { id: 'b', casementType: 'Fixed', sashId: '' },
+          ],
+        },
+      };
+      const snap = JSON.parse(JSON.stringify(serializePaneTree(tree)));
+      expect(snap.split.children[1].sashId).toBe('');
+      const restored = deserializePaneTree(snap, idFactory())!;
+      expect(restored.split!.children[1].sashId).toBe('');
+      expect(restored.split!.children[0].sashId).toBe(27);
+    });
+
     it('strips transient render fields and regenerates ids', () => {
       const tree = compositeTree();
       (tree as any)._wMm = 1234;
