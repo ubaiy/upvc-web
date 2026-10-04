@@ -87,6 +87,9 @@
   .btn { padding-inline: var(--s-2); }
 }
 
+.preview .card-head { flex-wrap: wrap; }
+.preview-tools { flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); margin-inline-start: auto; }
+
 .preview-frame {
   display: block;
   width: 100%;

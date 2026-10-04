@@ -63,7 +63,8 @@ describe('orders adapter', () => {
       rawOrder({ id: 4, stage: 'closed' }),
     ]);
     const ids = (tab: any) => orders.filter((o) => inTab(o, tab)).map((o) => o.id);
-    expect(ids('all')).toEqual([1, 2, 4]);
+    // All is every order, cancelled ones too.
+    expect(ids('all')).toEqual([1, 2, 3, 4]);
     expect(ids('ready')).toEqual([2]);
     expect(ids('overdue')).toEqual([2]);
     expect(ids('cancelled')).toEqual([3]);

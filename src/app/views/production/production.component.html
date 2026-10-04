@@ -179,9 +179,14 @@
   <section class="card preview" #previewCard *ngIf="preview as open" [attr.aria-label]="open.doc.title + ' preview'">
     <div class="card-head">
       <h2>{{ open.doc.title }} · preview</h2>
-      <button type="button" class="btn btn-secondary" (click)="closePreview()">
-        <app-icon name="x"></app-icon>Close preview
-      </button>
+      <div class="u-row preview-tools">
+        <button type="button" class="btn btn-secondary" *ngIf="open.narrow" [attr.aria-pressed]="open.actualSize" (click)="togglePreviewSize()">
+          {{ open.actualSize ? 'Fit to screen' : 'Actual size' }}
+        </button>
+        <button type="button" class="btn btn-secondary" (click)="closePreview()">
+          <app-icon name="x"></app-icon>Close preview
+        </button>
+      </div>
     </div>
     <iframe class="preview-frame" sandbox="" [src]="open.src" [title]="open.doc.title + ' preview'"></iframe>
   </section>

@@ -187,3 +187,22 @@
     </div>
   </ng-container>
 </ng-container>
+
+<app-confirm-dialog
+  *ngIf="closing as o"
+  [title]="'Close ' + o.number + ' with ' + (o.balance | inr) + ' still to pay?'"
+  text="Closing ends the job. The amount stays under Outstanding until it is paid; it is not written off."
+  confirmLabel="Close order"
+  keepLabel="Keep it open"
+  (confirmed)="confirmClose()"
+  (closed)="closing = null"
+>
+  <dl class="dl">
+    <dt>Order total</dt>
+    <dd>{{ o.total | inr }}</dd>
+    <dt>Received</dt>
+    <dd>{{ o.received | inr }}</dd>
+    <dt class="total">Still to pay</dt>
+    <dd class="total">{{ o.balance | inr }}</dd>
+  </dl>
+</app-confirm-dialog>

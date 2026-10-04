@@ -203,15 +203,7 @@ function plainMessage(message: string): string {
   return message;
 }
 
-/**
- * The api page is laid out for A4 paper, where the printer adds the margins.
- * On screen it gets a margin and the width of the sheet, so the preview reads
- * like the printed page. Nothing in the document itself is changed.
- */
-const SCREEN_STYLE =
-  '<style>@media screen { html { background: #fff; } body { max-width: 186mm; margin: 0 auto !important; padding: 16px; } }</style>';
+/** A workshop sheet is an A4 page with wide tables: on a phone it is laid out at this width and scaled down. */
+export const SHEET_PAGE_WIDTH = 736;
 
-export function previewPage(html: string): string {
-  const head = /<\/head>/i;
-  return head.test(html) ? html.replace(head, SCREEN_STYLE + '</head>') : SCREEN_STYLE + html;
-}
+export { fitZoom, previewPage } from '../payments/document-file';

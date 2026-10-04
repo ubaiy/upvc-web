@@ -8,12 +8,18 @@ import { Crumb } from '../../../shared/components/page-header/page-header.compon
 import { ToastService } from '../../../shared/services/toast.service';
 import { UndoService } from '../../../shared/services/undo.service';
 import { Result, httpMessage, todayIso } from '../../payments/api-result';
-import { documentError, documentName, saveBlob, shareOrSave } from '../../payments/document-file';
+import { CHALLAN_PAGE_WIDTH, documentError, documentName, saveBlob, shareOrSave } from '../../payments/document-file';
 import { earlierStages, paymentBadge } from '../orders.adapter';
 import { OrderPage, OrderUpdate, StageKey } from '../orders.model';
 import { OrdersService } from '../orders.service';
 
 type State = 'loading' | 'error' | 'ready';
+
+/** "5 Oct 2026" from `2026-10-05`. */
+function formatDay(iso: string): string {
+  const day = new Date(`${iso}T00:00:00`);
+  return isNaN(day.getTime()) ? iso : day.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
 
 /**
  * One order. Its one primary button is the next stage, with the api's own
@@ -47,10 +53,13 @@ export class OrderPageComponent implements OnInit, OnDestroy {
   notes = '';
 
   cancelling: { busy: boolean; error: string } | null = null;
+  /** True while "Close order" waits for a yes: the order still owes money. */
+  closing = false;
   challanPreview: string | null = null;
   menuItems: MenuItem[] = [];
 
   readonly today = todayIso();
+  readonly challanPageWidth = CHALLAN_PAGE_WIDTH;
   readonly placeholders = [0, 1, 2];
   readonly badge = paymentBadge;
 
@@ -109,15 +118,49 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** The primary button: the next stage. The toast offers the way back. */
+  /**
+   * The primary button: the next stage. The toast offers the way back.
+   * Closing a job that still owes money asks first, with the amount.
+   */
   advance(): void {
     const order = this.order;
+    if (!order?.nextStage || this.busy) {
+      return;
+    }
+    if (order.nextStage.stage === 'closed' && order.balance > 0) {
+      this.closing = true;
+      return;
+    }
+    this.move(order.nextStage.stage, order.stage);
+  }
+
+  /** "Close order" in the dialog. */
+  confirmClose(): void {
+    const order = this.order;
+    this.closing = false;
     if (order?.nextStage) {
       this.move(order.nextStage.stage, order.stage);
     }
   }
 
+  /** What to say beside "Dispatch" when the goods would leave without a bill. */
+  get nextHint(): string {
+    const order = this.order;
+    if (!order?.nextStage || order.cancelled || order.bill) {
+      return '';
+    }
+    return order.nextStage.stage === 'dispatched' || order.nextStage.stage === 'installed'
+      ? 'This order has no bill yet. The goods go out on the delivery challan alone; the bill is made from the quotation.'
+      : '';
+  }
+
   savePromised(): void {
+    const order = this.order;
+    if (order && this.promised && order.orderDate && this.promised < order.orderDate) {
+      // Said here in plain words; the api would answer with its field name.
+      this.actionError = { message: `The promised date cannot be before the order date, ${formatDay(order.orderDate)}.` };
+      return;
+    }
     this.save('promised', { promised_date: this.promised }, 'Promised date saved');
   }
 
@@ -138,10 +181,13 @@ export class OrderPageComponent implements OnInit, OnDestroy {
       label: `Move back to ${stage.label}`,
       command: () => this.move(stage.stage, null),
     }));
-    if (items.length) {
-      items.push({ separator: true });
+    // A closed job is finished: it is reopened with "Move back to", not cancelled.
+    if (order.stage !== 'closed') {
+      if (items.length) {
+        items.push({ separator: true });
+      }
+      items.push({ label: 'Cancel order', styleClass: 'danger', command: () => (this.cancelling = { busy: false, error: '' }) });
     }
-    items.push({ label: 'Cancel order', styleClass: 'danger', command: () => (this.cancelling = { busy: false, error: '' }) });
     this.menuItems = items;
     this.moreMenu?.toggle(event);
   }

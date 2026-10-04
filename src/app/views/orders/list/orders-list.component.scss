@@ -27,14 +27,18 @@
 .board-tools { display: flex; margin-block-end: var(--s-4); }
 .board-tools .input-group { width: 320px; max-width: 100%; }
 
-// Six columns. On a tablet they scroll sideways inside the board, never the page.
+// Six columns. They all fit a laptop (six of 160 px need 1,020 px); on a
+// narrower screen they scroll sideways inside the board, never the page; the
+// column cut by the edge and the thin scrollbar show there is more.
 .board {
   display: grid;
-  grid-template-columns: repeat(6, minmax(208px, 1fr));
+  grid-template-columns: repeat(6, minmax(160px, 1fr));
   gap: var(--s-3);
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   padding-block-end: var(--s-3);
   scroll-snap-type: x proximity;
+  scrollbar-width: thin;
 }
 .column {
   display: flex;
@@ -61,6 +65,7 @@
 .job {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   border: 1px solid var(--c-border);
   border-radius: var(--r-md);
   background: var(--c-surface);
@@ -71,8 +76,10 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
+  min-width: 0;
   padding: var(--s-3);
   color: inherit;
+  overflow-wrap: anywhere;
   border-radius: var(--r-md);
 
   &:hover { text-decoration: none; background: var(--c-surface-2); }
@@ -84,6 +91,20 @@
   justify-content: space-between;
   min-height: 44px;
   margin: 0 var(--s-2) var(--s-2);
+}
+
+// The stage tabs scroll sideways on a narrow screen: the shadow on the edge says so.
+.tabs {
+  background:
+    linear-gradient(to right, var(--c-bg), var(--c-bg)) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--c-bg), var(--c-bg)) right / 24px 100% no-repeat local,
+    linear-gradient(to right, rgba(20, 24, 28, 0.16), transparent) left / 12px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(20, 24, 28, 0.16), transparent) right / 12px 100% no-repeat scroll;
+}
+
+// 44 px to tap on a tablet or a phone.
+@media (max-width: 1024px), (pointer: coarse) {
+  .seg button { min-height: 44px; }
 }
 
 @media (max-width: 640px) {

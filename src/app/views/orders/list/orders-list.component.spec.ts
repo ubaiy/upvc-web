@@ -5,6 +5,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
 import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
+import { ConfirmDialogComponent } from '../../bills/confirm-dialog.component';
 import { UndoService } from '../../../shared/services/undo.service';
 import { toCounts, toOrderPage, toOrders } from '../orders.adapter';
 import { OrdersService } from '../orders.service';
@@ -57,7 +58,7 @@ describe('OrdersListComponent', () => {
     undo = jasmine.createSpyObj('UndoService', ['offer']);
     TestBed.configureTestingModule({
       declarations: [OrdersListComponent],
-      imports: [RouterTestingModule, FormsModule, SharedComponentsModule],
+      imports: [RouterTestingModule, FormsModule, SharedComponentsModule, ConfirmDialogComponent],
       providers: [
         { provide: OrdersService, useValue: service },
         { provide: UndoService, useValue: undo },
@@ -77,7 +78,7 @@ describe('OrdersListComponent', () => {
     service.list.and.returnValue(ok(toOrders(ORDERS)));
     button('Try again')!.click();
     fixture.detectChanges();
-    expect(el().querySelectorAll('tbody tr').length).toBe(3);
+    expect(el().querySelectorAll('tbody tr').length).toBe(4);
   });
 
   it('teaches in the empty state, with the one primary button', () => {
@@ -89,17 +90,18 @@ describe('OrdersListComponent', () => {
     expect(primary[0].getAttribute('href')).toBe('/quotation');
   });
 
-  it('has a tab per stage with the count the api returns', () => {
+  it('has a tab per stage with the count the api returns; All counts the cancelled orders it lists', () => {
     create();
     const tabs = Array.from(el().querySelectorAll('.tab')).map((t) => t.textContent!.replace(/\s+/g, ' ').trim());
-    expect(tabs).toEqual(['All3', 'Confirmed1', 'In production0', 'Ready1', 'Dispatched0', 'Installed0', 'Closed1', 'Overdue1', 'Cancelled1']);
+    expect(tabs).toEqual(['All4', 'Confirmed1', 'In production0', 'Ready1', 'Dispatched0', 'Installed0', 'Closed1', 'Overdue1', 'Cancelled1']);
     expect(el().querySelector('.tab[aria-selected="true"]')?.textContent).toContain('All');
   });
 
   it('lists number, project, customer, stage, promised date and money through the INR pipe', () => {
     create();
     const rows = Array.from(el().querySelectorAll('tbody tr')).map((r) => r.textContent!.replace(/\s+/g, ' '));
-    expect(rows.length).toBe(3);
+    expect(rows.length).toBe(4);
+    expect(rows[3]).toContain('Cancelled');
     expect(rows[0]).toContain('ORD/26-27/0003');
     expect(rows[0]).toContain('Showroom front');
     expect(rows[0]).toContain('Modern Homes LLP');
@@ -129,7 +131,7 @@ describe('OrdersListComponent', () => {
     expect(text()).toContain('No dispatched orders');
     button('Show all orders')!.click();
     fixture.detectChanges();
-    expect(el().querySelectorAll('tbody tr').length).toBe(3);
+    expect(el().querySelectorAll('tbody tr').length).toBe(4);
   });
 
   it('opens the tab and the view named in the address', () => {
@@ -200,6 +202,39 @@ describe('OrdersListComponent', () => {
     expect(undo.offer).toHaveBeenCalledTimes(1);
   });
 
+  it('asks before closing an order that still owes money, with the amount', () => {
+    const owing = rawOrder({ id: 7, number: 'ORD/26-27/0007', stage: 'installed', total: 35456, received: 19000, balance: 16456 });
+    create(ok(toOrders([owing])), { view: 'board' });
+    (el().querySelector('.job-next') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(service.setStage).not.toHaveBeenCalled();
+    const dialog = el().querySelector('app-confirm-dialog')!;
+    expect(dialog.textContent).toContain('Close ORD/26-27/0007 with ₹16,456.00 still to pay?');
+    expect(dialog.textContent!.replace(/\s+/g, ' ')).toContain('Received₹19,000.00');
+
+    button('Keep it open')!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
+    expect(service.setStage).not.toHaveBeenCalled();
+
+    (el().querySelector('.job-next') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    service.setStage.and.returnValue(ok(toOrderPage(rawOrderPage({ ...owing, stage: 'closed' }))));
+    (Array.from(el().querySelectorAll('app-confirm-dialog button')) as HTMLButtonElement[]).find((b) => b.textContent!.includes('Close order'))!.click();
+    fixture.detectChanges();
+    expect(service.setStage).toHaveBeenCalledWith(7, 'closed');
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
+  });
+
+  it('closes a paid order in one tap', () => {
+    create(ok(toOrders([rawOrder({ id: 8, stage: 'installed', balance: 0, received: 35456, payment_status: 'paid' })])), { view: 'board' });
+    service.setStage.and.returnValue(ok(toOrderPage(rawOrderPage({ id: 8, stage: 'closed', balance: 0 }))));
+    (el().querySelector('.job-next') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(service.setStage).toHaveBeenCalledWith(8, 'closed');
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
+  });
+
   it('says why an order was not moved', () => {
     create(ok(toOrders(ORDERS)), { view: 'board' });
     service.setStage.and.returnValue(of({ ok: false as const, message: 'Order is cancelled; its stage cannot change' }));
@@ -216,7 +251,7 @@ describe('OrdersListComponent', () => {
   it('still lists the orders when the counts fail', () => {
     service.counts.and.returnValue(throwError(() => ({ status: 500 })));
     create();
-    expect(el().querySelectorAll('tbody tr').length).toBe(3);
+    expect(el().querySelectorAll('tbody tr').length).toBe(4);
     expect(el().querySelector('.tab .count')).toBeNull();
   });
 

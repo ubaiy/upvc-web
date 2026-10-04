@@ -37,6 +37,8 @@ export class OrdersListComponent implements OnInit, OnDestroy {
   moving: number | null = null;
   /** A stage change that failed, with the api's reason. */
   notice: { message: string; retry?: () => void } | null = null;
+  /** The order "Close order" was tapped on while it still owes money: the board asks first. */
+  closing: Order | null = null;
 
   readonly tabs = TABS;
   readonly placeholders = [0, 1, 2, 3, 4, 5];
@@ -95,9 +97,14 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     this.navigate({ stage: tab === 'all' ? null : tab });
   }
 
+  /** The api's count of a tab. Its "all" leaves cancelled orders out, and the All tab lists them, so the two are added. */
   count(tab: OrderTab): number | null {
     const value = this.counts[tab];
-    return typeof value === 'number' ? value : null;
+    if (typeof value !== 'number') {
+      return null;
+    }
+    const cancelled = this.counts['cancelled'];
+    return tab === 'all' && typeof cancelled === 'number' ? value + cancelled : value;
   }
 
   get filtered(): Order[] {
@@ -139,9 +146,26 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     this.page = Math.min(Math.max(this.page + step, 0), this.pageCount - 1);
   }
 
-  /** One tap on a board card: the next stage. The toast offers the way back. */
+  /**
+   * One tap on a board card: the next stage. The toast offers the way back.
+   * Closing a job that still owes money asks first, with the amount.
+   */
   advance(order: Order): void {
-    if (order.nextStage) {
+    if (!order.nextStage || this.moving) {
+      return;
+    }
+    if (order.nextStage.stage === 'closed' && order.balance > 0) {
+      this.closing = order;
+      return;
+    }
+    this.move(order, order.nextStage.stage, order.stage);
+  }
+
+  /** "Close order" in the dialog. */
+  confirmClose(): void {
+    const order = this.closing;
+    this.closing = null;
+    if (order?.nextStage) {
       this.move(order, order.nextStage.stage, order.stage);
     }
   }

@@ -52,9 +52,40 @@ export function readDocument(response: HttpResponse<Blob>, format: DocumentForma
 const SCREEN_STYLE =
   '<style>@media screen { html { background: #fff; } body { max-width: 186mm; margin: 0 auto !important; padding: 16px; } }</style>';
 
-export function previewPage(html: string): string {
+/** The narrowest a receipt or a challan is laid out; a workshop sheet (A4, wide tables) passes its own. */
+export const DOCUMENT_PAGE_WIDTH = 560;
+/** A delivery challan has a drawing and five columns a row: it needs more room. */
+export const CHALLAN_PAGE_WIDTH = 660;
+
+const SCROLLBAR = 16;
+
+/**
+ * How much the page is scaled down to fit a frame `frameWidth` px wide:
+ * 1 when it fits as it is. Not below 0.4, where nothing could be read.
+ */
+export function fitZoom(frameWidth: number, pageWidth = DOCUMENT_PAGE_WIDTH): number {
+  if (!frameWidth || frameWidth >= pageWidth) {
+    return 1;
+  }
+  // The frame's own scrollbar takes up to 16 px of the width.
+  return Math.max(0.4, Math.round(((frameWidth - SCROLLBAR) / pageWidth) * 1000) / 1000);
+}
+
+/**
+ * The api's page with the screen rules added. On a frame narrower than the
+ * page (a phone) the page keeps its own width, so nothing in it is cut or
+ * squeezed, and is scaled down as a whole with `zoom`. With `zoom` 1 on a
+ * narrow frame the page is shown at its real size and scrolls inside the frame.
+ */
+export function previewPage(html: string, fit?: { frameWidth: number; pageWidth?: number; zoom?: number }): string {
+  let style = SCREEN_STYLE;
+  const pageWidth = fit?.pageWidth || DOCUMENT_PAGE_WIDTH;
+  if (fit && fit.frameWidth > 0 && fit.frameWidth < pageWidth) {
+    const zoom = fit.zoom ?? fitZoom(fit.frameWidth, pageWidth);
+    style += `<style>@media screen { html { zoom: ${zoom}; } body { box-sizing: border-box; width: ${pageWidth}px; max-width: none; } }</style>`;
+  }
   const head = /<\/head>/i;
-  return head.test(html) ? html.replace(head, SCREEN_STYLE + '</head>') : SCREEN_STYLE + html;
+  return head.test(html) ? html.replace(head, style + '</head>') : style + html;
 }
 
 export type ShareOutcome = 'shared' | 'saved' | 'dismissed';

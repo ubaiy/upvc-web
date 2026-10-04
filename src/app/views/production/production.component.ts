@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { Component, ElementRef, HostListener, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { ActivatedRoute } from '@angular/router';
 import { Subscription } from 'rxjs';
@@ -10,7 +10,9 @@ import {
   DocumentCard,
   JobSummary,
   PlainWarning,
+  SHEET_PAGE_WIDTH,
   fileName,
+  fitZoom,
   plainWarnings,
   previewPage,
   summarise,
@@ -48,7 +50,11 @@ export class ProductionComponent implements OnInit, OnDestroy {
   busy: string | null = null;
   /** A failed action, shown above the documents with "Try again". */
   actionError: { message: string; retry: () => void } | null = null;
-  preview: { doc: DocumentCard; src: SafeResourceUrl; url: string } | null = null;
+  /**
+   * The document on screen. On a frame narrower than the sheet (`narrow`) it is
+   * scaled down to fit; `actualSize` shows it at its real size instead.
+   */
+  preview: { doc: DocumentCard; src: SafeResourceUrl; url: string; html: string; zoom: number; narrow: boolean; actualSize: boolean } | null = null;
   tab: SummaryTab = 'profiles';
 
   readonly documents = DOCUMENTS;
@@ -60,7 +66,8 @@ export class ProductionComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private service: ProductionService,
     private toast: ToastService,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private host: ElementRef<HTMLElement>
   ) {}
 
   ngOnInit(): void {
@@ -194,15 +201,39 @@ export class ProductionComponent implements OnInit, OnDestroy {
       next: (file) => {
         file.blob.text().then((html) => {
           this.busy = null;
-          this.closePreview();
-          const url = URL.createObjectURL(new Blob([previewPage(html)], { type: file.blob.type }));
-          // An address made here from the api's own page; the frame is sandboxed, so nothing in it can run.
-          this.preview = { doc, url, src: this.sanitizer.bypassSecurityTrustResourceUrl(url) };
+          this.drawPreview(doc, html, false);
           setTimeout(() => this.previewCard?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'start' }));
         });
       },
       error: (error) => this.failed(error, `${doc.title} could not be opened.`, () => this.openPreview(doc)),
     });
+  }
+
+  /** "Actual size" and "Fit to screen" on a phone. */
+  togglePreviewSize(): void {
+    const open = this.preview;
+    if (open) {
+      this.drawPreview(open.doc, open.html, !open.actualSize);
+    }
+  }
+
+  /** A turned tablet or a resized window: fit again. */
+  @HostListener('window:resize')
+  onResize(): void {
+    const open = this.preview;
+    if (open && fitZoom(this.host.nativeElement.clientWidth, SHEET_PAGE_WIDTH) !== open.zoom) {
+      this.drawPreview(open.doc, open.html, open.actualSize);
+    }
+  }
+
+  private drawPreview(doc: DocumentCard, html: string, actualSize: boolean): void {
+    this.closePreview();
+    const frameWidth = this.host.nativeElement.clientWidth || 0;
+    const zoom = fitZoom(frameWidth, SHEET_PAGE_WIDTH);
+    const page = previewPage(html, { frameWidth, pageWidth: SHEET_PAGE_WIDTH, zoom: actualSize ? 1 : zoom });
+    const url = URL.createObjectURL(new Blob([page], { type: 'text/html;charset=utf-8' }));
+    // An address made here from the api's own page; the frame is sandboxed, so nothing in it can run.
+    this.preview = { doc, url, html, zoom, narrow: zoom < 1, actualSize, src: this.sanitizer.bypassSecurityTrustResourceUrl(url) };
   }
 
   closePreview(): void {

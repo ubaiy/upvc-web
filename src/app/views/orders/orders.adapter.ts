@@ -156,7 +156,7 @@ export function toCounts(raw: any): StageCounts {
 export function inTab(order: Order, tab: OrderTab): boolean {
   switch (tab) {
     case 'all':
-      return !order.cancelled;
+      return true;
     case 'cancelled':
       return order.cancelled;
     case 'overdue':

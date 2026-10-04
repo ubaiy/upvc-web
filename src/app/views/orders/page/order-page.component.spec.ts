@@ -9,6 +9,7 @@ import { Subject, of, throwError } from 'rxjs';
 
 import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
 import { ToastService } from '../../../shared/services/toast.service';
+import { ConfirmDialogComponent } from '../../bills/confirm-dialog.component';
 import { UndoService } from '../../../shared/services/undo.service';
 import { DocumentPreviewComponent } from '../../payments/shared/document-preview.component';
 import { ReasonDialogComponent } from '../../payments/shared/reason-dialog.component';
@@ -77,7 +78,7 @@ describe('OrderPageComponent', () => {
     undo = jasmine.createSpyObj('UndoService', ['offer']);
     TestBed.configureTestingModule({
       declarations: [OrderPageComponent, PaymentsStubComponent, ReasonDialogComponent, DocumentPreviewComponent],
-      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule],
+      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule, ConfirmDialogComponent],
       providers: [
         { provide: OrdersService, useValue: service },
         { provide: ToastService, useValue: toast },
@@ -289,6 +290,69 @@ describe('OrderPageComponent', () => {
     expect(el().querySelector('.btn-primary')).toBeNull();
     expect(el().querySelector('[aria-label="More actions for this order"]')).toBeNull();
     expect((el().querySelector('#promised-date') as HTMLInputElement).disabled).toBeTrue();
+  });
+
+  it('asks before closing an order that still owes money, and shows the amount due', async () => {
+    await create(ok(rawOrderPage({ stage: 'installed', total: 35456, received: 19000, balance: 16456 })));
+    button('Close order')!.click();
+    fixture.detectChanges();
+    expect(service.setStage).not.toHaveBeenCalled();
+    const dialog = el().querySelector('app-confirm-dialog')!;
+    expect(dialog.querySelector('[role="alertdialog"]')).not.toBeNull();
+    expect(dialog.textContent).toContain('Close ORD/26-27/0001 with ₹16,456.00 still to pay?');
+    expect(dialog.textContent!.replace(/\s+/g, ' ')).toContain('Still to pay₹16,456.00');
+
+    (Array.from(dialog.querySelectorAll('button')) as HTMLButtonElement[]).find((b) => b.textContent!.includes('Keep it open'))!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
+    expect(service.setStage).not.toHaveBeenCalled();
+
+    button('Close order')!.click();
+    fixture.detectChanges();
+    service.setStage.and.returnValue(ok(rawOrderPage({ stage: 'closed', balance: 16456 })));
+    (Array.from(el().querySelectorAll('app-confirm-dialog button')) as HTMLButtonElement[]).find((b) => b.textContent!.includes('Close order'))!.click();
+    fixture.detectChanges();
+    expect(service.setStage).toHaveBeenCalledWith(1, 'closed');
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
+    expect(undo.offer).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes a paid order in one tap', async () => {
+    await create(ok(rawOrderPage({ stage: 'installed', received: 35456, balance: 0, payment_status: 'paid' })));
+    service.setStage.and.returnValue(ok(rawOrderPage({ stage: 'closed', balance: 0 })));
+    button('Close order')!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
+    expect(service.setStage).toHaveBeenCalledWith(1, 'closed');
+  });
+
+  it('offers only the way back on a closed order, not "Cancel order"', async () => {
+    await create(ok(rawOrderPage({ stage: 'closed' })));
+    spyOn(component.moreMenu!, 'toggle');
+    component.openMenu(new MouseEvent('click'));
+    const labels = component.menuItems.filter((i) => i.label).map((i) => i.label);
+    expect(labels).toContain('Move back to Installed');
+    expect(labels).not.toContain('Cancel order');
+  });
+
+  it('refuses a promised date before the order date in plain words, without asking the api', async () => {
+    await create();
+    type('promised-date', '2026-10-01');
+    button('Save date')!.click();
+    fixture.detectChanges();
+    expect(service.update).not.toHaveBeenCalled();
+    expect(text()).toContain('The promised date cannot be before the order date, 4 Oct 2026.');
+    expect(text()).not.toContain('promised_date');
+  });
+
+  it('says beside Dispatch that the goods leave without a bill', async () => {
+    await create(ok(rawOrderPage({ stage: 'ready' })));
+    expect(text()).toContain('This order has no bill yet. The goods go out on the delivery challan alone');
+  });
+
+  it('says nothing about a bill when the order has one, or is not near dispatch', async () => {
+    await create(ok(rawOrderPage({ stage: 'ready', bill: { id: 4, number: 'INV/26-27/0003', bill_date: '2026-10-05', total: 35456 } })));
+    expect(text()).not.toContain('This order has no bill yet');
   });
 
   it('has no primary button on a closed order', async () => {
