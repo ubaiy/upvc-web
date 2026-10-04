@@ -212,6 +212,9 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
   .p-datatable-loading-overlay { background: color-mix(in srgb, var(--c-surface) 70%, transparent); }
 }
 
+// Row actions stay compact, also on tablet where controls grow to 40 px.
+.p-datatable .p-datatable-tbody .p-button.p-button-icon-only { width: var(--h-control-sm); height: var(--h-control-sm); }
+
 /* ── paginator (table foot) ─────────────────────────────────────────── */
 .p-paginator {
   justify-content: flex-end; gap: var(--s-1); padding: var(--s-2) var(--s-4);

@@ -74,10 +74,11 @@ hr { border-color: var(--c-border); opacity: 1; }
   box-shadow: none;
 }
 .btn:disabled, .btn.disabled, fieldset:disabled .btn { opacity: .5; }
-.btn-primary, .btn-success, .btn-info {
+// .btn-dark was the old template's filled button (the sign-in form uses it)
+.btn-primary, .btn-success, .btn-info, .btn-dark {
   @include btn-vars(var(--c-accent), var(--c-on-accent), transparent, var(--c-accent-hover));
 }
-.btn-secondary, .btn-light, .btn-dark, .btn-warning,
+.btn-secondary, .btn-light, .btn-warning,
 .btn-outline-primary, .btn-outline-secondary, .btn-outline-success, .btn-outline-info, .btn-outline-warning, .btn-outline-dark, .btn-outline-light {
   @include btn-vars(var(--c-surface), var(--c-text), var(--c-border-strong), var(--c-surface-2));
 }
