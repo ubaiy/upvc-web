@@ -1,0 +1,170 @@
+<div class="dc-root" [class.dc-readonly]="readOnly">
+  <!-- Palette -->
+  <div
+    class="dc-palette"
+    role="toolbar"
+    aria-label="Design tools"
+    aria-orientation="vertical"
+    *ngIf="!readOnly"
+  >
+    <button
+      type="button"
+      class="dc-tool"
+      [class.armed]="armedTool === 'split-x'"
+      (pointerdown)="onPaletteDown($event, 'split-x')"
+      (pointermove)="onPaletteMove($event)"
+      (pointerup)="onPaletteUp($event)"
+      (dblclick)="splitSelected('x')"
+      title="Vertical divider — drag onto a pane, or click to arm, or press V"
+      aria-label="Add vertical divider. Drag onto a pane, click to arm, or press V to split the selected pane"
+    >
+      <span class="dc-tool-icon">║</span>
+      <span class="dc-tool-text">Split vert</span>
+    </button>
+    <button
+      type="button"
+      class="dc-tool"
+      [class.armed]="armedTool === 'split-y'"
+      (pointerdown)="onPaletteDown($event, 'split-y')"
+      (pointermove)="onPaletteMove($event)"
+      (pointerup)="onPaletteUp($event)"
+      (dblclick)="splitSelected('y')"
+      title="Horizontal divider — drag onto a pane, or click to arm, or press H"
+      aria-label="Add horizontal divider. Drag onto a pane, click to arm, or press H to split the selected pane"
+    >
+      <span class="dc-tool-icon">═</span>
+      <span class="dc-tool-text">Split horz</span>
+    </button>
+    <button
+      type="button"
+      class="dc-tool"
+      (click)="equalizeSelected()"
+      title="Equalize panes (E)"
+      aria-label="Equalize the panes of the selected split. Shortcut E"
+    >
+      <span class="dc-tool-icon">≡</span>
+      <span class="dc-tool-text">Equalize</span>
+    </button>
+    <button
+      type="button"
+      class="dc-tool"
+      [disabled]="selection?.type !== 'divider'"
+      (click)="deleteSelectedDivider()"
+      title="Delete selected divider (Del)"
+      aria-label="Delete the selected divider. Shortcut Delete"
+    >
+      <span class="dc-tool-icon">✕</span>
+      <span class="dc-tool-text">Del divider</span>
+    </button>
+  </div>
+
+  <div class="dc-main">
+    <!-- Toolbar -->
+    <div class="dc-toolbar" role="toolbar" aria-label="Canvas actions">
+      <ng-container *ngIf="!readOnly">
+        <button
+          type="button"
+          (click)="undo()"
+          [disabled]="!canUndo"
+          title="Undo (Ctrl+Z)"
+          aria-label="Undo"
+        >
+          ⤺
+        </button>
+        <button
+          type="button"
+          (click)="redo()"
+          [disabled]="!canRedo"
+          title="Redo (Ctrl+Y)"
+          aria-label="Redo"
+        >
+          ⤻
+        </button>
+        <span class="dc-sep"></span>
+      </ng-container>
+      <button type="button" (click)="zoomIn()" title="Zoom in (+)" aria-label="Zoom in">⊕</button>
+      <button type="button" (click)="zoomOut()" title="Zoom out (−)" aria-label="Zoom out">⊖</button>
+      <button type="button" (click)="fitToScreen()" title="Fit to screen (0)" aria-label="Fit to screen">⤢</button>
+      <ng-container *ngIf="!readOnly">
+        <span class="dc-sep"></span>
+        <label class="dc-size-field">
+          W
+          <input
+            type="number"
+            [min]="frameMinMm"
+            [max]="frameMaxMm"
+            [value]="frameWMm"
+            (change)="onFrameSizeInput('w', $any($event.target).value)"
+            aria-label="Frame width in millimetres"
+          />
+        </label>
+        <label class="dc-size-field">
+          H
+          <input
+            type="number"
+            [min]="frameMinMm"
+            [max]="frameMaxMm"
+            [value]="frameHMm"
+            (change)="onFrameSizeInput('h', $any($event.target).value)"
+            aria-label="Frame height in millimetres"
+          />
+        </label>
+        <span class="dc-hint" *ngIf="armedTool">
+          {{ armedTool === 'split-x' ? 'Vertical' : 'Horizontal' }} divider armed —
+          click a pane to split (Esc cancels)
+        </span>
+      </ng-container>
+    </div>
+
+    <!-- Canvas -->
+    <div
+      #wrapper
+      class="dc-wrapper"
+      tabindex="0"
+      role="application"
+      [attr.aria-label]="ariaSummary"
+      (keydown)="onKeydown($event)"
+      (keyup)="onKeyup($event)"
+      (focus)="onFocus()"
+      (blur)="onBlur()"
+    >
+      <div
+        #canvasHost
+        class="dc-canvas-host"
+        (pointerdown)="onPointerDown($event)"
+        (pointermove)="onPointerMove($event)"
+        (pointerup)="onPointerUp($event)"
+        (pointercancel)="onPointerCancel($event)"
+        (wheel)="onWheel($event)"
+        (dblclick)="onDblClick($event)"
+      ></div>
+
+      <!-- Inline mm editor (double-click a dimension) -->
+      <div
+        class="dc-edit"
+        *ngIf="edit"
+        [style.left.px]="edit.leftPx"
+        [style.top.px]="edit.topPx"
+      >
+        <label class="dc-edit-label">{{ edit.label }}</label>
+        <input
+          #editInput
+          type="number"
+          [(ngModel)]="edit.value"
+          (keydown.enter)="commitEdit()"
+          (keydown.escape)="cancelEdit()"
+          (keydown)="$event.stopPropagation()"
+          (blur)="cancelEdit()"
+          [attr.aria-label]="edit.label"
+        />
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="dc-status" aria-live="polite">
+      <span>frame {{ frameWMm }} × {{ frameHMm }} mm</span>
+      <span *ngIf="selectedSizeText">· {{ selectedSizeText }}</span>
+      <span class="dc-status-right">zoom {{ zoomPercent }}%</span>
+    </div>
+  </div>
+</div>

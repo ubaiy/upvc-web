@@ -142,6 +142,14 @@ const routes: Routes = [
       import('./views/pages/pages.module').then((m) => m.PagesModule),
   },
   {
+    // Dev-only playground for the standalone design canvas (Phase 1, T36).
+    path: 'design-lab',
+    loadChildren: () =>
+      import('./views/design-lab/design-lab.module').then(
+        (m) => m.DesignLabModule
+      ),
+  },
+  {
     path: '404',
     component: Page404Component,
     data: {

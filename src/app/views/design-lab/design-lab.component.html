@@ -1,0 +1,61 @@
+<div class="lab-root">
+  <header class="lab-header">
+    <h1>Design Lab</h1>
+    <span class="lab-sub">dev playground — interactive design canvas (Phase 1)</span>
+  </header>
+
+  <div class="lab-controls">
+    <div class="lab-presets" role="group" aria-label="Preset designs">
+      <button
+        type="button"
+        *ngFor="let p of presets"
+        [class.active]="p.key === activePreset"
+        [attr.data-preset]="p.key"
+        (click)="loadPreset(p.key)"
+      >
+        {{ p.label }}
+      </button>
+    </div>
+    <label class="lab-readonly">
+      <input type="checkbox" [(ngModel)]="readOnly" />
+      read-only
+    </label>
+  </div>
+
+  <div class="lab-body">
+    <div class="lab-canvas">
+      <app-design-canvas
+        [model]="model"
+        [readOnly]="readOnly"
+        (modelChange)="onModelChange($event)"
+        (selectionChange)="onSelectionChange($event)"
+      ></app-design-canvas>
+      <div class="lab-selection">selection: {{ selectionText }}</div>
+    </div>
+
+    <aside class="lab-side">
+      <div class="lab-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="sidePanel === 'model'"
+          [class.active]="sidePanel === 'model'"
+          (click)="sidePanel = 'model'"
+        >
+          Model JSON
+        </button>
+        <button
+          type="button"
+          role="tab"
+          [attr.aria-selected]="sidePanel === 'payload'"
+          [class.active]="sidePanel === 'payload'"
+          (click)="sidePanel = 'payload'"
+        >
+          toPayload()
+        </button>
+      </div>
+      <pre class="lab-json" *ngIf="sidePanel === 'model'">{{ modelJson }}</pre>
+      <pre class="lab-json" *ngIf="sidePanel === 'payload'">{{ payloadJson }}</pre>
+    </aside>
+  </div>
+</div>
