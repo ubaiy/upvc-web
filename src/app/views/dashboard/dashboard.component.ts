@@ -1,216 +1,78 @@
-import { Component, OnInit } from '@angular/core';
-import { UntypedFormControl, UntypedFormGroup } from '@angular/forms';
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 
-import { DashboardChartsData, IChartProps } from './dashboard-charts-data';
 import { LocalStoreService } from 'src/app/shared/services/local-storage.service';
 import { IUserDto } from 'src/app/shared/model/user.model';
 import { DashboardService } from './dashboard.service';
-import { IDashboardModelDto } from '../../shared/model/dashboard.model';
-import { getStyle } from '@coreui/utils';
-interface IUser {
-  name: string;
-  state: string;
-  registered: string;
-  country: string;
-  usage: number;
-  period: string;
-  payment: string;
-  activity: string;
-  avatar: string;
-  status: string;
-  color: string;
-}
+import { AttentionItem, HomeQuotation, HomeView, greeting, shortDate } from './home-data';
 
+type HomeState = 'loading' | 'ready' | 'error';
+
+/**
+ * Home: three figures, what needs the fabricator today, and the latest
+ * quotations. Every row opens its quotation in one click.
+ */
 @Component({
   templateUrl: 'dashboard.component.html',
   styleUrls: ['dashboard.component.scss'],
 })
-export class DashboardComponent implements OnInit {
-  userDetail: IUserDto;
-  dashboardDetail: IDashboardModelDto;
+export class DashboardComponent implements OnInit, OnDestroy {
+  state: HomeState = 'loading';
+  view: HomeView | null = null;
 
-  data: any[] = [];
-  options: any[] = [];
-  labels = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-    'January',
-    'February',
-    'March',
-    'April',
-  ];
-  datasets = [
-    [
-      {
-        label: 'My First dataset',
-        backgroundColor: 'transparent',
-        borderColor: 'rgba(255,255,255,.55)',
-        pointBackgroundColor: getStyle('--cui-primary'),
-        pointHoverBorderColor: getStyle('--cui-primary'),
-        data: [65, 59, 84, 84, 51, 55, 40],
-      },
-    ],
-    [
-      {
-        label: 'My Second dataset',
-        backgroundColor: 'transparent',
-        borderColor: 'rgba(255,255,255,.55)',
-        pointBackgroundColor: getStyle('--cui-info'),
-        pointHoverBorderColor: getStyle('--cui-info'),
-        data: [1, 18, 9, 17, 34, 22, 11],
-      },
-    ],
-    [
-      {
-        label: 'My Third dataset',
-        backgroundColor: 'rgba(255,255,255,.2)',
-        borderColor: 'rgba(255,255,255,.55)',
-        pointBackgroundColor: getStyle('--cui-warning'),
-        pointHoverBorderColor: getStyle('--cui-warning'),
-        data: [78, 81, 80, 45, 34, 12, 40],
-        fill: true,
-      },
-    ],
-    [
-      {
-        label: 'My Fourth dataset',
-        backgroundColor: 'rgba(255,255,255,.2)',
-        borderColor: 'rgba(255,255,255,.55)',
-        data: [78, 81, 80, 45, 34, 12, 40, 85, 65, 23, 12, 98, 34, 84, 67, 82],
-        barPercentage: 0.7,
-      },
-    ],
-  ];
-  optionsDefault = {
-    plugins: {
-      legend: {
-        display: false,
-      },
-    },
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        grid: {
-          display: false,
-          drawBorder: false,
-        },
-        ticks: {
-          display: false,
-        },
-      },
-      y: {
-        min: 30,
-        max: 89,
-        display: false,
-        grid: {
-          display: false,
-        },
-        ticks: {
-          display: false,
-        },
-      },
-    },
-    elements: {
-      line: {
-        borderWidth: 1,
-        tension: 0.4,
-      },
-      point: {
-        radius: 4,
-        hitRadius: 10,
-        hoverRadius: 4,
-      },
-    },
-  };
+  readonly today = new Date();
+  readonly title: string;
+  readonly dateLine = this.today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
+  readonly placeholders = [0, 1, 2];
+
+  private request?: Subscription;
+
   constructor(
-    private chartsData: DashboardChartsData,
     private _ls: LocalStoreService,
     private dataService: DashboardService
   ) {
-    this.userDetail = this._ls.getItem('User');
-    this.dataService.getDashboardData().subscribe((res) => {
-      if (res.success) {
-        this.dashboardDetail = res.data;
-        console.log(this.dashboardDetail);
-      }
-    });
-    this.setData();
+    const user: IUserDto | null = this._ls.getItem('User');
+    const name = (user?.name || '').trim();
+    this.title = name ? `${greeting(this.today)}, ${name}` : greeting(this.today);
   }
-  public mainChart: IChartProps = {};
-  public chart: Array<IChartProps> = [];
-  public trafficRadioGroup = new UntypedFormGroup({
-    trafficRadio: new UntypedFormControl('Month'),
-  });
 
   ngOnInit(): void {
-    this.initCharts();
+    this.load();
   }
 
-  initCharts(): void {
-    this.mainChart = this.chartsData.mainChart;
-  }
-  setData() {
-    for (let idx = 0; idx < 4; idx++) {
-      this.data[idx] = {
-        labels: idx < 3 ? this.labels.slice(0, 7) : this.labels,
-        datasets: this.datasets[idx],
-      };
-    }
-    this.setOptions();
+  ngOnDestroy(): void {
+    this.request?.unsubscribe();
   }
 
-  setOptions() {
-    for (let idx = 0; idx < 4; idx++) {
-      const options = JSON.parse(JSON.stringify(this.optionsDefault));
-      switch (idx) {
-        case 0: {
-          this.options.push(options);
-          break;
-        }
-        case 1: {
-          options.scales.y.min = -9;
-          options.scales.y.max = 39;
-          this.options.push(options);
-          break;
-        }
-        case 2: {
-          options.scales.x = { display: false };
-          options.scales.y = { display: false };
-          options.elements.line.borderWidth = 2;
-          options.elements.point.radius = 0;
-          this.options.push(options);
-          break;
-        }
-        case 3: {
-          options.scales.x.grid = { display: false, drawTicks: false };
-          options.scales.x.grid = {
-            display: false,
-            drawTicks: false,
-            drawBorder: false,
-          };
-          options.scales.y.min = undefined;
-          options.scales.y.max = undefined;
-          options.elements = {};
-          this.options.push(options);
-          break;
-        }
-      }
-    }
+  load(): void {
+    this.request?.unsubscribe();
+    this.state = 'loading';
+    this.request = this.dataService.getHome(this.today).subscribe({
+      next: (view) => {
+        this.view = view;
+        this.state = 'ready';
+      },
+      error: () => {
+        this.state = 'error';
+      },
+    });
   }
 
-  setTrafficPeriod(value: string): void {
-    this.trafficRadioGroup.setValue({ trafficRadio: value });
-    this.chartsData.initMainChart(value);
-    this.initCharts();
+  link(quotation: HomeQuotation): any[] {
+    return ['/quotation/detail', quotation.id];
+  }
+
+  /** The date in the last column of "Recent quotations"; empty until the API sends dates. */
+  dateOf(quotation: HomeQuotation): string {
+    const date = quotation.edited || quotation.created;
+    return date ? shortDate(date, this.today) : '';
+  }
+
+  trackItem(_: number, item: AttentionItem): number {
+    return item.quotation.id;
+  }
+
+  trackQuotation(_: number, quotation: HomeQuotation): number {
+    return quotation.id;
   }
 }

@@ -1,100 +1,108 @@
-<div class="app-page-surface dashboard">
-  <app-page-header
-    eyebrow="Dashboard"
-    [title]="'Welcome ' + (userDetail?.name || '')"
-    subtitle="Here is what is happening across your business."
-  ></app-page-header>
+<app-page-header [title]="title" [subtitle]="dateLine">
+  <!-- One primary button on the page: when there is no quotation yet it moves into the empty state. -->
+  <a actions class="btn btn-primary" routerLink="/quotation/add" *ngIf="!view?.empty">
+    <app-icon name="plus"></app-icon>New quotation
+  </a>
+</app-page-header>
 
-  <!-- ── Primary KPIs ─────────────────────────────────────────────── -->
-  <c-row class="g-3">
-    <c-col sm="6" xl="3">
-      <div class="app-stat-card app-stat-card--primary">
-        <span class="app-stat-card__icon">
-          <svg cIcon name="cilPeople"></svg>
-        </span>
-        <span class="app-stat-card__body">
-          <span class="app-stat-card__label">Total Customers</span>
-          <span class="app-stat-card__value">{{ dashboardDetail?.total_customer ?? 0 }}</span>
-        </span>
-      </div>
-    </c-col>
+<div class="stack-6" [attr.aria-busy]="state === 'loading'">
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load your figures and quotations. Check your connection.
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
 
-    <c-col sm="6" xl="3">
-      <div class="app-stat-card app-stat-card--info">
-        <span class="app-stat-card__icon">
-          <svg cIcon name="cilCalculator"></svg>
-        </span>
-        <span class="app-stat-card__body">
-          <span class="app-stat-card__label">Total Quotations</span>
-          <span class="app-stat-card__value">{{ dashboardDetail?.total_quatation ?? 0 }}</span>
-        </span>
+  <!-- Loading -->
+  <ng-container *ngIf="state === 'loading'">
+    <span class="visually-hidden" role="status">Loading your figures and quotations</span>
+    <section class="card stats" aria-hidden="true">
+      <div class="stat" *ngFor="let i of placeholders">
+        <span class="skeleton sk-label"></span>
+        <span class="skeleton sk-value"></span>
+        <span class="skeleton sk-detail"></span>
       </div>
-    </c-col>
+    </section>
+    <section class="card" aria-hidden="true">
+      <div class="card-head"><span class="skeleton sk-head"></span></div>
+      <div class="todo" *ngFor="let i of placeholders">
+        <span class="skeleton sk-badge"></span>
+        <div class="grow">
+          <span class="skeleton sk-title"></span>
+          <span class="skeleton sk-detail"></span>
+        </div>
+        <span class="skeleton sk-amount"></span>
+      </div>
+    </section>
+  </ng-container>
 
-    <c-col sm="6" xl="3">
-      <div class="app-stat-card app-stat-card--warning">
-        <span class="app-stat-card__icon">
-          <svg cIcon name="cilDollar"></svg>
-        </span>
-        <span class="app-stat-card__body">
-          <span class="app-stat-card__label">Total Quotation Amount</span>
-          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation | number : "1.2-3" }}</span>
-        </span>
-      </div>
-    </c-col>
+  <ng-container *ngIf="state === 'ready' && view as home">
+    <section class="card stats" aria-label="This month">
+      <app-stat
+        *ngFor="let stat of home.stats"
+        [label]="stat.label"
+        [value]="stat.amount | inr : 0"
+        [detail]="stat.detail"
+      ></app-stat>
+    </section>
 
-    <c-col sm="6" xl="3">
-      <div class="app-stat-card app-stat-card--success">
-        <span class="app-stat-card__icon">
-          <svg cIcon name="cilCreditCard"></svg>
-        </span>
-        <span class="app-stat-card__body">
-          <span class="app-stat-card__label">Total Bill Amount</span>
-          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation_converted_to_bill | number : "1.2-3" }}</span>
-        </span>
-      </div>
-    </c-col>
-  </c-row>
+    <section class="card" *ngIf="home.empty">
+      <app-empty-state
+        icon="file"
+        title="No quotations yet"
+        text="Draw your first window and send a priced quotation in a few minutes."
+      >
+        <a class="btn btn-primary" routerLink="/quotation/add"><app-icon name="plus"></app-icon>New quotation</a>
+      </app-empty-state>
+    </section>
 
-  <!-- ── This month / secondary metrics ───────────────────────────── -->
-  <c-row class="g-3 mt-1">
-    <c-col sm="6" xl="4">
-      <div class="app-stat-card app-stat-card--info">
-        <span class="app-stat-card__icon">
-          <svg cIcon name="cilLayers"></svg>
-        </span>
-        <span class="app-stat-card__body">
-          <span class="app-stat-card__label">Quotation Products</span>
-          <span class="app-stat-card__value">{{ dashboardDetail?.total_quatation_product ?? 0 }}</span>
-          <span class="app-stat-card__hint">Across all quotations</span>
-        </span>
-      </div>
-    </c-col>
+    <ng-container *ngIf="!home.empty">
+      <section class="card" aria-labelledby="h-next">
+        <div class="card-head">
+          <h2 id="h-next">Needs your attention</h2>
+          <a class="small" routerLink="/quotation" *ngIf="home.attentionMore">{{ home.attentionMore }} more</a>
+        </div>
+        <div class="todo" *ngFor="let item of home.attention; trackBy: trackItem">
+          <span class="tag"><span class="badge" [ngClass]="item.badgeClass">{{ item.badge }}</span></span>
+          <div class="grow">
+            <a class="strong todo-title" [routerLink]="link(item.quotation)">{{ item.quotation.title }}</a>
+            <div class="muted small" *ngIf="item.detail">{{ item.detail }}</div>
+          </div>
+          <span class="num strong">{{ item.quotation.amount | inr }}</span>
+          <a
+            class="btn btn-secondary btn-sm"
+            [routerLink]="link(item.quotation)"
+            [attr.aria-label]="item.action + ': ' + item.quotation.title"
+            >{{ item.action }}</a
+          >
+        </div>
+        <p class="todo muted" *ngIf="!home.attention.length">Nothing is waiting for you. All quotations are up to date.</p>
+      </section>
 
-    <c-col sm="6" xl="4">
-      <div class="app-stat-card app-stat-card--warning">
-        <span class="app-stat-card__icon">
-          <svg cIcon name="cilChart"></svg>
-        </span>
-        <span class="app-stat-card__body">
-          <span class="app-stat-card__label">Quotation Revenue</span>
-          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation_current_month | number : "1.2-3" }}</span>
-          <span class="app-stat-card__hint">This month</span>
-        </span>
-      </div>
-    </c-col>
-
-    <c-col sm="12" xl="4">
-      <div class="app-stat-card app-stat-card--success">
-        <span class="app-stat-card__icon">
-          <svg cIcon name="cilChartPie"></svg>
-        </span>
-        <span class="app-stat-card__body">
-          <span class="app-stat-card__label">Billed Revenue</span>
-          <span class="app-stat-card__value">₹ {{ dashboardDetail?.total_revenue_quatation_converted_to_bill_current_month | number : "1.2-3" }}</span>
-          <span class="app-stat-card__hint">This month</span>
-        </span>
-      </div>
-    </c-col>
-  </c-row>
+      <section class="card" aria-labelledby="h-recent">
+        <div class="card-head">
+          <h2 id="h-recent">Recent quotations</h2>
+          <a class="small" routerLink="/quotation">View all</a>
+        </div>
+        <table class="table" aria-labelledby="h-recent">
+          <thead class="visually-hidden">
+            <tr>
+              <th scope="col">Quotation</th>
+              <th scope="col" class="hide-tablet">Customer</th>
+              <th scope="col">Status</th>
+              <th scope="col">Total</th>
+              <th scope="col" class="hide-tablet">Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let quotation of home.recent; trackBy: trackQuotation">
+              <td><a class="title" [routerLink]="link(quotation)">{{ quotation.title }}</a></td>
+              <td class="muted hide-tablet">{{ quotation.customer }}</td>
+              <td><app-quote-status [status]="quotation.status"></app-quote-status></td>
+              <td class="right num">{{ quotation.amount | inr }}</td>
+              <td class="right muted small hide-tablet">{{ dateOf(quotation) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+    </ng-container>
+  </ng-container>
 </div>

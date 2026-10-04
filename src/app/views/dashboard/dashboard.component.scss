@@ -1,11 +1,93 @@
 :host {
-  .dashboard {
-    display: block;
+  display: block;
+}
+
+// One row of "Needs your attention": badge, title and detail, amount, action.
+.todo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  margin: 0;
+  padding: var(--s-3) var(--s-5);
+  border-block-end: 1px solid var(--c-border);
+  min-height: 56px;
+
+  &:last-child {
+    border: 0;
   }
 
-  .legend {
-    small {
-      font-size: x-small;
-    }
+  > .tag {
+    flex: none;
+    width: 96px;
+  }
+
+  > .num,
+  > .btn {
+    flex: none;
+  }
+}
+
+.todo-title {
+  display: block;
+  color: var(--c-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.table {
+  width: 100%;
+  margin: 0;
+}
+
+// Loading placeholders, sized like the text they stand for.
+.stat .skeleton + .skeleton,
+.todo .grow .skeleton + .skeleton {
+  margin-block-start: var(--s-2);
+}
+
+.sk-label {
+  width: 120px;
+}
+
+.sk-value {
+  width: 150px;
+  height: 28px;
+}
+
+.sk-detail {
+  width: 110px;
+}
+
+.sk-head {
+  width: 160px;
+  height: 16px;
+}
+
+.sk-badge {
+  flex: none;
+  width: 64px;
+  height: 22px;
+  border-radius: var(--r-full);
+  margin-inline-end: var(--s-8);
+}
+
+.sk-title {
+  width: min(220px, 60%);
+  height: 14px;
+}
+
+.sk-amount {
+  flex: none;
+  width: 84px;
+}
+
+@media (max-width: 560px) {
+  .todo > .tag {
+    width: auto;
+  }
+
+  .todo > .num {
+    display: none;
   }
 }
