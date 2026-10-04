@@ -12,6 +12,7 @@ import { ISubQuotation } from 'src/app/shared/model/quotation/sub-quotation.mode
 import { IOpenDirectionDrpDto } from 'src/app/shared/model/quotation/open-directionDrp.model';
 import Konva from 'konva';
 import { IResponseDtoOfProduct } from './sub-quotation/sub-quotation-design/response.model';
+import { quiet } from 'src/app/shared/interceptors/request-options';
 
 @Injectable({
   providedIn: 'root',
@@ -165,5 +166,109 @@ export class QuotationService {
     phone: string;
   }): Observable<IResponseDto<any>> {
     return this._apiHttpService.post(API_END_POINT.customer.add, data);
+  }
+
+  /**
+   * Quotation page (card U4). The page draws its own skeleton, busy buttons
+   * and inline errors, so these requests are quiet: no global overlay and no
+   * global error toast.
+   */
+
+  /** The quotation with its lines, totals, bill link and revisions. */
+  public getQuotation(id: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.get(`${API_END_POINT.quatation.show}/${id}`, quiet());
+  }
+
+  /** Price lists for the Summary card. */
+  public getMarginOptions(): Observable<IResponseDto<any[]>> {
+    return this._apiHttpService.get(API_END_POINT.type_margin.list, quiet());
+  }
+
+  /** Payment terms for the Summary card. */
+  public getPaymentTermOptions(): Observable<IResponseDto<any[]>> {
+    return this._apiHttpService.get(API_END_POINT.paymentType.list, quiet());
+  }
+
+  /** Customers for the picker in "Duplicate". */
+  public getCustomerChoices(): Observable<IResponseDto<any[]>> {
+    return this._apiHttpService.get(API_END_POINT.customer.list, quiet());
+  }
+
+  /** The bill made from a quotation, as a PDF file. */
+  public getBillPdf(billId: number): Observable<Blob> {
+    return this.http.post(
+      `${environment.API_URL}/${API_END_POINT.bills.pdf}`,
+      { bill_id: billId, download: 1 },
+      { responseType: 'blob', context: quiet().context }
+    );
+  }
+
+  public saveQuotationSummary(id: number, data: any): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/summary/${id}`, data, quiet());
+  }
+
+  /** status: draft, sent, accepted or declined. */
+  public changeQuotationStatus(id: number, status: string): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/status/${id}`, { status }, quiet());
+  }
+
+  /** A new draft with a new number at today's prices. data: customer_id, quatation_name (both optional). */
+  public copyQuotation(id: number, data: any): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/copy/${id}`, data, quiet());
+  }
+
+  /** One window again in the same quotation, at the same price. */
+  public duplicateLine(lineId: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/product/duplicate/${lineId}`, {}, quiet());
+  }
+
+  public renameLine(lineId: number, label: string): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/product/details/${lineId}`, { label }, quiet());
+  }
+
+  public removeLine(lineId: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`${API_END_POINT.quatation.deleteProduct}/${lineId}`, {}, quiet());
+  }
+
+  public removeQuotation(id: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`${API_END_POINT.quatation.delete}/${id}`, {}, quiet());
+  }
+
+  /** Revision R1, R2 of a quotation that was sent. Returns the new draft. */
+  public reviseQuotation(id: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/revise/${id}`, {}, quiet());
+  }
+
+  /** data.channel: email, whatsapp or download. Any of them marks the quotation Sent. */
+  public sendQuotation(id: number, data: any): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/send/${id}`, data, quiet());
+  }
+
+  /** The bill copies the quotation's lines, discount and tax; nothing is asked. Returns the bill. */
+  public createBill(quotationId: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(API_END_POINT.bills.converToBill, { quatation_id: quotationId }, quiet());
+  }
+
+  /** Prices the quotation's windows again at today's catalogue rates. */
+  public updateQuotationPrices(id: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(API_END_POINT.quatation.bulkpriceUpdate, { quatation_ids: [id] }, quiet());
+  }
+
+  /** The quotation document by id: the PDF file, as the customer receives it. */
+  public getQuotationPdf(id: number): Observable<Blob> {
+    return this.http.post(
+      `${environment.API_URL}/${API_END_POINT.quatation.pdf}`,
+      { quatation_id: id, download: 1 },
+      { responseType: 'blob', context: quiet().context }
+    );
+  }
+
+  /** The same document as a page, for the preview in "Send quotation". */
+  public getQuotationPreview(id: number): Observable<string> {
+    return this.http.post(
+      `${environment.API_URL}/${API_END_POINT.quatation.pdf}`,
+      { quatation_id: id },
+      { responseType: 'text', context: quiet().context }
+    );
   }
 }
