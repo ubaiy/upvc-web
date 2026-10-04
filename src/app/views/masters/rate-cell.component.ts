@@ -87,7 +87,8 @@ export class RateCellComponent {
   readonly hint = 'Enter a rate above 0, up to 10,00,000.';
 
   get shown(): string {
-    return formatInr(this.value);
+    // The api sends a rate back as text after a save ("533"): it is shown as money all the same.
+    return formatInr(this.value == null || (this.value as unknown) === '' ? null : Number(this.value));
   }
 
   begin(box: HTMLInputElement): void {

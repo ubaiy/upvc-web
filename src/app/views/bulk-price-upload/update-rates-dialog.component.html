@@ -14,7 +14,7 @@
   <form id="rates-form" class="rates" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <div class="field">
       <label class="label" for="ur-scope">Apply to</label>
-      <select class="select" id="ur-scope" formControlName="category">
+      <select autofocus class="select" id="ur-scope" formControlName="category">
         <option value="">All profiles ({{ profiles.length }})</option>
         <option *ngFor="let c of categories" [value]="c.value">{{ fixSpelling(c.value) }} only ({{ c.count }})</option>
       </select>
@@ -33,7 +33,7 @@
 
     <div class="field" *ngIf="mode === 'percent'">
       <label class="label" for="ur-percent">Raise or lower by</label>
-      <div class="input-group pct" [class.is-invalid]="bad('percent')">
+      <div class="input-group pct" [class.is-invalid]="bad('percent') || percentRefused">
         <input
           id="ur-percent"
           class="num"
@@ -41,12 +41,12 @@
           autocomplete="off"
           placeholder="5"
           formControlName="percent"
-          [attr.aria-invalid]="bad('percent') ? 'true' : null"
+          [attr.aria-invalid]="bad('percent') || percentRefused ? 'true' : null"
           aria-describedby="ur-percent-h"
         />
         <span class="unit">%</span>
       </div>
-      <span class="error" id="ur-percent-h" *ngIf="bad('percent'); else percentHint">
+      <span class="error" id="ur-percent-h" *ngIf="bad('percent') || percentRefused; else percentHint">
         Enter a percentage from -90 to 500, for example 5 or -3.
       </span>
       <ng-template #percentHint>
@@ -128,7 +128,8 @@
         <span class="error" *ngIf="previewError; else waiting">{{ previewError }}</span>
         <ng-template #waiting>
           <span class="hint" *ngIf="previewing" role="status">Working out the new rates…</span>
-          <span class="hint" *ngIf="!previewing">
+          <span class="hint" *ngIf="!previewing && percentRefused">No preview: the percentage must be from -90 to 500.</span>
+          <span class="hint" *ngIf="!previewing && !percentRefused">
             {{ mode === 'percent' ? 'Enter a percentage to see what a sample window will cost.' : 'Enter the rates to see what a sample window will cost.' }}
           </span>
         </ng-template>

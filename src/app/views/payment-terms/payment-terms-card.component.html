@@ -61,6 +61,7 @@
   [header]="editing ? 'Edit payment term' : 'Add payment term'"
   [(visible)]="dialogOpen"
   [modal]="true"
+  closeAriaLabel="Close"
   [draggable]="false"
   [resizable]="false"
   [style]="{ width: '440px' }"
@@ -68,7 +69,7 @@
   <form id="term-form" class="stack-4" [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="field">
       <label class="label" for="term-name">Name</label>
-      <input class="input" id="term-name" type="text" formControlName="name" placeholder="50% advance"
+      <input autofocus class="input" id="term-name" type="text" formControlName="name" placeholder="50% advance"
         [class.is-invalid]="invalid('name')" [attr.aria-invalid]="invalid('name')" aria-describedby="term-name-err" />
       <span class="error" id="term-name-err" *ngIf="invalid('name')">Give the payment term a name.</span>
     </div>
@@ -88,3 +89,17 @@
     </button>
   </ng-template>
 </p-dialog>
+
+<!-- The same words as every other delete in the app: "Keep it" and "Delete …". -->
+<app-confirm-dialog
+  *ngIf="removing as row"
+  [title]="'Delete &quot;' + row.name + '&quot;?'"
+  text="Quotations already made keep their terms. New quotations can no longer use this one."
+  confirmLabel="Delete payment term"
+  keepLabel="Keep it"
+  [danger]="true"
+  [busy]="removeBusy"
+  [error]="removeError"
+  (confirmed)="confirmRemove()"
+  (closed)="removing = null"
+></app-confirm-dialog>

@@ -2,6 +2,10 @@
 .filter { width: 170px; }
 
 .rate { padding-block: 0; }
+// Edit and Delete are always there to see, not only under the pointer.
+.table .row-actions { opacity: 1; }
+// The category sits under the name where its column is hidden.
+.under { display: none; }
 .swatch {
   display: inline-block; width: 18px; height: 18px; margin-inline-end: var(--s-3); vertical-align: middle;
   border-radius: 4px; border: 1px solid var(--c-border-strong);
@@ -13,6 +17,9 @@
 .delete-error { display: block; margin-block-start: var(--s-4); }
 
 @media (max-width: 1024px) {
+  // Room for the profile's name: the category moves under it.
+  .col-category { display: none; }
+  .under { display: inline; }
   .search { width: 220px; }
   .filter { width: 150px; }
 }

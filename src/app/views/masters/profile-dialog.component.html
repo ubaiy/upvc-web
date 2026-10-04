@@ -13,7 +13,7 @@
   <form id="profile-form" class="form-grid" [formGroup]="form" (ngSubmit)="submit()" novalidate>
     <div class="field">
       <label class="label" for="pf-category">Category</label>
-      <select
+      <select autofocus
         *ngIf="categories.length; else typedCategory"
         class="select"
         id="pf-category"

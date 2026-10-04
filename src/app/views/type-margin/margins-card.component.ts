@@ -5,8 +5,8 @@ import { DialogModule } from 'primeng/dialog';
 
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { ITypeMarginDto } from 'src/app/shared/model/type-margin/typeMargin.model';
-import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 import { TypeMarginService } from './type-margin.service';
 
 
@@ -17,7 +17,7 @@ import { TypeMarginService } from './type-margin.service';
 @Component({
   selector: 'app-margins-card',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule],
+  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, ConfirmDialogComponent],
   templateUrl: './margins-card.component.html',
   styleUrls: ['../profile/settings-tab.scss'],
 })
@@ -34,8 +34,7 @@ export class MarginsCardComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: TypeMarginService,
-    private toast: ToastService,
-    private confirm: ConfirmationDialogService
+    private toast: ToastService
   ) {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(191)]],
@@ -113,25 +112,41 @@ export class MarginsCardComponent implements OnInit {
     });
   }
 
+  /** The row "Delete" was pressed on, while the confirm is open. */
+  removing: ITypeMarginDto | null = null;
+  removeBusy = false;
+  /** The api's refusal (the row is in use), shown in the confirm. */
+  removeError = '';
+
   remove(margin: ITypeMarginDto): void {
-    this.confirm.confirm(
-      `Delete "${margin.name}"?`,
-      'Quotations already made keep their totals. New quotations can no longer use this margin.',
-      'pi-info-circle',
-      () => {
-        this.service.deleteTypeMarginDetail(margin.id).subscribe({
-          next: (res) => {
-            if (res?.success) {
-              this.toast.showSuccess('Margin deleted');
-              this.load();
-            } else {
-              this.toast.showError(res?.message || 'The margin could not be deleted.');
-            }
-          },
-          error: (err) => this.toast.showError(err?.error?.message || 'The margin could not be deleted.'),
-        });
+    this.removing = margin;
+    this.removeBusy = false;
+    this.removeError = '';
+  }
+
+  confirmRemove(): void {
+    const row = this.removing;
+    if (!row || this.removeBusy) {
+      return;
+    }
+    const failed = (message?: string) => {
+      this.removeBusy = false;
+      this.removeError = message || 'The margin could not be deleted.';
+    };
+    this.removeBusy = true;
+    this.removeError = '';
+    this.service.deleteTypeMarginDetail(row.id).subscribe({
+      next: (res) => {
+        if (res?.success) {
+          this.removing = null;
+          this.removeBusy = false;
+          this.toast.showSuccess('Margin deleted');
+          this.load();
+        } else {
+          failed(res?.message);
+        }
       },
-      () => undefined
-    );
+      error: (err) => failed(err?.error?.message),
+    });
   }
 }

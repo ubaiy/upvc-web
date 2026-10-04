@@ -31,7 +31,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
       <form id="colour-form" class="stack" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="field">
           <label class="label" for="cl-name">Name</label>
-          <input
+          <input autofocus
             class="input"
             id="cl-name"
             formControlName="color_name"

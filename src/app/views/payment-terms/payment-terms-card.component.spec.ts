@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 
-import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { PaymentTermsCardComponent } from './payment-terms-card.component';
 import { PaymentTermsService } from './payment-terms.service';
@@ -31,10 +30,6 @@ describe('PaymentTermsCardComponent', () => {
       providers: [
         { provide: PaymentTermsService, useValue: service },
         { provide: ToastService, useValue: toast },
-        {
-          provide: ConfirmationDialogService,
-          useValue: { confirm: (_h: string, _m: string, _i: string, accept: () => void) => accept() },
-        },
       ],
     });
     fixture = TestBed.createComponent(PaymentTermsCardComponent);
@@ -91,6 +86,12 @@ describe('PaymentTermsCardComponent', () => {
   it('deletes after a confirmation', () => {
     create();
     component.remove(TERMS[1] as any);
+    fixture.detectChanges();
+    const dialog = el.querySelector('app-confirm-dialog')!;
+    expect(Array.from(dialog.querySelectorAll('button')).map((b) => b.textContent!.trim())).toEqual(['Keep it', 'Delete payment term']);
+    expect(service.deletePaymentTerms).not.toHaveBeenCalled();
+    (dialog.querySelector('.btn-danger') as HTMLButtonElement).click();
+    fixture.detectChanges();
     expect(service.deletePaymentTerms).toHaveBeenCalledWith(2);
     expect(toast.showSuccess).toHaveBeenCalledWith('Payment term deleted');
   });

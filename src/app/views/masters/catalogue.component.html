@@ -90,7 +90,7 @@
           <thead>
             <tr>
               <th scope="col">Profile</th>
-              <th scope="col">Category</th>
+              <th scope="col" class="col-category">Category</th>
               <th scope="col" class="hide-tablet">Used as</th>
               <th scope="col" class="right hide-tablet">Weight</th>
               <th scope="col" class="right">Rate</th>
@@ -102,9 +102,11 @@
             <tr *ngFor="let p of pageRows; trackBy: trackById">
               <td>
                 <span class="title">{{ fixSpelling(p.profile_name) }}</span>
-                <div class="faint tiny">{{ p.profile_code }}</div>
+                <div class="faint tiny">
+                  {{ p.profile_code }}<span class="under" *ngIf="p.category"> · {{ fixSpelling(p.category) }}</span>
+                </div>
               </td>
-              <td class="muted">{{ fixSpelling(p.category) }}</td>
+              <td class="muted col-category">{{ fixSpelling(p.category) }}</td>
               <td class="muted hide-tablet">{{ fixSpelling(usedAs(p)) || '–' }}</td>
               <td class="right num muted hide-tablet">{{ p.kg_meter | number : '1.2-3' }} kg/m</td>
               <td class="right rate">

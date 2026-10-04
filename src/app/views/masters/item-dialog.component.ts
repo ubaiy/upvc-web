@@ -34,7 +34,7 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
       <form id="item-form" class="form-grid" [formGroup]="form" (ngSubmit)="submit()" novalidate>
         <div class="field span-2">
           <label class="label" for="it-name">Name</label>
-          <input
+          <input autofocus
             class="input"
             id="it-name"
             formControlName="name"

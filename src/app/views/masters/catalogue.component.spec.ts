@@ -106,6 +106,40 @@ describe('CatalogueComponent', () => {
     expect(sent.rate_meter_color).toBe(414.1);
     expect(component.profiles[0].rate_meter).toBe(200);
     expect(component.cell(26, 'rate_meter').state).toBe('saved');
+    // A save says so: the tick in the box is easy to miss.
+    expect(TestBed.inject(ToastService).showSuccess).toHaveBeenCalledWith(jasmine.stringMatching(/: rate saved$/));
+  });
+
+  it('always shows Edit and Delete in a row, and the category under the name for a narrow screen', () => {
+    const row = el.querySelector('tbody tr')!;
+    expect(row.querySelector('.row-actions [aria-label^="Edit"]')).not.toBeNull();
+    expect(row.querySelector('.under')?.textContent).toContain(text('tbody tr td.col-category'));
+  });
+
+  it('goes to the page of an item just added, and clears a search that hides it', () => {
+    params.next(convertToParamMap({ tab: 'hardware' }));
+    fixture.detectChanges();
+    const many = Array.from({ length: 30 }, (_, i) => ({ ...component.hardware[0], id: 500 + i, name: 'Handle ' + i }));
+    component.hardware = many;
+    component.onSearch('Handle 1');
+    component.onItemSaved({ ...many[0], id: 900, name: 'New stay arm' });
+    expect(component.search.hardware).toBe('');
+    expect(component.pageRows.some((row) => row.id === 900)).toBeTrue();
+    expect(component.page).toBeGreaterThan(0);
+  });
+
+  it('warns about glass in the words of glass, not of hardware', () => {
+    params.next(convertToParamMap({ tab: 'glass' }));
+    fixture.detectChanges();
+    component.askDelete(component.glass[0]);
+    expect(component.deleteNote).toContain('can no longer be chosen for a window');
+    expect(component.deleteNote).not.toContain('hardware');
+    component.deleting = null;
+    params.next(convertToParamMap({ tab: 'hardware' }));
+    fixture.detectChanges();
+    component.askDelete(component.hardware[0]);
+    expect(component.deleteNote).toContain('Some hardware is added to every window');
+    component.deleting = null;
   });
 
   it('keeps the old rate and says why when a row save fails', () => {

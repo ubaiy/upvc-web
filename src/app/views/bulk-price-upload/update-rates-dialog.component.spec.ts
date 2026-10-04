@@ -106,6 +106,18 @@ describe('UpdateRatesDialogComponent', () => {
     expect(updated).toEqual([{ count: 2 }]);
   }));
 
+  it('says at once why -150 gives no preview', fakeAsync(() => {
+    open();
+    component.form.patchValue({ percent: '-150' });
+    tick(PREVIEW_DELAY_MS);
+    fixture.detectChanges();
+    expect(component.percentRefused).toBeTrue();
+    expect(document.body.textContent).toContain('Enter a percentage from -90 to 500');
+    expect(document.body.textContent).toContain('No preview: the percentage must be from -90 to 500.');
+    component.form.patchValue({ percent: '' });
+    expect(component.percentRefused).toBeFalse();
+  }));
+
   it('sends nothing for a zero, an empty or an out-of-range entry', fakeAsync(() => {
     open();
     for (const percent of ['', '0', 'abc', '-95', '900']) {

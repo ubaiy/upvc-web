@@ -5,8 +5,8 @@ import { DialogModule } from 'primeng/dialog';
 
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { IPaymentTypeDto } from 'src/app/shared/model/paymentTerms/paymentTerms.model';
-import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 import { PaymentTermsService } from './payment-terms.service';
 
 /**
@@ -16,7 +16,7 @@ import { PaymentTermsService } from './payment-terms.service';
 @Component({
   selector: 'app-payment-terms-card',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule],
+  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, ConfirmDialogComponent],
   templateUrl: './payment-terms-card.component.html',
   styleUrls: ['../profile/settings-tab.scss'],
 })
@@ -33,8 +33,7 @@ export class PaymentTermsCardComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: PaymentTermsService,
-    private toast: ToastService,
-    private confirm: ConfirmationDialogService
+    private toast: ToastService
   ) {
     this.form = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(191)]],
@@ -110,25 +109,41 @@ export class PaymentTermsCardComponent implements OnInit {
     });
   }
 
+  /** The row "Delete" was pressed on, while the confirm is open. */
+  removing: IPaymentTypeDto | null = null;
+  removeBusy = false;
+  /** The api's refusal (the row is in use), shown in the confirm. */
+  removeError = '';
+
   remove(term: IPaymentTypeDto): void {
-    this.confirm.confirm(
-      `Delete "${term.name}"?`,
-      'Quotations already made keep their terms. New quotations can no longer use this one.',
-      'pi-info-circle',
-      () => {
-        this.service.deletePaymentTerms(term.id).subscribe({
-          next: (res) => {
-            if (res?.success) {
-              this.toast.showSuccess('Payment term deleted');
-              this.load();
-            } else {
-              this.toast.showError(res?.message || 'The payment term could not be deleted.');
-            }
-          },
-          error: (err) => this.toast.showError(err?.error?.message || 'The payment term could not be deleted.'),
-        });
+    this.removing = term;
+    this.removeBusy = false;
+    this.removeError = '';
+  }
+
+  confirmRemove(): void {
+    const row = this.removing;
+    if (!row || this.removeBusy) {
+      return;
+    }
+    const failed = (message?: string) => {
+      this.removeBusy = false;
+      this.removeError = message || 'The payment term could not be deleted.';
+    };
+    this.removeBusy = true;
+    this.removeError = '';
+    this.service.deletePaymentTerms(row.id).subscribe({
+      next: (res) => {
+        if (res?.success) {
+          this.removing = null;
+          this.removeBusy = false;
+          this.toast.showSuccess('Payment term deleted');
+          this.load();
+        } else {
+          failed(res?.message);
+        }
       },
-      () => undefined
-    );
+      error: (err) => failed(err?.error?.message),
+    });
   }
 }

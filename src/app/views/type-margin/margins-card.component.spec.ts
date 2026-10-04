@@ -2,7 +2,6 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { of, throwError } from 'rxjs';
 
-import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { MarginsCardComponent } from './margins-card.component';
 import { TypeMarginService } from './type-margin.service';
@@ -17,7 +16,6 @@ describe('MarginsCardComponent', () => {
   let component: MarginsCardComponent;
   let service: jasmine.SpyObj<TypeMarginService>;
   let toast: jasmine.SpyObj<ToastService>;
-  let confirm: { confirm: jasmine.Spy };
   let el: HTMLElement;
 
   function create(list: any = { success: true, data: MARGINS }) {
@@ -27,13 +25,11 @@ describe('MarginsCardComponent', () => {
     service.editTypeMargin.and.returnValue(of({ success: true } as any));
     service.deleteTypeMarginDetail.and.returnValue(of({ success: true } as any));
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
-    confirm = { confirm: jasmine.createSpy('confirm').and.callFake((_h, _m, _i, accept) => accept()) };
     TestBed.configureTestingModule({
       imports: [MarginsCardComponent, NoopAnimationsModule],
       providers: [
         { provide: TypeMarginService, useValue: service },
         { provide: ToastService, useValue: toast },
-        { provide: ConfirmationDialogService, useValue: confirm },
       ],
     });
     fixture = TestBed.createComponent(MarginsCardComponent);
@@ -120,8 +116,43 @@ describe('MarginsCardComponent', () => {
   it('deletes after a confirmation', () => {
     create();
     component.remove(MARGINS[0] as any);
-    expect(confirm.confirm.calls.mostRecent().args[0]).toBe('Delete "Retail"?');
+    fixture.detectChanges();
+    const dialog = el.querySelector('app-confirm-dialog')!;
+    expect(dialog.textContent).toContain('Delete "Retail"?');
+    const buttons = Array.from(dialog.querySelectorAll('button')).map((b) => b.textContent!.trim());
+    expect(buttons).toEqual(['Keep it', 'Delete margin']);
+    expect(service.deleteTypeMarginDetail).not.toHaveBeenCalled();
+    (dialog.querySelector('.btn-danger') as HTMLButtonElement).click();
+    fixture.detectChanges();
     expect(service.deleteTypeMarginDetail).toHaveBeenCalledWith(1);
     expect(toast.showSuccess).toHaveBeenCalledWith('Margin deleted');
+    expect(el.querySelector('app-confirm-dialog')).toBeNull();
+  });
+
+  it('keeps the margin on "Keep it", and shows a refusal in the dialog', () => {
+    create();
+    component.remove(MARGINS[0] as any);
+    fixture.detectChanges();
+    (el.querySelector('app-confirm-dialog .btn-secondary') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-confirm-dialog')).toBeNull();
+    expect(service.deleteTypeMarginDetail).not.toHaveBeenCalled();
+
+    service.deleteTypeMarginDetail.and.returnValue(of({ success: false, message: 'Margin is used by 3 quotations' } as any));
+    component.remove(MARGINS[0] as any);
+    component.confirmRemove();
+    fixture.detectChanges();
+    expect(el.querySelector('app-confirm-dialog [role="alert"]')?.textContent).toContain('Margin is used by 3 quotations');
+  });
+
+  it('names the close button of its dialog and puts the focus in the first field', () => {
+    create();
+    expect(el.querySelector('#margin-name') ?? document.querySelector('#margin-name')).toBeDefined();
+    component.dialogOpen = true;
+    fixture.detectChanges();
+    expect(document.querySelector('#margin-name')?.hasAttribute('autofocus')).toBeTrue();
+    expect(document.querySelector('.p-dialog-header-close')?.getAttribute('aria-label')).toBe('Close');
+    component.dialogOpen = false;
+    fixture.detectChanges();
   });
 });

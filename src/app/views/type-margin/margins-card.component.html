@@ -61,6 +61,7 @@
   [header]="editing ? 'Edit margin' : 'Add margin'"
   [(visible)]="dialogOpen"
   [modal]="true"
+  closeAriaLabel="Close"
   [draggable]="false"
   [resizable]="false"
   [style]="{ width: '440px' }"
@@ -68,7 +69,7 @@
   <form id="margin-form" class="stack-4" [formGroup]="form" (ngSubmit)="save()" novalidate>
     <div class="field">
       <label class="label" for="margin-name">Name</label>
-      <input class="input" id="margin-name" type="text" formControlName="name" placeholder="Retail"
+      <input autofocus class="input" id="margin-name" type="text" formControlName="name" placeholder="Retail"
         [class.is-invalid]="invalid('name')" [attr.aria-invalid]="invalid('name')" aria-describedby="margin-name-err" />
       <span class="error" id="margin-name-err" *ngIf="invalid('name')">Give the margin a name.</span>
     </div>
@@ -90,3 +91,17 @@
     </button>
   </ng-template>
 </p-dialog>
+
+<!-- The same words as every other delete in the app: "Keep it" and "Delete …". -->
+<app-confirm-dialog
+  *ngIf="removing as row"
+  [title]="'Delete &quot;' + row.name + '&quot;?'"
+  text="Quotations already made keep their totals. New quotations can no longer use this margin."
+  confirmLabel="Delete margin"
+  keepLabel="Keep it"
+  [danger]="true"
+  [busy]="removeBusy"
+  [error]="removeError"
+  (confirmed)="confirmRemove()"
+  (closed)="removing = null"
+></app-confirm-dialog>

@@ -199,6 +199,12 @@ export class UpdateRatesDialogComponent implements OnChanges, OnDestroy {
     return this.result?.count ?? this.affected.length;
   }
 
+  /** Something is typed in the percentage box that cannot be used (-150, "abc"): said at once, not on Save. */
+  get percentRefused(): boolean {
+    const box = this.form.get('percent');
+    return this.mode === 'percent' && !!box && String(box.value ?? '').trim() !== '' && box.invalid;
+  }
+
   bad(name: string): boolean {
     const control = this.form.get(name);
     return !!control && control.invalid && (this.submitted || control.touched);

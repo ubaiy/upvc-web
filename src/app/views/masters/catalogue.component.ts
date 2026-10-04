@@ -292,6 +292,7 @@ export class CatalogueComponent implements OnInit, OnDestroy {
       next: (saved) => {
         Object.assign(profile, saved);
         this.settle(key);
+        this.toast.showSuccess(`${fixSpelling(profile.profile_name)}: rate saved`);
       },
       error: (err) => (this.cells[key] = { state: 'error', error: this.adapter.message(err, 'Not saved. Try again.') }),
     });
@@ -304,6 +305,7 @@ export class CatalogueComponent implements OnInit, OnDestroy {
       next: (saved) => {
         item.cost = saved.cost;
         this.settle(key);
+        this.toast.showSuccess(`${item.name}: rate saved`);
       },
       error: (err) => (this.cells[key] = { state: 'error', error: this.adapter.message(err, 'Not saved. Try again.') }),
     });
@@ -331,6 +333,7 @@ export class CatalogueComponent implements OnInit, OnDestroy {
 
   onProfileSaved(row: ProfileRow): void {
     this.profiles = this.upsert(this.profiles, row);
+    this.reveal(row.id);
     this.toast.showSuccess(`${row.profile_name} saved`);
   }
 
@@ -346,6 +349,7 @@ export class CatalogueComponent implements OnInit, OnDestroy {
     } else {
       this.hardware = this.upsert(this.hardware, row);
     }
+    this.reveal(row.id);
     this.toast.showSuccess(`${row.name} saved`);
   }
 
@@ -371,9 +375,12 @@ export class CatalogueComponent implements OnInit, OnDestroy {
     this.deleteError = '';
   }
 
-  /** What the delete dialog says will happen. */
-  readonly deleteNote =
-    'It leaves the catalogue, and new windows are priced without it. Some hardware is added to every window by the pricing rules, so only delete an item you no longer fit. Quotations already made keep their prices.';
+  /** What the delete dialog says will happen: glass and hardware are not the same warning. */
+  get deleteNote(): string {
+    return this.deleting?.tab === 'glass'
+      ? 'It leaves the catalogue and can no longer be chosen for a window. Quotations already made keep their glass and their prices.'
+      : 'It leaves the catalogue, and new windows are priced without it. Some hardware is added to every window by the pricing rules, so only delete an item you no longer fit. Quotations already made keep their prices.';
+  }
 
   /**
    * The row leaves the list now; the api is asked when the toast has gone
@@ -454,6 +461,22 @@ export class CatalogueComponent implements OnInit, OnDestroy {
         ? [row.color_name, row.color_code]
         : [row.name, row.description, fixSpelling(row.costhead), row.conditions];
     return parts.filter(Boolean).join(' ').toLowerCase();
+  }
+
+  /**
+   * Goes to the page that holds a row just added or edited. A search or a
+   * filter that hides it is cleared, so the user sees where it went.
+   */
+  private reveal(id: number): void {
+    let at = this.rows.findIndex((row) => row.id === id);
+    if (at < 0 && this.all(this.tab).some((row) => row.id === id)) {
+      this.search[this.tab] = '';
+      this.filter[this.tab] = '';
+      at = this.rows.findIndex((row) => row.id === id);
+    }
+    if (at >= 0) {
+      this.page = Math.floor(at / PAGE_SIZE);
+    }
   }
 
   private upsert<T extends { id: number }>(list: T[], row: T): T[] {
