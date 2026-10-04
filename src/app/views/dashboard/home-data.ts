@@ -29,6 +29,12 @@ export interface HomeQuotationRow {
   updated_at?: string | null;
 }
 
+/** The figures of `dashboard`, with the two counts card T68 added. */
+export type HomeFigures = IDashboardModelDto & {
+  quatation_count_current_month?: number | string | null;
+  bill_count_current_month?: number | string | null;
+};
+
 export interface HomeQuotation {
   id: number;
   title: string;
@@ -234,23 +240,37 @@ function sum(quotations: HomeQuotation[]): number {
   return quotations.reduce((total, quotation) => total + quotation.amount, 0);
 }
 
+/** A count the API sent, or null when this API does not send it. */
+function toCount(value: unknown): number | null {
+  return value === null || value === undefined || value === '' || !Number.isFinite(Number(value)) ? null : Number(value);
+}
+
 function buildStats(
-  figures: IDashboardModelDto | null,
+  figures: HomeFigures | null,
   quotations: HomeQuotation[],
   statusKnown: boolean,
   today: Date
 ): HomeStat[] {
-  // With dates on every row the month's figure is the sum of the totals the
-  // customer sees. Without them it is the API's own figure for the month.
+  // The month's figures are the API's own: what the customer pays, with a
+  // version replaced by a newer revision left out. An older API sends no count;
+  // then the rows are added up when every one carries a date.
+  const quotedCount = toCount(figures?.quatation_count_current_month);
   const dated = quotations.length > 0 && quotations.every((quotation) => quotation.created);
   const thisMonth = quotations.filter((quotation) => inMonth(quotation.created, today));
-  const quoted: HomeStat = dated
-    ? { label: 'Quoted this month', amount: sum(thisMonth), detail: plural(thisMonth.length, 'quotation') }
-    : {
-        label: 'Quoted this month',
-        amount: toAmount(figures?.total_revenue_quatation_current_month),
-        detail: 'Quotations created this month',
-      };
+  const quoted: HomeStat =
+    quotedCount !== null
+      ? {
+          label: 'Quoted this month',
+          amount: toAmount(figures?.total_revenue_quatation_current_month),
+          detail: plural(quotedCount, 'quotation'),
+        }
+      : dated
+      ? { label: 'Quoted this month', amount: sum(thisMonth), detail: plural(thisMonth.length, 'quotation') }
+      : {
+          label: 'Quoted this month',
+          amount: toAmount(figures?.total_revenue_quatation_current_month),
+          detail: 'Quotations created this month',
+        };
 
   const sent = quotations.filter((quotation) => quotation.status === 'sent');
   const open = quotations.filter((quotation) => quotation.status !== 'billed' && quotation.status !== 'declined');
@@ -266,17 +286,18 @@ function buildStats(
         detail: open.length ? `${open.length} not yet billed` : 'Nothing open',
       };
 
+  const billCount = toCount(figures?.bill_count_current_month);
   const billed: HomeStat = {
     label: 'Billed this month',
     amount: toAmount(figures?.total_revenue_quatation_converted_to_bill_current_month),
-    detail: 'Bills created this month',
+    detail: billCount !== null ? plural(billCount, 'bill') : 'Bills created this month',
   };
 
   return [quoted, waiting, billed];
 }
 
 export function buildHomeView(
-  figures: IDashboardModelDto | null,
+  figures: HomeFigures | null,
   rows: HomeQuotationRow[] | null | undefined,
   today: Date = new Date()
 ): HomeView {

@@ -119,6 +119,14 @@ describe('home data adapter', () => {
     });
   });
 
+  it('shows the month figures and counts the API sends, and adds nothing up itself', () => {
+    const figures = { ...FIGURES, quatation_count_current_month: 8, bill_count_current_month: 1 };
+    const rows: HomeQuotationRow[] = [{ id: 1, name: 'A', total: 999, created_at: TODAY.toISOString() }];
+    const stats = buildHomeView(figures, rows, TODAY).stats;
+    expect(stats[0]).toEqual({ label: 'Quoted this month', amount: 214729.92, detail: '8 quotations' });
+    expect(stats[2]).toEqual({ label: 'Billed this month', amount: 14159.58, detail: '1 bill' });
+  });
+
   it('caps the attention list and counts the rest', () => {
     const rows: HomeQuotationRow[] = Array.from({ length: 8 }, (_, i) => ({ id: i + 1, name: 'C' }));
     const view = buildHomeView(FIGURES, rows, TODAY);
