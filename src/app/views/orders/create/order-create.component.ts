@@ -120,7 +120,8 @@ export class OrderCreateComponent implements OnInit, OnDestroy {
       .create({
         quatation_id: id,
         ...(this.promised ? { promised_date: this.promised } : {}),
-        ...(this.notes.trim() ? { notes: this.notes.trim() } : {}),
+        // A note for the workshop stays in the workshop; the delivery note of the challan is written on the order page.
+        ...(this.notes.trim() ? { workshop_note: this.notes.trim() } : {}),
       })
       .subscribe({
         next: (result) => {

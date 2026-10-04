@@ -4,8 +4,8 @@ import { keepFocusInside } from './focus-trap';
 
 /**
  * A small "are you sure" dialog that also takes a reason: cancelling an
- * order, cancelling a wrong payment entry. The reason is optional; the api
- * keeps it on the record.
+ * order, cancelling a wrong payment entry. The api keeps the reason on the
+ * record. It is optional unless the screen sets `required`.
  */
 @Component({
   selector: 'app-reason-dialog',
@@ -28,8 +28,12 @@ import { keepFocusInside } from './focus-trap';
             maxlength="191"
             [(ngModel)]="reason"
             [disabled]="busy"
+            [attr.aria-required]="required ? 'true' : null"
+            [attr.aria-invalid]="missing ? 'true' : null"
+            (ngModelChange)="missing = false"
           ></textarea>
-          <span class="hint">Optional. Kept on the record.</span>
+          <span class="hint field-error" role="alert" *ngIf="missing">Write the reason in a few words.</span>
+          <span class="hint" *ngIf="!missing">{{ required ? 'Kept on the record.' : 'Optional. Kept on the record.' }}</span>
         </label>
       </div>
       <div class="dialog-foot">
@@ -49,6 +53,7 @@ import { keepFocusInside } from './focus-trap';
       p { margin: 0; }
       .reason { height: auto; padding-block: var(--s-2); resize: vertical; }
       app-callout { margin-block-end: var(--s-3); }
+      .field-error { color: var(--c-danger); }
     `,
   ],
 })
@@ -58,6 +63,8 @@ export class ReasonDialogComponent implements AfterViewInit {
   @Input() label = 'Reason';
   @Input() confirmLabel = 'Cancel it';
   @Input() keepLabel = 'Keep it';
+  /** True where the step is not taken without a reason (cancelling an order). */
+  @Input() required = false;
   /** True while the request runs: the buttons wait. */
   @Input() busy = false;
   /** The api's refusal, shown in the dialog so the reason typed is not lost. */
@@ -69,6 +76,8 @@ export class ReasonDialogComponent implements AfterViewInit {
   @ViewChild('reasonBox') reasonBox?: ElementRef<HTMLTextAreaElement>;
 
   reason = '';
+  /** A required reason was left empty. */
+  missing = false;
 
   constructor(private host: ElementRef<HTMLElement>) {}
 
@@ -89,8 +98,14 @@ export class ReasonDialogComponent implements AfterViewInit {
   }
 
   submit(): void {
-    if (!this.busy) {
-      this.confirmed.emit(this.reason.trim());
+    if (this.busy) {
+      return;
     }
+    if (this.required && !this.reason.trim()) {
+      this.missing = true;
+      this.reasonBox?.nativeElement.focus();
+      return;
+    }
+    this.confirmed.emit(this.reason.trim());
   }
 }

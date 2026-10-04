@@ -121,6 +121,9 @@
             <span class="title num">{{ payment.number }}</span>
             <span class="badge badge-info flag" *ngIf="payment.kind === 'refund' && !payment.cancelled">Refund</span>
             <span class="badge badge-danger flag" *ngIf="payment.cancelled">Cancelled</span>
+            <span class="faint tiny sub-line reason" *ngIf="payment.cancelled && payment.cancelReason"
+              >Reason: <bdi>{{ payment.cancelReason }}</bdi></span
+            >
             <span class="faint tiny sub-line" *ngIf="!isJob && (payment.orderNumber || payment.billNumber)">
               <a *ngIf="payment.orderId" [routerLink]="['/orders', payment.orderId]">{{ payment.orderNumber }}</a>
               <ng-container *ngIf="payment.orderId && payment.billId"> · </ng-container>

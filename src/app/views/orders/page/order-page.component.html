@@ -168,11 +168,36 @@
           <div class="field span-2">
             <label class="label" for="order-notes">Note for delivery</label>
             <textarea id="order-notes" name="notes" class="input notes" rows="2" maxlength="2000" [(ngModel)]="notes" [disabled]="o.cancelled || !!busy"></textarea>
-            <span class="hint">Printed on the challan. Leave the vehicle blank to write it by hand.</span>
+            <span class="hint">Printed on the customer's challan. Leave the vehicle blank to write it by hand.</span>
           </div>
           <div class="span-2" *ngIf="transportChanged">
             <button type="submit" class="btn btn-secondary" [disabled]="!!busy">
               {{ isBusy('transport') ? 'Saving…' : 'Save delivery details' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" aria-labelledby="workshop-title" *ngIf="!o.cancelled || o.workshopNote">
+        <div class="card-head">
+          <h2 id="workshop-title">Note for the workshop</h2>
+          <span class="muted small">Not printed on the challan</span>
+        </div>
+        <form class="card-pad workshop" (ngSubmit)="saveWorkshopNote()">
+          <label class="sr-only" for="workshop-note">Note for the workshop</label>
+          <textarea
+            id="workshop-note"
+            name="workshopNote"
+            class="input notes"
+            rows="2"
+            maxlength="2000"
+            placeholder="Anything the workshop should know about this job"
+            [(ngModel)]="workshopNote"
+            [disabled]="o.cancelled || !!busy"
+          ></textarea>
+          <div *ngIf="workshopNoteChanged">
+            <button type="submit" class="btn btn-secondary" [disabled]="!!busy">
+              {{ isBusy('workshop') ? 'Saving…' : 'Save note' }}
             </button>
           </div>
         </form>
@@ -329,6 +354,7 @@
   label="Why is it cancelled?"
   confirmLabel="Cancel order"
   keepLabel="Keep the order"
+  [required]="true"
   [busy]="dialog.busy"
   [error]="dialog.error"
   (confirmed)="cancel($event)"

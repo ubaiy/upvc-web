@@ -8,17 +8,30 @@ export type Result<T> = { ok: true; data: T; message: string } | { ok: false; me
 
 const GENERAL = 'Something went wrong. Try again.';
 
+const NOT_FOUND = 'It was not found: it may have been deleted, or the address is wrong.';
+
+/**
+ * The api's wording, except for an unknown id: the framework's
+ * "No query results for model [App\Models\Order] 99999" is not for the user.
+ */
+function plain(message: string): string {
+  return /No query results for model/i.test(message) ? NOT_FOUND : message;
+}
+
 export function toResult<T>(res: any, map: (data: any) => T, fallback = GENERAL): Result<T> {
   if (res && res.success === true && res.data !== null && res.data !== undefined) {
     return { ok: true, data: map(res.data), message: res.message || '' };
   }
-  return { ok: false, message: (res && typeof res.message === 'string' && res.message) || fallback, data: res?.data };
+  return { ok: false, message: plain((res && typeof res.message === 'string' && res.message) || fallback), data: res?.data };
 }
 
-/** The api's reason when a request failed with one (404 for an unknown id), else the connection. */
+/** The api's reason when a request failed with one, plain words for an unknown id (404), else the connection. */
 export function httpMessage(error: any, what: string): string {
   const reason = error?.error?.message;
-  return `${what} ${typeof reason === 'string' && reason ? reason : 'Check your connection.'}`;
+  if (typeof reason === 'string' && reason) {
+    return `${what} ${plain(reason)}`;
+  }
+  return `${what} ${error?.status === 404 ? NOT_FOUND : 'Check your connection.'}`;
 }
 
 /** `2026-10-05` for today, in local time (the api takes dates without a time). */

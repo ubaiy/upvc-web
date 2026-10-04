@@ -88,6 +88,7 @@ export function toOrder(raw: any): Order {
     vehicleNumber: text(raw?.vehicle_number),
     transporter: text(raw?.transporter),
     notes: text(raw?.notes),
+    workshopNote: text(raw?.workshop_note),
   };
 }
 
@@ -95,9 +96,22 @@ export function toOrders(raw: any): Order[] {
   return Array.isArray(raw) ? raw.map(toOrder) : [];
 }
 
+/** "Casement", "Sliding": the style the quotation shows, kept on the order line with its first profile. */
+function styleOf(raw: any): string {
+  let parts = raw?.product_information;
+  if (typeof parts === 'string') {
+    try {
+      parts = JSON.parse(parts);
+    } catch {
+      parts = null;
+    }
+  }
+  return Array.isArray(parts) ? text(parts[0]?.category).trim() : '';
+}
+
 function toLine(raw: any, index: number): OrderLine {
   const label = text(raw?.label).trim();
-  const type = text(raw?.product_type).trim();
+  const type = styleOf(raw) || text(raw?.product_type).trim();
   const width = text(raw?.width).trim();
   const height = text(raw?.height).trim();
   return {

@@ -63,6 +63,13 @@
 .jobs { background: var(--c-surface-2); border-block-start: 1px solid var(--c-border); }
 // "Record payment" is the reason the row was opened: it does not wait for a hover.
 .jobs .row-actions { opacity: 1; text-align: end; }
+// The number opens the order or the bill: it reads as a link.
+.jobs a.title, .jobs a.num { color: var(--c-accent-text); text-decoration: underline; text-underline-offset: 2px; }
+
+// 44 px to tap on a tablet or a phone.
+@media (max-width: 1024px), (pointer: coarse) {
+  .seg button { min-height: 44px; }
+}
 
 .sk-search { width: 280px; max-width: 100%; height: var(--h-control); }
 .sk-row {

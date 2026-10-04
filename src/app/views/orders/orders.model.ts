@@ -48,12 +48,15 @@ export interface Order {
   challanNumber: string;
   vehicleNumber: string;
   transporter: string;
+  /** The note for delivery: printed on the customer's challan. */
   notes: string;
+  /** The note for the workshop: never printed on a customer document. */
+  workshopNote: string;
 }
 
 export interface OrderLine {
   id: number;
-  /** "W1 · Window", or the product type when the line has no label. */
+  /** "W1 · Casement": the label and the style; "Window 1" when the line has no label. */
   name: string;
   /** "1800 × 1200 mm" */
   size: string;
@@ -92,11 +95,13 @@ export interface OrderUpdate {
   vehicle_number?: string;
   transporter?: string;
   notes?: string;
+  workshop_note?: string;
 }
 
 export interface NewOrder {
   quatation_id: number;
   order_date?: string;
   promised_date?: string;
-  notes?: string;
+  /** For the workshop only. The delivery note (`notes`) is written on the order page. */
+  workshop_note?: string;
 }

@@ -60,6 +60,7 @@ export function rawOrder(overrides: any = {}): any {
     vehicle_number: 'GJ 03 AB 1234',
     transporter: 'Own vehicle',
     notes: 'Unload at the rear gate.',
+    workshop_note: 'Site visit before install.',
     ...overrides,
   };
 }

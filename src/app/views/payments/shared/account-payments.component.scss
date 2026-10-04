@@ -24,6 +24,7 @@ h2 { margin: 0; font-size: var(--fs-16); }
 // A receipt is opened far more often than a row is edited: its buttons do not wait for a hover.
 .table .row-actions { opacity: 1; }
 .sub-line { display: block; }
+.reason { white-space: normal; overflow-wrap: anywhere; }
 .struck { text-decoration: line-through; color: var(--c-text-3); }
 .is-cancelled .title { color: var(--c-text-3); }
 .row-buttons { justify-content: flex-end; gap: var(--s-1); }

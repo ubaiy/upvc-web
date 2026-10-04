@@ -51,6 +51,7 @@ export class OrderPageComponent implements OnInit, OnDestroy {
   vehicle = '';
   transporter = '';
   notes = '';
+  workshopNote = '';
 
   cancelling: { busy: boolean; error: string } | null = null;
   /** True while "Close order" waits for a yes: the order still owes money. */
@@ -94,6 +95,10 @@ export class OrderPageComponent implements OnInit, OnDestroy {
 
   get promisedChanged(): boolean {
     return !!this.order && this.promised !== this.order.promisedDate;
+  }
+
+  get workshopNoteChanged(): boolean {
+    return !!this.order && this.workshopNote !== this.order.workshopNote;
   }
 
   get transportChanged(): boolean {
@@ -170,6 +175,11 @@ export class OrderPageComponent implements OnInit, OnDestroy {
       { vehicle_number: this.vehicle.trim(), transporter: this.transporter.trim(), notes: this.notes.trim() },
       'Delivery details saved'
     );
+  }
+
+  /** The note for the workshop: kept on the order, never printed for the customer. */
+  saveWorkshopNote(): void {
+    this.save('workshop', { workshop_note: this.workshopNote.trim() }, 'Workshop note saved');
   }
 
   openMenu(event: Event): void {
@@ -350,6 +360,9 @@ export class OrderPageComponent implements OnInit, OnDestroy {
       this.vehicle = order.vehicleNumber;
       this.transporter = order.transporter;
       this.notes = order.notes;
+    }
+    if (!keepTyped || !before || this.workshopNote === before.workshopNote) {
+      this.workshopNote = order.workshopNote;
     }
   }
 

@@ -100,6 +100,8 @@ export class AccountPaymentsComponent implements OnChanges {
   record(kind: PaymentKind): void {
     this.dialog = kind;
     this.actionError = null;
+    // The "is saved" line is about the last thing done; a new step ends it.
+    this.lastSaved = null;
   }
 
   onSaved(saved: SavedPayment): void {
@@ -200,9 +202,7 @@ export class AccountPaymentsComponent implements OnChanges {
         }
         this.cancelling = null;
         this.toast.showSuccess(`${cancelling.payment.number} cancelled`);
-        if (this.lastSaved?.id === cancelling.payment.id) {
-          this.lastSaved = null;
-        }
+        this.lastSaved = null;
         this.account = result.data.account || this.account;
         this.changed.emit(this.account);
         this.fetch(true);

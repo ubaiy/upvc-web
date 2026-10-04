@@ -91,7 +91,7 @@ describe('OrderCreateComponent (Create order)', () => {
     fixture.componentInstance.promised = '2999-01-01';
     fixture.componentInstance.notes = ' Call before delivery ';
     submit();
-    expect(service.create).toHaveBeenCalledOnceWith({ quatation_id: 14, promised_date: '2999-01-01', notes: 'Call before delivery' });
+    expect(service.create).toHaveBeenCalledOnceWith({ quatation_id: 14, promised_date: '2999-01-01', workshop_note: 'Call before delivery' });
   });
 
   it('does not send a promised date in the past', async () => {

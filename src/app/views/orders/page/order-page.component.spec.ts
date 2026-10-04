@@ -179,6 +179,19 @@ describe('OrderPageComponent', () => {
     expect(text()).toContain('Order is cancelled');
   });
 
+  it('keeps the workshop note apart from the delivery note of the challan', async () => {
+    await create();
+    expect((el().querySelector('#workshop-note') as HTMLTextAreaElement).value).toBe('Site visit before install.');
+    expect((el().querySelector('#order-notes') as HTMLTextAreaElement).value).toBe('Unload at the rear gate.');
+    expect(button('Save note')).toBeUndefined();
+    type('workshop-note', 'Use the long ladder');
+    service.update.and.returnValue(ok(rawOrderPage({ workshop_note: 'Use the long ladder' })));
+    button('Save note')!.click();
+    await settle();
+    expect(service.update).toHaveBeenCalledOnceWith(1, { workshop_note: 'Use the long ladder' });
+    expect(toast.showSuccess).toHaveBeenCalledWith('Workshop note saved');
+  });
+
   it('links to the quotation, the production pack, the bill and the payments', async () => {
     await create(ok(rawOrderPage({ bill: { id: 3, number: 'INV/26-27/0002', bill_date: '2026-10-05', total: 35456 } })));
     expect(link('Quotation')?.getAttribute('href')).toBe('/quotation/detail/14');
@@ -274,6 +287,12 @@ describe('OrderPageComponent', () => {
     fixture.detectChanges();
     const dialog = fixture.debugElement.query((d) => d.componentInstance instanceof ReasonDialogComponent).componentInstance;
     expect(el().querySelector('app-reason-dialog')?.textContent).toContain('Cancel ORD/26-27/0001?');
+
+    // An order is not cancelled without a reason.
+    (el().querySelector('app-reason-dialog form') as HTMLFormElement).dispatchEvent(new Event('submit'));
+    fixture.detectChanges();
+    expect(service.cancel).not.toHaveBeenCalled();
+    expect(el().querySelector('app-reason-dialog [role="alert"]')?.textContent).toContain('Write the reason in a few words.');
 
     service.cancel.and.returnValue(of({ ok: false as const, message: 'Order has ₹17,728.00 received against it; record a refund before cancelling' }));
     dialog.confirmed.emit('Customer withdrew');

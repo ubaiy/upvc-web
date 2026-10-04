@@ -38,6 +38,16 @@ describe('orders adapter', () => {
   it('reads the order page: lines, the api tax lines, links and the account', () => {
     const page = toOrderPage(rawOrderPage());
     expect(page.lines.map((l) => l.name)).toEqual(['Window 1 · Window', 'Master bedroom · Window']);
+    // The style the quotation shows ("Casement") comes with the line's first profile.
+    const styled = toOrderPage(
+      rawOrderPage({
+        order_product: [
+          { id: 1, label: null, product_type: 'Window', width: '1800', height: '1200', quantity: 1, amount: 1, product_information: [{ category: 'Casement' }] },
+          { id: 2, label: 'W2', product_type: 'Window', width: '900', height: '1200', quantity: 1, amount: 1, product_information: '[{"category":"Sliding"}]' },
+        ],
+      })
+    );
+    expect(styled.lines.map((l) => l.name)).toEqual(['Window 1 · Casement', 'W2 · Sliding']);
     expect(page.lines[0].size).toBe('1800 × 1200 mm');
     expect(page.lines[1].amount).toBe(21195.19);
     expect(page.taxLines).toEqual([
@@ -62,6 +72,7 @@ describe('orders adapter', () => {
       rawOrder({ id: 3, stage: 'ready', status: 'cancelled' }),
       rawOrder({ id: 4, stage: 'closed' }),
     ]);
+    expect(orders[0].workshopNote).toBe('Site visit before install.');
     const ids = (tab: any) => orders.filter((o) => inTab(o, tab)).map((o) => o.id);
     // All is every order, cancelled ones too.
     expect(ids('all')).toEqual([1, 2, 3, 4]);

@@ -210,6 +210,21 @@ describe('AccountPaymentsComponent (payments of a job)', () => {
     expect(button('Try again')).toBeDefined();
   });
 
+  it('shows why an entry was cancelled, on its row', () => {
+    create(of(listOf(rawPaymentList({ payments: [rawPayment({ status: 'cancelled', cancel_reason: 'Entered against the wrong order' })] }))));
+    expect(el().querySelector('tbody tr .reason')?.textContent).toContain('Reason: Entered against the wrong order');
+  });
+
+  it('drops the "is saved" line when another step starts', () => {
+    create(of(listOf(rawPaymentList())));
+    panel().lastSaved = panel().payments[0];
+    fixture.detectChanges();
+    expect(text()).toContain('is saved.');
+    panel().record('refund');
+    fixture.detectChanges();
+    expect(text()).not.toContain('is saved.');
+  });
+
   it('cancels a wrong entry with a reason; a refusal stays in the dialog', () => {
     create(of(listOf(rawPaymentList())));
     spyOn(panel().rowMenu!, 'toggle');

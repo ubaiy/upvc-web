@@ -128,3 +128,5 @@ a.link-row:hover, button.link-row:hover { background: var(--c-surface-2); text-d
   .doc-actions { justify-content: flex-start; }
   .doc-actions .btn { flex: 1 1 auto; }
 }
+
+.workshop { display: grid; gap: var(--s-3); }

@@ -72,7 +72,17 @@
 
       <div class="field">
         <label class="label" for="new-notes">Note for the workshop (optional)</label>
-        <textarea id="new-notes" name="notes" class="input notes" rows="2" maxlength="2000" [(ngModel)]="notes" [disabled]="saving"></textarea>
+        <textarea
+          id="new-notes"
+          name="notes"
+          class="input notes"
+          rows="2"
+          maxlength="2000"
+          aria-describedby="new-notes-help"
+          [(ngModel)]="notes"
+          [disabled]="saving"
+        ></textarea>
+        <span class="hint" id="new-notes-help">Stays in the workshop. It is not printed on the challan or any other paper the customer gets.</span>
       </div>
 
       <p class="muted small">

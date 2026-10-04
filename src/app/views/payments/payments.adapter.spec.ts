@@ -36,6 +36,15 @@ describe('api-result', () => {
     expect(httpMessage({}, 'Not loaded.')).toBe('Not loaded. Check your connection.');
   });
 
+  it('says a record that does not exist in plain words, not with the model name', () => {
+    const missing = 'It was not found: it may have been deleted, or the address is wrong.';
+    expect(httpMessage({ status: 404, error: { message: 'No query results for model [App\\Models\\Order] 99999' } }, 'We could not load this order.')).toBe(
+      'We could not load this order. ' + missing
+    );
+    expect(httpMessage({ status: 404 }, 'Not loaded.')).toBe('Not loaded. ' + missing);
+    expect(toResult({ status: 0, message: 'No query results for model [App\\Models\\Quatation] 99999' }, (d) => d).message).toBe(missing);
+  });
+
   it('gives today as a local date', () => {
     expect(todayIso(new Date(2026, 9, 5, 0, 30))).toBe('2026-10-05');
   });
