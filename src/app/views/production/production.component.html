@@ -1,0 +1,317 @@
+<!-- One primary button per state: "Download production pack" once a job exists, the empty state's button before that. -->
+<app-page-header title="Production" [subtitle]="subtitle" [crumbs]="crumbs">
+  <button
+    actions
+    type="button"
+    class="btn btn-primary btn-lg pack-button"
+    *ngIf="state === 'ready'"
+    [disabled]="!!busy"
+    [attr.aria-busy]="isBusy('pack', 'pdf')"
+    (click)="download('pack', 'pdf', 'The production pack')"
+  >
+    <app-icon name="download"></app-icon>{{ isBusy('pack', 'pdf') ? 'Preparing the pack…' : 'Download production pack' }}
+  </button>
+</app-page-header>
+
+<app-callout tone="warn" *ngIf="state === 'error'">
+  {{ errorMessage }}
+  <button action type="button" class="btn btn-secondary" (click)="retry()">Try again</button>
+</app-callout>
+
+<ng-container *ngIf="state === 'loading'">
+  <span class="sr-only" role="status">Loading the production job</span>
+  <div class="card card-pad sk-job" aria-hidden="true">
+    <span class="skeleton sk-title"></span>
+    <span class="skeleton sk-line"></span>
+  </div>
+  <div class="docs" aria-hidden="true">
+    <div class="card card-pad sk-doc" *ngFor="let i of placeholders">
+      <span class="skeleton sk-title"></span>
+      <span class="skeleton sk-line"></span>
+      <span class="skeleton sk-buttons"></span>
+    </div>
+  </div>
+  <div class="card card-pad sk-summary" aria-hidden="true">
+    <span class="skeleton sk-line"></span>
+    <span class="skeleton sk-line"></span>
+    <span class="skeleton sk-line"></span>
+  </div>
+</ng-container>
+
+<app-callout tone="warn" class="gap" *ngIf="actionError && state !== 'ready'">
+  {{ actionError.message }}
+  <button action type="button" class="btn btn-secondary" (click)="actionError.retry()">Try again</button>
+</app-callout>
+
+<section class="card" *ngIf="state === 'no-job'">
+  <app-empty-state
+    icon="layers"
+    title="No production job yet"
+    text="Freeze this quotation's windows to make the cutting list, glass order, hardware order and production sheets. The documents keep these sizes even if the quotation changes later."
+  >
+    <button type="button" class="btn btn-primary btn-lg" [disabled]="freezing" (click)="freeze()">
+      {{ freezing ? 'Preparing…' : 'Prepare production documents' }}
+    </button>
+  </app-empty-state>
+</section>
+
+<section class="card" *ngIf="state === 'no-windows'">
+  <app-empty-state
+    icon="window"
+    title="No windows to make yet"
+    text="Add a window or door to the quotation, then come back here for its workshop documents."
+  >
+    <a class="btn btn-primary btn-lg" [routerLink]="quotationLink">Open the quotation</a>
+  </app-empty-state>
+</section>
+
+<ng-container *ngIf="state === 'ready' && job as job">
+  <!-- The api decides when sizes count as verified; the text is the api's. -->
+  <app-callout tone="warn" class="gap banner" *ngIf="job.banner">
+    <strong>{{ job.banner }}</strong>
+  </app-callout>
+
+  <app-callout tone="warn" class="gap" *ngIf="job.is_stale && isNewest">
+    The quotation has changed since this job was frozen. These documents still show the frozen sizes.
+    <button action type="button" class="btn btn-secondary" [disabled]="freezing" (click)="freeze(true)">
+      {{ freezing ? 'Refreshing…' : 'Refresh job' }}
+    </button>
+  </app-callout>
+
+  <app-callout class="gap" *ngIf="!isNewest">
+    You are looking at revision {{ job.revision }}. The newest is revision {{ job.latest_revision }}.
+    <button action type="button" class="btn btn-secondary" (click)="load()">Show the newest</button>
+  </app-callout>
+
+  <section class="card card-pad job" aria-label="Production job">
+    <div class="grow">
+      <h2>
+        Job <bdi class="num">{{ job.number }}</bdi>
+      </h2>
+      <p class="muted">
+        Frozen {{ job.frozen_at | date : 'd MMM y, h:mm a' }}<ng-container *ngIf="job.job?.frozen_by">
+          by {{ job.job?.frozen_by }}</ng-container
+        >
+        · Revision {{ job.revision }} ·
+        {{ job.window_count }} {{ job.window_count === 1 ? 'window' : 'windows' }},
+        {{ job.unit_count }} {{ job.unit_count === 1 ? 'unit' : 'units' }}
+      </p>
+      <p class="muted small" *ngIf="isNewest && !job.is_stale">
+        Refresh takes the quotation as it is now and makes a new revision. Older revisions stay printable.
+      </p>
+    </div>
+    <div class="job-actions">
+      <label class="revision" *ngIf="revisions.length > 1">
+        <span class="label">Revision</span>
+        <select class="select" (change)="showRevision($any($event.target).value)">
+          <option *ngFor="let revision of revisions" [value]="revision" [selected]="revision === job.revision">
+            {{ revision }}{{ revision === job.latest_revision ? ' (newest)' : '' }}
+          </option>
+        </select>
+      </label>
+      <button
+        type="button"
+        class="btn btn-secondary"
+        *ngIf="isNewest && !job.is_stale"
+        [disabled]="freezing"
+        (click)="freeze(true)"
+      >
+        <app-icon name="refresh"></app-icon>{{ freezing ? 'Refreshing…' : 'Refresh job' }}
+      </button>
+    </div>
+  </section>
+
+  <app-callout tone="warn" class="gap" *ngIf="actionError">
+    {{ actionError.message }}
+    <button action type="button" class="btn btn-secondary" (click)="actionError.retry()">Try again</button>
+  </app-callout>
+
+  <section class="docs" aria-label="Workshop documents">
+    <article class="card card-pad doc" *ngFor="let doc of documents; trackBy: trackByType">
+      <div class="doc-head">
+        <span class="doc-art"><app-icon [name]="doc.icon" [size]="20"></app-icon></span>
+        <div>
+          <h2>{{ doc.title }}</h2>
+          <p class="muted small">{{ doc.text }}</p>
+        </div>
+      </div>
+      <div class="doc-actions">
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="!!busy"
+          [attr.aria-label]="'Preview ' + doc.title"
+          (click)="openPreview(doc)"
+        >
+          <app-icon name="eye"></app-icon>{{ isBusy(doc.type, 'preview') ? 'Opening…' : 'Preview' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="!!busy"
+          [attr.aria-label]="'Download ' + doc.title + ' as PDF'"
+          (click)="download(doc.type, 'pdf', doc.title)"
+        >
+          <app-icon name="download"></app-icon>{{ isBusy(doc.type, 'pdf') ? 'Preparing…' : 'Download PDF' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="!!busy"
+          [attr.aria-label]="'Download ' + doc.title + ' as Excel'"
+          (click)="download(doc.type, 'xlsx', doc.title)"
+        >
+          <app-icon name="download"></app-icon>{{ isBusy(doc.type, 'xlsx') ? 'Preparing…' : 'Download Excel' }}
+        </button>
+        <button
+          type="button"
+          class="btn btn-secondary"
+          [disabled]="!!busy"
+          [attr.aria-label]="'Share ' + doc.title"
+          (click)="share(doc)"
+        >
+          <app-icon name="share"></app-icon>{{ isBusy(doc.type, 'share') ? 'Preparing…' : 'Share' }}
+        </button>
+      </div>
+    </article>
+  </section>
+
+  <section class="card preview" #previewCard *ngIf="preview as open" [attr.aria-label]="open.doc.title + ' preview'">
+    <div class="card-head">
+      <h2>{{ open.doc.title }} · preview</h2>
+      <button type="button" class="btn btn-secondary" (click)="closePreview()">
+        <app-icon name="x"></app-icon>Close preview
+      </button>
+    </div>
+    <iframe class="preview-frame" sandbox="" [src]="open.src" [title]="open.doc.title + ' preview'"></iframe>
+  </section>
+
+  <section class="card warnings" *ngIf="warnings.length" aria-labelledby="warnings-title">
+    <div class="card-head">
+      <h2 id="warnings-title">Check before cutting</h2>
+      <span class="muted small">{{ warnings.length }} {{ warnings.length === 1 ? 'note' : 'notes' }}</span>
+    </div>
+    <ul class="warning-list">
+      <li *ngFor="let warning of warnings">
+        <app-icon name="alert"></app-icon>
+        <div>
+          <p>{{ warning.text }}</p>
+          <p class="muted small" *ngIf="warning.windows">
+            <bdi>{{ warning.windows }}</bdi>
+          </p>
+        </div>
+      </li>
+    </ul>
+  </section>
+
+  <section class="card summary" *ngIf="summary as sum" aria-labelledby="summary-title">
+    <div class="card-head">
+      <h2 id="summary-title">Quick summary</h2>
+      <span class="muted small">Totals for the whole job</span>
+    </div>
+    <div class="stats">
+      <app-stat
+        label="Profile to cut"
+        [value]="(sum.profileMetres | number : '1.0-1') + ' m'"
+        [detail]="sum.profilePieces + ' pieces' + (sum.steelMetres ? ', plus ' + (sum.steelMetres | number : '1.0-1') + ' m of steel' : '')"
+      ></app-stat>
+      <app-stat
+        label="Glass"
+        [value]="(sum.glassArea | number : '1.0-2') + ' sq m'"
+        [detail]="sum.glassPanes + (sum.glassPanes === 1 ? ' pane' : ' panes')"
+      ></app-stat>
+      <app-stat
+        label="Hardware"
+        [value]="sum.hardwareItems + (sum.hardwareItems === 1 ? ' item' : ' items')"
+        detail="Screws, handles, rollers and accessories"
+      ></app-stat>
+    </div>
+
+    <div class="tabs summary-tabs" role="tablist" aria-label="Totals">
+      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab === 'profiles'" (click)="tab = 'profiles'">
+        Profiles
+      </button>
+      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab === 'glass'" (click)="tab = 'glass'">
+        Glass
+      </button>
+      <button type="button" class="tab" role="tab" [attr.aria-selected]="tab === 'hardware'" (click)="tab = 'hardware'">
+        Hardware
+      </button>
+    </div>
+
+    <table class="table" *ngIf="tab === 'profiles'">
+      <thead>
+        <tr>
+          <th scope="col">Profile</th>
+          <th scope="col" class="right">Pieces</th>
+          <th scope="col" class="right">Length</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of job.totals.profiles">
+          <td>
+            <span class="title">{{ row.profile_name }}</span>
+            <span class="muted small sub-line"
+              ><bdi>{{ row.profile_code || 'No profile code' }}</bdi
+              ><ng-container *ngIf="row.colour"> · {{ row.colour }}</ng-container></span
+            >
+          </td>
+          <td class="right num">{{ row.pieces }}</td>
+          <td class="right num">{{ row.length_m | number : '1.0-2' }} m</td>
+        </tr>
+        <tr *ngFor="let row of job.totals.reinforcement">
+          <td>
+            <span class="title">{{ row.profile_name }}</span>
+            <span class="muted small sub-line">Steel reinforcement</span>
+          </td>
+          <td class="right num">{{ row.pieces }}</td>
+          <td class="right num">{{ row.length_m | number : '1.0-2' }} m</td>
+        </tr>
+        <tr *ngIf="!job.totals.profiles.length && !job.totals.reinforcement.length">
+          <td colspan="3" class="muted">No profile sizes in this job.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="table" *ngIf="tab === 'glass'">
+      <thead>
+        <tr>
+          <th scope="col">Glass</th>
+          <th scope="col" class="right">Panes</th>
+          <th scope="col" class="right">Area</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of job.totals.glass">
+          <td><span class="title">{{ row.spec }}</span></td>
+          <td class="right num">{{ row.panes }}</td>
+          <td class="right num">{{ row.area_sqm | number : '1.0-2' }} sq m</td>
+        </tr>
+        <tr *ngIf="!job.totals.glass.length">
+          <td colspan="3" class="muted">No glass in this job.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="table" *ngIf="tab === 'hardware'">
+      <thead>
+        <tr>
+          <th scope="col">Item</th>
+          <th scope="col" class="right">Quantity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of job.totals.hardware">
+          <td>
+            <span class="title">{{ row.name }}</span>
+            <span class="muted small sub-line" *ngIf="row.group">{{ row.group }}</span>
+          </td>
+          <td class="right num">{{ row.qty | number : '1.0-2' }} {{ row.unit }}</td>
+        </tr>
+        <tr *ngIf="!job.totals.hardware.length">
+          <td colspan="2" class="muted">No hardware in this job.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+</ng-container>
