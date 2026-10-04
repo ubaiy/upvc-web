@@ -153,6 +153,7 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
 @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } * { transition: none !important; } }
 .progress { display: block; height: 6px; border-radius: var(--r-full); background: var(--c-surface-3); overflow: hidden; } .progress > i { display: block; height: 100%; background: var(--c-accent); border-radius: inherit; }
 .callout { display: flex; gap: var(--s-3); margin: 0; padding: var(--s-3) var(--s-4); border: 0; border-radius: var(--r-md); background: var(--c-accent-soft); color: var(--c-accent-text); font-size: var(--fs-13); align-items: center; }
+.callout.success { background: var(--c-success-soft); color: var(--c-success); }
 .callout.warn { background: var(--c-warning-soft); color: var(--c-warning); }
 .callout.danger { background: var(--c-danger-soft); color: var(--c-danger); }
 
@@ -184,6 +185,10 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
   .table .hide-tablet { display: none; } .table .row-actions { opacity: 1; }
   .auth { grid-template-columns: minmax(0, 1fr); } .auth-side { display: none; }
   .toolbar .input-group { width: auto; flex: 1; }
+  /* the page header's actions drop under the title and its status line when both do not fit */
+  .page-header { flex-wrap: wrap; }
+  .page-header > .grow { flex-basis: 320px; }
+  .page-actions { flex-wrap: wrap; }
 }
 
 /* Touch targets of 44 px for the controls whose size is not a token. */

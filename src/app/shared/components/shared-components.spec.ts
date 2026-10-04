@@ -93,6 +93,7 @@ describe('shared components', () => {
     expect(el('app-empty-state button').textContent).toBe('New quotation');
     expect(el('app-callout .callout').getAttribute('role')).toBe('alert');
     expect(el('app-callout button').textContent).toBe('Try again');
+    expect(el('app-callout app-icon svg')).not.toBeNull();
   });
 
   it('icon draws an svg hidden from screen readers', () => {

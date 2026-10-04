@@ -104,6 +104,10 @@ export const API_END_POINT = {
     status: 'quatation/status',
     summary: 'quatation/summary',
     lineDetails: 'quatation/product/details',
+    lineDuplicate: 'quatation/product/duplicate',
+    copy: 'quatation/copy',
+    revise: 'quatation/revise',
+    send: 'quatation/send',
   },
   profile_color: {
     list: 'profile-color/list',

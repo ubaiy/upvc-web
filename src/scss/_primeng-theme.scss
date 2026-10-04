@@ -327,6 +327,7 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
 .p-menu {
   width: 220px; padding: var(--s-1); border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-text);
   &.p-menu-overlay { border: 1px solid var(--c-border); box-shadow: var(--shadow-pop); }
+  .p-menu-list { margin: 0; padding: 0; list-style: none; } // Bootstrap indents every ul
   .p-menuitem > .p-menuitem-content { border-radius: var(--r-sm); color: var(--c-text); transition: none;
     .p-menuitem-link { gap: var(--s-3); height: var(--h-menu); padding: 0 var(--s-3); color: var(--c-text);
       .p-menuitem-text { color: inherit; }

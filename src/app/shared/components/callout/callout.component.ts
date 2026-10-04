@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
 import { IconName } from '../icon/icon-paths';
 
-export type CalloutTone = 'info' | 'warn' | 'danger';
+export type CalloutTone = 'info' | 'success' | 'warn' | 'danger';
 
 /**
  * An inline message that stays on the page. Use it for a load error with
- * "Try again"; use a toast for things that need no decision.
+ * "Try again", or with tone="success" for a result the user should keep in
+ * view ("We sent the link"); use a toast for things that need no decision.
  *
  *   <app-callout tone="warn">
  *     We could not load your quotations. Check your connection.
@@ -18,11 +19,12 @@ export type CalloutTone = 'info' | 'warn' | 'danger';
   template: `
     <div
       class="callout"
+      [class.success]="tone === 'success'"
       [class.warn]="tone === 'warn'"
       [class.danger]="tone === 'danger'"
-      [attr.role]="tone === 'info' ? 'status' : 'alert'"
+      [attr.role]="tone === 'info' || tone === 'success' ? 'status' : 'alert'"
     >
-      <app-icon [name]="icon || (tone === 'info' ? 'info' : 'alert')"></app-icon>
+      <app-icon [name]="icon || (tone === 'info' ? 'info' : tone === 'success' ? 'circle-check' : 'alert')"></app-icon>
       <span class="grow"><ng-content></ng-content></span>
       <ng-content select="[action]"></ng-content>
     </div>
