@@ -138,6 +138,29 @@ describe('design-tree.util (B1/B2 regression)', () => {
       expect(restored.split!.children[0].sashId).toBe(27);
     });
 
+    it("restores Laravel-nullified '' ('' → null server-side) back to ''", () => {
+      // The API's ConvertEmptyStringsToNull middleware rewrites '' to null
+      // inside the stored snapshot. Restoring must map it back to '' so the
+      // leaf keeps its own (empty) value instead of inheriting the global
+      // control — this is what made a mixed window reprice on reopen.
+      const snap = {
+        split: {
+          direction: 'vertical',
+          kind: 'mullion',
+          mullionWidthMm: 60,
+          fractions: [0.5, 0.5],
+          children: [
+            { casementType: 'Openable', sashId: 27 },
+            { casementType: 'Fixed', sashId: null, handleId: null },
+          ],
+        },
+      };
+      const restored = deserializePaneTree(snap, idFactory())!;
+      expect(restored.split!.children[1].sashId).toBe('');
+      expect(restored.split!.children[1].handleId).toBe('');
+      expect(restored.split!.children[0].sashId).toBe(27);
+    });
+
     it('strips transient render fields and regenerates ids', () => {
       const tree = compositeTree();
       (tree as any)._wMm = 1234;

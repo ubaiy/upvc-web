@@ -119,8 +119,13 @@ export function deserializePaneTree(
   if (!data || typeof data !== 'object') return null;
   const node: PaneNode = { id: nextId() };
   for (const key of LEAF_KEYS) {
-    const v = data[key];
-    // '' is a meaningful value (see serializePaneTree) — only skip absent.
+    let v = data[key];
+    // '' is a meaningful value (see serializePaneTree). The API runs
+    // Laravel's ConvertEmptyStringsToNull middleware, so a saved '' comes
+    // back as null — map it back to '' (except for the boolean `framed`)
+    // instead of skipping it, or the restored leaf would fall back to the
+    // GLOBAL control value and reprice differently than it was saved.
+    if (v === null && key !== 'framed') v = '';
     if (v !== undefined && v !== null) {
       (node as any)[key] = v;
     }
