@@ -7,17 +7,8 @@ import { AuthLayoutComponent } from './auth-layout/auth-layout.component';
 import { LoginComponent } from './login/login.component';
 import { ForgotPasswordComponent } from './login/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './login/reset-password/reset-password.component';
-import { RegisterComponent } from './register/register.component';
 import { Page404Component } from './page404/page404.component';
 import { Page500Component } from './page500/page500.component';
-import {
-  ButtonModule,
-  CardModule,
-  FormModule,
-  GridModule,
-  AlertModule,
-} from '@coreui/angular';
-import { IconModule } from '@coreui/icons-angular';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 @NgModule({
@@ -26,7 +17,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
     LoginComponent,
     ForgotPasswordComponent,
     ResetPasswordComponent,
-    RegisterComponent,
     Page404Component,
     Page500Component,
   ],
@@ -40,19 +30,12 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
       // The reset email links here: /auth/reset-password?token=…&email=… (ACCOUNT_RESET_URL in the API).
       { path: 'reset-password', component: ResetPasswordComponent, data: { title: 'Set a new password' } },
     ]),
-    // The CoreUI modules below are only used by the old register page (card S1).
-    CardModule,
-    ButtonModule,
-    GridModule,
-    IconModule,
-    FormModule,
     // SharedCommonModule is deliberately not imported: it provides MessageService,
     // and a second copy in this lazy module would cut these pages off from the
     // app's one toast outlet.
     SharedComponentsModule,
     ReactiveFormsModule,
     FormsModule,
-    AlertModule,
   ],
 })
 export class PagesModule {}

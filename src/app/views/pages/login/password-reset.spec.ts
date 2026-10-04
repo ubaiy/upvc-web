@@ -137,7 +137,8 @@ describe('Password reset pages', () => {
         password: 'New-Pass-2026!',
         confirm_password: 'New-Pass-2026!',
       });
-      expect(navigate).toHaveBeenCalledOnceWith(['/auth/login'], { queryParams: { reset: 1 } });
+      // The email goes along, so the sign-in page can fill it in (m20).
+      expect(navigate).toHaveBeenCalledOnceWith(['/auth/login'], { queryParams: { reset: 1, email: 'owner@example.com' } });
     });
 
     it('shows the refusal of a used or expired link with a way to ask for a new one', () => {

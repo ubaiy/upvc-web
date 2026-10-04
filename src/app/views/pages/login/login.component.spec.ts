@@ -75,11 +75,25 @@ describe('LoginComponent', () => {
     expect(el.querySelector('.signin-notice')!.textContent).toContain('Your password was changed');
   });
 
-  it('links to the forgot-password page and to sign up', () => {
+  it('fills in the email after a reset and puts the cursor in Password (m20)', () => {
+    query = { reset: '1', email: 'owner@example.com' };
+    create();
+    expect((el.querySelector('#loginEmail') as HTMLInputElement).value).toBe('owner@example.com');
+    expect(document.activeElement).toBe(el.querySelector('#loginPassword'));
+  });
+
+  it('links to the forgot-password page, and to no sign-up page while there is none (M10)', () => {
     create();
     const links = Array.from(el.querySelectorAll('a')).map((a) => a.getAttribute('href'));
-    expect(links).toContain('/auth/forgot-password');
-    expect(links).toContain('/auth/register');
+    expect(links).toEqual(['/auth/forgot-password']);
+    expect(el.textContent).not.toContain('free trial');
+  });
+
+  it('reaches Password before "Forgot password?" with the Tab key (m18)', () => {
+    create();
+    const order = Array.from(el.querySelectorAll('input, a, button')).map((node) => node.id || node.textContent!.trim());
+    expect(order.indexOf('loginPassword')).toBeLessThan(order.indexOf('Forgot password?'));
+    expect(order.indexOf('loginEmail')).toBeLessThan(order.indexOf('loginPassword'));
   });
 
   it('gives every button and input an accessible name', () => {

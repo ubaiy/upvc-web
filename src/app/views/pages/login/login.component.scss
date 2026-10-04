@@ -1,5 +1,6 @@
 .signin { margin-block-start: var(--s-8); }
-.signup { margin-block-start: var(--s-6); }
+// Under the password field, at its end: read after the field, not before it.
+.forgot { align-self: flex-end; }
 
 // The show/hide button sits inside the field's border.
 .input-group { padding-inline-end: var(--s-1); }

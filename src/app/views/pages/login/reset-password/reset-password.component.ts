@@ -95,7 +95,7 @@ export class ResetPasswordComponent implements OnInit {
       .setPassword({ email: this.email, token: this.token, password, confirm_password })
       .pipe(finalize(() => (this.busy = false)))
       .subscribe({
-        next: () => this.router.navigate(['/auth/login'], { queryParams: { reset: 1 } }),
+        next: () => this.router.navigate(['/auth/login'], { queryParams: { reset: 1, email: this.email } }),
         error: (err) => {
           // The shared interceptor also raises a toast; the reason is on the page already.
           this.messages.clear();

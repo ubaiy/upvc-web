@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
@@ -18,7 +18,7 @@ export interface SignInError {
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, AfterViewInit {
   readonly product = PRODUCT_NAME;
 
   form: FormGroup;
@@ -49,9 +49,20 @@ export class LoginComponent implements OnInit {
 
   ngOnInit(): void {
     this.passwordChanged = this._route.snapshot.queryParamMap.has('reset');
+    // The reset page knows whose password was changed: the email is filled in, the cursor waits in Password.
+    const email = this._route.snapshot.queryParamMap.get('email');
+    if (email) {
+      this.form.patchValue({ email });
+    }
     // Someone who is already signed in has nothing to do here.
     if (this._authService.getToken()) {
       this._router.navigateByUrl(this._destination());
+    }
+  }
+
+  ngAfterViewInit(): void {
+    if (this.f['email'].value) {
+      this.passwordInput?.nativeElement.focus();
     }
   }
 

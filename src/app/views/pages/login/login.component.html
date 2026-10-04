@@ -33,10 +33,7 @@
     </div>
 
     <div class="field">
-      <div class="u-row between">
-        <label class="label" for="loginPassword">Password</label>
-        <a class="small" routerLink="/auth/forgot-password">Forgot password?</a>
-      </div>
+      <label class="label" for="loginPassword">Password</label>
       <div class="input-group" [class.is-invalid]="invalid('password')">
         <input
           #passwordInput
@@ -61,6 +58,8 @@
       <span class="error" id="loginPasswordError" *ngIf="invalid('password')">
         {{ f['password'].errors?.['required'] ? 'Enter your password' : 'Password must be at least 8 characters' }}
       </span>
+      <!-- After the field, so Tab goes email, password, then here. -->
+      <a class="small forgot" routerLink="/auth/forgot-password">Forgot password?</a>
       <span class="hint" id="loginCapsLock" *ngIf="capsLock && !invalid('password')">Caps Lock is on</span>
     </div>
 
@@ -69,5 +68,4 @@
     </button>
   </form>
 
-  <p class="muted small signup">New to {{ product }}? <a routerLink="/auth/register">Start a 30-day free trial</a></p>
 </app-auth-layout>
