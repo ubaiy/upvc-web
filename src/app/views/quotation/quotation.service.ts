@@ -109,4 +109,61 @@ export class QuotationService {
       ids
     );
   }
+
+  /**
+   * Flow additions (cards U3 and U4). The paths are kept here, not in
+   * api.config.ts, because that file belongs to another card.
+   */
+
+  /** Every quotation, billed ones included, each with its status and total. */
+  public getAllQuotations(): Observable<IResponseDto<any[]>> {
+    return this._apiHttpService.get(`${API_END_POINT.quatation.list}?status=all`);
+  }
+
+  /** Quotations per status: { all, draft, sent, accepted, declined, expired, billed }. */
+  public getStatusCounts(): Observable<IResponseDto<Record<string, number>>> {
+    return this._apiHttpService.get('quatation/status-counts');
+  }
+
+  /** status: draft, sent, accepted or declined. Billed is set by creating a bill. */
+  public setQuotationStatus(
+    id: number,
+    status: string,
+    validUntil?: string
+  ): Observable<IResponseDto<any>> {
+    const body: any = { status };
+    if (validUntil) {
+      body.valid_until = validUntil;
+    }
+    return this._apiHttpService.post(`quatation/status/${id}`, body);
+  }
+
+  /** Margin, payment terms, discount, validity and GST settings of a quotation. */
+  public updateQuotationSummary(
+    id: number,
+    data: any
+  ): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/summary/${id}`, data);
+  }
+
+  /** Label ("Master bedroom") and HSN code of one window. */
+  public updateLineDetails(
+    lineId: number,
+    data: { label?: string; hsn_code?: string }
+  ): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`quatation/product/details/${lineId}`, data);
+  }
+
+  /** Customers for the picker in the new-quotation dialog. */
+  public getCustomerOptions(): Observable<IResponseDto<any[]>> {
+    return this._apiHttpService.get(API_END_POINT.customer.list);
+  }
+
+  /** A customer made inline from the new-quotation dialog: name and phone only. */
+  public addCustomerInline(data: {
+    name: string;
+    phone: string;
+  }): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(API_END_POINT.customer.add, data);
+  }
 }
