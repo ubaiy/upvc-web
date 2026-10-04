@@ -1,0 +1,57 @@
+// Shared by the Settings tabs. Layout only; every colour and size is a token.
+:host {
+  display: block;
+}
+
+.settings-col {
+  max-width: 760px;
+}
+
+.card-head h2 {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+}
+
+.card-head p {
+  color: var(--c-text-3);
+  font-size: var(--fs-13);
+}
+
+.form-foot {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.sk-card > * + * {
+  margin-block-start: var(--s-4);
+}
+
+.req {
+  color: var(--c-danger);
+}
+
+.table .row-actions {
+  // Row buttons must be reachable by touch on a tablet, where nothing hovers.
+  opacity: 1;
+}
+
+.table td {
+  word-break: break-word;
+}
+
+// Table edges line up with the card heading; the actions column hugs its buttons.
+.table th:first-child,
+.table td:first-child {
+  padding-inline-start: var(--s-5);
+}
+
+.table th:last-child,
+.table td:last-child {
+  padding-inline-end: var(--s-5);
+}
+
+.table th.actions-col,
+.table td.row-actions {
+  width: 1%;
+}

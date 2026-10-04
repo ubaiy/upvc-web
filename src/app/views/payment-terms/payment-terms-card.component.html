@@ -1,0 +1,90 @@
+<section class="card" aria-labelledby="h-terms">
+  <div class="card-head">
+    <div>
+      <h2 id="h-terms">Payment terms</h2>
+      <p>Printed on the quotation. You pick one on each quotation.</p>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="open()" *ngIf="state === 'ready' && terms.length">
+      <app-icon name="plus"></app-icon>Add payment term
+    </button>
+  </div>
+
+  <div class="card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading payment terms">
+    <span class="skeleton" style="width: 60%"></span>
+    <span class="skeleton" style="width: 45%"></span>
+  </div>
+
+  <div class="card-pad" *ngIf="state === 'error'">
+    <app-callout tone="warn">
+      We could not load your payment terms.
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </app-callout>
+  </div>
+
+  <ng-container *ngIf="state === 'ready'">
+    <app-empty-state
+      *ngIf="!terms.length"
+      icon="rupee"
+      title="No payment terms yet"
+      text="Add the terms you offer, such as 50% advance and 50% before dispatch."
+    >
+      <button type="button" class="btn btn-secondary" (click)="open()"><app-icon name="plus"></app-icon>Add payment term</button>
+    </app-empty-state>
+
+    <table class="table" *ngIf="terms.length">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Printed on the quotation</th>
+          <th scope="col" class="actions-col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let term of terms">
+          <td class="title">{{ term.name }}</td>
+          <td class="muted">{{ term.description }}</td>
+          <td class="row-actions">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + term.name" (click)="open(term)">
+              <app-icon name="pencil"></app-icon>
+            </button>
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + term.name" (click)="remove(term)">
+              <app-icon name="trash"></app-icon>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </ng-container>
+</section>
+
+<p-dialog
+  [header]="editing ? 'Edit payment term' : 'Add payment term'"
+  [(visible)]="dialogOpen"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '440px' }"
+>
+  <form id="term-form" class="stack-4" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="field">
+      <label class="label" for="term-name">Name</label>
+      <input class="input" id="term-name" type="text" formControlName="name" placeholder="50% advance"
+        [class.is-invalid]="invalid('name')" [attr.aria-invalid]="invalid('name')" aria-describedby="term-name-err" />
+      <span class="error" id="term-name-err" *ngIf="invalid('name')">Give the payment term a name.</span>
+    </div>
+    <div class="field">
+      <label class="label" for="term-text">Printed on the quotation</label>
+      <textarea class="input" id="term-text" rows="3" formControlName="description"
+        placeholder="50% advance with the order, 50% before dispatch"
+        [class.is-invalid]="invalid('description')" [attr.aria-invalid]="invalid('description')" aria-describedby="term-text-err"></textarea>
+      <span class="error" id="term-text-err" *ngIf="invalid('description')">Write the sentence the customer will read.</span>
+    </div>
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+  </form>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-secondary" (click)="dialogOpen = false">Cancel</button>
+    <button type="submit" form="term-form" class="btn btn-primary" [disabled]="saving">
+      {{ saving ? 'Saving…' : editing ? 'Save payment term' : 'Add payment term' }}
+    </button>
+  </ng-template>
+</p-dialog>

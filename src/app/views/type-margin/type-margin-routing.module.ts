@@ -1,17 +1,9 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
-import { TypeMarginResolver } from './type-margin.resolver';
-import { TypeMarginComponent } from './type-margin.component';
-const routes: Routes = [
-  {
-    path: '',
-    resolve: { list: TypeMarginResolver },
-    component: TypeMarginComponent,
-    data: {
-      title: `Type Margin`,
-    },
-  },
-];
+
+// Margins are a card on Settings → Pricing and tax (card U7). The old address
+// keeps working for bookmarks and for the shell's interim tab strip.
+const routes: Routes = [{ path: '', pathMatch: 'full', redirectTo: '/profile?tab=pricing' }];
 
 @NgModule({
   imports: [RouterModule.forChild(routes)],

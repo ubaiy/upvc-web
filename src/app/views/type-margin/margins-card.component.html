@@ -1,0 +1,92 @@
+<section class="card" aria-labelledby="h-margins">
+  <div class="card-head">
+    <div>
+      <h2 id="h-margins">Margins</h2>
+      <p>The mark-up added to cost. You pick one on each quotation.</p>
+    </div>
+    <button type="button" class="btn btn-secondary btn-sm" (click)="open()" *ngIf="state === 'ready' && margins.length">
+      <app-icon name="plus"></app-icon>Add margin
+    </button>
+  </div>
+
+  <div class="card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading margins">
+    <span class="skeleton" style="width: 55%"></span>
+    <span class="skeleton" style="width: 40%"></span>
+  </div>
+
+  <div class="card-pad" *ngIf="state === 'error'">
+    <app-callout tone="warn">
+      We could not load your margins.
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </app-callout>
+  </div>
+
+  <ng-container *ngIf="state === 'ready'">
+    <app-empty-state
+      *ngIf="!margins.length"
+      icon="percent"
+      title="No margins yet"
+      text="Add one for each kind of customer, such as Retail 20% and Dealer 10%."
+    >
+      <button type="button" class="btn btn-secondary" (click)="open()"><app-icon name="plus"></app-icon>Add margin</button>
+    </app-empty-state>
+
+    <table class="table" *ngIf="margins.length">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col" class="right">Margin</th>
+          <th scope="col" class="actions-col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let margin of margins">
+          <td class="title">{{ margin.name }}</td>
+          <td class="right num">{{ margin.mark_up }}%</td>
+          <td class="row-actions">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + margin.name" (click)="open(margin)">
+              <app-icon name="pencil"></app-icon>
+            </button>
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + margin.name" (click)="remove(margin)">
+              <app-icon name="trash"></app-icon>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </ng-container>
+</section>
+
+<p-dialog
+  [header]="editing ? 'Edit margin' : 'Add margin'"
+  [(visible)]="dialogOpen"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '440px' }"
+>
+  <form id="margin-form" class="stack-4" [formGroup]="form" (ngSubmit)="save()" novalidate>
+    <div class="field">
+      <label class="label" for="margin-name">Name</label>
+      <input class="input" id="margin-name" type="text" formControlName="name" placeholder="Retail"
+        [class.is-invalid]="invalid('name')" [attr.aria-invalid]="invalid('name')" aria-describedby="margin-name-err" />
+      <span class="error" id="margin-name-err" *ngIf="invalid('name')">Give the margin a name.</span>
+    </div>
+    <div class="field">
+      <label class="label" for="margin-pct">Margin</label>
+      <div class="input-group" [class.is-invalid]="invalid('mark_up')">
+        <input id="margin-pct" type="text" inputmode="decimal" formControlName="mark_up" placeholder="20"
+          [attr.aria-invalid]="invalid('mark_up')" aria-describedby="margin-pct-err" />
+        <span class="unit">%</span>
+      </div>
+      <span class="error" id="margin-pct-err" *ngIf="invalid('mark_up')">Enter a number from 0 to 1000, with up to 2 decimals.</span>
+    </div>
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+  </form>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-secondary" (click)="dialogOpen = false">Cancel</button>
+    <button type="submit" form="margin-form" class="btn btn-primary" [disabled]="saving">
+      {{ saving ? 'Saving…' : editing ? 'Save margin' : 'Add margin' }}
+    </button>
+  </ng-template>
+</p-dialog>
