@@ -1,11 +1,11 @@
-<div class="dc-root" [class.dc-readonly]="readOnly">
+<div class="dc-root" [class.dc-readonly]="readOnly" [class.dc-bare]="chrome === 'none'">
   <!-- Palette -->
   <div
     class="dc-palette"
     role="toolbar"
     aria-label="Design tools"
     aria-orientation="vertical"
-    *ngIf="!readOnly"
+    *ngIf="!readOnly && chrome === 'full'"
   >
     <button
       type="button"
@@ -60,7 +60,7 @@
 
   <div class="dc-main">
     <!-- Toolbar -->
-    <div class="dc-toolbar" role="toolbar" aria-label="Canvas actions">
+    <div class="dc-toolbar" role="toolbar" aria-label="Canvas actions" *ngIf="chrome === 'full'">
       <ng-container *ngIf="!readOnly">
         <button
           type="button"
@@ -161,7 +161,7 @@
     </div>
 
     <!-- Status bar -->
-    <div class="dc-status" aria-live="polite">
+    <div class="dc-status" aria-live="polite" *ngIf="chrome === 'full'">
       <span>frame {{ frameWMm }} × {{ frameHMm }} mm</span>
       <span *ngIf="selectedSizeText">· {{ selectedSizeText }}</span>
       <span class="dc-status-right">zoom {{ zoomPercent }}%</span>

@@ -2,7 +2,7 @@
   <p class="di-problem" *ngIf="problem" role="alert">{{ problem }}</p>
 
   <!-- Frame -->
-  <fieldset class="di-group" [disabled]="readOnly">
+  <fieldset class="di-group" [disabled]="readOnly" *ngIf="show !== 'pane'">
     <legend>Frame</legend>
     <label class="di-row">
       <span>Shape</span>
@@ -107,7 +107,7 @@
   </fieldset>
 
   <!-- Selected pane -->
-  <fieldset class="di-group" [disabled]="readOnly">
+  <fieldset class="di-group" [disabled]="readOnly" *ngIf="show !== 'window'">
     <legend>Selected pane</legend>
     <p class="di-empty" *ngIf="!leaf">Click a pane on the drawing to edit it.</p>
     <ng-container *ngIf="leaf as l">
@@ -126,6 +126,35 @@
           (ngModelChange)="onDirection($event)"
         >
           <option *ngFor="let d of directions" [value]="d">{{ d }}</option>
+        </select>
+      </label>
+
+      <ng-container *ngIf="paneKind === 'openable'">
+        <label class="di-row" *ngIf="handleOptions.length">
+          <span>Handle</span>
+          <select
+            data-di="handle"
+            [ngModel]="'' + l.opening?.handleId"
+            (ngModelChange)="onHandle($event)"
+          >
+            <option *ngFor="let h of handleOptions" [value]="'' + h.id">{{ h.label }}</option>
+          </select>
+        </label>
+        <label class="di-row" *ngIf="hingeOptions.length">
+          <span>Hinges</span>
+          <select
+            data-di="hinges"
+            [ngModel]="l.opening?.hingesType"
+            (ngModelChange)="onHinges($event)"
+          >
+            <option *ngFor="let h of hingeOptions" [value]="h">{{ h }}</option>
+          </select>
+        </label>
+      </ng-container>
+      <label class="di-row" *ngIf="paneKind !== 'fixed' && sashOptions.length > 1">
+        <span>Sash profile</span>
+        <select data-di="sash" [ngModel]="'' + l.sashId" (ngModelChange)="onSash($event)">
+          <option *ngFor="let o of sashOptions" [value]="'' + o.id">{{ o.label }}</option>
         </select>
       </label>
 
@@ -221,7 +250,7 @@
   </fieldset>
 
   <!-- Door -->
-  <fieldset class="di-group" [disabled]="readOnly">
+  <fieldset class="di-group" [disabled]="readOnly" *ngIf="show !== 'window'">
     <legend>Door</legend>
     <ng-container *ngIf="!design.door">
       <p class="di-empty">Select a pane, then turn it into a door.</p>

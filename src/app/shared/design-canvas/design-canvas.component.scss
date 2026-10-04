@@ -220,3 +220,16 @@
 .dc-status-right {
   margin-inline-start: auto;
 }
+
+/* ---- chrome="none": the drawing only, inside the host's own frame ---- */
+
+.dc-root.dc-bare {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+
+  .dc-wrapper {
+    background: transparent;
+  }
+}

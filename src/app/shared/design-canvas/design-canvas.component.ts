@@ -89,6 +89,12 @@ export class DesignCanvasComponent
   @Input() viewFrom: ViewFrom = 'outside';
   /** Glass colour per glass id (from the host's glass master data). */
   @Input() glassTints: GlassTints | null = null;
+  /**
+   * 'full' draws the built-in palette, toolbar and status bar. 'none' draws
+   * the drawing only: the host page supplies its own tools and calls the
+   * public methods (undo, zoomIn, armTool, onPaletteDown, ...).
+   */
+  @Input() chrome: 'full' | 'none' = 'full';
   /** Emits the NEW document after every committed change (incl. undo/redo). */
   @Output() modelChange = new EventEmitter<WindowDesign>();
   /** Emits whenever the selection changes. */

@@ -42,6 +42,7 @@ import {
   setFrameShape,
   setFrameSpec,
   setGlazing,
+  setLeafSpec,
   setSlideMesh,
   setSlidePanel,
   setSlidePanelCount,
@@ -86,6 +87,17 @@ export class DesignInspectorComponent {
   @Input() glassOptions: GlassOption[] = [];
   @Input() colorOptions: ColorOption[] = [];
   @Input() readOnly = false;
+  /** Which groups to draw: everything, the window-level ones, or the selected pane's. */
+  @Input() show: 'all' | 'window' | 'pane' = 'all';
+  /** Track types on offer (the host limits them to what its catalogue prices). */
+  @Input() trackOptions: TrackType[] = ['2 Track', '2.5 Track', '3 Track', '4 Track'];
+  /**
+   * Hardware of the selected pane. These are master-data ids, so the host
+   * supplies the lists for that pane; an empty list hides the field.
+   */
+  @Input() handleOptions: GlassOption[] = [];
+  @Input() hingeOptions: string[] = [];
+  @Input() sashOptions: GlassOption[] = [];
   /** The edited document; pass it to `canvas.apply(next)`. */
   @Output() designChange = new EventEmitter<WindowDesign>();
 
@@ -112,7 +124,13 @@ export class DesignInspectorComponent {
     'Tilt & Turn Left',
     'Tilt & Turn Right',
   ];
-  readonly trackTypes: TrackType[] = ['2 Track', '2.5 Track', '3 Track', '4 Track'];
+  /** The offered tracks, plus the pane's own if the catalogue no longer lists it. */
+  get trackTypes(): TrackType[] {
+    const own = this.leaf?.slide?.tracks;
+    return own && !this.trackOptions.includes(own)
+      ? [...this.trackOptions, own]
+      : this.trackOptions;
+  }
   readonly thresholds: ThresholdType[] = ['Standard', 'Low', 'None'];
   readonly apexes: TriangleShape['apex'][] = ['isosceles', 'left', 'right'];
 
@@ -218,6 +236,27 @@ export class DesignInspectorComponent {
   onDirection(direction: string): void {
     const id = this.leaf?.id;
     if (id) this.run((d) => setOpeningDirection(d, id, direction));
+  }
+
+  onHandle(raw: string): void {
+    const leaf = this.leaf;
+    const match = this.handleOptions.find((h) => String(h.id) === raw);
+    if (!leaf?.opening || !match) return;
+    const opening = { ...leaf.opening, handleId: match.id };
+    this.run((d) => setLeafSpec(d, leaf.id, { opening }));
+  }
+
+  onHinges(hingesType: string): void {
+    const leaf = this.leaf;
+    if (!leaf?.opening) return;
+    const opening = { ...leaf.opening, hingesType };
+    this.run((d) => setLeafSpec(d, leaf.id, { opening }));
+  }
+
+  onSash(raw: string): void {
+    const id = this.leaf?.id;
+    const match = this.sashOptions.find((s) => String(s.id) === raw);
+    if (id && match) this.run((d) => setLeafSpec(d, id, { sashId: match.id }));
   }
 
   onTracks(tracks: TrackType): void {
