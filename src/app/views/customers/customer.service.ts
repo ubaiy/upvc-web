@@ -5,6 +5,7 @@ import { ICustomerDto } from '../../shared/model/customer/customer.model';
 import { IResponseDto } from '../../shared/model/common/response.model';
 import { API_END_POINT } from '../../shared/configs/api.config';
 import { ICustomerAdddressDto } from 'src/app/shared/model/customer/customerAddress.model';
+import { GstState } from './customer.adapter';
 @Injectable({
   providedIn: 'root',
 })
@@ -74,5 +75,15 @@ export class CustomerService {
     return this._apiHttpSerivce.post(
       `${API_END_POINT.customer_address.delete}/${id}`
     );
+  }
+
+  /** GST state list: the same one the API uses to decide the tax split. */
+  public getStates(): Observable<IResponseDto<GstState[]>> {
+    return this._apiHttpSerivce.get('gst/states');
+  }
+
+  /** Company settings; the form reads the fabricator's own state from it. */
+  public getCompanySettings(): Observable<IResponseDto<any>> {
+    return this._apiHttpSerivce.get('company/settings');
   }
 }

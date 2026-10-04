@@ -1,104 +1,107 @@
-<div class="app-page-surface">
-  <app-page-header
-    eyebrow="Sales"
-    title="Customers"
-    subtitle="Manage your customer directory and contact details."
-  >
-    <p-button actions routerLink="add">Add New</p-button>
-  </app-page-header>
+<app-page-header title="Customers">
+  <!-- One primary button on the page: with no customers yet it moves into the empty state. -->
+  <a actions class="btn btn-primary" routerLink="/customers/add" *ngIf="state !== 'ready' || customers.length">
+    <app-icon name="plus"></app-icon>New customer
+  </a>
+</app-page-header>
 
-  <div class="app-table-card">
-    <div class="app-section-heading">
-      <span class="app-section-heading__title">Customer list</span>
+<app-callout tone="warn" *ngIf="state === 'error'">
+  We could not load your customers. Check your connection.
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card" *ngIf="state !== 'error'" [attr.aria-busy]="state === 'loading'">
+  <ng-container *ngIf="state === 'loading'">
+    <span class="sr-only" role="status">Loading customers</span>
+    <div class="toolbar" aria-hidden="true"><span class="skeleton sk-search"></span></div>
+    <div class="sk-row" aria-hidden="true" *ngFor="let i of placeholders">
+      <span class="skeleton sk-name"></span>
+      <span class="skeleton sk-cell"></span>
+      <span class="skeleton sk-cell"></span>
     </div>
-    <div class="table-responsive">
-    <p-table
-    #dt1
-    [value]="customers"
-    [paginator]="true"
-    [rows]="10"
-    [showCurrentPageReport]="true"
-    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-    [globalFilterFields]="['name', 'identity', 'phone', 'email', 'is_dealer']"
-    (sortFunction)="customSort($event)"
-    [customSort]="true"
-    [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[10, 25, 50]"
+  </ng-container>
+
+  <app-empty-state
+    *ngIf="state === 'ready' && !customers.length"
+    icon="users"
+    title="No customers yet"
+    text="Add a customer with a name and a phone number. You can also add one while writing a quotation."
   >
-    <ng-template pTemplate="caption">
-      <button
-        pButton
-        label="Clear"
-        class="p-button-outlined"
-        icon="pi pi-filter-slash"
-        (click)="clear(dt1)"
-      ></button>
-      <span class="p-input-icon-left ml-auto">
-        <i class="pi pi-search"></i>
+    <a class="btn btn-primary" routerLink="/customers/add"><app-icon name="plus"></app-icon>New customer</a>
+  </app-empty-state>
+
+  <ng-container *ngIf="state === 'ready' && customers.length">
+    <div class="toolbar">
+      <label class="input-group">
+        <app-icon name="search"></app-icon>
         <input
-          pInputText
-          type="text"
-          [(ngModel)]="inputValue"
-          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+          type="search"
+          placeholder="Search by name, phone, email or GSTIN"
+          aria-label="Search customers"
+          [(ngModel)]="search"
+          (ngModelChange)="onSearch()"
         />
-      </span>
-    </ng-template>
-    <ng-template pTemplate="header">
-      <tr>
-        <th pSortableColumn="identity" style="width: 10%" scope="col">
-          Identity <p-sortIcon field="identity"></p-sortIcon>
-        </th>
-        <th pSortableColumn="name" style="width: 20%" scope="col">
-          Name <p-sortIcon field="name"></p-sortIcon>
-        </th>
-        <th pSortableColumn="phone" style="width: 20%" scope="col">
-          Phone <p-sortIcon field="phone"></p-sortIcon>
-        </th>
-        <th pSortableColumn="email" style="width: 20%" scope="col">
-          Email <p-sortIcon field="email"></p-sortIcon>
-        </th>
-        <th pSortableColumn="is_dealer" style="width: 10%" scope="col">
-          Is dealer <p-sortIcon field="is_dealer"></p-sortIcon>
-        </th>
-        <th style="width: 20%" scope="col">Actions</th>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-customer>
-      <tr>
-        <td>{{ customer.identity }}</td>
-        <td>{{ customer.name }}</td>
-        <td>{{ customer.phone }}</td>
-        <td>{{ customer.email }}</td>
-        <td>{{ customer.is_dealer === 0 ? "No" : "Yes" }}</td>
-        <td>
-          <p-button
-            icon="pi pi-pencil"
-            pTooltip="Edit customer"
-            aria-label="Edit customer"
-            [routerLink]="['edit', customer.id]"
-            styleClass="p-button-rounded p-button-text"
-          ></p-button>
-          <!-- <p-button
-            icon="pi pi-calculator"
-            [routerLink]="['quatationList', customer.id]"
-            styleClass="p-button-rounded p-button-text"
-          ></p-button> -->
-          <p-button
-            icon="pi pi-trash"
-            pTooltip="Delete customer"
-            aria-label="Delete customer"
-            (onClick)="deleteCustomer(customer)"
-            styleClass="p-button-rounded p-button-text p-button-danger"
-          ></p-button>
-        </td>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="emptymessage">
-      <tr>
-        <td colspan="6">No records yet</td>
-      </tr>
-    </ng-template>
-  </p-table>
+      </label>
+      <span class="grow"></span>
+      <span class="muted small">A to Z</span>
     </div>
-  </div>
-</div>
+
+    <table class="table" *ngIf="rows.length">
+      <thead>
+        <tr>
+          <th scope="col">Customer</th>
+          <th scope="col">Phone</th>
+          <th scope="col" class="hide-tablet">State</th>
+          <th scope="col" class="hide-tablet">GSTIN</th>
+          <th scope="col">Price list</th>
+          <th scope="col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let customer of rows; trackBy: trackById">
+          <td>
+            <a class="title" [routerLink]="['/customers/edit', customer.id]"><bdi>{{ customer.name }}</bdi></a>
+            <div class="faint tiny" *ngIf="customer.email">{{ customer.email }}</div>
+          </td>
+          <td class="muted num">{{ customer.phone }}</td>
+          <td class="muted hide-tablet">{{ customer.stateName || '—' }}</td>
+          <td class="muted num hide-tablet">{{ customer.gstin || '—' }}</td>
+          <td>
+            <span class="badge" [class.badge-accent]="customer.priceList === 'dealer'">{{
+              customer.priceList === 'dealer' ? 'Dealer' : 'Retail'
+            }}</span>
+          </td>
+          <td class="row-actions">
+            <button
+              type="button"
+              class="btn btn-ghost btn-icon btn-sm"
+              aria-haspopup="menu"
+              [attr.aria-label]="'More actions for ' + customer.name"
+              (click)="openMenu($event, customer)"
+            >
+              <app-icon name="more"></app-icon>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty" *ngIf="!rows.length">
+      <h2>No customer matches "{{ search }}"</h2>
+      <p>Check the spelling, or search by phone number.</p>
+      <button type="button" class="btn btn-secondary" (click)="clearSearch()">Clear search</button>
+    </div>
+
+    <div class="table-foot" *ngIf="rows.length">
+      <span>{{ countLabel }}</span>
+      <span class="u-row foot-nav">
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page === 0" (click)="go(-1)">Previous</button>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page >= pageCount - 1" (click)="go(1)">
+          Next
+        </button>
+      </span>
+    </div>
+  </ng-container>
+</section>
+
+<p-menu #rowMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>

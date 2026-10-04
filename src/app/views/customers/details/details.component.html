@@ -1,314 +1,321 @@
-<div class="app-page-surface">
-  <app-page-header
-    eyebrow="Sales"
-    [title]="editable ? 'Edit Customer' : 'Add Customer'"
-    subtitle="Capture the customer's identity and contact information."
-  ></app-page-header>
+<app-page-header [title]="title" [crumbs]="crumbs">
+  <button actions type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
+  <button
+    actions
+    type="submit"
+    form="customer-form"
+    class="btn btn-primary"
+    [disabled]="state !== 'ready' || saving"
+  >
+    {{ saving ? 'Saving…' : 'Save customer' }}
+  </button>
+</app-page-header>
 
-  <div class="app-card mb-4">
-    <div class="app-section-heading">
-      <span class="app-section-heading__title">Customer details</span>
+<app-callout tone="warn" *ngIf="state === 'error'">
+  We could not load this customer. Check your connection.
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card card-pad" *ngIf="state === 'loading'" aria-busy="true">
+  <span class="sr-only" role="status">Loading customer</span>
+  <div class="form-grid" aria-hidden="true">
+    <div class="field" *ngFor="let i of [0, 1, 2, 3]">
+      <span class="skeleton sk-label"></span>
+      <span class="skeleton sk-input"></span>
     </div>
-    <div class="app-card__body">
-      <form [formGroup]="form">
-        <c-row class="g-4">
-          <c-col [md]="6">
-            <label class="app-field-label" for="Identity">Identity</label>
-            <input
-              cFormControl
-              id="Identity"
-              type="text"
-              formControlName="identity"
-            />
-          </c-col>
-          <c-col [md]="6">
-            <label class="app-field-label" for="Name">
-              Name <span class="error">*</span></label
-            >
-            <input cFormControl id="Name" type="text" formControlName="name" />
-            <small
-              class="error"
-              *ngIf="
-                (f['name']?.errors?.['required'] && f['name'].touched) ||
-                (f['name']?.errors?.['required'] && submitted)
-              "
-              >Name is required</small
-            >
-          </c-col>
-          <c-col [md]="6">
-            <label class="app-field-label" for="Phone">
-              Phone <span class="error">*</span></label
-            >
-            <input cFormControl id="Phone" type="text" formControlName="phone" />
-            <small
-              class="error"
-              *ngIf="
-                (f['phone']?.errors?.['required'] && f['phone'].touched) ||
-                (f['phone']?.errors?.['required'] && submitted)
-              "
-              >Phone is required</small
-            >
-            <small
-              class="error"
-              *ngIf="
-                (!f['phone']?.errors?.['required'] && f['phone']?.errors?.['pattern'] && f['phone'].touched) ||
-                (!f['phone']?.errors?.['required'] && f['phone']?.errors?.['pattern'] && submitted)
-              "
-              >Please enter valid Phone Number</small
-            >
-          </c-col>
-          <c-col [md]="6">
-            <label class="app-field-label" for="Email">Email</label>
-            <input cFormControl id="Email" type="text" formControlName="email" />
-            <small
-              class="error"
-              *ngIf="
-                (!f['email']?.errors?.['required'] && f['email']?.errors?.['email'] && f['email'].touched) ||
-                (!f['email']?.errors?.['required'] && f['email']?.errors?.['email'] && submitted)
-              "
-              >Please enter valid email id</small
-            >
-          </c-col>
-          <c-col [xs]>
-            <c-form-check>
-              <input
-                cFormCheckInput
-                id="is_dealer"
-                type="checkbox"
-                formControlName="is_dealer"
-              />
-              <label cFormCheckLabel for="is_dealer">Is dealer</label>
-            </c-form-check>
-          </c-col>
-        </c-row>
-        <div class="mt-4 d-flex gap-3">
-          <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
-          <p-button
-            color="secondary"
-            styleClass="p-button-secondary"
-            (click)="toggleWarningModal()"
+  </div>
+</section>
+
+<div class="stack-6" *ngIf="state === 'ready'">
+  <form id="customer-form" class="stack-6" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <section class="card">
+      <div class="card-head"><h2>Details</h2></div>
+      <div class="card-pad form-grid">
+        <div class="field">
+          <label class="label" for="cust-name">Name</label>
+          <input
+            class="input"
+            id="cust-name"
+            type="text"
+            formControlName="name"
+            autocomplete="off"
+            [class.is-invalid]="invalid('name')"
+            [attr.aria-invalid]="invalid('name')"
+            [attr.aria-describedby]="invalid('name') ? 'cust-name-e' : null"
+          />
+          <span class="error" id="cust-name-e" *ngIf="invalid('name')">Enter the customer's name.</span>
+        </div>
+
+        <div class="field">
+          <label class="label" for="cust-phone">Phone</label>
+          <input
+            class="input num"
+            id="cust-phone"
+            type="tel"
+            inputmode="numeric"
+            maxlength="10"
+            formControlName="phone"
+            autocomplete="off"
+            [class.is-invalid]="invalid('phone')"
+            [attr.aria-invalid]="invalid('phone')"
+            aria-describedby="cust-phone-h"
+          />
+          <span class="error" id="cust-phone-h" *ngIf="invalid('phone'); else phoneHint"
+            >Enter a 10-digit mobile number.</span
           >
-            Cancel</p-button
+          <ng-template #phoneHint
+            ><span class="hint" id="cust-phone-h">10 digits, without +91. Used for WhatsApp.</span></ng-template
           >
         </div>
-      </form>
-    </div>
-  </div>
 
-  <ng-container *ngIf="customerId">
-    <div class="app-table-card">
-      <div class="app-section-heading">
-        <span class="app-section-heading__title">Addresses</span>
-        <span class="app-section-heading__spacer"></span>
-        <p-button (click)="addressAddEdit()"> Add Address</p-button>
+        <div class="field">
+          <label class="label" for="cust-email">Email (optional)</label>
+          <input
+            class="input"
+            id="cust-email"
+            type="email"
+            formControlName="email"
+            autocomplete="off"
+            [class.is-invalid]="invalid('email')"
+            [attr.aria-invalid]="invalid('email')"
+            [attr.aria-describedby]="invalid('email') ? 'cust-email-e' : null"
+          />
+          <span class="error" id="cust-email-e" *ngIf="invalid('email')"
+            >Enter an email address like name@example.com.</span
+          >
+        </div>
+
+        <div class="field">
+          <label class="label" for="cust-gstin">GSTIN (optional)</label>
+          <input
+            class="input num"
+            id="cust-gstin"
+            type="text"
+            maxlength="15"
+            formControlName="gstin"
+            autocomplete="off"
+            (input)="onGstinChange()"
+            [class.is-invalid]="invalid('gstin')"
+            [attr.aria-invalid]="invalid('gstin')"
+            aria-describedby="cust-gstin-h"
+          />
+          <span class="error" id="cust-gstin-h" *ngIf="invalid('gstin'); else gstinHint"
+            >A GSTIN has 15 characters, like 24ABCDE1234F1Z5.</span
+          >
+          <ng-template #gstinHint
+            ><span class="hint" id="cust-gstin-h">For registered businesses. It is printed on quotations and bills.</span></ng-template
+          >
+        </div>
+
+        <div class="field span-2">
+          <span class="label" id="cust-price-l">Price list</span>
+          <div class="seg price-seg" role="group" aria-labelledby="cust-price-l">
+            <button
+              type="button"
+              [attr.aria-pressed]="form.value.price_list === 'retail'"
+              (click)="setPriceList('retail')"
+            >
+              Retail
+            </button>
+            <button
+              type="button"
+              [attr.aria-pressed]="form.value.price_list === 'dealer'"
+              (click)="setPriceList('dealer')"
+            >
+              Dealer
+            </button>
+          </div>
+          <span class="hint">Chooses the margin that new quotations for this customer start with.</span>
+        </div>
       </div>
-      <div class="table-responsive">
-      <p-table
-      [value]="customerAddresses"
-      [paginator]="true"
-      [rows]="10"
-      [showCurrentPageReport]="true"
-      currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-      [globalFilterFields]="['city', 'address', 'zip_code', 'state']"
-      (sortFunction)="customSort($event)"
-      [customSort]="true"
-      [tableStyle]="{ 'min-width': '60rem' }"
-      [rowsPerPageOptions]="[10, 25, 50]"
-    >
-      <ng-template pTemplate="header">
-        <tr>
-          <th pSortableColumn="state" style="width: 20%" scope="col">
-            State <p-sortIcon field="state"></p-sortIcon>
-          </th>
-          <th pSortableColumn="city" style="width: 20%" scope="col">
-            City <p-sortIcon field="city"></p-sortIcon>
-          </th>
-          <th pSortableColumn="zip_code" style="width: 20%" scope="col">
-            Zip Code <p-sortIcon field="zip_code"></p-sortIcon>
-          </th>
-          <th pSortableColumn="address" style="width: 20%" scope="col">
-            Address <p-sortIcon field="address"></p-sortIcon>
-          </th>
-          <th pSortableColumn="is_default" style="width: 10%" scope="col">
-            Default <p-sortIcon field="is_default"></p-sortIcon>
-          </th>
-          <th style="width: 10%" scope="col">Actions</th>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="body" let-address>
-        <tr>
-          <td>{{ address.state }}</td>
-          <td>{{ address.city }}</td>
-          <td>{{ address.zip_code }}</td>
-          <td>{{ address.address }}</td>
-          <td>{{ address.is_default === 0 ? "No" : "Yes" }}</td>
-          <td style="display: flex">
-            <p-button
-              icon="pi pi-pencil"
-              pTooltip="Edit address"
-              aria-label="Edit address"
-              (click)="addressAddEdit(address)"
-              styleClass="p-button-rounded p-button-text"
-            ></p-button>
-            <p-button
-              icon="pi pi-trash"
-              pTooltip="Delete address"
-              aria-label="Delete address"
-              (click)="deleteCustomerAddress(address)"
-              styleClass="p-button-rounded p-button-text p-button-danger"
-            ></p-button>
-          </td>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td colspan="6">No records yet</td>
-        </tr>
-      </ng-template>
-    </p-table>
-    </div>
-  </div>
-  <c-modal
-    id="liveDemoModal"
-    [visible]="visible"
-    backdrop="static"
-    alignment="center"
-    (visibleChange)="handleFormModal($event)"
-  >
-    <c-modal-header>
-      <h5 cModalTitle color="warm">
-        {{ editAddress ? "Edit " : "Add " }}Address
-      </h5>
-    </c-modal-header>
-    <c-modal-body>
-      <div>
-        <form [formGroup]="addressForm">
-          <c-row>
-            <label cLabel="col" class="col-sm-3" for="address">
-              Address Line 1 <span class="error">*</span>
-            </label>
-            <c-col [sm]="9">
-              <input
-                cFormControl
-                id="address"
-                type="text"
-                formControlName="address"
-              />
-              <small
-                class="error"
-                *ngIf="
-            (af['address']?.errors?.['required'] && af['address'].touched) ||
-            (af['address']?.errors?.['required'] && submittedAddress)
-          "
-                >Address line 1 is required</small
-              >
-            </c-col>
-          </c-row>
-          <c-row class="mt-3">
-            <label cLabel="col" class="col-sm-3" for="address_line2">
-              Address Line 2
-            </label>
-            <c-col [sm]="9">
-              <input
-                cFormControl
-                id="address_line2"
-                type="text"
-                formControlName="address_line2"
-              />
-            </c-col>
-          </c-row>
-          <c-row class="mt-3">
-            <label cLabel="col" class="col-sm-3" for="zip_code">
-              Zip Code <span class="error">*</span></label
-            >
-            <c-col [sm]="9">
-              <input
-                cFormControl
-                id="zip_code"
-                type="text"
-                formControlName="zip_code"
-              />
-              <small
-                class="error"
-                *ngIf="
-            (af['zip_code']?.errors?.['required'] && af['zip_code'].touched) ||
-            (af['zip_code']?.errors?.['required'] && submittedAddress)
-          "
-                >Zip Code is required</small
-              >
-            </c-col>
-          </c-row>
-          <c-row class="mt-3">
-            <label cLabel="col" class="col-sm-3" for="city">
-              City <span class="error">*</span></label
-            >
-            <c-col [sm]="9">
-              <input
-                cFormControl
-                id="city"
-                type="text"
-                formControlName="city"
-              />
-              <small
-                class="error"
-                *ngIf="
-            (af['city']?.errors?.['required'] && af['city'].touched) ||
-            (af['city']?.errors?.['required'] && submittedAddress)
-          "
-                >City is required</small
-              >
-            </c-col>
-          </c-row>
-          <c-row class="mt-3">
-            <label cLabel="col" class="col-sm-3" for="state">
-              State <span class="error">*</span></label
-            >
-            <c-col [sm]="9">
-              <input
-                cFormControl
-                id="state"
-                type="text"
-                formControlName="state"
-              />
-              <small
-                class="error"
-                *ngIf="
-            (af['state']?.errors?.['required'] && af['state'].touched) ||
-            (af['state']?.errors?.['required'] && submittedAddress)
-          "
-                >State is required</small
-              >
-            </c-col>
-          </c-row>
-          <c-row class="mt-3">
-            <label cLabel="col" class="col-sm-3" for="is_default"
-              >Is Default</label
-            >
-            <c-col [sm]="9">
-              <c-form-check>
-                <input
-                  cFormCheckInput
-                  id="is_default"
-                  type="checkbox"
-                  formControlName="is_default"
-                />
-              </c-form-check>
-            </c-col>
-          </c-row>
-        </form>
+    </section>
+
+    <section class="card" formArrayName="addresses">
+      <div class="card-head">
+        <h2>Address</h2>
+        <span class="muted small">The state decides CGST + SGST or IGST.</span>
       </div>
-    </c-modal-body>
-    <c-modal-footer>
-      <p-button
-        styleClass="p-button-secondary"
-        (click)="toggleAddressWarningModal()"
+
+      <div
+        class="card-pad address"
+        *ngFor="let group of addresses.controls; let i = index; trackBy: trackByIndex"
+        [formGroupName]="i"
       >
-        Cancel
-      </p-button>
-      <p-button (click)="submitAddress()">
-        {{ editAddress ? "Save" : "Add" }}
-      </p-button>
-    </c-modal-footer>
-  </c-modal>
-</ng-container>
+        <div class="u-row address-head">
+          <h3 class="grow">{{ i === 0 ? 'Default address' : 'Address ' + (i + 1) }}</h3>
+          <button
+            type="button"
+            class="btn btn-ghost btn-sm"
+            *ngIf="i > 0"
+            [attr.aria-label]="'Remove address ' + (i + 1)"
+            (click)="removeAddress(i)"
+          >
+            <app-icon name="trash"></app-icon>Remove
+          </button>
+        </div>
+
+        <div class="form-grid">
+          <div class="field span-2">
+            <label class="label" [for]="'addr-line-' + i">Address</label>
+            <input
+              class="input"
+              [id]="'addr-line-' + i"
+              type="text"
+              formControlName="address"
+              autocomplete="off"
+              [class.is-invalid]="addressInvalid(i, 'address')"
+              [attr.aria-invalid]="addressInvalid(i, 'address')"
+              [attr.aria-describedby]="addressInvalid(i, 'address') ? 'addr-line-e-' + i : null"
+            />
+            <span class="error" [id]="'addr-line-e-' + i" *ngIf="addressInvalid(i, 'address')"
+              >Enter the house or flat number and street.</span
+            >
+          </div>
+
+          <div class="field span-2">
+            <label class="label" [for]="'addr-line2-' + i">Area or landmark (optional)</label>
+            <input class="input" [id]="'addr-line2-' + i" type="text" formControlName="address_line2" autocomplete="off" />
+          </div>
+
+          <div class="field">
+            <label class="label" [for]="'addr-city-' + i">City</label>
+            <input
+              class="input"
+              [id]="'addr-city-' + i"
+              type="text"
+              formControlName="city"
+              autocomplete="off"
+              [class.is-invalid]="addressInvalid(i, 'city')"
+              [attr.aria-invalid]="addressInvalid(i, 'city')"
+              [attr.aria-describedby]="addressInvalid(i, 'city') ? 'addr-city-e-' + i : null"
+            />
+            <span class="error" [id]="'addr-city-e-' + i" *ngIf="addressInvalid(i, 'city')">Enter the city.</span>
+          </div>
+
+          <div class="field">
+            <label class="label" [for]="'addr-pin-' + i">PIN code</label>
+            <input
+              class="input num"
+              [id]="'addr-pin-' + i"
+              type="text"
+              inputmode="numeric"
+              maxlength="6"
+              formControlName="zip_code"
+              autocomplete="off"
+              [class.is-invalid]="addressInvalid(i, 'zip_code')"
+              [attr.aria-invalid]="addressInvalid(i, 'zip_code')"
+              [attr.aria-describedby]="addressInvalid(i, 'zip_code') ? 'addr-pin-e-' + i : null"
+            />
+            <span class="error" [id]="'addr-pin-e-' + i" *ngIf="addressInvalid(i, 'zip_code')"
+              >Enter a 6-digit PIN code.</span
+            >
+          </div>
+
+          <div class="field">
+            <label class="label" [for]="'addr-state-' + i">State</label>
+            <select
+              class="select"
+              [id]="'addr-state-' + i"
+              formControlName="state_code"
+              [class.is-invalid]="addressInvalid(i, 'state_code') || (i === 0 && stateMismatch)"
+              [attr.aria-invalid]="addressInvalid(i, 'state_code') || (i === 0 && stateMismatch)"
+              [attr.aria-describedby]="'addr-state-h-' + i"
+            >
+              <option value="">Choose a state</option>
+              <option *ngFor="let state of states" [value]="state.code">{{ state.name }}</option>
+            </select>
+            <span class="error" [id]="'addr-state-h-' + i" *ngIf="i === 0 && stateMismatch; else stateOther"
+              >The GSTIN belongs to another state. Choose that state or correct the GSTIN.</span
+            >
+            <ng-template #stateOther>
+              <span class="error" [id]="'addr-state-h-' + i" *ngIf="addressInvalid(i, 'state_code'); else stateHint"
+                >Choose the state.</span
+              >
+            </ng-template>
+            <ng-template #stateHint>
+              <span class="hint" [id]="'addr-state-h-' + i" *ngIf="i === 0 && gstinState">Set from the GSTIN.</span>
+            </ng-template>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-pad address-add">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="addAddress()">
+          <app-icon name="plus"></app-icon>Add another address
+        </button>
+      </div>
+    </section>
+  </form>
+
+  <ng-container *ngIf="editable">
+    <app-callout tone="warn" *ngIf="historyState === 'error'">
+      We could not load this customer's quotations and bills.
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="loadHistory()">Try again</button>
+    </app-callout>
+
+    <section class="card" *ngIf="historyState !== 'error'" [attr.aria-busy]="historyState === 'loading'">
+      <div class="card-head"><h2>Quotations</h2></div>
+      <div class="card-pad" *ngIf="historyState === 'loading'" aria-hidden="true">
+        <span class="skeleton sk-line"></span>
+      </div>
+      <p class="card-pad muted" *ngIf="historyState === 'ready' && !quotations.length">
+        No quotations for this customer yet.
+      </p>
+      <table class="table" *ngIf="historyState === 'ready' && quotations.length">
+        <thead>
+          <tr>
+            <th scope="col">Quotation</th>
+            <th scope="col" class="hide-tablet">Windows</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let quotation of quotations">
+            <td>
+              <a class="title" [routerLink]="['/quotation/detail', quotation.id]"><bdi>{{ quotation.name }}</bdi></a>
+              <div class="faint tiny" *ngIf="quotation.number">{{ quotation.number }}</div>
+            </td>
+            <td class="muted num hide-tablet">{{ quotation.windows ?? '—' }}</td>
+            <td><app-quote-status [status]="quotation.status"></app-quote-status></td>
+            <td class="right num">{{ quotation.total | inr }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card" *ngIf="historyState !== 'error'" [attr.aria-busy]="historyState === 'loading'">
+      <div class="card-head"><h2>Bills</h2></div>
+      <div class="card-pad" *ngIf="historyState === 'loading'" aria-hidden="true">
+        <span class="skeleton sk-line"></span>
+      </div>
+      <p class="card-pad muted" *ngIf="historyState === 'ready' && !bills.length">No bills for this customer yet.</p>
+      <table class="table" *ngIf="historyState === 'ready' && bills.length">
+        <thead>
+          <tr>
+            <th scope="col">Bill</th>
+            <th scope="col">Quotation</th>
+            <th scope="col" class="right">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let bill of bills">
+            <td>
+              <span class="title num">{{ bill.number }}</span>
+              <div class="faint tiny" *ngIf="bill.date">{{ bill.date | date : 'd MMM y' }}</div>
+            </td>
+            <td>
+              <a *ngIf="bill.quotationId; else noLink" [routerLink]="['/quotation/detail', bill.quotationId]"
+                ><bdi>{{ bill.quotation }}</bdi></a
+              >
+              <ng-template #noLink
+                ><span class="muted">{{ bill.quotation || '—' }}</span></ng-template
+              >
+            </td>
+            <td class="right num">{{ bill.amount | inr }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </ng-container>
 </div>

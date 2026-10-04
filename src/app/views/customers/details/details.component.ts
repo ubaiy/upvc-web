@@ -1,273 +1,345 @@
-import { Component } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { Component, OnInit } from '@angular/core';
+import {
+  AbstractControl,
+  FormArray,
+  FormBuilder,
+  FormGroup,
+  ValidationErrors,
+  Validators,
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { CustomerService } from '../customer.service';
-import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
+import { catchError, concat, forkJoin, Observable, of, switchMap, toArray } from 'rxjs';
+import { Crumb } from 'src/app/shared/components/page-header/page-header.component';
+import { IResponseDto } from 'src/app/shared/model/common/response.model';
 import { ToastService } from 'src/app/shared/services/toast.service';
-import { ICustomerAdddressDto } from 'src/app/shared/model/customer/customerAddress.model';
-import { SortEvent } from 'primeng/api';
+import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
+import { BillRow, billsOf, toBillRows } from '../../bills/bills.adapter';
+import { BillsService } from '../../bills/bills.service';
+import {
+  AddressValue,
+  CustomerFormValue,
+  CustomerQuotationRow,
+  GstState,
+  gstinStateCode,
+  isBlankAddress,
+  isValidGstin,
+  normaliseGstin,
+  quotationsOf,
+  toAddressPayload,
+  toAddressValues,
+  toCustomerPayload,
+} from '../customer.adapter';
+import { CustomerService } from '../customer.service';
+
+/** A block that has anything in it needs the whole address; an empty one is fine. */
+function addressComplete(group: AbstractControl): ValidationErrors | null {
+  const value = group.value as AddressValue;
+  if (!value.id && isBlankAddress(value)) {
+    return null;
+  }
+  const errors: ValidationErrors = {};
+  if (!value.address.trim()) errors['address'] = true;
+  if (!value.city.trim()) errors['city'] = true;
+  if (!value.state_code) errors['state_code'] = true;
+  if (!/^[1-9][0-9]{5}$/.test(value.zip_code.trim())) errors['zip_code'] = true;
+  return Object.keys(errors).length ? errors : null;
+}
+
+function gstin(control: AbstractControl): ValidationErrors | null {
+  return !normaliseGstin(control.value) || isValidGstin(control.value) ? null : { gstin: true };
+}
+
 @Component({
   selector: 'app-details',
   templateUrl: './details.component.html',
   styleUrls: ['./details.component.scss'],
 })
-export class DetailsComponent {
-  editable: boolean = false;
-  form: FormGroup;
-  submitted: boolean = false;
-  submittedAddress: boolean = false;
-  customerAddresses: Array<ICustomerAdddressDto> = [];
-  addressForm: FormGroup;
-  visible: boolean = false;
-  editAddress: boolean = false;
-  customerId: number;
+export class DetailsComponent implements OnInit {
+  state: 'loading' | 'error' | 'ready' = 'loading';
+  historyState: 'loading' | 'error' | 'ready' = 'loading';
+  editable = false;
+  customerId: number | null = null;
+  customerName = '';
+  submitted = false;
+  saving = false;
+
+  states: GstState[] = [];
+  companyStateCode = '';
+  form: FormGroup = this._initForm();
+  quotations: CustomerQuotationRow[] = [];
+  bills: BillRow[] = [];
+
   constructor(
     private _activeRoute: ActivatedRoute,
     private _router: Router,
     private _fb: FormBuilder,
     private _dataService: CustomerService,
-    private confirmationDialogService: ConfirmationDialogService,
+    private _billsService: BillsService,
+    private _confirm: ConfirmationDialogService,
     private _toastService: ToastService
-  ) {
-    let data = this._activeRoute.snapshot.data;
-    this.editable = data['edit'];
-    this.form = this._initForm();
-    this.addressForm = this._initAddressForm();
-    if (this.editable) {
-      this.customerId = data['data'].id;
-      this.customerAddresses = data['data'].addresses;
-      this.form.patchValue(data['data']);
-    }
+  ) {}
+
+  ngOnInit(): void {
+    const id = Number(this._activeRoute.snapshot.params['id']);
+    this.editable = !!this._activeRoute.snapshot.data['edit'];
+    this.customerId = this.editable && id ? id : null;
+    this.load();
   }
 
-  get f() {
-    return this.form.controls;
+  get title(): string {
+    return this.editable ? this.customerName || 'Customer' : 'New customer';
   }
 
-  get af() {
-    return this.addressForm.controls;
+  get crumbs(): Crumb[] {
+    return [{ label: 'Customers', link: '/customers' }, { label: this.title }];
   }
 
-  public customSort(event: SortEvent) {
-    if (event.data) {
-      event.data.sort((data1, data2) => {
-        if (event.field && event.order) {
-          let value1 = data1[event.field];
-          let value2 = data2[event.field];
-          let result = null;
+  get addresses(): FormArray {
+    return this.form.get('addresses') as FormArray;
+  }
 
-          if (value1 == null && value2 != null) result = -1;
-          else if (value1 != null && value2 == null) result = 1;
-          else if (value1 == null && value2 == null) result = 0;
-          else if (typeof value1 === 'string' && typeof value2 === 'string')
-            result = value1.localeCompare(value2);
-          else result = value1 < value2 ? -1 : value1 > value2 ? 1 : 0;
+  /** The state a valid GSTIN names; the first address must agree with it. */
+  get gstinState(): string {
+    return gstinStateCode(this.form.get('gstin')?.value);
+  }
 
-          return event.order * result;
-        } else {
-          return 0;
+  get stateMismatch(): boolean {
+    const first = this.addresses.at(0)?.value as AddressValue | undefined;
+    return !!this.gstinState && !!first?.state_code && first.state_code !== this.gstinState;
+  }
+
+  load(): void {
+    this.state = 'loading';
+    forkJoin({
+      states: this._dataService.getStates(),
+      // The company's state only pre-selects the list; the form works without it.
+      settings: this._dataService.getCompanySettings().pipe(catchError(() => of(null))),
+      customer: this.customerId ? this._dataService.getCustomerDetail(this.customerId) : of(null),
+    }).subscribe({
+      next: ({ states, settings, customer }) => {
+        if (!states.success || (customer && !customer.success)) {
+          this.state = 'error';
+          return;
         }
-      });
+        this.states = states.data || [];
+        this.companyStateCode = settings?.data?.state_code || '';
+        this._fill(customer?.data);
+        this.state = 'ready';
+      },
+      error: () => (this.state = 'error'),
+    });
+    if (this.customerId) {
+      this.loadHistory();
     }
   }
 
-  public toggleWarningModal() {
-    if (this.form.dirty && this.form.touched) {
-      this.confirmationDialogService.confirm(
-        'Are you sure!',
-        'Are you sure you want to Cancel ? ',
-        'pi-info-circle',
-        () => {
-          this._router.navigate(['/customers']);
-        },
-        () => {
-          console.log('Action rejected');
+  /** This customer's quotations and bills. Its own state: a failure here leaves the form usable. */
+  loadHistory(): void {
+    const id = this.customerId as number;
+    this.historyState = 'loading';
+    forkJoin({
+      quotations: this._billsService.getQuotations(),
+      bills: this._billsService.getBillsList(),
+    }).subscribe({
+      next: ({ quotations, bills }) => {
+        if (!quotations.success || !bills.success) {
+          this.historyState = 'error';
+          return;
         }
-      );
-    } else {
-      this._router.navigate(['/customers']);
+        this.quotations = quotationsOf(id, quotations.data);
+        this.bills = billsOf(id, toBillRows(bills.data, quotations.data));
+        this.historyState = 'ready';
+      },
+      error: () => (this.historyState = 'error'),
+    });
+  }
+
+  setPriceList(value: 'retail' | 'dealer'): void {
+    this.form.get('price_list')?.setValue(value);
+    this.form.markAsDirty();
+  }
+
+  /** A valid GSTIN names its state, so the first address follows it. */
+  onGstinChange(): void {
+    const control = this.form.get('gstin');
+    control?.setValue(normaliseGstin(control.value), { emitEvent: false });
+    if (this.gstinState) {
+      this.addresses.at(0)?.get('state_code')?.setValue(this.gstinState);
     }
   }
 
-  public deleteCustomerAddress(customer: ICustomerAdddressDto) {
-    this.confirmationDialogService.confirm(
-      'Are you sure!',
-      'Are you sure you want to Delete ? ',
-      'pi-info-circle',
+  addAddress(): void {
+    this.addresses.push(this._addressGroup());
+  }
+
+  removeAddress(index: number): void {
+    const value = this.addresses.at(index).value as AddressValue;
+    if (!value.id) {
+      this.addresses.removeAt(index);
+      return;
+    }
+    this._confirm.confirm(
+      'Remove this address?',
+      'Quotations already written to this address keep it.',
+      'pi-exclamation-triangle',
       () => {
-        this._dataService.deleteCustomerAddress(customer.id).subscribe(
-          (res) => {
+        this._dataService.deleteCustomerAddress(value.id as number).subscribe({
+          next: (res) => {
             if (res.success) {
-              this._toastService.showSuccess(res.message);
-              this._dataService
-                .getCustomerAddressList(this.customerId)
-                .subscribe((res) => {
-                  if (res.success) {
-                    this.customerAddresses = res.data;
-                  }
-                });
+              this.addresses.removeAt(index);
+              this._toastService.showSuccess('Address removed');
             } else {
               this._toastService.showError(res.message);
             }
           },
-          (err) => {
-            this._toastService.showError(err.error.message);
-          }
-        );
+          error: (err) => this._toastService.showError(err?.error?.message || 'Could not remove the address'),
+        });
       },
-      () => {
-        console.log('Action rejected');
-      }
+      () => {}
     );
   }
 
-  public toggleAddressWarningModal() {
-    if (this.addressForm.dirty && this.addressForm.touched) {
-      this.confirmationDialogService.confirm(
-        'Are you sure!',
-        'Are you sure you want to Cancel ? ',
-        'pi-info-circle',
-        () => {
-          this.visible = false;
-        },
-        () => {
-          console.log('Action rejected');
-        }
-      );
-    } else {
-      this.visible = false;
+  invalid(name: string): boolean {
+    const control = this.form.get(name);
+    return !!control && control.invalid && (control.touched || this.submitted);
+  }
+
+  addressInvalid(index: number, field: string): boolean {
+    const group = this.addresses.at(index);
+    return !!group.errors?.[field] && (!!group.get(field)?.touched || this.submitted);
+  }
+
+  cancel(): void {
+    if (!this.form.dirty) {
+      this._router.navigate(['/customers']);
+      return;
     }
+    this._confirm.confirm(
+      'Discard your changes?',
+      'What you typed on this page will not be saved.',
+      'pi-exclamation-triangle',
+      () => this._router.navigate(['/customers']),
+      () => {}
+    );
   }
 
-  public closeModal() {
-    this._router.navigate(['/customers']);
-  }
-
-  public submit() {
+  submit(): void {
     this.submitted = true;
-    if (this.form.valid) {
-      if (this.editable) {
-        this._dataService
-          .editCustomer(this.form.getRawValue())
-          .subscribe((res) => {
-            if (res.success) {
-              this._toastService.showSuccess(res.message);
-              this.customerId = res.data.id;
-            } else {
-              this._toastService.showError(res.message);
-            }
-          });
-      } else {
-        this._dataService
-          .addCustomer(this.form.getRawValue())
-          .subscribe((res) => {
-            if (res.success) {
-              this._toastService.showSuccess(res.message);
-              this.customerId = res.data.id;
-              this._router.navigate([`customers/edit/${this.customerId}`]);
-            } else {
-              this._toastService.showError(res.message);
-            }
-          });
+    if (this.form.invalid || this.stateMismatch || this.saving) {
+      return;
+    }
+    const value = this.form.getRawValue() as CustomerFormValue;
+    const isNew = !this.customerId;
+    const payload = toCustomerPayload(value, this.states, isNew);
+    const save: Observable<IResponseDto<any>> = isNew
+      ? this._dataService.addCustomer(payload)
+      : this._dataService.editCustomer({ ...payload, id: this.customerId });
+
+    this.saving = true;
+    save
+      .pipe(
+        switchMap((res) => {
+          if (!res.success) {
+            throw { error: { message: res.message } };
+          }
+          const id: number = res.data?.id ?? this.customerId;
+          return concat(...this._addressCalls(value.addresses, id, isNew)).pipe(
+            toArray(),
+            switchMap((results) => {
+              const failed = results.find((result) => !result.success);
+              if (failed) {
+                throw { error: { message: failed.message } };
+              }
+              return of(id);
+            })
+          );
+        })
+      )
+      .subscribe({
+        next: (id) => {
+          this.saving = false;
+          this.form.markAsPristine();
+          this._toastService.showSuccess(isNew ? `${value.name.trim()} added` : 'Customer saved');
+          if (isNew) {
+            this._router.navigate(['/customers/edit', id]);
+          } else {
+            this.submitted = false;
+            this.load();
+          }
+        },
+        error: (err) => {
+          this.saving = false;
+          this._toastService.showError(err?.error?.message || 'Could not save the customer');
+        },
+      });
+  }
+
+  trackByIndex(index: number): number {
+    return index;
+  }
+
+  /**
+   * The first address of a new customer travels with the customer. Every
+   * other address is saved through its own endpoint: changed ones are
+   * updated, new ones added. The first block is the default.
+   */
+  private _addressCalls(addresses: AddressValue[], customerId: number, isNew: boolean): Observable<IResponseDto<any>>[] {
+    const calls: Observable<IResponseDto<any>>[] = [];
+    addresses.forEach((address, index) => {
+      const body = toAddressPayload(address, customerId, index === 0, this.states);
+      if (address.id) {
+        if (this.addresses.at(index).dirty) {
+          calls.push(this._dataService.editCustomerAddress(body));
+        }
+      } else if (!isBlankAddress(address) && !(isNew && index === 0)) {
+        calls.push(this._dataService.addCustomerAddress(body));
       }
-    }
+    });
+    return calls;
   }
 
-  public submitAddress() {
-    console.log(this.addressForm.value);
-    this.addressForm.get('customer_id')?.patchValue(this.customerId);
-    this.submittedAddress = true;
-    if (this.addressForm.valid) {
-      if (this.editAddress) {
-        this._dataService
-          .editCustomerAddress(this.addressForm.getRawValue())
-          .subscribe((res) => {
-            if (res.success) {
-              this._toastService.showSuccess(res.message);
-              this.visible = false;
-
-              let query = {
-                customer_id: this.customerId,
-              };
-              this._dataService
-                .getCustomerAddressList(query)
-                .subscribe((res) => {
-                  if (res.success) {
-                    this.customerAddresses = res.data;
-                  }
-                });
-            } else {
-              this._toastService.showError(res.message);
-            }
-          });
-      } else {
-        this._dataService
-          .addCustomerAddress(this.addressForm.getRawValue())
-          .subscribe((res) => {
-            if (res.success) {
-              this._toastService.showSuccess(res.message);
-              this.visible = false;
-              let query = {
-                customer_id: this.customerId,
-              };
-              this._dataService
-                .getCustomerAddressList(query)
-                .subscribe((res) => {
-                  if (res.success) {
-                    this.customerAddresses = res.data;
-                  }
-                });
-            } else {
-              this._toastService.showError(res.message);
-            }
-          });
-      }
+  private _fill(customer: any): void {
+    this.form = this._initForm();
+    const addresses = customer ? toAddressValues(customer, this.states) : [];
+    if (customer) {
+      this.customerName = customer.name || '';
+      this.form.patchValue({
+        name: customer.name || '',
+        phone: customer.phone || '',
+        email: customer.email || '',
+        gstin: customer.gstin || '',
+        price_list: Number(customer.is_dealer) ? 'dealer' : 'retail',
+      });
     }
-  }
-
-  public addressAddEdit(address?: ICustomerAdddressDto) {
-    this.visible = !this.visible;
-    if (address) {
-      this.editAddress = true;
-      this.addressForm = this._initAddressForm();
-      this.addressForm.patchValue(address);
-    } else {
-      this.editAddress = false;
-      this.addressForm = this._initAddressForm();
+    if (!addresses.length) {
+      this.addresses.push(this._addressGroup());
     }
-  }
-
-  public handleFormModal(event: any) {
-    this.visible = event;
+    addresses.forEach((address) => this.addresses.push(this._addressGroup(address)));
   }
 
   private _initForm(): FormGroup {
-    let fg = this._fb.group({
-      id: [''],
-      name: ['', [Validators.required]],
-      is_dealer: [false],
+    return this._fb.group({
+      name: ['', [Validators.required, Validators.maxLength(191)]],
       phone: ['', [Validators.required, Validators.pattern('^[0-9]{10}$')]],
       email: ['', [Validators.email]],
-      identity: ['Auto Generated'],
+      gstin: ['', [gstin]],
+      price_list: ['retail'],
+      addresses: this._fb.array([]),
     });
-    fg.controls.identity.disable();
-    return fg;
   }
 
-  private _initAddressForm(): FormGroup {
-    let fg = this._fb.group({
-      id: [''],
-      name: ['Hitesh'],
-      address: ['', [Validators.required]],
-      is_default: [false],
-      customer_id: ['', [Validators.required]],
-      flat_no: ['1'],
-      address_line2: [''],
-      city: ['', [Validators.required]],
-      state: ['', [Validators.required]],
-      country: ['India'],
-      zip_code: ['', [Validators.required]],
-    });
-    return fg;
+  private _addressGroup(address?: AddressValue): FormGroup {
+    return this._fb.group(
+      {
+        id: [address?.id ?? null],
+        address: [address?.address ?? ''],
+        address_line2: [address?.address_line2 ?? ''],
+        city: [address?.city ?? ''],
+        // A new address starts in the fabricator's own state.
+        state_code: [address ? address.state_code : this.companyStateCode],
+        zip_code: [address?.zip_code ?? ''],
+      },
+      { validators: addressComplete }
+    );
   }
 }

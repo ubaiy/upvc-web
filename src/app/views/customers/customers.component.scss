@@ -1,13 +1,15 @@
-.table-container {
-  margin-top: 50px;
-}
-/* Set header and pagination background color */
-.p-table .p-tableheader {
-  background-color: #4f5d73;
-  color: white;
-}
+// Layout of the loading rows only; colours, sizes and radii come from the tokens.
+.sk-search { width: 280px; max-width: 100%; height: var(--h-control); }
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  height: var(--h-row);
+  padding-inline: var(--s-4);
+  border-block-end: 1px solid var(--c-border);
 
-/* Set pagination font color and icons */
-.p-paginator .p-paginator-pages .p-paginator-page a {
-  color: white !important;
+  &:last-child { border-block-end: 0; }
 }
+.sk-name { width: 30%; }
+.sk-cell { width: 14%; }
+.foot-nav { gap: var(--s-2); }

@@ -2,12 +2,12 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { CustomersComponent } from './customers.component';
 import { DetailsComponent } from './details/details.component';
-import { DetailResolver } from './details/detail.resolver';
-import { CustomerListResolver } from './customer-list.resolver';
+
+// No resolvers: each page loads its own data, so it can show a skeleton
+// while it waits and an inline error with "Try again" when it fails.
 const routes: Routes = [
   {
     path: '',
-    resolve: { list: CustomerListResolver },
     component: CustomersComponent,
     data: {
       title: `Customers`,
@@ -15,14 +15,13 @@ const routes: Routes = [
   },
   {
     path: 'edit/:id',
-    resolve: { data: DetailResolver },
     component: DetailsComponent,
-    data: { edit: true },
+    data: { edit: true, title: 'Customer' },
   },
   {
     path: 'add',
     component: DetailsComponent,
-    data: { edit: false },
+    data: { edit: false, title: 'New customer' },
   },
 ];
 
