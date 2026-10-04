@@ -1,0 +1,129 @@
+// Layout only; colours, sizes and radii come from the tokens.
+h2 { margin: 0; font-size: var(--fs-16); }
+.meta { flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-2); }
+.next { min-width: 200px; justify-content: center; gap: var(--s-2); }
+.notice { margin-block-end: var(--s-4); }
+.sub-line { display: block; }
+
+.progress-card { margin-block-end: var(--s-5); }
+.promised { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
+.promised .input { width: 170px; }
+
+// The six stages in a row; a line joins them and fills up to the current one.
+.track {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  margin: 0;
+  padding: var(--s-5);
+  list-style: none;
+}
+.track li {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-2);
+  min-width: 0;
+  text-align: center;
+  color: var(--c-text-3);
+
+  // the line to the previous stage
+  &::before {
+    content: '';
+    position: absolute;
+    inset-block-start: 13px;
+    inset-inline: -50% 50%;
+    height: 2px;
+    background: var(--c-border-strong);
+  }
+  &:first-child::before { display: none; }
+  &.done::before { background: var(--c-accent); }
+}
+.dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--c-border-strong);
+  border-radius: 50%;
+  background: var(--c-surface);
+  color: var(--c-surface);
+}
+.done .dot { border-color: var(--c-accent); background: var(--c-accent); }
+.now .dot { background: var(--c-surface); box-shadow: 0 0 0 4px var(--c-accent-soft); }
+.now .dot::after { content: ''; width: 10px; height: 10px; border-radius: 50%; background: var(--c-accent); }
+.step-text { display: flex; flex-direction: column; min-width: 0; }
+.step-label { font-weight: var(--fw-medium); color: var(--c-text-2); }
+.done .step-label { color: var(--c-text); }
+.now .step-label { color: var(--c-accent-text); font-weight: var(--fw-semibold); }
+.step-when { font-size: var(--fs-12); overflow-wrap: anywhere; }
+.is-cancelled { opacity: 0.6; }
+
+.main, .side { display: flex; flex-direction: column; gap: var(--s-5); min-width: 0; }
+.doc-actions { flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
+.notes { height: auto; padding-block: var(--s-2); resize: vertical; }
+
+.side h2 { margin-block-end: var(--s-3); }
+.side .card-head h2 { margin: 0; }
+.side p { margin: 0 0 var(--s-2); }
+.who { font-weight: var(--fw-medium); }
+.call { min-height: 44px; }
+.term { margin: var(--s-3) 0 0 !important; }
+
+.links { margin: 0; padding: 0; list-style: none; }
+.links li + li { border-block-start: 1px solid var(--c-border); }
+.link-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: 56px;
+  padding: var(--s-2) var(--s-5);
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+}
+a.link-row, button.link-row { cursor: pointer; }
+a.link-row:hover, button.link-row:hover { background: var(--c-surface-2); text-decoration: none; }
+.link-row .grow { display: flex; flex-direction: column; }
+.link-title { font-weight: var(--fw-medium); }
+
+.sk-block { display: flex; flex-direction: column; gap: var(--s-3); margin-block-end: var(--s-5); }
+.sk-line { width: 40%; height: 16px; &.wide { width: 70%; height: 28px; } }
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  height: var(--h-row);
+  padding-inline: var(--s-5);
+  border-block-end: 1px solid var(--c-border);
+
+  &:last-child { border-block-end: 0; }
+}
+.sk-name { width: 34%; }
+.sk-cell { width: 14%; }
+
+@media (max-width: 640px) {
+  .next { min-width: 0; }
+  .promised { width: 100%; }
+  .promised .input { flex: 1; width: auto; }
+
+  // The stages run down the page, the line on the left.
+  .track { grid-template-columns: minmax(0, 1fr); padding: var(--s-4); }
+  .track li {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--s-3);
+    padding-block-end: var(--s-4);
+    text-align: start;
+
+    &::before { inset-block: -100% auto; inset-inline: 13px auto; width: 2px; height: 100%; }
+    &:last-child { padding-block-end: 0; }
+  }
+  .link-row { padding-inline: var(--s-4); }
+  .doc-actions { justify-content: flex-start; }
+  .doc-actions .btn { flex: 1 1 auto; }
+}

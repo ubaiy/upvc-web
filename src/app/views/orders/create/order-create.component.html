@@ -1,0 +1,91 @@
+<div class="page-narrow">
+  <app-page-header title="Create order" subtitle="The quotation becomes a job the workshop can follow" [crumbs]="crumbs">
+  </app-page-header>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    {{ errorMessage }}
+    <button action type="button" class="btn btn-secondary btn-sm" *ngIf="quotationId" (click)="load()">Try again</button>
+    <a action class="btn btn-secondary btn-sm" *ngIf="!quotationId" routerLink="/quotation">Go to quotations</a>
+  </app-callout>
+
+  <section class="card card-pad" *ngIf="state === 'loading'" aria-busy="true">
+    <span class="sr-only" role="status">Loading the quotation</span>
+    <span class="skeleton sk-line wide" aria-hidden="true"></span>
+    <span class="skeleton sk-line" aria-hidden="true"></span>
+    <span class="skeleton sk-line" aria-hidden="true"></span>
+  </section>
+
+  <ng-container *ngIf="state === 'ready' && quotation as q">
+    <section class="card summary" aria-label="Quotation">
+      <div class="card-pad">
+        <p class="muted small num">{{ q.number }}</p>
+        <h2>
+          <bdi>{{ q.name || 'Quotation' }}</bdi>
+        </h2>
+        <p class="muted">
+          <bdi>{{ q.customer }}</bdi>
+        </p>
+      </div>
+      <div class="stats">
+        <app-stat label="Order total" [value]="q.total | inr"></app-stat>
+        <app-stat label="Windows" [value]="q.windows"></app-stat>
+        <app-stat
+          label="Advance"
+          [value]="q.advance ? (q.advance.amount | inr) : 'None'"
+          [detail]="q.advance ? q.advance.percent + '% by the payment terms' : 'The payment terms name no advance'"
+        ></app-stat>
+      </div>
+    </section>
+
+    <app-callout tone="warn" class="gap" *ngIf="!canOrder">
+      This quotation is {{ q.status || 'not accepted' }}. Only a quotation the customer has accepted becomes an order: mark it
+      accepted on the quotation page, then come back.
+      <a action class="btn btn-primary btn-sm" [routerLink]="['/quotation/detail', q.id]">Open the quotation</a>
+    </app-callout>
+
+    <form class="card card-pad gap" *ngIf="canOrder" novalidate (ngSubmit)="create()">
+      <app-callout tone="danger" class="gap-below" *ngIf="refusal as no">
+        {{ no.message }}
+        <a action class="btn btn-secondary btn-sm" *ngIf="no.orderId" [routerLink]="['/orders', no.orderId]">Open that order</a>
+      </app-callout>
+
+      <div class="field">
+        <label class="label" for="new-promised">Promised date (optional)</label>
+        <input
+          id="new-promised"
+          name="promised"
+          class="input date"
+          type="date"
+          [min]="today"
+          [class.is-invalid]="promisedMessage"
+          [(ngModel)]="promised"
+          [disabled]="saving"
+          aria-describedby="new-promised-help"
+        />
+        <span id="new-promised-help">
+          <span class="error" *ngIf="promisedMessage; else promisedHint">{{ promisedMessage }}</span>
+          <ng-template #promisedHint
+            ><span class="hint">The day the customer was told. The order shows as overdue after it. You can set it later.</span></ng-template
+          >
+        </span>
+      </div>
+
+      <div class="field">
+        <label class="label" for="new-notes">Note for the workshop (optional)</label>
+        <textarea id="new-notes" name="notes" class="input notes" rows="2" maxlength="2000" [(ngModel)]="notes" [disabled]="saving"></textarea>
+      </div>
+
+      <p class="muted small">
+        The windows and prices are copied as they are now. Changing the quotation or a price list later does not move the
+        order.
+      </p>
+
+      <div class="actions">
+        <a class="btn btn-secondary btn-lg" [routerLink]="['/quotation/detail', q.id]">Back to the quotation</a>
+        <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving">
+          {{ saving ? 'Creating…' : 'Create order' }}
+        </button>
+      </div>
+    </form>
+  </ng-container>
+</div>

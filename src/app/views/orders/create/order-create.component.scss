@@ -1,0 +1,16 @@
+// Layout only; colours, sizes and radii come from the tokens.
+.page-narrow { margin-inline: auto; }
+h2 { margin: 0; font-size: var(--fs-20); }
+p { margin: 0; }
+.summary .stats { border-block-start: 1px solid var(--c-border); }
+.gap { display: block; margin-block-start: var(--s-5); }
+form.gap { display: flex; flex-direction: column; gap: var(--s-4); }
+.date { max-width: 220px; }
+.notes { height: auto; padding-block: var(--s-2); resize: vertical; }
+.actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: var(--s-2); }
+.sk-line { display: block; width: 40%; height: 16px; margin-block-end: var(--s-3); &.wide { width: 70%; height: 24px; } }
+
+@media (max-width: 640px) {
+  .date { max-width: none; }
+  .actions .btn { flex: 1 1 auto; }
+}

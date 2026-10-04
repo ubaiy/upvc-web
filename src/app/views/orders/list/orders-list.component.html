@@ -1,0 +1,189 @@
+<!-- An order is made from an accepted quotation, so this page has no "New" button; its one primary button is in the empty state. -->
+<app-page-header title="Orders" subtitle="Every job after the quotation, by stage">
+  <div actions class="seg" role="group" aria-label="View" *ngIf="state === 'ready' && orders.length">
+    <button type="button" [attr.aria-pressed]="view === 'list'" (click)="setView('list')">List</button>
+    <button type="button" [attr.aria-pressed]="view === 'board'" (click)="setView('board')">Board</button>
+  </div>
+</app-page-header>
+
+<app-callout tone="warn" *ngIf="state === 'error'">
+  {{ errorMessage }}
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card" *ngIf="state === 'loading'" aria-busy="true">
+  <span class="sr-only" role="status">Loading orders</span>
+  <div class="toolbar" aria-hidden="true"><span class="skeleton sk-search"></span></div>
+  <div class="sk-row" aria-hidden="true" *ngFor="let i of placeholders">
+    <span class="skeleton sk-name"></span>
+    <span class="skeleton sk-cell"></span>
+    <span class="skeleton sk-cell"></span>
+    <span class="skeleton sk-cell"></span>
+  </div>
+</section>
+
+<section class="card" *ngIf="state === 'ready' && !orders.length">
+  <app-empty-state
+    icon="layers"
+    title="No orders yet"
+    text="An order starts from a quotation the customer has accepted. Open the quotation and press Create order; the job then moves here from Confirmed to Closed, one tap a stage."
+  >
+    <a class="btn btn-primary" routerLink="/quotation">Go to quotations</a>
+  </app-empty-state>
+</section>
+
+<ng-container *ngIf="state === 'ready' && orders.length">
+  <app-callout class="notice" tone="warn" *ngIf="notice as failure">
+    {{ failure.message }}
+    <button action type="button" class="btn btn-secondary btn-sm" *ngIf="failure.retry as retry" (click)="retry()">
+      Try again
+    </button>
+  </app-callout>
+
+  <!-- List: a tab and a count per stage -->
+  <ng-container *ngIf="view === 'list'">
+    <div class="tabs" role="tablist" aria-label="Orders by stage">
+      <button
+        type="button"
+        class="tab"
+        role="tab"
+        *ngFor="let item of tabs"
+        [attr.aria-selected]="tab === item.tab"
+        (click)="setTab(item.tab)"
+      >
+        {{ item.label }}<span class="count" *ngIf="count(item.tab) !== null">{{ count(item.tab) }}</span>
+      </button>
+    </div>
+
+    <section class="card">
+      <div class="toolbar">
+        <label class="input-group">
+          <app-icon name="search"></app-icon>
+          <input
+            type="search"
+            placeholder="Search number, project or customer"
+            aria-label="Search orders"
+            [(ngModel)]="search"
+            (ngModelChange)="onSearch()"
+          />
+        </label>
+        <span class="grow"></span>
+        <span class="muted small">Newest first</span>
+      </div>
+
+      <table class="table orders" *ngIf="rows.length">
+        <thead>
+          <tr>
+            <th scope="col">Order</th>
+            <th scope="col">Customer</th>
+            <th scope="col">Stage</th>
+            <th scope="col" class="hide-tablet">Promised</th>
+            <th scope="col" class="right hide-tablet">Total</th>
+            <th scope="col" class="right">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let order of rows; trackBy: trackById">
+            <td>
+              <a class="title num row-link" [routerLink]="['/orders', order.id]">{{ order.number }}</a>
+              <span class="muted small sub-line"
+                ><bdi>{{ order.quotationName || order.quotationNumber }}</bdi></span
+              >
+            </td>
+            <td>
+              <bdi>{{ order.customerName || '–' }}</bdi>
+            </td>
+            <td>
+              <span class="badge badge-danger" *ngIf="order.cancelled">Cancelled</span>
+              <span class="badge badge-accent" *ngIf="!order.cancelled">{{ order.stageLabel }}</span>
+              <span class="badge badge-danger late" *ngIf="order.isOverdue && !order.cancelled">Overdue</span>
+            </td>
+            <td class="muted small hide-tablet">{{ order.promisedDate ? (order.promisedDate | date : 'd MMM y') : 'Not set' }}</td>
+            <td class="right num hide-tablet">{{ order.total | inr }}</td>
+            <td class="right">
+              <span class="num">{{ order.balance | inr }}</span>
+              <span class="badge sub-badge" [ngClass]="badge(order).tone" *ngIf="!order.cancelled">{{ badge(order).label }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="empty" *ngIf="!rows.length && search">
+        <h2>No order matches "{{ search }}"</h2>
+        <p>Check the spelling, or search by customer name.</p>
+        <button type="button" class="btn btn-secondary" (click)="clearSearch()">Clear search</button>
+      </div>
+
+      <div class="empty" *ngIf="!rows.length && !search">
+        <h2>No {{ tabLabel }} orders</h2>
+        <p *ngIf="tab === 'overdue'">Every open order is still within its promised date.</p>
+        <p *ngIf="tab !== 'overdue'">An order shows here when it reaches this stage.</p>
+        <button type="button" class="btn btn-secondary" (click)="setTab('all')">Show all orders</button>
+      </div>
+
+      <div class="table-foot" *ngIf="rows.length">
+        <span>{{ countLabel }}</span>
+        <span class="u-row foot-nav">
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="page === 0" (click)="go(-1)">Previous</button>
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="page >= pageCount - 1" (click)="go(1)">
+            Next
+          </button>
+        </span>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- Board: a column per stage -->
+  <ng-container *ngIf="view === 'board'">
+    <div class="board-tools">
+      <label class="input-group">
+        <app-icon name="search"></app-icon>
+        <input type="search" placeholder="Search number, project or customer" aria-label="Search orders" [(ngModel)]="search" />
+      </label>
+    </div>
+    <div class="board" role="list" aria-label="Orders by stage">
+      <section
+        class="column"
+        role="listitem"
+        *ngFor="let column of board; trackBy: trackByStage"
+        [attr.aria-label]="column.label + ', ' + column.orders.length + ' orders'"
+      >
+        <h2 class="column-head">
+          {{ column.label }}<span class="count">{{ column.orders.length }}</span>
+        </h2>
+        <p class="column-empty" *ngIf="!column.orders.length">Nothing here</p>
+        <article class="job" *ngFor="let order of column.orders; trackBy: trackById" [class.is-late]="order.isOverdue">
+          <a class="job-link" [routerLink]="['/orders', order.id]" [attr.aria-label]="'Open ' + order.number">
+            <span class="job-number num">{{ order.number }}</span>
+            <span class="job-customer"
+              ><bdi>{{ order.customerName || 'Customer' }}</bdi></span
+            >
+            <span class="muted small"
+              ><bdi>{{ order.quotationName || order.quotationNumber }}</bdi> · {{ order.totalQuantity }}
+              {{ order.totalQuantity === 1 ? 'window' : 'windows' }}</span
+            >
+            <span class="job-meta">
+              <span class="badge badge-danger" *ngIf="order.isOverdue">Overdue</span>
+              <span class="muted small" *ngIf="order.promisedDate">Promised {{ order.promisedDate | date : 'd MMM' }}</span>
+              <span class="muted small" *ngIf="!order.promisedDate">No promised date</span>
+            </span>
+            <span class="job-meta">
+              <span class="badge" [ngClass]="badge(order).tone">{{ badge(order).label }}</span>
+              <span class="small num" *ngIf="order.balance > 0">{{ order.balance | inr }} to pay</span>
+            </span>
+          </a>
+          <button
+            type="button"
+            class="btn btn-secondary job-next"
+            *ngIf="order.nextStage as next"
+            [disabled]="moving !== null"
+            [attr.aria-label]="next.action + ': ' + order.number"
+            (click)="advance(order)"
+          >
+            {{ moving === order.id ? 'Moving…' : next.action }}<app-icon name="arrow-right" [mirror]="true"></app-icon>
+          </button>
+        </article>
+      </section>
+    </div>
+  </ng-container>
+</ng-container>

@@ -1,0 +1,314 @@
+<app-page-header [title]="order?.number || 'Order'" [subtitle]="subtitle" [crumbs]="crumbs">
+  <div meta class="u-row meta" *ngIf="state === 'ready' && order as o">
+    <span class="badge badge-danger" *ngIf="o.cancelled">Cancelled</span>
+    <span class="badge badge-accent" *ngIf="!o.cancelled">{{ o.stageLabel }}</span>
+    <span class="badge badge-danger" *ngIf="o.isOverdue && !o.cancelled">Overdue</span>
+    <span class="badge" [ngClass]="badge(o).tone" *ngIf="!o.cancelled">{{ badge(o).label }}</span>
+  </div>
+  <ng-container ngProjectAs="[actions]" *ngIf="state === 'ready' && order as o">
+    <button
+      type="button"
+      class="btn btn-secondary btn-icon btn-lg"
+      aria-haspopup="menu"
+      aria-label="More actions for this order"
+      *ngIf="!o.cancelled"
+      [disabled]="!!busy"
+      (click)="openMenu($event)"
+    >
+      <app-icon name="more"></app-icon>
+    </button>
+    <!-- The one primary button: the next stage, in the api's own words. -->
+    <button
+      type="button"
+      class="btn btn-primary btn-lg next"
+      *ngIf="o.nextStage as next"
+      [disabled]="!!busy"
+      (click)="advance()"
+    >
+      {{ isBusy('stage') ? 'Saving…' : next.action }}<app-icon name="arrow-right" [mirror]="true"></app-icon>
+    </button>
+  </ng-container>
+</app-page-header>
+
+<app-callout tone="warn" *ngIf="state === 'error'">
+  {{ errorMessage }}
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<ng-container *ngIf="state === 'loading'">
+  <span class="sr-only" role="status">Loading the order</span>
+  <section class="card card-pad sk-block" aria-hidden="true">
+    <span class="skeleton sk-line wide"></span>
+    <span class="skeleton sk-line"></span>
+  </section>
+  <section class="card" aria-hidden="true">
+    <div class="sk-row" *ngFor="let i of placeholders">
+      <span class="skeleton sk-name"></span>
+      <span class="skeleton sk-cell"></span>
+      <span class="skeleton sk-cell"></span>
+    </div>
+  </section>
+</ng-container>
+
+<ng-container *ngIf="state === 'ready' && order as o">
+  <app-callout class="notice" tone="danger" *ngIf="o.cancelled">
+    This order was cancelled<ng-container *ngIf="o.cancelledAt"> on {{ o.cancelledAt | date : 'd MMM y' }}</ng-container
+    >.<ng-container *ngIf="o.cancelReason"> Reason: {{ o.cancelReason }}.</ng-container>
+    Its number is not used again; the quotation can get a new order.
+  </app-callout>
+
+  <app-callout class="notice" tone="warn" *ngIf="actionError as failure">
+    {{ failure.message }}
+    <button action type="button" class="btn btn-secondary btn-sm" *ngIf="failure.retry as retry" (click)="retry()">
+      Try again
+    </button>
+  </app-callout>
+
+  <section class="card progress-card" aria-labelledby="progress-title">
+    <div class="card-head">
+      <h2 id="progress-title">Progress</h2>
+      <form class="promised" (ngSubmit)="savePromised()">
+        <label class="label" for="promised-date">Promised date</label>
+        <input
+          id="promised-date"
+          name="promised"
+          class="input"
+          type="date"
+          [min]="o.orderDate"
+          [(ngModel)]="promised"
+          [disabled]="o.cancelled || !!busy"
+        />
+        <button type="submit" class="btn btn-secondary" *ngIf="promisedChanged" [disabled]="!!busy">
+          {{ isBusy('promised') ? 'Saving…' : 'Save date' }}
+        </button>
+      </form>
+    </div>
+    <ol class="track" [class.is-cancelled]="o.cancelled">
+      <li *ngFor="let step of o.stages" [class.done]="step.done" [class.now]="step.current" [attr.aria-current]="step.current ? 'step' : null">
+        <span class="dot" aria-hidden="true"><app-icon name="check" *ngIf="step.done && !step.current"></app-icon></span>
+        <span class="step-text">
+          <span class="step-label">{{ step.label }}</span>
+          <span class="step-when" *ngIf="step.date">{{ step.date | date : 'd MMM' }}<ng-container *ngIf="step.by"> · {{ step.by }}</ng-container></span>
+          <span class="step-when" *ngIf="!step.date">Not yet</span>
+        </span>
+      </li>
+    </ol>
+  </section>
+
+  <div class="split">
+    <div class="main">
+      <section class="card" aria-labelledby="windows-title">
+        <div class="card-head">
+          <h2 id="windows-title">Windows</h2>
+          <span class="muted small"
+            >{{ o.totalQuantity }} {{ o.totalQuantity === 1 ? 'window' : 'windows' }}, as quoted when the order was
+            made</span
+          >
+        </div>
+        <table class="table">
+          <thead>
+            <tr>
+              <th scope="col">Window</th>
+              <th scope="col" class="hide-tablet">HSN</th>
+              <th scope="col" class="right">Qty</th>
+              <th scope="col" class="right">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let line of o.lines">
+              <td>
+                <span class="title"
+                  ><bdi>{{ line.name }}</bdi></span
+                >
+                <span class="muted small sub-line" *ngIf="line.size">{{ line.size }}</span>
+              </td>
+              <td class="muted small hide-tablet">{{ line.hsn || '–' }}</td>
+              <td class="right num">{{ line.quantity }}</td>
+              <td class="right num">{{ line.amount | inr }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="card" aria-labelledby="challan-title">
+        <div class="card-head">
+          <div>
+            <h2 id="challan-title">Delivery challan</h2>
+            <span class="muted small num" *ngIf="o.challanNumber">{{ o.challanNumber }}</span>
+          </div>
+          <div class="u-row doc-actions">
+            <button type="button" class="btn btn-secondary" [disabled]="!!busy" (click)="previewChallan()">
+              <app-icon name="eye"></app-icon>{{ isBusy('challan:preview') ? 'Opening…' : 'Preview' }}
+            </button>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              [disabled]="!!busy"
+              aria-label="Download the delivery challan as PDF"
+              (click)="downloadChallan()"
+            >
+              <app-icon name="download"></app-icon>{{ isBusy('challan:download') ? 'Preparing…' : 'Download PDF' }}
+            </button>
+            <button type="button" class="btn btn-secondary" [disabled]="!!busy" aria-label="Share the delivery challan" (click)="shareChallan()">
+              <app-icon name="share"></app-icon>{{ isBusy('challan:share') ? 'Preparing…' : 'Share' }}
+            </button>
+          </div>
+        </div>
+        <form class="card-pad form-grid" (ngSubmit)="saveTransport()">
+          <div class="field">
+            <label class="label" for="vehicle">Vehicle number</label>
+            <input id="vehicle" name="vehicle" class="input" type="text" maxlength="40" autocomplete="off" [(ngModel)]="vehicle" [disabled]="o.cancelled || !!busy" />
+          </div>
+          <div class="field">
+            <label class="label" for="transporter">Transporter</label>
+            <input id="transporter" name="transporter" class="input" type="text" maxlength="100" autocomplete="off" [(ngModel)]="transporter" [disabled]="o.cancelled || !!busy" />
+          </div>
+          <div class="field span-2">
+            <label class="label" for="order-notes">Note for delivery</label>
+            <textarea id="order-notes" name="notes" class="input notes" rows="2" maxlength="2000" [(ngModel)]="notes" [disabled]="o.cancelled || !!busy"></textarea>
+            <span class="hint">Printed on the challan. Leave the vehicle blank to write it by hand.</span>
+          </div>
+          <div class="span-2" *ngIf="transportChanged">
+            <button type="submit" class="btn btn-secondary" [disabled]="!!busy">
+              {{ isBusy('transport') ? 'Saving…' : 'Save delivery details' }}
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <app-document-preview
+        *ngIf="challanPreview as html"
+        [title]="'Delivery challan ' + o.challanNumber"
+        [html]="html"
+        (closed)="challanPreview = null"
+      ></app-document-preview>
+
+      <app-account-payments #payments [orderId]="o.id" (changed)="refresh()"></app-account-payments>
+    </div>
+
+    <aside class="side">
+      <section class="card card-pad" aria-labelledby="customer-title">
+        <h2 id="customer-title">Customer</h2>
+        <p class="who">
+          <a *ngIf="o.customerId; else customerText" [routerLink]="['/customers/edit', o.customerId]"
+            ><bdi>{{ o.customerName || 'Customer' }}</bdi></a
+          >
+          <ng-template #customerText
+            ><bdi>{{ o.customerName || '–' }}</bdi></ng-template
+          >
+        </p>
+        <p *ngIf="o.phone">
+          <a class="btn btn-secondary call" [href]="'tel:' + o.phone"><app-icon name="phone"></app-icon>{{ o.phone }}</a>
+        </p>
+        <p class="muted small" *ngIf="o.address">
+          <bdi>{{ o.address }}</bdi>
+        </p>
+      </section>
+
+      <section class="card" aria-labelledby="links-title">
+        <div class="card-head"><h2 id="links-title">This job</h2></div>
+        <ul class="links">
+          <li>
+            <a *ngIf="o.quotationId; else noQuotation" class="link-row" [routerLink]="['/quotation/detail', o.quotationId]">
+              <app-icon name="file"></app-icon>
+              <span class="grow"
+                ><span class="link-title">Quotation</span
+                ><span class="muted small"
+                  ><bdi>{{ o.quotationNumber }}</bdi></span
+                ></span
+              >
+              <app-icon name="chev-right" [mirror]="true"></app-icon>
+            </a>
+            <ng-template #noQuotation><span class="link-row muted">No quotation</span></ng-template>
+          </li>
+          <li *ngIf="o.quotationId">
+            <a class="link-row" [routerLink]="['/production', o.quotationId]">
+              <app-icon name="ruler"></app-icon>
+              <span class="grow"
+                ><span class="link-title">Production pack</span
+                ><span class="muted small" *ngIf="o.productionJob as job"
+                  >{{ job.number }}{{ job.verified ? '' : ' · not verified' }}</span
+                ><span class="muted small" *ngIf="!o.productionJob">Not frozen yet</span></span
+              >
+              <app-icon name="chev-right" [mirror]="true"></app-icon>
+            </a>
+          </li>
+          <li>
+            <a *ngIf="o.bill as bill; else noBill" class="link-row" [routerLink]="['/payments/bill', bill.id]">
+              <app-icon name="receipt"></app-icon>
+              <span class="grow"
+                ><span class="link-title">Bill</span
+                ><span class="muted small num">{{ bill.number }} · {{ bill.total | inr }}</span></span
+              >
+              <app-icon name="chev-right" [mirror]="true"></app-icon>
+            </a>
+            <ng-template #noBill>
+              <span class="link-row">
+                <app-icon name="receipt"></app-icon>
+                <span class="grow"
+                  ><span class="link-title">Bill</span
+                  ><span class="muted small">Not billed yet. The bill is made from the quotation.</span></span
+                >
+              </span>
+            </ng-template>
+          </li>
+          <li>
+            <button type="button" class="link-row" (click)="payments.focusPanel()">
+              <app-icon name="rupee"></app-icon>
+              <span class="grow"
+                ><span class="link-title">Payments</span
+                ><span class="muted small num">{{ o.received | inr }} received · {{ o.balance | inr }} to pay</span></span
+              >
+              <app-icon name="chev-down"></app-icon>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <section class="card card-pad" aria-labelledby="amounts-title">
+        <h2 id="amounts-title">Amounts</h2>
+        <dl class="dl">
+          <dt>Subtotal</dt>
+          <dd>{{ o.subtotal | inr }}</dd>
+          <ng-container *ngIf="o.discountAmount > 0">
+            <dt>Discount</dt>
+            <dd>{{ -o.discountAmount | inr }}</dd>
+            <dt>Taxable value</dt>
+            <dd>{{ o.taxableValue | inr }}</dd>
+          </ng-container>
+          <ng-container *ngFor="let tax of o.taxLines">
+            <dt>{{ tax.label }}</dt>
+            <dd>{{ tax.amount | inr }}</dd>
+          </ng-container>
+          <ng-container *ngIf="!o.taxLines.length">
+            <dt>GST</dt>
+            <dd>{{ o.totalTax | inr }}</dd>
+          </ng-container>
+          <ng-container *ngIf="o.roundOff">
+            <dt>Round off</dt>
+            <dd>{{ o.roundOff | inr }}</dd>
+          </ng-container>
+          <dt class="total">Total</dt>
+          <dd class="total">{{ o.total | inr }}</dd>
+        </dl>
+        <p class="muted small term" *ngIf="o.paymentTerm">Payment terms: {{ o.paymentTerm }}</p>
+        <p class="muted small term">Order date: {{ o.orderDate | date : 'd MMM y' }}</p>
+      </section>
+    </aside>
+  </div>
+</ng-container>
+
+<p-menu #moreMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+
+<app-reason-dialog
+  *ngIf="cancelling as dialog"
+  [title]="'Cancel ' + (order?.number || 'this order') + '?'"
+  text="The order stays on record as cancelled and its number is not used again. The quotation can then get a new order. An order that holds money must be refunded first."
+  label="Why is it cancelled?"
+  confirmLabel="Cancel order"
+  keepLabel="Keep the order"
+  [busy]="dialog.busy"
+  [error]="dialog.error"
+  (confirmed)="cancel($event)"
+  (closed)="cancelling = null"
+></app-reason-dialog>

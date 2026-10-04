@@ -1,0 +1,94 @@
+// Layout only; colours, sizes and radii come from the tokens.
+.notice { margin-block-end: var(--s-4); }
+.sub-line { display: block; }
+.late, .sub-badge { margin-inline-start: var(--s-2); }
+.foot-nav { gap: var(--s-2); }
+
+// The whole row opens the order: the number's link is stretched over it.
+.orders tbody tr { position: relative; cursor: pointer; }
+.row-link::after { content: ''; position: absolute; inset: 0; }
+.row-link:focus-visible { outline: none; }
+.row-link:focus-visible::after { box-shadow: inset var(--focus-ring); }
+
+.sk-search { width: 280px; max-width: 100%; height: var(--h-control); }
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  height: var(--h-row);
+  padding-inline: var(--s-4);
+  border-block-end: 1px solid var(--c-border);
+
+  &:last-child { border-block-end: 0; }
+}
+.sk-name { width: 28%; }
+.sk-cell { width: 14%; }
+
+.board-tools { display: flex; margin-block-end: var(--s-4); }
+.board-tools .input-group { width: 320px; max-width: 100%; }
+
+// Six columns. On a tablet they scroll sideways inside the board, never the page.
+.board {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(208px, 1fr));
+  gap: var(--s-3);
+  overflow-x: auto;
+  padding-block-end: var(--s-3);
+  scroll-snap-type: x proximity;
+}
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  min-width: 0;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  background: var(--c-surface-2);
+  scroll-snap-align: start;
+}
+.column-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 var(--s-1);
+  font-size: var(--fs-13);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-2);
+}
+.column-head .count { font-weight: var(--fw-regular); color: var(--c-text-3); font-variant-numeric: tabular-nums; }
+.column-empty { margin: 0; padding: var(--s-4) 0; text-align: center; font-size: var(--fs-13); color: var(--c-text-3); }
+
+.job {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  background: var(--c-surface);
+
+  &.is-late { border-color: var(--c-danger); }
+}
+.job-link {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--s-3);
+  color: inherit;
+  border-radius: var(--r-md);
+
+  &:hover { text-decoration: none; background: var(--c-surface-2); }
+}
+.job-number { font-size: var(--fs-12); color: var(--c-text-3); }
+.job-customer { font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+.job-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-1); }
+.job-next {
+  justify-content: space-between;
+  min-height: 44px;
+  margin: 0 var(--s-2) var(--s-2);
+}
+
+@media (max-width: 640px) {
+  // One column: the stages follow each other down the page.
+  .board { grid-template-columns: minmax(0, 1fr); overflow-x: visible; }
+  .board-tools .input-group { width: 100%; }
+  .sub-badge { margin-inline-start: 0; }
+}
