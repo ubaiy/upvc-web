@@ -1,0 +1,331 @@
+<div class="sheet">
+  <header class="page-header">
+    <div>
+      <h1>Components</h1>
+      <p class="sub">Every building block the screens use. Spec: design-system.md.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn btn-secondary btn-sm" [attr.aria-pressed]="theme === 'dark'" (click)="setTheme(theme === 'dark' ? 'light' : 'dark')">Dark</button>
+      <button type="button" class="btn btn-secondary btn-sm" [attr.aria-pressed]="dir === 'rtl'" (click)="setDir(dir === 'rtl' ? 'ltr' : 'rtl')">RTL</button>
+      <button type="button" class="btn btn-secondary btn-sm" (click)="reset()">Reset</button>
+    </div>
+  </header>
+
+  <!-- ── 1. The component sheet, section for section as in mockups/components.html ── -->
+
+  <section class="sec">
+    <h2>Colour</h2>
+    <div class="sw">
+      <div *ngFor="let name of swatches">
+        <div class="chip" [style.background]="'var(--c-' + name + ')'"></div>
+        <span>{{ name }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Type</h2>
+    <div class="stack-2">
+      <div class="display">Display 32 · sign-in, pricing</div>
+      <h1>Page title 24</h1>
+      <h2>Section title 16</h2>
+      <p>Body 14: the default for everything you read and type.</p>
+      <p class="muted small">Secondary 13: supporting detail.</p>
+      <p class="faint tiny">Caption 12: codes, timestamps, table headers.</p>
+      <p class="num strong">{{ 157402.17 | inr }} · money uses tabular numerals</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Buttons</h2>
+    <div class="demo">
+      <button type="button" class="btn btn-primary"><app-icon name="plus"></app-icon>Primary</button>
+      <button type="button" class="btn btn-secondary">Secondary</button>
+      <button type="button" class="btn btn-ghost">Ghost</button>
+      <button type="button" class="btn btn-danger">Delete</button>
+      <button type="button" class="btn btn-primary" disabled>Disabled</button>
+      <button type="button" class="btn btn-secondary btn-sm">Small</button>
+      <button type="button" class="btn btn-ghost btn-icon" aria-label="More"><app-icon name="more"></app-icon></button>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Inputs</h2>
+    <div class="form-grid">
+      <div class="field"><label class="label" for="c1">Customer name</label><input class="input" id="c1" value="Amit Mehta" /></div>
+      <div class="field">
+        <label class="label" for="c2">Width</label>
+        <div class="input-group"><input id="c2" value="2200" class="num" inputmode="numeric" aria-describedby="c2h" /><span class="unit">mm</span></div>
+        <span class="hint" id="c2h">Between 200 and 5800 mm.</span>
+      </div>
+      <div class="field">
+        <label class="label" for="c3">Glass</label>
+        <select class="select" id="c3"><option>5 mm plain glass</option><option>6 mm toughened glass</option></select>
+      </div>
+      <div class="field">
+        <label class="label" for="c4">Quantity</label>
+        <input class="input is-invalid" id="c4" value="0" inputmode="numeric" aria-invalid="true" aria-describedby="c4e" />
+        <span class="error" id="c4e">Enter a whole number from 1 to 10,000.</span>
+      </div>
+      <label class="check"><input type="checkbox" checked />Add fly mesh</label>
+      <div class="seg" role="group" aria-label="Opening">
+        <button type="button" *ngFor="let o of openingOptions" [attr.aria-pressed]="segment === o.value" (click)="segment = o.value">{{ o.label }}</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Badges</h2>
+    <div class="demo">
+      <span class="badge">Draft</span><span class="badge badge-info">Sent</span><span class="badge badge-success">Accepted</span>
+      <span class="badge badge-accent">Billed</span><span class="badge badge-danger">Declined</span><span class="badge badge-warning">Follow up</span>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Dialog</h2>
+    <div class="dialog" role="group" aria-labelledby="d1">
+      <div class="dialog-head"><h2 id="d1">Delete this window?</h2></div>
+      <div class="dialog-body muted">"Kitchen" will be removed from the quotation and the total will drop by {{ 7263.29 | inr }}.</div>
+      <div class="dialog-foot">
+        <button type="button" class="btn btn-secondary">Keep it</button><button type="button" class="btn btn-danger">Delete window</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Toast and menu</h2>
+    <div class="demo top">
+      <div class="toast" role="status"><app-icon name="circle-check"></app-icon>Quotation copied.<a routerLink="/ui">Open copy</a></div>
+      <div class="menu" role="menu">
+        <button type="button" class="menu-item" role="menuitem"><app-icon name="copy"></app-icon>Duplicate</button>
+        <button type="button" class="menu-item" role="menuitem"><app-icon name="download"></app-icon>Download PDF</button>
+        <div class="menu-sep"></div>
+        <button type="button" class="menu-item danger" role="menuitem"><app-icon name="trash"></app-icon>Delete</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Empty state</h2>
+    <div class="card">
+      <app-empty-state icon="file" title="No quotations yet" text="Draw your first window and send a priced quotation in a few minutes.">
+        <button type="button" class="btn btn-primary"><app-icon name="plus"></app-icon>New quotation</button>
+      </app-empty-state>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Loading</h2>
+    <div class="card">
+      <table class="table" aria-busy="true" aria-label="Loading quotations">
+        <tbody>
+          <tr *ngFor="let w of ['70%', '55%', '62%']; let i = index">
+            <td style="width: 40%"><span class="skeleton" [style.width]="w"></span></td>
+            <td><span class="skeleton" [style.width]="['50%', '40%', '46%'][i]"></span></td>
+            <td><span class="skeleton" style="width: 60px"></span></td>
+            <td class="right"><span class="skeleton" style="width: 80px; margin-inline-start: auto"></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Error</h2>
+    <app-callout tone="warn">
+      We could not load your quotations. Check your connection.
+      <button action type="button" class="btn btn-secondary btn-sm">Try again</button>
+    </app-callout>
+  </section>
+
+  <!-- ── 2. Shared Angular components ── -->
+
+  <h2 class="part">Shared components</h2>
+
+  <section class="sec">
+    <h2>Page header</h2>
+    <div class="card card-pad">
+      <app-page-header title="Mehta Villa Windows" subtitle="Amit Mehta · 3 windows" [crumbs]="crumbs">
+        <app-quote-status meta status="sent" variant="steps" note="28 Sep"></app-quote-status>
+        <button actions type="button" class="btn btn-secondary"><app-icon name="download"></app-icon>PDF</button>
+        <button actions type="button" class="btn btn-primary">Mark as accepted</button>
+      </app-page-header>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Stat</h2>
+    <section class="card stats" aria-label="This month">
+      <app-stat label="Quoted this month" [value]="157402.17 | inr : 0" detail="8 quotations"></app-stat>
+      <app-stat label="Waiting for customer" [value]="77766 | inr : 0" detail="2 sent, not yet accepted"></app-stat>
+      <app-stat label="Billed this month" [value]="14159.58 | inr : 0" detail="1 bill"></app-stat>
+    </section>
+  </section>
+
+  <section class="sec">
+    <h2>Status</h2>
+    <div class="stack-4">
+      <div class="demo"><app-quote-status *ngFor="let s of statuses" [status]="s"></app-quote-status></div>
+      <div *ngFor="let s of statuses"><app-quote-status [status]="s" variant="steps"></app-quote-status></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Totals</h2>
+    <div class="card card-pad narrow"><app-totals [lines]="totals" [total]="29546.27"></app-totals></div>
+  </section>
+
+  <section class="sec">
+    <h2>Callout</h2>
+    <div class="stack-2">
+      <app-callout>Prices include 18% GST. You can change this in Settings.</app-callout>
+      <app-callout tone="warn">Your trial ends in 3 days.<button action type="button" class="btn btn-secondary btn-sm">See plans</button></app-callout>
+      <app-callout tone="danger">The price list could not be saved.<button action type="button" class="btn btn-secondary btn-sm">Try again</button></app-callout>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Window thumbnail</h2>
+    <div class="stack-4">
+      <div class="demo">
+        <span class="win-tile" *ngFor="let w of windows">
+          <app-window-thumb [spec]="w.spec" [width]="72" [height]="52" [label]="w.name + ' window'"></app-window-thumb>
+          <span class="faint tiny">{{ w.name }}</span>
+        </span>
+      </div>
+      <div class="card card-pad draw">
+        <app-window-thumb [spec]="bigWindow" [width]="420" [height]="300" [dims]="true" [selected]="1" label="Three-pane casement window, 2200 by 1200 mm"></app-window-thumb>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Icons</h2>
+    <div class="icons">
+      <span *ngFor="let name of iconNames"><app-icon [name]="name" [size]="20"></app-icon><code>{{ name }}</code></span>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Tabs and progress</h2>
+    <div class="stack-4">
+      <div class="tabs" role="tablist" aria-label="Status">
+        <button type="button" class="tab" role="tab" aria-selected="true">All <span class="count">12</span></button>
+        <button type="button" class="tab" role="tab" aria-selected="false">Draft <span class="count">4</span></button>
+        <button type="button" class="tab" role="tab" aria-selected="false">Sent <span class="count">5</span></button>
+        <button type="button" class="tab" role="tab" aria-selected="false">Billed <span class="count">3</span></button>
+      </div>
+      <div class="progress" role="progressbar" aria-label="Setup" aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"><i style="width: 60%"></i></div>
+    </div>
+  </section>
+
+  <!-- ── 3. PrimeNG, restyled through the tokens ── -->
+
+  <h2 class="part">PrimeNG controls, themed</h2>
+
+  <section class="sec">
+    <h2>Buttons</h2>
+    <div class="demo">
+      <p-button label="Primary" icon="pi pi-plus"></p-button>
+      <p-button label="Secondary" [outlined]="true"></p-button>
+      <p-button label="Ghost" [text]="true"></p-button>
+      <p-button label="Delete" severity="danger"></p-button>
+      <p-button label="Disabled" [disabled]="true"></p-button>
+      <p-button label="Small" [outlined]="true" size="small"></p-button>
+      <button pButton type="button" icon="pi pi-ellipsis-h" class="p-button-text" aria-label="More" pTooltip="More" tooltipPosition="top"></button>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Inputs</h2>
+    <div class="form-grid">
+      <div class="field"><label class="label" for="p1">Customer name</label><input pInputText id="p1" [(ngModel)]="customer" /></div>
+      <div class="field">
+        <label class="label" for="p2">Width (mm)</label>
+        <p-inputNumber inputId="p2" [(ngModel)]="width" [min]="200" [max]="5800" [useGrouping]="false"></p-inputNumber>
+        <span class="hint">Between 200 and 5800 mm.</span>
+      </div>
+      <div class="field">
+        <label class="label" for="p3">Glass</label>
+        <p-dropdown inputId="p3" [options]="glassOptions" [(ngModel)]="glass" [style]="{ width: '100%' }"></p-dropdown>
+      </div>
+      <div class="field">
+        <label class="label" for="p4">Glass, with search</label>
+        <p-dropdown inputId="p4" [options]="glassOptions" [(ngModel)]="glass" [filter]="true" [style]="{ width: '100%' }"></p-dropdown>
+      </div>
+      <p-checkbox [(ngModel)]="flyMesh" [binary]="true" inputId="p5" label="Add fly mesh"></p-checkbox>
+      <p-selectButton [options]="openingOptions" [(ngModel)]="opening" optionLabel="label" optionValue="value" aria-label="Opening"></p-selectButton>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Tags and tabs</h2>
+    <div class="stack-4">
+      <div class="demo">
+        <p-tag value="Draft"></p-tag><p-tag value="Sent" severity="info"></p-tag><p-tag value="Accepted" severity="success"></p-tag>
+        <p-tag value="Billed" styleClass="p-tag-accent"></p-tag><p-tag value="Declined" severity="danger"></p-tag><p-tag value="Follow up" severity="warning"></p-tag>
+      </div>
+      <p-tabMenu [model]="tabItems" [(activeItem)]="activeTab"></p-tabMenu>
+    </div>
+  </section>
+
+  <section class="sec">
+    <h2>Table</h2>
+    <div class="card clip">
+      <p-table [value]="quotes" [paginator]="true" [rows]="4" [showCurrentPageReport]="true" currentPageReportTemplate="{first} to {last} of {totalRecords}">
+        <ng-template pTemplate="caption">
+          <span class="p-input-icon-left"><i class="pi pi-search"></i><input pInputText type="text" placeholder="Search quotations" aria-label="Search quotations" /></span>
+          <p-button label="New quotation" icon="pi pi-plus"></p-button>
+        </ng-template>
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="name" scope="col">Quotation <p-sortIcon field="name"></p-sortIcon></th>
+            <th pSortableColumn="customer" scope="col">Customer <p-sortIcon field="customer"></p-sortIcon></th>
+            <th scope="col">Status</th>
+            <th pSortableColumn="total" scope="col" class="right">Total <p-sortIcon field="total"></p-sortIcon></th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-q>
+          <tr>
+            <td class="strong">{{ q.name }}</td>
+            <td class="muted">{{ q.customer }}</td>
+            <td><app-quote-status [status]="q.status"></app-quote-status></td>
+            <td class="right num">{{ q.total | inr }}</td>
+            <td class="right"><button pButton type="button" icon="pi pi-ellipsis-h" class="p-button-text p-button-sm" [attr.aria-label]="'More actions for ' + q.name" (click)="menu.toggle($event)"></button></td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+    <p-menu #menu [model]="rowMenu" [popup]="true" appendTo="body"></p-menu>
+  </section>
+
+  <section class="sec">
+    <h2>Dialog and toast</h2>
+    <div class="demo">
+      <p-button label="Open dialog" [outlined]="true" (onClick)="dialogOpen = true"></p-button>
+      <p-button label="Show toast" [outlined]="true" (onClick)="showToast('success')"></p-button>
+      <p-button label="Show error toast" [outlined]="true" (onClick)="showToast('error')"></p-button>
+    </div>
+    <p-dialog header="Delete this window?" [(visible)]="dialogOpen" [modal]="true" [draggable]="false" [resizable]="false" [style]="{ width: '440px' }">
+      <p>"Kitchen" will be removed from the quotation and the total will drop by {{ 7263.29 | inr }}.</p>
+      <ng-template pTemplate="footer">
+        <p-button label="Keep it" [outlined]="true" (onClick)="dialogOpen = false"></p-button>
+        <p-button label="Delete window" severity="danger" (onClick)="dialogOpen = false"></p-button>
+      </ng-template>
+    </p-dialog>
+  </section>
+
+  <section class="sec">
+    <h2>Menu, loading</h2>
+    <div class="demo top">
+      <p-menu [model]="rowMenu"></p-menu>
+      <div class="grow stack-4">
+        <p-skeleton width="70%" height="12px"></p-skeleton>
+        <p-skeleton width="45%" height="12px"></p-skeleton>
+        <p-progressBar [value]="60" [showValue]="false" ariaLabel="Setup progress"></p-progressBar>
+      </div>
+    </div>
+  </section>
+</div>
