@@ -113,3 +113,38 @@
 </section>
 
 <p-menu #rowMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+
+<p-dialog
+  [header]="'Cancel ' + (cancelling?.number || 'this bill') + '?'"
+  [visible]="!!cancelling"
+  (visibleChange)="$event ? null : (cancelling = null)"
+  [modal]="true"
+  closeAriaLabel="Close"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!cancelBusy"
+  [style]="{ width: '460px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <p class="muted">
+    The bill for {{ cancelling?.customer || 'this customer' }} stays in the list as cancelled and its number is not used
+    again. The quotation can be billed again.
+  </p>
+  <div class="field cancel-reason">
+    <label class="label" for="bill-cancel-reason">Reason <span class="muted">(optional)</span></label>
+    <input
+      class="input"
+      id="bill-cancel-reason"
+      type="text"
+      maxlength="191"
+      autocomplete="off"
+      placeholder="For example: wrong customer, order changed"
+      [(ngModel)]="cancelReason"
+      (keyup.enter)="confirmCancel()"
+    />
+  </div>
+  <ng-template pTemplate="footer">
+    <p-button label="Keep the bill" [outlined]="true" [disabled]="cancelBusy" (onClick)="cancelling = null"></p-button>
+    <p-button label="Cancel bill" severity="danger" [loading]="cancelBusy" (onClick)="confirmCancel()"></p-button>
+  </ng-template>
+</p-dialog>

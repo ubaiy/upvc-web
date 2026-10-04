@@ -4,7 +4,6 @@ import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { ToastService } from 'src/app/shared/services/toast.service';
-import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
 import { CustomerService } from '../../customers/customer.service';
 import { BillRow, matchesBill, toBillRows } from '../bills.adapter';
 import { BillsService } from '../bills.service';
@@ -24,6 +23,10 @@ export class ListComponent implements OnInit {
   search = '';
   page = 0;
   menuItems: MenuItem[] = [];
+  /** The bill the "Cancel bill" dialog is asking about, with the reason typed. */
+  cancelling: BillRow | null = null;
+  cancelReason = '';
+  cancelBusy = false;
   /** Id of the bill whose PDF is being fetched. */
   downloading: number | null = null;
   readonly placeholders = [0, 1, 2, 3, 4, 5];
@@ -32,7 +35,6 @@ export class ListComponent implements OnInit {
     private _router: Router,
     private _billService: BillsService,
     private _customerService: CustomerService,
-    private _confirm: ConfirmationDialogService,
     private _toastService: ToastService
   ) {}
 
@@ -146,26 +148,34 @@ export class ListComponent implements OnInit {
       });
   }
 
+  /** Opens the dialog that asks why; nothing is cancelled until it is confirmed. */
   cancel(bill: BillRow): void {
-    this._confirm.confirm(
-      `Cancel ${bill.number}?`,
-      `The bill for ${bill.customer || 'this customer'} stays in the list as cancelled and its number is not used again. The quotation can be billed again.`,
-      'pi-exclamation-triangle',
-      () => {
-        this._billService.cancelBill(bill.id).subscribe({
-          next: (res) => {
-            if (res.success) {
-              this._toastService.showSuccess(`${bill.number} cancelled`);
-              this.bills = this.bills.map((row) => (row.id === bill.id ? { ...row, cancelled: true } : row));
-            } else {
-              this._toastService.showError(res.message);
-            }
-          },
-          error: (err) => this._toastService.showError(err?.error?.message || 'Could not cancel the bill'),
-        });
+    this.cancelling = bill;
+    this.cancelReason = '';
+  }
+
+  confirmCancel(): void {
+    const bill = this.cancelling;
+    if (!bill || this.cancelBusy) {
+      return;
+    }
+    this.cancelBusy = true;
+    this._billService.cancelBill(bill.id, this.cancelReason).subscribe({
+      next: (res) => {
+        this.cancelBusy = false;
+        if (res.success) {
+          this.cancelling = null;
+          this._toastService.showSuccess(`${bill.number} cancelled`);
+          this.bills = this.bills.map((row) => (row.id === bill.id ? { ...row, cancelled: true } : row));
+        } else {
+          this._toastService.showError(res.message);
+        }
       },
-      () => {}
-    );
+      error: (err) => {
+        this.cancelBusy = false;
+        this._toastService.showError(err?.error?.message || 'Could not cancel the bill');
+      },
+    });
   }
 
   trackById(_: number, bill: BillRow): number {

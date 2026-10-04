@@ -3,6 +3,8 @@ import { FormsModule } from '@angular/forms';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
+import { ButtonModule } from 'primeng/button';
+import { DialogModule } from 'primeng/dialog';
 import { MenuModule } from 'primeng/menu';
 import { of, Subject, throwError } from 'rxjs';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
@@ -35,7 +37,7 @@ describe('ListComponent (bills)', () => {
     service.getQuotations.and.returnValue(ok(QUOTATIONS));
     TestBed.configureTestingModule({
       declarations: [ListComponent],
-      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule],
+      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, DialogModule, ButtonModule, SharedComponentsModule],
       providers: [
         { provide: BillsService, useValue: service },
         { provide: CustomerService, useValue: customers },
@@ -156,13 +158,17 @@ describe('ListComponent (bills)', () => {
     expect(service.downloadBillPdf).toHaveBeenCalledWith({ bill_id: 2, customer_gst_no: '', download: true });
   });
 
-  it('cancels a bill after confirmation and keeps the row, marked cancelled', () => {
+  it('cancels a bill after confirmation, with the reason typed, and keeps the row, marked cancelled', () => {
     create(ok(BILLS));
     service.cancelBill.and.returnValue(ok());
-    confirm.confirm.and.callFake((_h, _m, _i, accept) => accept());
     fixture.componentInstance.cancel(fixture.componentInstance.bills[0]);
-    expect(confirm.confirm.calls.mostRecent().args[0]).toBe('Cancel Bill 2?');
-    expect(service.cancelBill).toHaveBeenCalledWith(2);
+    fixture.detectChanges();
+    expect(service.cancelBill).not.toHaveBeenCalled();
+    expect((document.querySelector('.p-dialog')?.textContent || '').replace(/\s+/g, ' ')).toContain('Cancel Bill 2?');
+    fixture.componentInstance.cancelReason = 'Wrong customer';
+    fixture.componentInstance.confirmCancel();
+    expect(service.cancelBill).toHaveBeenCalledOnceWith(2, 'Wrong customer');
+    expect(fixture.componentInstance.cancelling).toBeNull();
     expect(fixture.componentInstance.bills.map((row) => row.cancelled)).toEqual([true, false]);
     fixture.detectChanges();
     expect(el().querySelector('tbody tr .badge-danger')?.textContent).toContain('Cancelled');

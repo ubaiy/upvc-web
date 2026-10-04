@@ -46,10 +46,12 @@ export class BillsService {
   /**
    * Cancels a bill (bill/cancel). The bill keeps its number and stays in the
    * list as cancelled; its quotation goes back to the status it had before.
+   * The reason (optional, up to 191 characters) is kept with the bill.
    */
-  public cancelBill(id: number): Observable<IResponseDto<any>> {
+  public cancelBill(id: number, reason = ''): Observable<IResponseDto<any>> {
     return this._apiHttpSerivce.post('bill/cancel', {
       bill_id: id,
+      ...(reason.trim() ? { reason: reason.trim() } : {}),
     });
   }
 }
