@@ -112,6 +112,11 @@ describe('UpdateRatesDialogComponent', () => {
     expect(adapter.updateAllRates).toHaveBeenCalledOnceWith({ per_kg: 200, rate_bar: 5.8, color_per_kg: 410, color_rate_bar: 5.8 });
   });
 
+  it('names its close button for screen readers', () => {
+    open();
+    expect(document.querySelector('.p-dialog-header-close')?.getAttribute('aria-label')).toBe('Close');
+  });
+
   it('starts on "New rate per kg" when no rate has been set yet', () => {
     open(null);
     expect(component.mode).toBe('rate');

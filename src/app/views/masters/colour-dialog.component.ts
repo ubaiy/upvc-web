@@ -21,6 +21,7 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
       [visible]="visible"
       (visibleChange)="$event ? null : close()"
       [modal]="true"
+      closeAriaLabel="Close"
       [draggable]="false"
       [resizable]="false"
       [dismissableMask]="!saving"

@@ -24,6 +24,7 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
       [visible]="visible"
       (visibleChange)="$event ? null : close()"
       [modal]="true"
+      closeAriaLabel="Close"
       [draggable]="false"
       [resizable]="false"
       [dismissableMask]="!saving"

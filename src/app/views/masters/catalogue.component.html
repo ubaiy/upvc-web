@@ -282,6 +282,7 @@
   [visible]="!!deleting"
   (visibleChange)="$event ? null : (deleting = null)"
   [modal]="true"
+  closeAriaLabel="Close"
   [draggable]="false"
   [resizable]="false"
   [style]="{ width: '440px' }"
