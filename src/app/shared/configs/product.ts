@@ -1,6 +1,8 @@
 /**
  * The product's name. The one place it is written: the browser tab title, the
  * sidebar before the company name has loaded, and the pages outside the shell.
+ * `src/index.html` cannot import it and repeats it in its <title>, shown
+ * until the app starts: change both together.
  * Open decision for the owner (design-system.md §1): "UPVC" is a placeholder.
  */
 export const PRODUCT_NAME = 'UPVC';

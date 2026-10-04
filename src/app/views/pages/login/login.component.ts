@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { finalize } from 'rxjs';
+import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { AuthService } from 'src/app/shared/services/auth.service';
 
 /** What went wrong with the last attempt, shown above the form. */
@@ -18,6 +19,8 @@ export interface SignInError {
   styleUrls: ['./login.component.scss'],
 })
 export class LoginComponent implements OnInit {
+  readonly product = PRODUCT_NAME;
+
   form: FormGroup;
   submitted = false;
   busy = false;
@@ -90,7 +93,7 @@ export class LoginComponent implements OnInit {
           if (err?.status === 429) {
             this._fail('Too many attempts. Wait a minute, then try again.', false);
           } else if (err?.status === 0) {
-            this._fail('We could not reach UPVC. Check your internet connection.', true);
+            this._fail(`We could not reach ${PRODUCT_NAME}. Check your internet connection.`, true);
           } else {
             this._fail('Something went wrong on our side. Your details were not checked.', true);
           }

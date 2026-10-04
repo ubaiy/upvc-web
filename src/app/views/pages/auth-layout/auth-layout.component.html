@@ -8,7 +8,7 @@
     <ng-content></ng-content>
   </section>
 
-  <aside class="auth-side" aria-label="What UPVC does">
+  <aside class="auth-side" [attr.aria-label]="'What ' + product + ' does'">
     <div class="art">
       <app-window-thumb
         [spec]="sample"

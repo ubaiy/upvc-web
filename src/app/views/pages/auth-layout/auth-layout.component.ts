@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, Input, OnChanges } from '@angular/core';
 import { Title } from '@angular/platform-browser';
 
+import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { SAMPLE_WINDOWS } from 'src/app/shared/components/window-thumb/window-drawing';
 
 /**
@@ -29,7 +30,7 @@ export class AuthLayoutComponent implements OnChanges {
   /** Browser tab title; the heading is used when this is not set. */
   @Input() pageTitle?: string;
 
-  readonly product = 'UPVC';
+  readonly product = PRODUCT_NAME;
 
   readonly sample = SAMPLE_WINDOWS['mixed3'];
 

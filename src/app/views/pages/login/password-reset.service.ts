@@ -3,6 +3,7 @@ import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { API_END_POINT } from 'src/app/shared/configs/api.config';
+import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 
 export interface NewPassword {
@@ -44,7 +45,7 @@ export function resetFailure(err: any, fallback: string): { text: string; retry:
     return { text: 'Too many attempts. Wait a minute, then try again.', retry: false };
   }
   if (err?.status === 0) {
-    return { text: 'We could not reach UPVC. Check your internet connection.', retry: true };
+    return { text: `We could not reach ${PRODUCT_NAME}. Check your internet connection.`, retry: true };
   }
   if (typeof err?.status === 'number') {
     // 422 is a field the API did not accept; anything else is a fault on our side.
