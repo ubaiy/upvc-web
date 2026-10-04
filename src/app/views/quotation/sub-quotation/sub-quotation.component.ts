@@ -110,6 +110,18 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     return this.primary ? PRIMARY_BUTTON[this.primary].icon : 'check';
   }
 
+  /** "Create order" (card O2), or "Open order" once `quatation/show` returns an `order`. Primary on an accepted quotation. */
+  get orderAction(): { label: string; link: any[]; query: { quotation: number } | null; primary: boolean } | null {
+    const view = this.view;
+    if (!view || view.supersededBy || !view.lines.length || (view.status !== 'accepted' && view.status !== 'billed')) {
+      return null;
+    }
+    const [primary, order] = [view.status === 'accepted', this._raw?.order];
+    return Number(order?.id) > 0 && order.status !== 'cancelled'
+      ? { label: 'Open order', link: ['/orders', Number(order.id)], query: null, primary }
+      : { label: 'Create order', link: ['/orders/new'], query: { quotation: view.id }, primary };
+  }
+
   /** Draft with no window yet: the empty state carries the page's one primary button. */
   get empty(): boolean {
     return !!this.view && !this.view.lines.length;

@@ -183,7 +183,7 @@ describe('SubQuotationComponent (quotation page)', () => {
   for (const [status, label] of [
     ['sent', 'Mark as accepted'],
     ['expired', 'Mark as accepted'],
-    ['accepted', 'Create bill'],
+    ['accepted', 'Create order'],
     ['declined', 'Revise quotation'],
   ]) {
     it(`offers "${label}" on a ${status} quotation`, () => {
@@ -219,7 +219,9 @@ describe('SubQuotationComponent (quotation page)', () => {
     primary()!.click();
     fixture.detectChanges();
     expect(service.changeQuotationStatus).toHaveBeenCalledWith(14, 'accepted');
-    expect(primary()?.textContent).toContain('Create bill');
+    // The next step after acceptance is the order (card O2); the bill is beside it.
+    expect(primary()?.textContent).toContain('Create order');
+    expect(el().querySelector('.page-actions [data-action="bill"]')?.textContent).toContain('Create bill');
   });
 
   it('creates the bill with no dialog and links to it', () => {
@@ -227,7 +229,9 @@ describe('SubQuotationComponent (quotation page)', () => {
     const bill = { id: 3, number: 'INV/26-27/0002', bill_date: '2026-10-04', total: 20730 };
     service.createBill.and.returnValue(ok(bill));
     service.getQuotation.and.returnValue(ok(sampleQuotation({ status: 'billed', bill })));
-    primary()!.click();
+    const createBill = el().querySelector<HTMLButtonElement>('.page-actions [data-action="bill"]')!;
+    expect(createBill.classList).toContain('btn-secondary');
+    createBill.click();
     fixture.detectChanges();
     expect(service.createBill).toHaveBeenCalledWith(14);
     expect(toast.showSuccess).toHaveBeenCalledWith('Bill INV/26-27/0002 created');
@@ -236,10 +240,41 @@ describe('SubQuotationComponent (quotation page)', () => {
     expect(el().querySelector('.add-row')).toBeNull();
   });
 
+  it('makes "Create order" the one primary button of an accepted quotation, with "Create bill" beside it', () => {
+    show({ status: 'accepted' });
+    expect(el().querySelectorAll('.btn-primary').length).toBe(1);
+    const order = el().querySelector<HTMLAnchorElement>('.page-actions [data-action="order"]')!;
+    expect(order.textContent).toContain('Create order');
+    expect(order.classList).toContain('btn-primary');
+    expect(order.getAttribute('href')).toBe('/orders/new?quotation=14');
+    expect(el().querySelector('.page-actions [data-action="bill"]')?.textContent).toContain('Create bill');
+  });
+
+  it('says "Open order" and opens it once the quotation has an order', () => {
+    show({ status: 'accepted', order: { id: 7, number: 'ORD/26-27/0007', stage: 'confirmed', status: 'active' } });
+    const order = el().querySelector<HTMLAnchorElement>('.page-actions [data-action="order"]')!;
+    expect(order.textContent).toContain('Open order');
+    expect(order.getAttribute('href')).toBe('/orders/7');
+  });
+
+  it('offers the order on a billed quotation as a secondary action; "Download bill" stays primary', () => {
+    show({ status: 'billed', bill: { id: 3, number: 'INV/26-27/0002', bill_date: '2026-10-04', total: 20730 } });
+    expect(el().querySelectorAll('.btn-primary').length).toBe(1);
+    expect(primary()?.textContent).toContain('Download bill');
+    const order = el().querySelector('.page-actions [data-action="order"]')!;
+    expect(order.textContent).toContain('Create order');
+    expect(order.classList).toContain('btn-secondary');
+  });
+
+  it('has no order action before the quotation is accepted', () => {
+    show({ status: 'sent', sent_at: '2026-09-28T10:00:00.000000Z' });
+    expect(el().querySelector('[data-action="order"]')).toBeNull();
+  });
+
   it('shows a refusal from the API inline, not as a silent failure', () => {
     show({ status: 'accepted' });
     service.createBill.and.returnValue(of({ status: 0, message: 'Quatation has no items to bill' } as any));
-    primary()!.click();
+    el().querySelector<HTMLButtonElement>('.page-actions [data-action="bill"]')!.click();
     fixture.detectChanges();
     expect(el().querySelector('app-callout .danger')?.textContent).toContain('Quatation has no items to bill');
   });

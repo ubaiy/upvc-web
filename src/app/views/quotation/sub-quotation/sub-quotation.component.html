@@ -83,17 +83,33 @@
     >
       <app-icon [name]="busy === 'pdf' ? 'loader' : 'download'"></app-icon>PDF
     </button>
+    <!-- The status button. It is the primary one, except on an accepted quotation, where the next step is the order (card O2). -->
     <button
       actions
       type="button"
-      class="btn btn-primary"
+      class="btn"
+      [class.btn-primary]="!orderAction?.primary"
+      [class.btn-secondary]="orderAction?.primary"
       *ngIf="primary"
+      [attr.data-action]="primary"
       [disabled]="!!busy"
       [attr.aria-busy]="busy === 'accepted' || busy === 'bill' || busy === 'bill-pdf'"
       (click)="runPrimary()"
     >
       <app-icon [name]="primaryIcon"></app-icon>{{ primaryLabel }}
     </button>
+    <a
+      actions
+      class="btn"
+      data-action="order"
+      [class.btn-primary]="act.primary"
+      [class.btn-secondary]="!act.primary"
+      *ngIf="orderAction as act"
+      [routerLink]="act.link"
+      [queryParams]="act.query"
+    >
+      <app-icon name="layers"></app-icon>{{ act.label }}
+    </a>
   </app-page-header>
 
   <!-- Things the page has to say, most pressing first -->
