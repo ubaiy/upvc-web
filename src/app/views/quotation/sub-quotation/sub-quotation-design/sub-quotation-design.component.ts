@@ -1156,6 +1156,20 @@ export class SubQuotationDesignComponent
         this._updateCanvas(true);
         this._manageProduct();
       });
+    // B3: these option checkboxes had NO subscription at all, so ticking them
+    // changed neither the price nor the drawing until some other control
+    // happened to fire — "Is Louvers" / "Is Lshape" looked like dead options
+    // even though the pricing engine costs them (louver / L-shape / coupler
+    // accessory profiles). Reprice + redraw on every toggle.
+    ['is_louvers', 'is_lshape', 'is_cupler'].forEach((name) => {
+      this.formValueChangesSubscription = fg.controls[name].valueChanges
+        .pipe(debounceTime(300))
+        .subscribe(() => {
+          this._manageProduct();
+          this.clearLayerChildren();
+          this._updateCanvas(true);
+        });
+    });
     // Handle is now per-selected-pane (VISUAL). With a leaf selected the change
     // targets THAT pane's glyph; with no selection it falls back to the legacy
     // whole-window behaviour (apply to every leaf). The save payload still uses
@@ -1828,6 +1842,12 @@ export class SubQuotationDesignComponent
         ? firstSliddingLeafId(this.rootPane, this.df['category_type']?.value)
         : null;
 
+    // B3: the L-shape (corner-joint) option now shows on the drawing so the
+    // control visibly does something alongside its accessory cost row.
+    if (this.df['is_lshape']?.value) {
+      this._drawLShapeMarker(xPos, yPos, wPx);
+    }
+
     // Glazed interior box (inside the outer frame) in both px and mm.
     const ix = xPos + this.frameGapPx;
     const iy = yPos + this.frameGapPx;
@@ -2112,6 +2132,12 @@ export class SubQuotationDesignComponent
       this._drawSlidingSymbol(x, y, w, h, direction, handleName);
     }
 
+    // B3: louver slats across the glazed area when "Is Louvers" is on, so the
+    // option visibly does something alongside its accessory cost row.
+    if (this.df['is_louvers']?.value && !noGlass) {
+      this._drawLouverSlats(x, y, w, h);
+    }
+
     // B2: the fly-mesh panel, drawn on the resolved mesh leaf and labelled —
     // it used to be priced but never drawn.
     if (node.id === this._meshLeafId) {
@@ -2191,6 +2217,64 @@ export class SubQuotationDesignComponent
       })
     );
     this.layer.add(mesh);
+  }
+
+  /**
+   * B3: horizontal louver slats across a glazed pane when "Is Louvers" is on.
+   * Visual companion to the louver accessory profile the pricing adds.
+   */
+  private _drawLouverSlats(x: number, y: number, w: number, h: number) {
+    const group = new Konva.Group({ listening: false });
+    const slatGap = Math.max(10, Math.min(18, h / 8));
+    for (let sy = y + slatGap; sy < y + h - 2; sy += slatGap) {
+      group.add(
+        new Konva.Rect({
+          x: x + 2,
+          y: sy - 1.5,
+          width: w - 4,
+          height: 3,
+          fill: '#d7dde3',
+          stroke: '#8a9097',
+          strokeWidth: 0.6,
+          listening: false,
+        })
+      );
+    }
+    this.layer.add(group);
+  }
+
+  /**
+   * B3: small corner marker + label when "Is Lshape" is on — the L-shaped
+   * coupling profile the pricing adds as an accessory, indicated at the
+   * frame's top-right corner so the ticked option is visible on the drawing.
+   */
+  private _drawLShapeMarker(xPos: number, yPos: number, wPx: number) {
+    const group = new Konva.Group({ listening: false });
+    const ax = xPos + wPx - 6;
+    const ay = yPos + 6;
+    const arm = 16;
+    const thick = 5;
+    group.add(
+      new Konva.Line({
+        points: [ax - arm, ay, ax, ay, ax, ay + arm],
+        stroke: '#b45309',
+        strokeWidth: thick,
+        lineJoin: 'miter',
+        listening: false,
+      })
+    );
+    group.add(
+      new Konva.Text({
+        x: ax - 78,
+        y: ay + 2,
+        text: 'L-Shape',
+        fontSize: 11,
+        fontStyle: 'bold',
+        fill: '#b45309',
+        listening: false,
+      })
+    );
+    this.layer.add(group);
   }
 
   /**
