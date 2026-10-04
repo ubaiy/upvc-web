@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
+import { RouterModule, Routes, TitleStrategy } from '@angular/router';
 
-import { ShellComponent } from './containers';
+import { PageTitleStrategy, ShellComponent } from './containers';
 import { Page404Component } from './views/pages/page404/page404.component';
 import { Page500Component } from './views/pages/page500/page500.component';
 import { AuthGuard } from './shared/guards/auth.guard';
@@ -19,14 +19,12 @@ const routes: Routes = [
   {
     path: '',
     component: ShellComponent,
-
-    data: {
-      title: 'Home',
-    },
+    // Nothing inside the shell is shown without a session. The guard sends the
+    // visitor to sign in with ?returnUrl=, so they come back to this address.
+    canActivate: [AuthGuard],
     children: [
-      // Menu entries of the new shell. Until cards U5 and U7 build the single
-      // Catalogue and Settings pages, each opens the first of its old screens;
-      // the shell draws the section tabs (containers/shell/nav.ts).
+      // Menu entries of the shell. Catalogue and Settings are one page each
+      // (cards U5 and U7), still served at their old addresses.
       { path: 'catalogue', redirectTo: 'masters/profile', pathMatch: 'full' },
       { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },
       {
@@ -153,6 +151,7 @@ const routes: Routes = [
       import('./views/design-lab/design-lab.module').then(
         (m) => m.DesignLabModule
       ),
+    title: 'Design lab',
   },
   {
     // Every shared component and themed control on one page, for review (card U0).
@@ -161,27 +160,22 @@ const routes: Routes = [
       import('./views/ui-gallery/ui-gallery.module').then(
         (m) => m.UiGalleryModule
       ),
+    title: 'Components',
   },
   {
     path: '404',
     component: Page404Component,
-    data: {
-      title: 'Page 404',
-    },
+    title: 'Page not found',
   },
   {
     path: '500',
     component: Page500Component,
-    data: {
-      title: 'Page 500',
-    },
+    title: 'Something went wrong',
   },
   {
     path: '**',
     component: Page404Component,
-    data: {
-      title: 'Page 404',
-    },
+    title: 'Page not found',
   },
 ];
 
@@ -195,5 +189,7 @@ const routes: Routes = [
     }),
   ],
   exports: [RouterModule],
+  // Every browser tab title is built in one place: containers/shell/page-title.strategy.ts.
+  providers: [{ provide: TitleStrategy, useExisting: PageTitleStrategy }],
 })
 export class AppRoutingModule {}

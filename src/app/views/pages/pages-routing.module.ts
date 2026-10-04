@@ -6,34 +6,27 @@ import { LoginComponent } from './login/login.component';
 import { RegisterComponent } from './register/register.component';
 import { LogoutGuard } from 'src/app/shared/guards/logout.guard';
 
+// `title` is the browser tab title; the product name is added by PageTitleStrategy.
 const routes: Routes = [
   {
     path: '404',
     component: Page404Component,
-    data: {
-      title: 'Page 404',
-    },
+    title: 'Page not found',
   },
   {
     path: '500',
     component: Page500Component,
-    data: {
-      title: 'Page 500',
-    },
+    title: 'Something went wrong',
   },
   {
     path: 'login',
     component: LoginComponent,
-    data: {
-      title: 'Login Page',
-    },
+    title: 'Sign in',
   },
   {
     path: 'register',
     component: RegisterComponent,
-    data: {
-      title: 'Register Page',
-    },
+    title: 'Start a free trial',
   },
 ];
 
