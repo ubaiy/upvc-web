@@ -58,7 +58,7 @@ describe('DetailsComponent (customer page)', () => {
     service.editCustomerAddress.and.returnValue(ok());
     bills.getQuotations.and.returnValue(
       ok([
-        { id: 17, customer_id: 3, quatation_name: 'Sharma Flat Renovation', quatation_identity: 'abc', total: 16708, is_convert_bill: 1 },
+        { id: 17, customer_id: 3, quatation_name: 'Sharma Flat Renovation', quatation_identity: 'abc', number: 'Q-0005', total: 16708, is_convert_bill: 1 },
         { id: 18, customer_id: 4, quatation_name: 'Someone else', quatation_identity: 'zzz' },
       ])
     );
@@ -177,7 +177,7 @@ describe('DetailsComponent (customer page)', () => {
       expect(text).not.toContain('Someone else');
       expect(text).toContain('₹16,708.00');
       expect(text).toContain('Bill 2');
-      expect(text).toContain('₹14,159.58');
+      expect(text).toContain('Q-0005');
       expect(el().querySelector('app-quote-status')?.textContent).toContain('Billed');
     });
 

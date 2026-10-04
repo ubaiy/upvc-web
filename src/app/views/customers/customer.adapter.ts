@@ -164,12 +164,12 @@ export function toAddressPayload(
 }
 
 /**
- * One row of "this customer's quotations". Until the quotation number and
- * status reach the list, the stored identity stands in for the number and
- * the bill flag for the status.
+ * One row of "this customer's quotations", from quatation/list (phase 9
+ * contract): number (Q-0005), status and total, the selling total.
+ * grand_total is the cost sum and is only a fallback for an old API.
  */
 export function toCustomerQuotationRow(dto: any): CustomerQuotationRow {
-  const number = dto.quotation_number || dto.quatation_number || dto.quatation_identity || '';
+  const number = dto.number || dto.quatation_identity || '';
   return {
     id: dto.id,
     name: dto.quatation_name || dto.name || 'Quotation',

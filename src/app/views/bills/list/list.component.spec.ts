@@ -15,7 +15,7 @@ const BILLS = [
   { id: 2, quatation_identity: '6ac205d330246', grand_total: 14159.58, customer_id: 3, name: 'Sharma Residency' },
   { id: 1, quatation_identity: 'gone', grand_total: 100, customer_id: 4, name: 'Modern Homes LLP' },
 ];
-const QUOTATIONS = [{ id: 17, quatation_identity: '6ac205d330246', quatation_name: 'Sharma Flat Renovation' }];
+const QUOTATIONS = [{ id: 17, quatation_identity: '6ac205d330246', quatation_name: 'Sharma Flat Renovation', number: 'Q-0005', total: 20050 }];
 const ok = (data: any = {}) => of({ success: true, data, message: 'ok' } as any);
 
 describe('ListComponent (bills)', () => {
@@ -62,7 +62,8 @@ describe('ListComponent (bills)', () => {
     expect(rows.length).toBe(2);
     expect(rows[0].textContent).toContain('Bill 2');
     expect(rows[0].textContent).toContain('Sharma Residency');
-    expect(rows[0].textContent).toContain('₹14,159.58');
+    expect(rows[0].textContent).toContain('₹20,050.00');
+    expect(rows[0].textContent).toContain('Q-0005');
     const link = Array.from(rows[0].querySelectorAll('a')).find((a) => a.textContent?.includes('Sharma Flat Renovation'));
     expect(link?.getAttribute('href')).toBe('/quotation/detail/17');
     expect(rows[1].textContent).toContain('gone');

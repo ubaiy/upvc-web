@@ -124,6 +124,7 @@ describe('customer adapter', () => {
         customer_id: 3,
         quatation_name: 'Flat',
         quatation_identity: 'abc',
+        number: 'Q-0005',
         is_convert_bill: 1,
         grand_total: 10,
         total: 12,
@@ -133,9 +134,10 @@ describe('customer adapter', () => {
       { id: 3, customer_id: 4, quatation_name: 'Other' },
     ]);
     expect(rows.length).toBe(2);
-    expect(rows[0]).toEqual({ id: 1, name: 'Flat', number: 'abc', status: 'billed', windows: 2, total: 12 });
+    expect(rows[0]).toEqual({ id: 1, name: 'Flat', number: 'Q-0005', status: 'billed', windows: 2, total: 12 });
     expect(rows[1].status).toBe('sent');
     expect(rows[1].total).toBe(5);
     expect(rows[1].name).toBe('Sharma');
+    expect(rows[1].number).toBe('def');
   });
 });

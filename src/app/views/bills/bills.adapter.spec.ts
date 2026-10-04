@@ -1,12 +1,12 @@
 import { billsOf, matchesBill, toBillRow, toBillRows } from './bills.adapter';
 
 const QUOTATIONS = [
-  { id: 17, quatation_identity: '6ac205d330246', quatation_name: 'Sharma Flat Renovation' },
+  { id: 17, quatation_identity: '6ac205d330246', quatation_name: 'Sharma Flat Renovation', number: 'Q-0005', total: 20050 },
   { id: 18, quatation_identity: 'zzz', quatation_name: 'Other' },
 ];
 
 describe('bills adapter', () => {
-  it('reads what bill/list sends today and links the bill to its quotation by identity', () => {
+  it('links the bill to its quotation by identity and shows the selling total, not the cost sum', () => {
     const row = toBillRow(
       { id: 2, quatation_identity: '6ac205d330246', grand_total: 14159.58, customer_id: 3, name: 'Sharma Residency' },
       QUOTATIONS
@@ -20,7 +20,8 @@ describe('bills adapter', () => {
       customer: 'Sharma Residency',
       quotationId: 17,
       quotation: 'Sharma Flat Renovation',
-      amount: 14159.58,
+      quotationNumber: 'Q-0005',
+      amount: 20050,
       cancelled: false,
     });
   });
@@ -52,6 +53,7 @@ describe('bills adapter', () => {
     const row = toBillRow({ id: 7, quatation_identity: 'gone', grand_total: 1, customer_details: 'not json' });
     expect(row.quotationId).toBeNull();
     expect(row.quotation).toBe('gone');
+    expect(row.amount).toBe(1);
     expect(row.customer).toBe('');
   });
 
@@ -66,6 +68,7 @@ describe('bills adapter', () => {
     expect(billsOf(3, rows).map((row) => row.id)).toEqual([1]);
     expect(rows.filter((row) => matchesBill(row, 'modern')).map((row) => row.id)).toEqual([2]);
     expect(rows.filter((row) => matchesBill(row, 'renovation')).map((row) => row.id)).toEqual([1]);
+    expect(rows.filter((row) => matchesBill(row, 'q-0005')).map((row) => row.id)).toEqual([1]);
     expect(rows.filter((row) => matchesBill(row, '  ')).length).toBe(2);
   });
 });

@@ -75,6 +75,7 @@
             <ng-template #quotationText
               ><span class="muted">{{ bill.quotation || '—' }}</span></ng-template
             >
+            <div class="faint tiny" *ngIf="bill.quotationNumber">{{ bill.quotationNumber }}</div>
           </td>
           <td class="right num">{{ bill.amount | inr }}</td>
           <td class="row-actions">
