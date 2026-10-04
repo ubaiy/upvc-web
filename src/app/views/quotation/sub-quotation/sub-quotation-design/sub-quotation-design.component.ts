@@ -50,6 +50,14 @@ import {
   switchMap,
 } from 'rxjs';
 import { IResponseDtoOfProduct } from './response.model';
+import {
+  PaneNode,
+  serializePaneTree,
+  deserializePaneTree,
+  reconstructFromFullWindow,
+  resolvePallaTarget,
+  firstSliddingLeafId,
+} from './design-tree.util';
 const isMobile =
   /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
     navigator.userAgent
@@ -76,85 +84,9 @@ const isMobile =
  * `_redraw()` (last rendered mm sizes) so portion-resize can map a typed mm
  * value back to a fraction without re-deriving the whole layout.
  */
-type SplitKind = 'palla' | 'mullion';
-
-interface PaneSplit {
-  direction: 'vertical' | 'horizontal';
-  kind: SplitKind;
-  /** Selected mullion profile id (mullion kind only; undefined for palla). */
-  profileId?: string | number;
-  /** Divider face width in mm (mullion bar thickness; 0 effective for palla). */
-  mullionWidthMm: number;
-  children: PaneNode[];
-  /** Per-child size share along the split axis; sums to 1. */
-  fractions: number[];
-  /** Transient: available mm along the split axis at last render. */
-  _availMm?: number;
-}
-
-interface PaneNode {
-  id: string;
-  /** Draw a sash profile band around this node (palla sash / openable leaf). */
-  framed?: boolean;
-  /**
-   * Per-leaf opening / slide direction. Casement: Left | Right | Top | Bottom |
-   * Tilt & Turn Left | Tilt & Turn Right. Sliding: Left | Right. When absent the
-   * global `opening_direction` control value is used (legacy whole-window mode).
-   * Only meaningful on a LEAF; a split node delegates to its children.
-   */
-  openingDirection?: string;
-  /**
-   * Per-leaf handle master-list id (matches an entry in {@link handleList}). The
-   * handle's NAME drives which glyph family is drawn (lever / T / C / cockspur /
-   * knob / keep). When absent the global `handle_id` control value is used.
-   * Only meaningful on a LEAF; VISUAL only — does not affect the save payload.
-   */
-  handleId?: string | number;
-  /**
-   * Per-leaf hinge type ('Flate Hinges' | 'Friction' | '3D Hinges'). Drives how
-   * many hinge tick marks are drawn on the hinge stile (3 for 3D, else 2). When
-   * absent the global `hinges_type` control value is used. LEAF-only; VISUAL only.
-   */
-  hingesType?: string;
-  /**
-   * Per-leaf casement type ('Fixed' | 'Openable'). This is what makes a window a
-   * SUPER SYSTEM: within a single Casement window each section (leaf) can be Fixed
-   * (plain glass) or Openable (sash band + egress chevron + handle + hinges drawn
-   * using this leaf's own openingDirection / handleId / hingesType). When absent
-   * the global `casement_type` control value is used (legacy whole-window mode).
-   * Only meaningful on a LEAF; a split node delegates to its children.
-   */
-  casementType?: 'Fixed' | 'Openable';
-  /**
-   * Per-leaf SYSTEM ('Casement' | 'Slidding'). This is what makes the window a true
-   * SUPER (composite "cabin") SYSTEM: each section (leaf) is independently its own
-   * system — a Casement section renders sash + egress + handle + hinges (Openable)
-   * or plain glass (Fixed) while a Slidding section beside it renders the slide
-   * symbology — driven entirely by THIS leaf's own `category`. When absent the
-   * global `category_type` control value is used (legacy whole-window mode). Only
-   * meaningful on a LEAF; a split node delegates to its children. Changing one
-   * section's category must NOT rebuild the tree or convert the whole window.
-   */
-  category?: 'Casement' | 'Slidding';
-  /**
-   * Per-leaf sash profile id (matches an entry in {@link sashList}). Captured per
-   * section so the backend can cost each openable sash independently. When absent
-   * the global `sash_id` control value is used. LEAF-only.
-   */
-  sashId?: string | number;
-  /**
-   * Per-leaf FRAME product id resolved for this section's own system (a Slidding
-   * section references a sliding frame product, a Casement section a casement frame
-   * product). Captured per section so the backend can cost each section by its own
-   * system. When absent the global `product_id` control value is used. LEAF-only.
-   */
-  productId?: string | number;
-  /** Present when this node is subdivided; absent for a leaf pane. */
-  split?: PaneSplit;
-  /** Transient: this node's outer region mm size at last render. */
-  _wMm?: number;
-  _hMm?: number;
-}
+// PaneNode / PaneSplit / SplitKind (the state-driven window model documented
+// above) now live in design-tree.util.ts so the save/reopen snapshot and the
+// palla/fly-mesh decision logic are plain functions a unit test can exercise.
 @Component({
   selector: 'app-sub-quotation-design',
   templateUrl: './sub-quotation-design.component.html',
@@ -404,8 +336,14 @@ export class SubQuotationDesignComponent
 
     if (this.edit) {
       this.patchFormValues();
-
-      console.log(this.form.value);
+      // B1: rebuild the pane tree (palla sashes, mullions, per-section config)
+      // from the saved snapshot so the reopened drawing IS the saved drawing.
+      this._restoreSavedDesign();
+      // Load the dropdown lists for the SAVED system without clobbering the
+      // saved selections (frame product / sash / handle).
+      this._profileList(true);
+      this._sashList(true);
+      this._handleList();
     }
     this._manageProduct();
     this.stage = new Konva.Stage({
@@ -480,21 +418,34 @@ export class SubQuotationDesignComponent
       this.formValueChangesSubscription.unsubscribe();
     }
 
-    this.form.patchValue({
-      quatation_id: this.quotDetails.quatation.id,
-      quatation_product_id: this.quotDetails.id,
-      is_saved: false,
-      quantity: this.quotDetails.quantity,
-      color: this.colors.find(
-        (e) =>
-          e.id === this.quotDetails.costhead_information.old_post_data.color_id
-      ),
-      width: this.quotDetails.width,
-      height: this.quotDetails.height,
-      profile_color: '#ffffff',
-    });
+    // B1: every patch below runs with emitEvent:false. The control cascades
+    // (category → casement/palla/track/fly-mesh) are written for USER edits:
+    // letting them fire while loading a saved window rewrote the saved values
+    // (e.g. patching category 'Slidding' force-reset the track to '2 Track'
+    // and the palla count to 2, so a 3-track + fly-mesh window reopened as a
+    // plain 2-track — the heart of the edit-degradation defect).
+    const savedColor = this.colors.find(
+      (e) =>
+        e.id === this.quotDetails.costhead_information.old_post_data.color_id
+    );
+    this.form.patchValue(
+      {
+        quatation_id: this.quotDetails.quatation.id,
+        quatation_product_id: this.quotDetails.id,
+        is_saved: false,
+        quantity: this.quotDetails.quantity,
+        color: savedColor,
+        width: this.quotDetails.width,
+        height: this.quotDetails.height,
+        // The saved profile colour, not hardcoded white — the reopened frame
+        // must render in the colour it was saved with.
+        profile_color: savedColor?.color_code ?? '#ffffff',
+      },
+      { emitEvent: false }
+    );
     this.designSpecificationForm.patchValue(
-      this.quotDetails.costhead_information.old_post_data
+      this.quotDetails.costhead_information.old_post_data,
+      { emitEvent: false }
     );
     this.costheadInfo = this.quotDetails.costhead_information.costhead;
     this.quotDetails.product_information.forEach((e) => {
@@ -511,6 +462,64 @@ export class SubQuotationDesignComponent
       this.costheadInfo.push(data);
     });
     this.price = this.quotDetails.total;
+  }
+
+  /**
+   * B1: restore the saved pane tree so Edit reopens EXACTLY what was saved.
+   *
+   * Primary source: the `design_tree` snapshot submit() embeds in the save
+   * payload (persisted by the API inside `quatation_object_data` and returned
+   * verbatim by show-product). It restores the full structure — palla sashes,
+   * nested mullion/transom splits, per-section systems, size fractions.
+   *
+   * Fallback (rows saved before the snapshot existed, and copied lines): a
+   * best-effort reconstruction from `old_post_data.full_window` (the complete
+   * per-section spec the API embeds since the A2 fix). Single-level layouts
+   * restore exactly; a nested legacy layout is approximated and the user is
+   * told, so nothing is silently rewritten.
+   */
+  private _restoreSavedDesign() {
+    const nextId = () => `p${++this._paneIdSeq}`;
+    let objectData: any = null;
+    const raw = (this.quotDetails as any)?.quatation_object_data;
+    if (raw) {
+      try {
+        objectData = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      } catch {
+        objectData = null;
+      }
+    }
+
+    const snapshot = objectData?.design_tree;
+    if (snapshot?.root) {
+      const root = deserializePaneTree(snapshot.root, nextId);
+      if (root) {
+        this.rootPane = root;
+        if (snapshot.spec && typeof snapshot.spec === 'object') {
+          // The global design-spec values as they were at save time (the
+          // old_post_data patch above holds the FIRST SECTION's part, whose
+          // palla_type/width/height are per-section values, not the window's).
+          this.designSpecificationForm.patchValue(snapshot.spec, {
+            emitEvent: false,
+          });
+        }
+        return;
+      }
+    }
+
+    const opd = this.quotDetails?.costhead_information?.old_post_data as any;
+    const rec = reconstructFromFullWindow(opd, nextId);
+    if (rec) {
+      this.rootPane = rec.root;
+      if (rec.palla != null) {
+        this.df['palla_type'].setValue(rec.palla, { emitEvent: false });
+      }
+      if (rec.approximate) {
+        this._toastService.showWarning(
+          'This window was saved by an older version; its layout was restored approximately. Please verify the drawing before re-saving.'
+        );
+      }
+    }
   }
   /**
    * Lifecycle method end
@@ -626,6 +635,14 @@ export class SubQuotationDesignComponent
       // walked from the leaf tree so the backend can later cost each section
       // independently. Existing `mullion` key is untouched.
       data.sections = this._buildSections(this.rootPane);
+      // B1: lossless designer snapshot (pane tree + global spec form). Stored
+      // by the API inside quatation_object_data and read back on edit so a
+      // reopened window is EXACTLY the saved one. Purely additive for the API.
+      data.design_tree = {
+        v: 1,
+        root: serializePaneTree(this.rootPane),
+        spec: this.designSpecificationForm.getRawValue(),
+      };
       data.is_saved = true;
       data.quatation_id = this.quotationId ? this.quotationId : null;
       data.image = this.stage.toDataURL();
@@ -1221,7 +1238,14 @@ export class SubQuotationDesignComponent
     return data;
   }
 
-  private _profileList() {
+  /**
+   * Load the frame-product list for the current system. `preserveSelection`
+   * (edit reload, B1) keeps the SAVED product when it exists in the loaded
+   * list instead of force-defaulting to the first entry — the default-to-first
+   * behaviour is for USER category switches, where the old selection belongs
+   * to the previous system.
+   */
+  private _profileList(preserveSelection = false) {
     const query = {
       category_name: this.df['category_type'].value,
       track: this.df['is_track'].value,
@@ -1232,13 +1256,28 @@ export class SubQuotationDesignComponent
     this._profileService.productDropdown(query).subscribe((res) => {
       if (res.success) {
         this.profileList = res.data;
-        this.df['product_id'].patchValue(this.profileList[0].id);
+        const current = this.df['product_id'].value;
+        const keep =
+          preserveSelection &&
+          current &&
+          this.profileList.some((p) => String(p.id) === String(current));
+        if (!keep) {
+          this.df['product_id'].patchValue(this.profileList[0].id, {
+            emitEvent: !preserveSelection,
+          });
+        }
+        if (preserveSelection) {
+          // The frame face width may now resolve from the real profile row.
+          this.clearLayerChildren();
+          this._updateCanvas(true);
+        }
         this._manageProduct();
       }
     });
   }
 
-  private _sashList() {
+  /** Same preserve semantics as {@link _profileList}, for the sash list. */
+  private _sashList(preserveSelection = false) {
     const query = {
       category_name: this.df['category_type'].value,
       track: this.df['is_track'].value,
@@ -1249,9 +1288,18 @@ export class SubQuotationDesignComponent
     this._profileService.productDropdown(query).subscribe((res) => {
       if (res.success) {
         this.sashList = res.data;
+        const current = this.df['sash_id'].value;
+        const keep =
+          preserveSelection &&
+          current &&
+          this.sashList.some((p) => String(p.id) === String(current));
+        if (keep) {
+          return;
+        }
         if (this.edit) {
           this.df['sash_id'].patchValue(
-            this.quotDetails.costhead_information.old_post_data.sash_id
+            this.quotDetails.costhead_information.old_post_data.sash_id,
+            { emitEvent: !preserveSelection }
           );
         } else {
           this.df['sash_id'].patchValue(
