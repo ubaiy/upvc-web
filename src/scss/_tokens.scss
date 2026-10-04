@@ -70,7 +70,7 @@
 
 /* tablet: icon rail (same breakpoint as upvc.css) */
 @media (max-width: 1024px) {
-  :root { --w-sidebar: 60px; }
+  :root { --w-sidebar: 64px; } /* 44 px icons, 8 px each side, the hairline */
 }
 
 /* Touch: every control is at least 44 px (feature-parity.md, violation V2).

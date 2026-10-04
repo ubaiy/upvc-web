@@ -52,6 +52,7 @@
 
 .skip {
   position: absolute; inset-block-start: var(--s-2); inset-inline-start: var(--s-2); z-index: 100;
+  display: inline-flex; align-items: center; min-height: 44px;
   padding: var(--s-2) var(--s-3); border-radius: var(--r-sm); background: var(--c-text); color: var(--c-bg);
   transform: translateY(-200%);
   &:focus { transform: none; }
@@ -63,7 +64,9 @@
 // tablet: icon rail
 @media (max-width: 1024px) {
   .t, .kbd { display: none; }
+  .side { padding-inline: var(--s-2); }
   .item, .search, .ws { justify-content: center; padding-inline: 0; }
+  .ws { min-height: 44px; }
   .who { margin-inline-start: 0; }
 }
 

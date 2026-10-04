@@ -376,8 +376,9 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
     .p-button, .p-button:first-of-type, .p-button:last-of-type, .p-button:not(:first-of-type):not(:last-of-type) { height: 38px; position: relative; }
     .p-button::after { content: ""; position: absolute; inset: -3px 0; }
   }
-  .p-tabmenu .p-tabmenu-nav .p-tabmenuitem .p-menuitem-link, .p-tabview .p-tabview-nav li .p-tabview-nav-link { min-height: 44px; }
-  .p-toast .p-toast-icon-close { width: 44px; height: 44px; margin-block: -10px; margin-inline-end: -10px; }
+  .p-tabmenu .p-tabmenu-nav .p-tabmenuitem .p-menuitem-link, .p-tabview .p-tabview-nav li .p-tabview-nav-link { min-width: 44px; min-height: 44px; justify-content: center; }
+  .p-tabmenu .p-tabmenu-nav .p-tabmenuitem { flex: none; }
+  .p-toast .p-toast-message .p-toast-icon-close, .p-toast .p-toast-message.p-toast-message-error .p-toast-icon-close { width: 44px; height: 44px; margin-block: -10px; margin-inline-end: -10px; }
 }
 
 /* ── phone: toasts clear the bottom bar; dialogs fit the screen ─────── */

@@ -188,12 +188,15 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
 
 /* Touch targets of 44 px for the controls whose size is not a token. */
 @media (max-width: 1024px), (pointer: coarse) {
-  .tab { display: inline-flex; align-items: center; min-height: 44px; padding-block: var(--s-2); }
+  .tab { display: inline-flex; flex: none; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding-block: var(--s-2); }
   .check { min-height: 44px; } .check input { width: 20px; height: 20px; }
   .seg button { height: 38px; padding-inline: var(--s-4); }
   .seg button::after { content: ""; position: absolute; inset: -3px 0; } /* 38 + the track's 3 px above and below */
   .crumbs a { display: inline-flex; align-items: center; min-height: 44px; }
   .crumbs { margin-block-end: 0; }
+  /* a text link in a card heading or a table footer ("View all"): the tap area grows, the layout does not */
+  .card-head a:not(.btn), .table-foot a:not(.btn) { position: relative; }
+  .card-head a:not(.btn)::after, .table-foot a:not(.btn)::after { content: ""; position: absolute; inset: -12px -6px; }
 }
 
 /* phone (360 to 640 px): one column, nothing scrolls sideways.
@@ -214,24 +217,32 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
   .dialog-foot { flex-wrap: wrap; } .dialog-foot .btn { flex: 1 1 auto; }
   .steps { flex-wrap: wrap; }
   .empty { padding: var(--s-8) var(--s-4); }
-  .table th, .table td { padding-inline: var(--s-3); }
   .table .hide-phone { display: none; }
+  .table.table-keep th, .table.table-keep td { padding-inline: var(--s-3); }
 
-  /* Row cards in place of a table: <table class="table table-stack">.
-     Each row becomes a block, each cell a line. The first cell is the title;
-     give the others data-label="Phone" to prefix them. The row menu sits top right. */
-  .table-stack, .table-stack tbody { display: block; }
-  .table-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
-  .table-stack tr { position: relative; display: block; padding: var(--s-3) var(--s-4); padding-inline-end: calc(44px + var(--s-4)); border-block-end: 1px solid var(--c-border); }
-  .table-stack tr:last-child { border-block-end: 0; }
-  .table-stack td { display: block; height: auto; padding: 0; border: 0; text-align: start; overflow-wrap: anywhere; }
-  .table-stack td.right { text-align: start; }
-  .table-stack td + td { margin-block-start: 2px; color: var(--c-text-2); }
-  .table-stack td[data-label]::before { content: attr(data-label) ": "; color: var(--c-text-3); }
-  .table-stack td:empty { display: none; }
-  .table-stack td.row-actions { position: absolute; inset-block-start: var(--s-2); inset-inline-end: var(--s-2); margin: 0; }
-  .table-stack.table-select tr { padding-inline-start: 48px; }
-  .table-stack td.col-check { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 48px; margin: 0; }
-  .table-stack tbody tr:hover td { background: none; }
-  .table-stack tbody tr.is-selected { background: var(--c-accent-soft); }
+  /* Row cards in place of a table. Every .table does this on a phone; a table
+     that must keep its columns takes .table-keep. The first cell is the row's
+     title. The other cells print their column heading before the value: the
+     heading comes from data-label, which TableLabelsDirective fills in. The row
+     buttons (.row-actions) sit top right, the tick box (.col-check) top left.
+     !important: this is a change of layout, and it has to win over the column
+     widths and cell paddings a screen sets for its table on a wide screen. */
+  .table:not(.table-keep), .table:not(.table-keep) > tbody { display: block; }
+  .table:not(.table-keep) > thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .table:not(.table-keep) > tbody > tr { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: var(--s-2); row-gap: var(--s-1); align-items: center; padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); }
+  .table:not(.table-keep) > tbody > tr:last-child { border-block-end: 0; }
+  .table:not(.table-keep) > tbody > tr > td { display: block; grid-column: 1 / -1; width: auto !important; min-width: 0; max-width: none !important; height: auto !important; padding: 0 !important; border: 0; text-align: start; }
+  .table:not(.table-keep) > tbody > tr > td:first-child { grid-column: 1; }
+  .table:not(.table-keep) > tbody > tr > td[data-label] { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: 24px; text-align: end; }
+  .table:not(.table-keep) > tbody > tr > td[data-label]::before { content: attr(data-label); flex: none; color: var(--c-text-3); font-size: var(--fs-13); font-weight: var(--fw-regular); text-align: start; }
+  .table:not(.table-keep) > tbody > tr > td:empty,
+  .table:not(.table-keep) > tbody > tr > td.hide-tablet,
+  .table:not(.table-keep) > tbody > tr > td.hide-phone { display: none; }
+  .table:not(.table-keep) > tbody > tr > td.row-actions { grid-column: 2; grid-row: 1; display: flex; align-self: start; margin-block: calc(-1 * var(--s-2)); margin-inline-end: calc(-1 * var(--s-2)); opacity: 1; }
+  .table:not(.table-keep) > tbody > tr > td.col-check { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 48px !important; }
+  .table:not(.table-keep) > tbody > tr:has(> td.col-check) { padding-inline-start: 48px; }
+  .table:not(.table-keep) > tbody > tr:has(> td.col-check) > td:nth-child(2) { grid-column: 1; }
+  .table:not(.table-keep) > tbody > tr:hover > td { background: none; }
+  .table:not(.table-keep) > tbody > tr.is-selected { background: var(--c-accent-soft); }
+  .table:not(.table-keep) > tbody > tr.is-selected > td { background: none; }
 }

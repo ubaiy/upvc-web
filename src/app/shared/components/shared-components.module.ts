@@ -10,6 +10,7 @@ import { IconComponent } from './icon/icon.component';
 import { PageHeaderComponent } from './page-header/page-header.component';
 import { QuoteStatusComponent } from './quote-status/quote-status.component';
 import { StatComponent } from './stat/stat.component';
+import { TableLabelsDirective } from './table-labels/table-labels.directive';
 import { TotalsComponent } from './totals/totals.component';
 import { UndoToastComponent } from './undo-toast/undo-toast.component';
 import { WindowThumbComponent } from './window-thumb/window-thumb.component';
@@ -22,6 +23,7 @@ const COMPONENTS = [
   PageHeaderComponent,
   QuoteStatusComponent,
   StatComponent,
+  TableLabelsDirective,
   TotalsComponent,
   UndoToastComponent,
   WindowThumbComponent,
@@ -32,7 +34,9 @@ const COMPONENTS = [
  * feature module to use <app-page-header>, <app-icon>, <app-stat>,
  * <app-empty-state>, <app-callout>, <app-totals>, <app-quote-status>,
  * <app-window-thumb>, <app-bulk-bar> and the `inr` pipe. (<app-undo-toast> is
- * placed once, in AppComponent; screens call UndoService.)
+ * placed once, in AppComponent; screens call UndoService.) It also carries
+ * TableLabelsDirective, which needs no markup: every `<table class="table">`
+ * in the importing module becomes row cards on a phone.
  *
  * Every piece is shown at /ui. Screen cards do not edit this folder; a screen
  * that needs a new shared piece asks for a follow-up to card U0.

@@ -265,7 +265,7 @@
           <tbody>
             <tr *ngFor="let draft of drafts">
               <td class="title">{{ draft }}</td>
-              <td class="right">
+              <td class="row-actions">
                 <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + draft" (click)="deleteDraft(draft)">
                   <app-icon name="trash"></app-icon>
                 </button>
@@ -283,8 +283,9 @@
     <h2>Bulk actions</h2>
     <div class="stack-4">
       <p class="muted small">
-        Tick rows and the toolbar turns into the bulk bar. The header box ticks every row on screen. Below 640 px the same
-        table becomes row cards (<code>table-stack</code>), so nothing scrolls sideways. <code>RowSelection</code> + <code>&lt;app-bulk-bar&gt;</code>.
+        Tick rows and the toolbar turns into the bulk bar. The header box ticks every row on screen. Below 640 px every
+        <code>.table</code> becomes row cards with the column heading before each value, so nothing scrolls sideways
+        (<code>table-keep</code> opts a table out). <code>RowSelection</code> + <code>&lt;app-bulk-bar&gt;</code>.
       </p>
       <div class="card clip">
         <app-bulk-bar *ngIf="!selection.isEmpty; else toolbar" [count]="selection.count" noun="quotation" (cleared)="selection.clear()">
@@ -296,7 +297,7 @@
             <div class="input-group"><app-icon name="search"></app-icon><input type="search" placeholder="Search quotations" aria-label="Search quotations" /></div>
           </div>
         </ng-template>
-        <table class="table table-select table-stack">
+        <table class="table table-select">
           <thead>
             <tr>
               <th scope="col" class="col-check">
@@ -326,7 +327,7 @@
               <td class="title">{{ q.name }}</td>
               <td class="muted">{{ q.customer }}</td>
               <td><app-quote-status [status]="q.status"></app-quote-status></td>
-              <td class="right num" data-label="Total">{{ q.total | inr }}</td>
+              <td class="right num">{{ q.total | inr }}</td>
             </tr>
             <tr *ngIf="!bulkRows.length"><td colspan="5" class="muted">Every sample row was deleted. Reload the page to get them back.</td></tr>
           </tbody>
