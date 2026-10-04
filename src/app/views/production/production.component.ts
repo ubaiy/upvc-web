@@ -12,6 +12,7 @@ import {
   PlainWarning,
   fileName,
   plainWarnings,
+  previewPage,
   summarise,
 } from './production.adapter';
 import { DocumentFormat, DocumentType, JobResult, ProductionJob } from './production.model';
@@ -191,12 +192,14 @@ export class ProductionComponent implements OnInit, OnDestroy {
     this.start(doc.type, 'preview');
     this.service.getDocument(this.quotationId, doc.type, 'html', job.revision).subscribe({
       next: (file) => {
-        this.busy = null;
-        this.closePreview();
-        const url = URL.createObjectURL(file.blob);
-        // An address made here from the api's own page; the frame is sandboxed, so nothing in it can run.
-        this.preview = { doc, url, src: this.sanitizer.bypassSecurityTrustResourceUrl(url) };
-        setTimeout(() => this.previewCard?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'start' }));
+        file.blob.text().then((html) => {
+          this.busy = null;
+          this.closePreview();
+          const url = URL.createObjectURL(new Blob([previewPage(html)], { type: file.blob.type }));
+          // An address made here from the api's own page; the frame is sandboxed, so nothing in it can run.
+          this.preview = { doc, url, src: this.sanitizer.bypassSecurityTrustResourceUrl(url) };
+          setTimeout(() => this.previewCard?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'start' }));
+        });
       },
       error: (error) => this.failed(error, `${doc.title} could not be opened.`, () => this.openPreview(doc)),
     });

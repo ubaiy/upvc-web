@@ -207,3 +207,16 @@ function plainMessage(message: string): string {
   }
   return message;
 }
+
+/**
+ * The api page is laid out for A4 paper, where the printer adds the margins.
+ * On screen it gets a margin and the width of the sheet, so the preview reads
+ * like the printed page. Nothing in the document itself is changed.
+ */
+const SCREEN_STYLE =
+  '<style>@media screen { html { background: #fff; } body { max-width: 186mm; margin: 0 auto !important; padding: 16px; } }</style>';
+
+export function previewPage(html: string): string {
+  const head = /<\/head>/i;
+  return head.test(html) ? html.replace(head, SCREEN_STYLE + '</head>') : SCREEN_STYLE + html;
+}

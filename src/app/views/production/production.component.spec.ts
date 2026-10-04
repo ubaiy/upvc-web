@@ -1,7 +1,7 @@
 import { Location } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
-import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { Observable, Subject, of, throwError } from 'rxjs';
@@ -166,11 +166,11 @@ describe('ProductionComponent', () => {
     expect(button('Download production pack').disabled).toBeTrue();
   });
 
-  it('opens the preview inline in a sandboxed frame and closes it again', fakeAsync(() => {
+  it('opens the preview inline in a sandboxed frame and closes it again', async () => {
     create(job());
     service.getDocument.and.returnValue(of({ blob: new Blob(['<html></html>'], { type: 'text/html' }), fileName: null }));
     labelled('Preview Cutting list').click();
-    tick();
+    await new Promise((resolve) => setTimeout(resolve, 50));
     fixture.detectChanges();
     expect(service.getDocument).toHaveBeenCalledWith('14', 'cutting-list', 'html', 1);
     const frame = el().querySelector<HTMLIFrameElement>('iframe.preview-frame')!;
@@ -180,7 +180,7 @@ describe('ProductionComponent', () => {
     button('Close preview').click();
     fixture.detectChanges();
     expect(el().querySelector('iframe')).toBeNull();
-  }));
+  });
 
   it('shares the PDF through the share sheet when the device has one', () => {
     create(job());

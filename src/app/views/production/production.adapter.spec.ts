@@ -3,6 +3,7 @@ import {
   fileName,
   fileNameFromHeader,
   plainWarnings,
+  previewPage,
   summarise,
   toJobResult,
 } from './production.adapter';
@@ -95,6 +96,14 @@ describe('production adapter', () => {
       glassPanes: 0,
       hardwareItems: 0,
     });
+  });
+
+  it('gives the preview a screen margin without touching the document', () => {
+    const page = previewPage('<html><head><title>Cutting list</title></head><body><p>W1</p></body></html>');
+    expect(page).toContain('@media screen');
+    expect(page.indexOf('@media screen')).toBeLessThan(page.indexOf('</head>'));
+    expect(page).toContain('<body><p>W1</p></body>');
+    expect(previewPage('<p>bare</p>')).toContain('<p>bare</p>');
   });
 
   describe('plainWarnings', () => {
