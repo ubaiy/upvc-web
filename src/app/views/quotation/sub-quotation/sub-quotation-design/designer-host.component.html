@@ -236,17 +236,21 @@
           <div class="form-grid dz-size">
             <div class="field">
               <label class="label" for="dz-w">Width</label>
-              <div class="input-group">
+              <div class="input-group" [class.is-invalid]="!!sizeError.w">
                 <input id="dz-w" data-dz="width" type="number" inputmode="numeric" class="num" [min]="frameMinMm"
-                  [max]="frameMaxMm" [value]="widthMm" [disabled]="readOnly" (change)="onSize('w', $any($event.target).value)" />
+                  [max]="frameMaxMm" [value]="widthMm" [disabled]="readOnly" [attr.aria-invalid]="!!sizeError.w"
+                  [attr.aria-describedby]="sizeError.w ? 'dz-size-e' : null"
+                  (input)="onSizeTyped('w', $any($event.target).value)" (change)="onSize('w', $any($event.target).value)" />
                 <span class="unit">mm</span>
               </div>
             </div>
             <div class="field">
               <label class="label" for="dz-h">Height</label>
-              <div class="input-group">
+              <div class="input-group" [class.is-invalid]="!!sizeError.h">
                 <input id="dz-h" data-dz="height" type="number" inputmode="numeric" class="num" [min]="frameMinMm"
-                  [max]="frameMaxMm" [value]="heightMm" [disabled]="readOnly" (change)="onSize('h', $any($event.target).value)" />
+                  [max]="frameMaxMm" [value]="heightMm" [disabled]="readOnly" [attr.aria-invalid]="!!sizeError.h"
+                  [attr.aria-describedby]="sizeError.h ? 'dz-size-e' : null"
+                  (input)="onSizeTyped('h', $any($event.target).value)" (change)="onSize('h', $any($event.target).value)" />
                 <span class="unit">mm</span>
               </div>
             </div>
@@ -259,6 +263,7 @@
               </div>
             </div>
           </div>
+          <p class="error" id="dz-size-e" data-dz="size-error" *ngIf="sizeError.w || sizeError.h">{{ sizeError.w || sizeError.h }}</p>
           <p class="error" *ngIf="!quantityValid">Quantity must be a whole number between 1 and 10000.</p>
         </div>
 

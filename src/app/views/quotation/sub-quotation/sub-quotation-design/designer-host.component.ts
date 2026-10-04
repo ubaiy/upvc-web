@@ -181,6 +181,11 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   private touched = false;
   private lineIds: string[] = [];
   private refreshSeq = 0;
+  /** Refreshes still completing the document (catalogue look-ups). */
+  private refreshing = 0;
+  /** Save calls waiting for the document and its price to be up to date. */
+  private waiting: (() => void)[] = [];
+  private sizeTimer: ReturnType<typeof setTimeout> | null = null;
   private readonly price$ = new Subject<void>();
   private priceSub?: Subscription;
 
@@ -225,6 +230,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.sizeTimer) clearTimeout(this.sizeTimer);
     this.priceSub?.unsubscribe();
     this.price$.complete();
   }
@@ -351,23 +357,42 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   /** Complete the latest document and bring the price up to date. */
   private async refresh(): Promise<void> {
     const seq = ++this.refreshSeq;
+    this.refreshing++;
     try {
       await this.catalogs.ensure(this.current, this.catalog);
+      if (seq !== this.refreshSeq) return;
+      this.effective = completeDesign(this.current, this.catalog);
+      this.saveError = '';
+      if (this.changed) {
+        this.requestPrice();
+      } else if (this.stored) {
+        this.price = this.stored;
+      }
     } catch (err) {
       if (seq !== this.refreshSeq) return;
       this.price = this.emptyPrice('error', text(err));
+    } finally {
+      this.refreshing--;
+      this.settle();
       this.cdr.markForCheck();
-      return;
     }
-    if (seq !== this.refreshSeq) return;
-    this.effective = completeDesign(this.current, this.catalog);
-    this.saveError = '';
-    if (this.changed) {
-      this.requestPrice();
-    } else if (this.stored) {
-      this.price = this.stored;
-    }
-    this.cdr.markForCheck();
+  }
+
+  /** True while the document or its price is still catching up with the last change. */
+  private get catchingUp(): boolean {
+    return this.refreshing > 0 || this.price.state === 'loading';
+  }
+
+  /** Lets a waiting Save go on once the window and its price are up to date. */
+  private settle(): void {
+    if (this.catchingUp) return;
+    const waiting = this.waiting;
+    this.waiting = [];
+    waiting.forEach((go) => go());
+  }
+
+  private caughtUp(): Promise<void> {
+    return this.catchingUp ? new Promise((resolve) => this.waiting.push(resolve)) : Promise.resolve();
   }
 
   private requestPrice(): void {
@@ -393,6 +418,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     } else {
       this.price = this.emptyPrice('error', res?.message || 'The price could not be worked out.');
     }
+    this.settle();
     this.cdr.markForCheck();
   }
 
@@ -433,7 +459,35 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     return Math.round(this.current.frame.heightMm);
   }
 
+  /** What is wrong with a typed size, said under the fields; '' when it can be used. */
+  sizeError: { w: string; h: string } = { w: '', h: '' };
+
+  private sizeProblem(which: 'w' | 'h', raw: string): string {
+    const v = Number(raw);
+    const ok = String(raw).trim() !== '' && Number.isFinite(v) && v >= FRAME_MIN_MM && v <= FRAME_MAX_MM;
+    return ok ? '' : `${which === 'w' ? 'Width' : 'Height'} must be between ${FRAME_MIN_MM} and ${FRAME_MAX_MM} mm.`;
+  }
+
+  /** While typing: a size inside the limits is taken in after a short pause, so the price follows. */
+  onSizeTyped(which: 'w' | 'h', raw: string): void {
+    if (this.sizeTimer) clearTimeout(this.sizeTimer);
+    this.sizeTimer = null;
+    if (this.sizeProblem(which, raw)) return;
+    this.sizeError = { ...this.sizeError, [which]: '' };
+    this.sizeTimer = setTimeout(() => {
+      this.onSize(which, raw);
+      this.cdr.markForCheck();
+    }, 600);
+  }
+
+  /** The field is left (or Save is pressed): the size is taken in, or the limits are said. */
   onSize(which: 'w' | 'h', raw: string): void {
+    if (this.sizeTimer) clearTimeout(this.sizeTimer);
+    this.sizeTimer = null;
+    const problem = this.sizeProblem(which, raw);
+    this.sizeError = { ...this.sizeError, [which]: problem };
+    if (problem) return;
+    if (Math.round(Number(raw)) === (which === 'w' ? this.widthMm : this.heightMm)) return;
     this.canvas?.onFrameSizeInput(which, raw);
   }
 
@@ -642,14 +696,19 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   /* Save and leave                                                      */
   /* ------------------------------------------------------------------ */
 
+  /**
+   * Save stays available while the price is being worked out: a click made
+   * straight after typing a size is kept, and the save waits for the price.
+   */
   get canSave(): boolean {
     return (
       this.ready &&
       !this.readOnly &&
       !this.saving &&
       this.quantityValid &&
-      this.price.state !== 'error' &&
-      this.price.state !== 'loading'
+      !this.sizeError.w &&
+      !this.sizeError.h &&
+      this.price.state !== 'error'
     );
   }
 
@@ -665,10 +724,20 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   }
 
   async save(another: boolean): Promise<void> {
+    // A value still being typed (Ctrl+S, or Enter on the button) is taken in first.
+    const typing = document.activeElement as HTMLElement | null;
+    if (typing?.matches?.('.dz input, .dz select, .dz textarea')) typing.blur();
     if (!this.canSave) return;
     this.saving = true;
     this.saveError = '';
     this.cdr.markForCheck();
+    await this.caughtUp();
+    if (this.price.state === 'error') {
+      // The top bar already says the price is not available, with "Try again".
+      this.saving = false;
+      this.cdr.markForCheck();
+      return;
+    }
     try {
       if (this.edit && !this.changed) {
         // Nothing that affects the price changed: the stored line stays as it is.
