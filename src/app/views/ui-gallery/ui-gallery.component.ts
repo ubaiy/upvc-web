@@ -2,12 +2,14 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 
+import { RowSelection } from '../../shared/components/bulk-bar/row-selection';
 import { ICON_NAMES } from '../../shared/components/icon/icon-paths';
 import { Crumb } from '../../shared/components/page-header/page-header.component';
 import { QuoteStatus } from '../../shared/components/quote-status/quote-status.component';
 import { TotalsLine } from '../../shared/components/totals/totals.component';
 import { SAMPLE_WINDOWS } from '../../shared/components/window-thumb/window-drawing';
 import { ToastService } from '../../shared/services/toast.service';
+import { UndoService } from '../../shared/services/undo.service';
 
 interface SampleQuote {
   name: string;
@@ -16,6 +18,8 @@ interface SampleQuote {
   total: number;
   date: string;
 }
+
+const SAMPLE_DRAFTS = ['Kulkarni Bungalow', 'Desai Balcony Doors', 'Rao Kitchen Window'];
 
 /**
  * /ui: every token, class, shared component and themed PrimeNG control on one
@@ -36,7 +40,7 @@ export class UiGalleryComponent implements OnInit, OnDestroy {
   readonly iconNames = ICON_NAMES;
   readonly windows = Object.entries(SAMPLE_WINDOWS).map(([name, spec]) => ({ name, spec }));
   readonly bigWindow = SAMPLE_WINDOWS['mixed3'];
-  readonly statuses: QuoteStatus[] = ['draft', 'sent', 'accepted', 'billed', 'declined'];
+  readonly statuses: QuoteStatus[] = ['draft', 'sent', 'accepted', 'billed', 'declined', 'expired'];
 
   readonly crumbs: Crumb[] = [{ label: 'Quotations', link: '/quotation' }, { label: 'Q-0014' }];
   readonly totals: TotalsLine[] = [
@@ -73,6 +77,15 @@ export class UiGalleryComponent implements OnInit, OnDestroy {
     { label: 'Delete', icon: 'pi pi-trash', styleClass: 'danger' },
   ];
 
+  /** Ease of use: undo instead of confirm. */
+  drafts = [...SAMPLE_DRAFTS];
+  /** What the sample "server" has been told to delete, to show that nothing is sent before the toast goes. */
+  committed: string[] = [];
+
+  /** Ease of use: bulk actions. */
+  bulkRows: SampleQuote[] = this.quotes.map((quote) => ({ ...quote }));
+  readonly selection = new RowSelection<SampleQuote>((quote) => quote.name);
+
   customer = 'Amit Mehta';
   glass = 'plain5';
   width = 2200;
@@ -88,7 +101,7 @@ export class UiGalleryComponent implements OnInit, OnDestroy {
   /** What the page was showing before /ui changed it, restored on leave. */
   private previous: { theme: string | null; dir: string | null };
 
-  constructor(private route: ActivatedRoute, private toast: ToastService) {}
+  constructor(private route: ActivatedRoute, private toast: ToastService, private undo: UndoService) {}
 
   ngOnInit(): void {
     const root = document.documentElement;
@@ -103,6 +116,7 @@ export class UiGalleryComponent implements OnInit, OnDestroy {
     const root = document.documentElement;
     this.restore(root, 'data-theme', this.previous.theme);
     this.restore(root, 'dir', this.previous.dir);
+    this.undo.flush();
   }
 
   setTheme(theme: 'light' | 'dark'): void {
@@ -124,6 +138,42 @@ export class UiGalleryComponent implements OnInit, OnDestroy {
     kind === 'success'
       ? this.toast.showSuccess('Quotation copied.')
       : this.toast.showError('We could not save the window. Try again.');
+  }
+
+  deleteDraft(draft: string): void {
+    const before = this.drafts;
+    this.drafts = before.filter((d) => d !== draft);
+    this.undo.offer({
+      message: `${draft} deleted`,
+      commit: () => (this.committed = [...this.committed, `delete ${draft}`]),
+      undo: () => (this.drafts = before.filter((d) => d === draft || this.drafts.includes(d))),
+    });
+  }
+
+  resetDrafts(event: Event): void {
+    event.preventDefault();
+    this.undo.flush();
+    this.drafts = [...SAMPLE_DRAFTS];
+    this.committed = [];
+  }
+
+  markSelectedSent(): void {
+    const rows = this.selection.selected(this.bulkRows);
+    rows.forEach((row) => (row.status = 'sent'));
+    this.selection.clear();
+    this.toast.showSuccess(`${rows.length} ${rows.length === 1 ? 'quotation' : 'quotations'} marked as sent.`);
+  }
+
+  deleteSelected(): void {
+    const before = this.bulkRows;
+    const gone = this.selection.selected(before);
+    this.bulkRows = before.filter((row) => !gone.includes(row));
+    this.selection.clear();
+    this.undo.offer({
+      message: `${gone.length} ${gone.length === 1 ? 'quotation' : 'quotations'} deleted`,
+      commit: () => undefined,
+      undo: () => (this.bulkRows = before),
+    });
   }
 
   private restore(element: HTMLElement, attribute: string, value: string | null): void {

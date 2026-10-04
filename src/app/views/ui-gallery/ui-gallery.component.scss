@@ -24,6 +24,18 @@
 .icons span { display: flex; align-items: center; gap: var(--s-2); min-width: 0; color: var(--c-text); }
 .icons code { font-family: inherit; font-size: var(--fs-12); color: var(--c-text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+.narrow-card { max-width: 420px; }
+code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: var(--fs-12); color: var(--c-text-2); background: var(--c-surface-2); padding: 1px 4px; border-radius: 4px; }
+
+// A still picture of the phone layout. The real bar is in containers/shell.
+.phone { width: 360px; max-width: 100%; border: 1px solid var(--c-border-strong); border-radius: var(--r-lg); background: var(--c-bg); overflow: hidden; }
+.phone-page { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); }
+.phone-title { font-size: var(--fs-20); font-weight: var(--fw-semibold); letter-spacing: -.02em; }
+.phone-row { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); &:last-child { border: 0; } }
+.phone-bar { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); height: 56px; border-block-start: 1px solid var(--c-border); background: var(--c-surface); }
+.phone-bar span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: var(--fw-medium); color: var(--c-text-2); }
+.phone-bar .is-current { color: var(--c-accent-text); }
+
 @media (max-width: 700px) {
   .sec { grid-template-columns: minmax(0, 1fr); gap: var(--s-3); }
   .sw { grid-template-columns: repeat(3, minmax(0, 1fr)); }

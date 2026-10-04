@@ -73,7 +73,7 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
 .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-4) var(--s-5); }
 .form-grid .span-2 { grid-column: 1 / -1; }
 .seg { display: inline-flex; padding: 3px; background: var(--c-surface-2); border-radius: var(--r-sm); gap: 2px; }
-.seg button { border: 0; background: transparent; height: 28px; padding-inline: var(--s-3); border-radius: 4px; font: inherit; font-size: var(--fs-13); font-weight: var(--fw-medium); color: var(--c-text-2); cursor: pointer; }
+.seg button { position: relative; border: 0; background: transparent; height: 28px; padding-inline: var(--s-3); border-radius: 4px; font: inherit; font-size: var(--fs-13); font-weight: var(--fw-medium); color: var(--c-text-2); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--c-surface); color: var(--c-text); box-shadow: 0 0 0 1px var(--c-border); }
 
 /* cards */
@@ -103,6 +103,16 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
 .table .title { font-weight: var(--fw-medium); color: var(--c-text); }
 .table-foot { display: flex; align-items: center; justify-content: space-between; padding: var(--s-3) var(--s-4); border-block-start: 1px solid var(--c-border); color: var(--c-text-3); font-size: var(--fs-13); }
 
+/* table with row selection, and the bar that replaces the toolbar while rows are ticked
+   (RowSelection + <app-bulk-bar>). The label fills the cell, so the whole cell is the target. */
+.table .col-check { width: 48px; padding: 0; }
+.table .col-check .check { display: flex; align-items: center; justify-content: center; width: 100%; min-height: var(--h-row); margin: 0; cursor: pointer; }
+.table th.col-check .check { min-height: 40px; }
+.table tr.is-selected td, .table tbody tr.is-selected:hover td { background: var(--c-accent-soft); }
+.bulk-bar { display: flex; align-items: center; gap: var(--s-3); min-height: calc(var(--h-control) + 2 * var(--s-3)); padding: var(--s-2) var(--s-4); border-block-end: 1px solid var(--c-border); background: var(--c-accent-soft); color: var(--c-accent-text); border-start-start-radius: inherit; border-start-end-radius: inherit; }
+.bulk-count { font-weight: var(--fw-medium); white-space: nowrap; }
+.bulk-actions { display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap; flex: 1; min-width: 0; }
+
 /* badges, tabs */
 .badge { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding-block: 0; padding-inline: var(--s-2); border-radius: var(--r-full); font-size: var(--fs-12); font-weight: var(--fw-medium); line-height: 1; background: var(--c-surface-2); color: var(--c-text-2); white-space: nowrap; }
 .badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -122,8 +132,16 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
 /* :not(.show) repeats the selector Bootstrap uses to hide its own toasts */
 .toast, .toast:not(.show) { display: inline-flex; align-items: center; gap: var(--s-3); width: auto; max-width: 100%; padding: var(--s-3) var(--s-4); background: var(--c-text); color: var(--c-bg); border: 0; border-radius: var(--r-md); box-shadow: var(--shadow-pop); font-size: var(--fs-13); }
 .toast a { color: inherit; text-decoration: underline; }
+/* toast with an action ("Undo"): UndoService + <app-undo-toast> */
+.undo-live { position: fixed; inset-inline: var(--s-4); inset-block-end: calc(var(--h-bar) + var(--s-5) + env(safe-area-inset-bottom, 0px)); z-index: 1200; display: flex; justify-content: center; pointer-events: none; }
+.undo-toast { pointer-events: auto; min-width: min(320px, 100%); padding-block: var(--s-1); padding-inline-end: var(--s-1); animation: toast-in var(--dur) var(--ease); }
+.toast-action, .toast-close { display: inline-grid; place-items: center; min-width: 44px; height: 44px; padding-inline: var(--s-3); border: 0; border-radius: var(--r-sm); background: none; color: inherit; font: inherit; font-weight: var(--fw-semibold); cursor: pointer; flex: none; }
+.toast-action { text-decoration: underline; text-underline-offset: 3px; }
+.toast-close { padding: 0; opacity: .7; }
+.toast-action:hover, .toast-close:hover { background: rgba(127, 127, 127, .25); opacity: 1; }
+@keyframes toast-in { from { opacity: 0; transform: translateY(8px); } }
 .menu { width: 220px; padding: var(--s-1); background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); box-shadow: var(--shadow-pop); }
-.menu-item { display: flex; align-items: center; gap: var(--s-3); width: 100%; height: 32px; padding-inline: var(--s-3); border: 0; border-radius: var(--r-sm); background: none; color: var(--c-text); font: inherit; text-align: start; cursor: pointer; } .menu-item:hover { background: var(--c-surface-2); color: var(--c-text); text-decoration: none; }
+.menu-item { display: flex; align-items: center; gap: var(--s-3); width: 100%; height: var(--h-menu); padding-inline: var(--s-3); border: 0; border-radius: var(--r-sm); background: none; color: var(--c-text); font: inherit; text-align: start; cursor: pointer; } .menu-item:hover { background: var(--c-surface-2); color: var(--c-text); text-decoration: none; }
 .menu-item.danger { color: var(--c-danger); } .menu-sep { height: 1px; background: var(--c-border); margin: var(--s-1) 0; }
 
 /* empty state, skeleton, progress, callout */
@@ -159,7 +177,7 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
 .auth-side { background: var(--c-surface); border-inline-start: 1px solid var(--c-border); display: flex; flex-direction: column; justify-content: center; padding: var(--s-16); }
 .brand { display: inline-flex; align-items: center; gap: var(--s-3); font-weight: var(--fw-semibold); font-size: var(--fs-16); letter-spacing: -.01em; color: var(--c-text); }
 
-/* tablet: 40px touch controls, single column (token changes live in _tokens.scss) */
+/* tablet: single column (the 44 px touch sizes are tokens, see _tokens.scss) */
 @media (max-width: 1024px) {
   .page { padding: var(--s-6) var(--s-5) var(--s-12); }
   .split, .grid-3 { grid-template-columns: minmax(0, 1fr); }
@@ -167,7 +185,53 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
   .auth { grid-template-columns: minmax(0, 1fr); } .auth-side { display: none; }
   .toolbar .input-group { width: auto; flex: 1; }
 }
+
+/* Touch targets of 44 px for the controls whose size is not a token. */
+@media (max-width: 1024px), (pointer: coarse) {
+  .tab { display: inline-flex; align-items: center; min-height: 44px; padding-block: var(--s-2); }
+  .check { min-height: 44px; } .check input { width: 20px; height: 20px; }
+  .seg button { height: 38px; padding-inline: var(--s-4); }
+  .seg button::after { content: ""; position: absolute; inset: -3px 0; } /* 38 + the track's 3 px above and below */
+  .crumbs a { display: inline-flex; align-items: center; min-height: 44px; }
+  .crumbs { margin-block-end: 0; }
+}
+
+/* phone (360 to 640 px): one column, nothing scrolls sideways.
+   The shell swaps the sidebar for a bottom bar (containers/shell). */
 @media (max-width: 640px) {
-  .page-header { flex-wrap: wrap; }
+  .page { padding: var(--s-4) var(--s-4) var(--s-8); }
+  h1 { font-size: var(--fs-20); overflow-wrap: anywhere; }
+  .page-header { flex-wrap: wrap; gap: var(--s-3); margin-block-end: var(--s-4); }
+  .page-header > .grow { flex-basis: 100%; }
+  .page-actions { width: 100%; flex-wrap: wrap; }
+  .page-actions > .btn-primary, .page-actions > .p-button:not(.p-button-outlined):not(.p-button-text) { flex: 1 1 auto; }
+  .crumbs { flex-wrap: wrap; }
   .form-grid, .grid-2 { grid-template-columns: minmax(0, 1fr); }
+  .card-pad { padding: var(--s-4); } .card-head { padding: var(--s-3) var(--s-4); flex-wrap: wrap; }
+  .toolbar { flex-wrap: wrap; } .toolbar .input-group { flex: 1 1 100%; }
+  .table-foot { flex-wrap: wrap; gap: var(--s-2); }
+  .bulk-bar { flex-wrap: wrap; }
+  .dialog-foot { flex-wrap: wrap; } .dialog-foot .btn { flex: 1 1 auto; }
+  .steps { flex-wrap: wrap; }
+  .empty { padding: var(--s-8) var(--s-4); }
+  .table th, .table td { padding-inline: var(--s-3); }
+  .table .hide-phone { display: none; }
+
+  /* Row cards in place of a table: <table class="table table-stack">.
+     Each row becomes a block, each cell a line. The first cell is the title;
+     give the others data-label="Phone" to prefix them. The row menu sits top right. */
+  .table-stack, .table-stack tbody { display: block; }
+  .table-stack thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); }
+  .table-stack tr { position: relative; display: block; padding: var(--s-3) var(--s-4); padding-inline-end: calc(44px + var(--s-4)); border-block-end: 1px solid var(--c-border); }
+  .table-stack tr:last-child { border-block-end: 0; }
+  .table-stack td { display: block; height: auto; padding: 0; border: 0; text-align: start; overflow-wrap: anywhere; }
+  .table-stack td.right { text-align: start; }
+  .table-stack td + td { margin-block-start: 2px; color: var(--c-text-2); }
+  .table-stack td[data-label]::before { content: attr(data-label) ": "; color: var(--c-text-3); }
+  .table-stack td:empty { display: none; }
+  .table-stack td.row-actions { position: absolute; inset-block-start: var(--s-2); inset-inline-end: var(--s-2); margin: 0; }
+  .table-stack.table-select tr { padding-inline-start: 48px; }
+  .table-stack td.col-check { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 48px; margin: 0; }
+  .table-stack tbody tr:hover td { background: none; }
+  .table-stack tbody tr.is-selected { background: var(--c-accent-soft); }
 }

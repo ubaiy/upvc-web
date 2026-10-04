@@ -134,7 +134,7 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
   .p-dropdown-header .p-dropdown-filter-icon { inset-inline-end: var(--s-3); color: var(--c-text-3); }
   .p-dropdown-items { padding: var(--s-1); }
   .p-dropdown-items .p-dropdown-item {
-    display: flex; align-items: center; min-height: 32px; padding: 0 var(--s-3); border-radius: var(--r-sm);
+    display: flex; align-items: center; min-height: var(--h-menu); padding: 0 var(--s-3); border-radius: var(--r-sm);
     color: var(--c-text); background: transparent; transition: none;
     &.p-highlight { background: var(--c-accent-soft); color: var(--c-accent-text); }
     &:not(.p-highlight):not(.p-disabled):hover, &:not(.p-highlight):not(.p-disabled).p-focus { background: var(--c-surface-2); color: var(--c-text); }
@@ -328,7 +328,7 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
   width: 220px; padding: var(--s-1); border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-text);
   &.p-menu-overlay { border: 1px solid var(--c-border); box-shadow: var(--shadow-pop); }
   .p-menuitem > .p-menuitem-content { border-radius: var(--r-sm); color: var(--c-text); transition: none;
-    .p-menuitem-link { gap: var(--s-3); height: 32px; padding: 0 var(--s-3); color: var(--c-text);
+    .p-menuitem-link { gap: var(--s-3); height: var(--h-menu); padding: 0 var(--s-3); color: var(--c-text);
       .p-menuitem-text { color: inherit; }
       .p-menuitem-icon { margin: 0; color: inherit; font-size: 14px; }
     }
@@ -365,3 +365,25 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
 .p-tooltip.p-tooltip-bottom .p-tooltip-arrow { border-bottom-color: var(--c-text); }
 .p-tooltip.p-tooltip-left .p-tooltip-arrow { border-left-color: var(--c-text); }
 .p-tooltip.p-tooltip-right .p-tooltip-arrow { border-right-color: var(--c-text); }
+
+/* ── touch: 44 px targets for the controls whose size is not a token ── */
+@media (max-width: 1024px), (pointer: coarse) {
+  /* the box stays small; the area that takes the tap grows around it */
+  .p-checkbox, .p-radiobutton { position: relative; }
+  .p-checkbox::after, .p-radiobutton::after { content: ""; position: absolute; inset: -14px; }
+  .p-checkbox-label { display: inline-flex; align-items: center; min-height: 44px; }
+  .p-selectbutton.p-buttonset {
+    .p-button, .p-button:first-of-type, .p-button:last-of-type, .p-button:not(:first-of-type):not(:last-of-type) { height: 38px; position: relative; }
+    .p-button::after { content: ""; position: absolute; inset: -3px 0; }
+  }
+  .p-tabmenu .p-tabmenu-nav .p-tabmenuitem .p-menuitem-link, .p-tabview .p-tabview-nav li .p-tabview-nav-link { min-height: 44px; }
+  .p-toast .p-toast-icon-close { width: 44px; height: 44px; margin-block: -10px; margin-inline-end: -10px; }
+}
+
+/* ── phone: toasts clear the bottom bar; dialogs fit the screen ─────── */
+@media (max-width: 640px) {
+  .p-toast.p-toast-bottom-center { bottom: calc(var(--h-bar) + var(--s-5) + env(safe-area-inset-bottom, 0px)); }
+  .p-dialog { max-width: calc(100vw - 2 * var(--s-4)); max-height: calc(100dvh - 2 * var(--s-4)); }
+  .p-dialog .p-dialog-footer { flex-wrap: wrap; }
+  .p-paginator { flex-wrap: wrap; row-gap: var(--s-2); }
+}

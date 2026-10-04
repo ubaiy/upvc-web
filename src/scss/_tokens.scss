@@ -61,7 +61,25 @@
   --shadow-pop: 0 8px 24px rgba(0, 0, 0, .5);
 }
 
-/* tablet: icon rail and 40 px touch controls (same breakpoint as upvc.css) */
+/* Added by the app (not in upvc.css): sizes that change with the device. */
+:root {
+  --h-menu: 32px;   /* one row of a menu or of a pick-list */
+  --h-nav: 34px;    /* one item of the sidebar */
+  --h-bar: 0px;     /* the phone's bottom navigation bar; 0 when there is none */
+}
+
+/* tablet: icon rail (same breakpoint as upvc.css) */
 @media (max-width: 1024px) {
-  :root { --w-sidebar: 60px; --h-control: 40px; --h-row: 52px; }
+  :root { --w-sidebar: 60px; }
+}
+
+/* Touch: every control is at least 44 px (feature-parity.md, violation V2).
+   By width for tablets and phones, and by pointer for large touch screens. */
+@media (max-width: 1024px), (pointer: coarse) {
+  :root { --h-control: 44px; --h-control-sm: 44px; --h-row: 56px; --h-menu: 44px; --h-nav: 44px; }
+}
+
+/* phone: the sidebar becomes a bottom bar */
+@media (max-width: 640px) {
+  :root { --h-bar: 56px; }
 }

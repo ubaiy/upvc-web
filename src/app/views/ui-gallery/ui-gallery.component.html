@@ -220,7 +220,152 @@
     </div>
   </section>
 
-  <!-- ── 3. PrimeNG, restyled through the tokens ── -->
+  <!-- ── 3. Ease of use (card U0+): touch, undo, bulk actions, phone ── -->
+  <h2 class="part">Ease of use</h2>
+
+  <section class="sec" id="touch">
+    <h2>Touch targets</h2>
+    <div class="stack-4">
+      <p class="muted small">
+        At 1024 px and below, or on any touch screen, every control is at least 44 px high: buttons, inputs,
+        menu rows, tabs, tick boxes and the sidebar. On a laptop with a mouse they stay at 36 px.
+        Narrow this window to see the change; the sizes are tokens (<code>--h-control</code>, <code>--h-menu</code>, <code>--h-nav</code>, <code>--h-row</code>).
+      </p>
+      <div class="demo" data-touch-demo>
+        <button type="button" class="btn btn-primary">Save window</button>
+        <button type="button" class="btn btn-secondary btn-sm">Try again</button>
+        <button type="button" class="btn btn-ghost btn-icon" aria-label="More actions"><app-icon name="more"></app-icon></button>
+        <input class="input narrow" aria-label="Sample field" value="2200" />
+        <label class="check"><input type="checkbox" checked /> Add fly mesh</label>
+        <div class="seg" role="group" aria-label="Opening">
+          <button type="button" aria-pressed="false">Fixed</button>
+          <button type="button" aria-pressed="true">Opens</button>
+        </div>
+      </div>
+      <div class="demo top">
+        <nav class="tabs" aria-label="Sample tabs"><button type="button" class="tab" aria-selected="true">All</button><button type="button" class="tab">Draft</button></nav>
+        <div class="menu" role="menu" aria-label="Sample menu">
+          <button type="button" class="menu-item" role="menuitem"><app-icon name="copy"></app-icon>Duplicate</button>
+          <button type="button" class="menu-item danger" role="menuitem"><app-icon name="trash"></app-icon>Delete</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="undo">
+    <h2>Undo, not confirm</h2>
+    <div class="stack-4">
+      <p class="muted small">
+        A reversible action happens at once and a toast offers "Undo" for seven seconds (Ctrl Z works too). Nothing is sent
+        until the toast goes. A confirm dialog is kept for what cannot be taken back, such as cancelling a bill.
+        <code>UndoService.offer(&#123; message, commit, undo &#125;)</code>.
+      </p>
+      <div class="card clip narrow-card">
+        <table class="table" aria-label="Draft quotations">
+          <tbody>
+            <tr *ngFor="let draft of drafts">
+              <td class="title">{{ draft }}</td>
+              <td class="right">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + draft" (click)="deleteDraft(draft)">
+                  <app-icon name="trash"></app-icon>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="!drafts.length"><td class="muted">No drafts left. <a href="" (click)="resetDrafts($event)">Start again</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="tiny faint" role="status">Requests sent to the server: {{ committed.length ? committed.join(', ') : 'none' }}</p>
+    </div>
+  </section>
+
+  <section class="sec" id="bulk">
+    <h2>Bulk actions</h2>
+    <div class="stack-4">
+      <p class="muted small">
+        Tick rows and the toolbar turns into the bulk bar. The header box ticks every row on screen. Below 640 px the same
+        table becomes row cards (<code>table-stack</code>), so nothing scrolls sideways. <code>RowSelection</code> + <code>&lt;app-bulk-bar&gt;</code>.
+      </p>
+      <div class="card clip">
+        <app-bulk-bar *ngIf="!selection.isEmpty; else toolbar" [count]="selection.count" noun="quotation" (cleared)="selection.clear()">
+          <button actions type="button" class="btn btn-secondary btn-sm" (click)="markSelectedSent()">Mark as sent</button>
+          <button actions type="button" class="btn btn-danger btn-sm" (click)="deleteSelected()">Delete</button>
+        </app-bulk-bar>
+        <ng-template #toolbar>
+          <div class="toolbar">
+            <div class="input-group"><app-icon name="search"></app-icon><input type="search" placeholder="Search quotations" aria-label="Search quotations" /></div>
+          </div>
+        </ng-template>
+        <table class="table table-select table-stack">
+          <thead>
+            <tr>
+              <th scope="col" class="col-check">
+                <label class="check">
+                  <input
+                    type="checkbox"
+                    aria-label="Select every quotation"
+                    [checked]="selection.allSelected(bulkRows)"
+                    [indeterminate]="selection.someSelected(bulkRows)"
+                    (change)="selection.toggleAll(bulkRows)"
+                  />
+                </label>
+              </th>
+              <th scope="col">Quotation</th>
+              <th scope="col">Customer</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="right">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let q of bulkRows" [class.is-selected]="selection.isSelected(q)">
+              <td class="col-check">
+                <label class="check">
+                  <input type="checkbox" [attr.aria-label]="'Select ' + q.name" [checked]="selection.isSelected(q)" (change)="selection.toggle(q)" />
+                </label>
+              </td>
+              <td class="title">{{ q.name }}</td>
+              <td class="muted">{{ q.customer }}</td>
+              <td><app-quote-status [status]="q.status"></app-quote-status></td>
+              <td class="right num" data-label="Total">{{ q.total | inr }}</td>
+            </tr>
+            <tr *ngIf="!bulkRows.length"><td colspan="5" class="muted">Every sample row was deleted. Reload the page to get them back.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="phone">
+    <h2>Phone</h2>
+    <div class="stack-4">
+      <p class="muted small">
+        At 640 px and below the sidebar becomes a bottom bar: four items and "More", which holds Catalogue, Settings,
+        Search, Your profile and Sign out. The page header stacks, the primary button takes the full width, and toasts
+        sit above the bar. Drawn here at 360 px; open any screen in a narrow window for the real one.
+      </p>
+      <div class="phone" aria-label="Phone layout at 360 px" role="img">
+        <div class="phone-page">
+          <div class="phone-title">Quotations</div>
+          <span class="btn btn-primary btn-block"><app-icon name="plus"></app-icon>New quotation</span>
+          <div class="card">
+            <div class="phone-row" *ngFor="let q of quotes | slice : 0 : 3">
+              <span class="grow"><span class="strong">{{ q.name }}</span><br /><span class="muted small">{{ q.customer }} · {{ q.total | inr }}</span></span>
+              <app-quote-status [status]="q.status"></app-quote-status>
+            </div>
+          </div>
+        </div>
+        <div class="phone-bar">
+          <span class="is-current"><app-icon name="home" [size]="20"></app-icon>Home</span>
+          <span><app-icon name="file" [size]="20"></app-icon>Quotations</span>
+          <span><app-icon name="users" [size]="20"></app-icon>Customers</span>
+          <span><app-icon name="receipt" [size]="20"></app-icon>Bills</span>
+          <span><app-icon name="menu" [size]="20"></app-icon>More</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 4. PrimeNG, restyled through the tokens ── -->
 
   <h2 class="part">PrimeNG controls, themed</h2>
 
