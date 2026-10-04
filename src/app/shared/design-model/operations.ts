@@ -19,6 +19,7 @@ import {
   LayoutOptions,
   effectiveFaceMm,
   regionOf,
+  scaleShape,
   splitSpanMm,
   widthsFromPositions,
 } from './geometry';
@@ -454,8 +455,16 @@ export function resizeFrame(
     FRAME_MIN_MM,
     requiredAlong(design.root, 'y', f, minPane) + 2 * f
   );
-  const w = Math.min(FRAME_MAX_MM, Math.max(minW, widthMm));
-  const h = Math.min(FRAME_MAX_MM, Math.max(minH, heightMm));
+  let w = Math.min(FRAME_MAX_MM, Math.max(minW, widthMm));
+  let h = Math.min(FRAME_MAX_MM, Math.max(minH, heightMm));
+  if (design.frame.shape.kind === 'circle') {
+    // Phase 3: a circle's frame box is its bounding square — the side
+    // the caller actually changed drives both (width wins a tie).
+    const side =
+      w !== design.frame.widthMm ? Math.max(w, minH) : Math.max(h, minW);
+    w = side;
+    h = side;
+  }
   if (w === design.frame.widthMm && h === design.frame.heightMm) return design;
   const root = resizeRegion(
     design.root,
@@ -466,7 +475,19 @@ export function resizeFrame(
     f,
     minPane
   );
-  return { ...design, frame: { ...design.frame, widthMm: w, heightMm: h }, root };
+  // Phase 3: shape mm parameters follow the frame ('rect' is returned as-is).
+  const shape = scaleShape(
+    design.frame.shape,
+    design.frame.widthMm,
+    design.frame.heightMm,
+    w,
+    h
+  );
+  return {
+    ...design,
+    frame: { ...design.frame, shape, widthMm: w, heightMm: h },
+    root,
+  };
 }
 
 /** Patch frame product / colour / profile colour. */

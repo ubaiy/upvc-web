@@ -17,4 +17,5 @@ export * from './slide';
 export * from './door';
 export * from './shape';
 export * from './shape-geometry';
+export * from './shape-payload';
 export * from './template';

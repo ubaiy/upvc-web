@@ -11,6 +11,7 @@
  */
 
 import { FRAME_MAX_MM, FRAME_MIN_MM } from './geometry';
+import { OpOptions, resizeFrame } from './operations';
 import { DesignError, FrameShape, WindowDesign } from './types';
 
 /** Problems with a shape at a given frame size (empty = valid). */
@@ -81,21 +82,30 @@ export function isSemicircular(shape: FrameShape, widthMm: number): boolean {
  */
 export function setFrameShape(
   design: WindowDesign,
-  shape: FrameShape
+  shape: FrameShape,
+  opts?: OpOptions
 ): WindowDesign {
-  let widthMm = design.frame.widthMm;
-  let heightMm = design.frame.heightMm;
-  if (shape.kind === 'circle') {
-    const d = Math.min(FRAME_MAX_MM, Math.max(FRAME_MIN_MM, widthMm));
-    widthMm = d;
-    heightMm = d;
+  let next = design;
+  if (shape.kind === 'circle' && design.frame.widthMm !== design.frame.heightMm) {
+    // Square the box through resizeFrame (as a rect, so nothing but the
+    // tree rescales): nested dividers and sliding panels follow the
+    // height change instead of being left outside the new box.
+    const d = Math.min(FRAME_MAX_MM, Math.max(FRAME_MIN_MM, design.frame.widthMm));
+    next = resizeFrame(
+      { ...design, frame: { ...design.frame, shape: { kind: 'rect' } } },
+      d,
+      d,
+      opts
+    );
+    const side = Math.max(next.frame.widthMm, next.frame.heightMm);
+    if (next.frame.widthMm !== next.frame.heightMm) {
+      next = resizeFrame(next, side, side, opts);
+    }
   }
+  const { widthMm, heightMm } = next.frame;
   const problems = checkShape(shape, widthMm, heightMm);
   if (problems.length) {
     throw new DesignError(`invalid frame shape: ${problems.join('; ')}`);
   }
-  return {
-    ...design,
-    frame: { ...design.frame, shape: { ...shape }, widthMm, heightMm },
-  };
+  return { ...next, frame: { ...next.frame, shape: { ...shape } } };
 }

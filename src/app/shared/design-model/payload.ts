@@ -24,12 +24,18 @@
  *    sections[i] ↔ i-th leaf.
  */
 
-import { Layout, LayoutOptions, layout } from './geometry';
+import {
+  Layout,
+  LayoutOptions,
+  LeafGridInfo,
+  layout,
+  leafGrid,
+} from './geometry';
+import { API_SHAPE_KINDS, ShapePayload, toShapePayload } from './shape-payload';
 import {
   FrameShape,
   Id,
   LeafNode,
-  PaneNode,
   WindowDesign,
   isLeaf,
   walkLeaves,
@@ -110,6 +116,12 @@ export interface DesignPayload {
   mullion: MullionPayload[];
   parts: GlobalSpec[];
   sections: SectionPayload[];
+  /**
+   * Phase 3: the api's shaped-frame pricing descriptor (member cut
+   * lengths, per-pane glass). Present ONLY for non-rect frames whose kind
+   * the api accepts (API_SHAPE_KINDS) — rect payloads are unchanged.
+   */
+  shape?: ShapePayload;
 }
 
 export interface ToPayloadOptions extends LayoutOptions {
@@ -210,50 +222,6 @@ export function buildBaseSpec(
     }
   }
   return base;
-}
-
-/** Per-leaf D3 grid info (sections[].orientation/row/col, Phase 2). */
-interface LeafGridInfo {
-  orientation: 'mullion' | 'transom' | null;
-  row: number;
-  col: number;
-}
-
-/**
- * row/col = sums of child indexes over 'y'/'x' split ancestors (sash
- * divisions included — they are real visual columns); orientation = the
- * axis of the nearest REAL-mullion split ancestor (sash splits inherit),
- * so the api can count mullions/transoms without guessing (decision D3).
- */
-function leafGrid(root: PaneNode): Map<string, LeafGridInfo> {
-  const out = new Map<string, LeafGridInfo>();
-  const visit = (
-    node: PaneNode,
-    row: number,
-    col: number,
-    orientation: LeafGridInfo['orientation']
-  ): void => {
-    if (isLeaf(node)) {
-      out.set(node.id, { orientation, row, col });
-      return;
-    }
-    const nextOrientation =
-      (node.dividerKind ?? 'mullion') === 'mullion'
-        ? node.axis === 'x'
-          ? 'mullion'
-          : 'transom'
-        : orientation;
-    node.children.forEach((child, i) =>
-      visit(
-        child,
-        node.axis === 'y' ? row + i : row,
-        node.axis === 'x' ? col + i : col,
-        nextOrientation
-      )
-    );
-  };
-  visit(root, 0, 0, null);
-  return out;
 }
 
 /** One per-section part: full spec + the per-leaf overrides, in place. */
@@ -367,11 +335,16 @@ export function toPayload(
     });
   }
 
-  return {
+  const payload: DesignPayload = {
     width: design.frame.widthMm,
     height: design.frame.heightMm,
     mullion,
     parts,
     sections,
   };
+  const shapePayload = toShapePayload(design, opts);
+  if (shapePayload && API_SHAPE_KINDS.includes(shapePayload.kind)) {
+    payload.shape = shapePayload;
+  }
+  return payload;
 }

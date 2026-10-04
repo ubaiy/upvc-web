@@ -194,3 +194,84 @@ export function parseTemplate(input: string | object): DesignTemplate {
     design: parse(t.design), // migrates older design schemas
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* design_templates api mapping (/api/v1/design-template/*)            */
+/* ------------------------------------------------------------------ */
+
+/** api limits (phase-6-design-api-log.md §1). */
+export const TEMPLATE_NAME_MAX = 150;
+export const TEMPLATE_TAGS_MAX = 20;
+export const TEMPLATE_TAG_MAX = 50;
+
+/**
+ * The api row has no resize-rule column, so a non-default rule travels as
+ * this reserved tag and is stripped again on read.
+ */
+export const TEMPLATE_RESIZE_TAG_PREFIX = 'resize:';
+
+const PNG_DATA_URI = 'data:image/png;base64,';
+
+/** Body of design-template/add and /update. */
+export interface DesignTemplateRequest {
+  name: string;
+  tags: string[];
+  product_type: 'Window' | 'Door';
+  design: WindowDesign;
+  /** PNG data URI only (the api rejects anything else); omitted if none. */
+  thumbnail?: string;
+}
+
+/** A row as design-template/list, add, update and duplicate return it. */
+export interface DesignTemplateRow {
+  id?: number;
+  name: string;
+  tags?: string[] | null;
+  product_type?: string | null;
+  design: unknown;
+  thumbnail?: string | null;
+}
+
+/** Map a template onto the api request body, within the api's limits. */
+export function toTemplateRequest(
+  template: DesignTemplate
+): DesignTemplateRequest {
+  const tags = template.tags
+    .filter((t) => !t.startsWith(TEMPLATE_RESIZE_TAG_PREFIX))
+    .map((t) => t.slice(0, TEMPLATE_TAG_MAX));
+  const reserved =
+    template.resizeRule === 'proportional'
+      ? []
+      : [TEMPLATE_RESIZE_TAG_PREFIX + template.resizeRule];
+  const request: DesignTemplateRequest = {
+    name: template.name.slice(0, TEMPLATE_NAME_MAX),
+    tags: [...tags.slice(0, TEMPLATE_TAGS_MAX - reserved.length), ...reserved],
+    product_type: template.design.productType,
+    design: template.design,
+  };
+  const thumb = template.thumbnail;
+  if (thumb.kind === 'dataUrl' && thumb.value?.startsWith(PNG_DATA_URI)) {
+    request.thumbnail = thumb.value;
+  }
+  return request;
+}
+
+/** Rebuild a template from an api row (the design migrates via parse). */
+export function fromTemplateRow(row: DesignTemplateRow): DesignTemplate {
+  const tags = (Array.isArray(row.tags) ? row.tags : []).filter(
+    (t): t is string => typeof t === 'string'
+  );
+  const rule = tags
+    .find((t) => t.startsWith(TEMPLATE_RESIZE_TAG_PREFIX))
+    ?.slice(TEMPLATE_RESIZE_TAG_PREFIX.length);
+  return parseTemplate({
+    schema: TEMPLATE_SCHEMA,
+    name: row.name,
+    tags: tags.filter((t) => !t.startsWith(TEMPLATE_RESIZE_TAG_PREFIX)),
+    thumbnail: row.thumbnail
+      ? { kind: 'dataUrl', value: row.thumbnail }
+      : { kind: 'none' },
+    resizeRule: rule === 'preserve-locks' ? 'preserve-locks' : 'proportional',
+    design: row.design,
+  });
+}

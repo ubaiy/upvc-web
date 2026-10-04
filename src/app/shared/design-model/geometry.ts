@@ -21,6 +21,7 @@
 
 import {
   DesignError,
+  FrameShape,
   LeafNode,
   PaneNode,
   SplitNode,
@@ -302,4 +303,95 @@ export function snapDividerMm(
   }
   const range = dividerRangeMm(split, spanMm, index, opts?.minPaneMm);
   return Math.min(range.maxMm, Math.max(range.minMm, best));
+}
+
+/* ------------------------------------------------------------------ */
+/* Phase 2/3 helpers shared by payload, operations and shape-payload   */
+/* ------------------------------------------------------------------ */
+
+/** Per-leaf D3 grid info (sections[].orientation/row/col, Phase 2). */
+export interface LeafGridInfo {
+  orientation: 'mullion' | 'transom' | null;
+  row: number;
+  col: number;
+}
+
+/**
+ * row/col = sums of child indexes over 'y'/'x' split ancestors (sash
+ * divisions included — they are real visual columns); orientation = the
+ * axis of the nearest REAL-mullion split ancestor (sash splits inherit),
+ * so the api can count mullions/transoms without guessing (decision D3).
+ */
+export function leafGrid(root: PaneNode): Map<string, LeafGridInfo> {
+  const out = new Map<string, LeafGridInfo>();
+  const visit = (
+    node: PaneNode,
+    row: number,
+    col: number,
+    orientation: LeafGridInfo['orientation']
+  ): void => {
+    if (isLeaf(node)) {
+      out.set(node.id, { orientation, row, col });
+      return;
+    }
+    const nextOrientation =
+      (node.dividerKind ?? 'mullion') === 'mullion'
+        ? node.axis === 'x'
+          ? 'mullion'
+          : 'transom'
+        : orientation;
+    node.children.forEach((child, i) =>
+      visit(
+        child,
+        node.axis === 'y' ? row + i : row,
+        node.axis === 'x' ? col + i : col,
+        nextOrientation
+      )
+    );
+  };
+  visit(root, 0, 0, null);
+  return out;
+}
+
+/**
+ * Carry a frame shape's mm parameters through a frame resize from
+ * oldW×oldH to newW×newH so the shape stays valid (checkShape):
+ *  - arch-top: a semicircular arch stays semicircular (rise = newW / 2);
+ *    a segmental rise scales with the height; both clamp to
+ *    min(newH, newW / 2);
+ *  - trapezoid: both jamb heights scale with the height (the taller one
+ *    lands exactly on newH), the short side never below FRAME_MIN_MM;
+ *  - rect / circle / triangle carry no mm parameters.
+ */
+export function scaleShape(
+  shape: FrameShape,
+  oldW: number,
+  oldH: number,
+  newW: number,
+  newH: number
+): FrameShape {
+  switch (shape.kind) {
+    case 'arch-top': {
+      const maxRise = Math.min(newH, newW / 2);
+      const semicircular = Math.abs(shape.riseMm - oldW / 2) < 1e-6;
+      const riseMm = semicircular
+        ? maxRise
+        : Math.min(maxRise, (shape.riseMm * newH) / oldH);
+      return riseMm === shape.riseMm ? shape : { kind: 'arch-top', riseMm };
+    }
+    case 'trapezoid': {
+      const k = newH / oldH;
+      const tall = Math.max(shape.leftHeightMm, shape.rightHeightMm);
+      const scale = (h: number): number =>
+        h === tall ? newH : Math.min(newH, Math.max(FRAME_MIN_MM, h * k));
+      const leftHeightMm = scale(shape.leftHeightMm);
+      const rightHeightMm = scale(shape.rightHeightMm);
+      return leftHeightMm === shape.leftHeightMm &&
+        rightHeightMm === shape.rightHeightMm
+        ? shape
+        : { kind: 'trapezoid', leftHeightMm, rightHeightMm };
+    }
+    default:
+      return shape;
+  }
 }
