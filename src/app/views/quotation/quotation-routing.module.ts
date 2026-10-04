@@ -7,7 +7,6 @@ import { AllDropdownsResolver } from 'src/app/shared/resolver/all-dropdowns.reso
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 import { MullionResolver } from '../../shared/resolver/mullion.resolver';
 import { SubQuotationDesignResolver } from './sub-quotation/sub-quotation-design/sub-quotation-design.resolver';
-import { SuperSystemComponent } from './sub-quotation/super-system/super-system.component';
 
 /**
  * "New quotation" and "edit quotation" are dialogs on the list now, not
@@ -48,16 +47,6 @@ const routes: Routes = [
       dropdowns: AllDropdownsResolver,
       mullionList: MullionResolver,
     },
-    data: { edit: false },
-  },
-  {
-    path: 'detail/:id/super-system',
-    component: SuperSystemComponent,
-    // resolve: {
-    //   profileList: ProfileListResolver,
-    //   dropdowns: AllDropdownsResolver,
-    //   mullionList: MullionResolver,
-    // },
     data: { edit: false },
   },
   {

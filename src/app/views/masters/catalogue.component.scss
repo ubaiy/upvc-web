@@ -1,11 +1,3 @@
-/*
- * Interim: the shell still draws its own section tabs for Catalogue
- * (containers/shell/nav.ts). This page draws the real ones, with counts, so
- * the shell's strip is hidden while it is on screen. Delete this rule once
- * `tabs` is removed from the Catalogue item in nav.ts (U0 follow-up).
- */
-::ng-deep .page:has(> app-catalogue) > nav.tabs { display: none; }
-
 .search { width: 280px; max-width: 100%; }
 .filter { width: 170px; }
 

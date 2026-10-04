@@ -4,7 +4,7 @@ import { of, throwError } from 'rxjs';
 
 import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
-import { DEFAULT_PRICING_BASIS, MarginsCardComponent } from './margins-card.component';
+import { MarginsCardComponent } from './margins-card.component';
 import { TypeMarginService } from './type-margin.service';
 
 const MARGINS = [
@@ -77,25 +77,25 @@ describe('MarginsCardComponent', () => {
     expect(el.querySelectorAll('tbody tr').length).toBe(2);
   });
 
-  it('adds a margin from two fields; the price basis is filled in for the API', () => {
+  it('adds a margin from two fields and sends no pricing note', () => {
     create();
     component.open();
     component.form.setValue({ name: ' Builder ', mark_up: '15.5' });
     component.save();
-    expect(service.addTypeMargin).toHaveBeenCalledWith(
-      jasmine.objectContaining({ name: 'Builder', mark_up: '15.5', pricing: DEFAULT_PRICING_BASIS })
-    );
+    expect(service.addTypeMargin).toHaveBeenCalledWith(jasmine.objectContaining({ name: 'Builder', mark_up: '15.5' }));
+    expect('pricing' in service.addTypeMargin.calls.mostRecent().args[0]).toBeFalse();
     expect(component.dialogOpen).toBeFalse();
     expect(toast.showSuccess).toHaveBeenCalledWith('Margin added');
     expect(service.getTypeMarginList).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps the stored price basis when a margin is edited', () => {
+  it('leaves the stored pricing note to the api when a margin is edited', () => {
     create();
     component.open(MARGINS[1] as any);
     component.form.patchValue({ mark_up: '12' });
     component.save();
-    expect(service.editTypeMargin).toHaveBeenCalledWith(jasmine.objectContaining({ id: 2, mark_up: '12', pricing: 'Cost' }));
+    expect(service.editTypeMargin).toHaveBeenCalledWith(jasmine.objectContaining({ id: 2, mark_up: '12' }));
+    expect('pricing' in service.editTypeMargin.calls.mostRecent().args[0]).toBeFalse();
   });
 
   it('does not send an empty name or a margin outside 0 to 1000', () => {

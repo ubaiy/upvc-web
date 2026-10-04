@@ -36,12 +36,9 @@ import { SummaryDialogComponent } from './sub-quotation/detail/summary-dialog.co
 import { DuplicateDialogComponent } from './sub-quotation/detail/duplicate-dialog.component';
 import { DialogModule } from 'primeng/dialog';
 import { InputNumberModule } from 'primeng/inputnumber';
-import { DetailDesignComponent } from './sub-quotation/detail-design/detail-design.component';
 import { DropdownModule } from 'primeng/dropdown';
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 import { ButtonModule } from '@coreui/angular';
-import { DesignFinalComponent } from './sub-quotation/design-final/design-final.component';
-import { SuperSystemComponent } from './sub-quotation/super-system/super-system.component';
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 @NgModule({
   declarations: [
@@ -52,10 +49,7 @@ import { SharedComponentsModule } from '../../shared/components/shared-component
     SendQuotationDialogComponent,
     SummaryDialogComponent,
     DuplicateDialogComponent,
-    DetailDesignComponent,
     SubQuotationDesignComponent,
-    DesignFinalComponent,
-    SuperSystemComponent,
   ],
   imports: [
     QuotationRoutingModule,

@@ -9,8 +9,6 @@ import { ConfirmationDialogService } from 'src/app/shared/services/confirmationd
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { TypeMarginService } from './type-margin.service';
 
-/** What the API stores in `pricing` for every margin today; the screen no longer asks for it. */
-export const DEFAULT_PRICING_BASIS = 'MRP';
 
 /**
  * The "Margins" card of Settings → Pricing and tax: the mark-up added to cost
@@ -93,7 +91,7 @@ export class MarginsCardComponent implements OnInit {
       id: this.editing?.id,
       name: String(value.name).trim(),
       mark_up: String(value.mark_up),
-      pricing: this.editing?.pricing || DEFAULT_PRICING_BASIS,
+      // `pricing` is not sent: the api keeps the stored note on an edit and saves none for a new margin.
     } as ITypeMarginDto;
     this.saving = true;
     const request = this.editing ? this.service.editTypeMargin(body) : this.service.addTypeMargin(body);
