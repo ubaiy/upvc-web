@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 
-import { DefaultLayoutComponent } from './containers';
+import { ShellComponent } from './containers';
 import { Page404Component } from './views/pages/page404/page404.component';
 import { Page500Component } from './views/pages/page500/page500.component';
 import { AuthGuard } from './shared/guards/auth.guard';
@@ -18,12 +18,17 @@ const routes: Routes = [
   },
   {
     path: '',
-    component: DefaultLayoutComponent,
+    component: ShellComponent,
 
     data: {
       title: 'Home',
     },
     children: [
+      // Menu entries of the new shell. Until cards U5 and U7 build the single
+      // Catalogue and Settings pages, each opens the first of its old screens;
+      // the shell draws the section tabs (containers/shell/nav.ts).
+      { path: 'catalogue', redirectTo: 'masters/profile', pathMatch: 'full' },
+      { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },
       {
         path: 'dashboard',
         canActivate: [AuthGuard],
@@ -147,6 +152,14 @@ const routes: Routes = [
     loadChildren: () =>
       import('./views/design-lab/design-lab.module').then(
         (m) => m.DesignLabModule
+      ),
+  },
+  {
+    // Every shared component and themed control on one page, for review (card U0).
+    path: 'ui',
+    loadChildren: () =>
+      import('./views/ui-gallery/ui-gallery.module').then(
+        (m) => m.UiGalleryModule
       ),
   },
   {

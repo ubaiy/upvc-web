@@ -1,0 +1,82 @@
+<a class="skip" href="#main" (click)="skipToContent($event)">Skip to content</a>
+
+<div class="shell">
+  <nav class="side" aria-label="Main">
+    <a class="ws" routerLink="/dashboard" [attr.aria-label]="companyName + ', home'" [attr.title]="companyName">
+      <span class="ws-mark"><app-icon name="window"></app-icon></span>
+      <span class="ws-name t">{{ companyName }}</span>
+    </a>
+
+    <button
+      #searchButton
+      type="button"
+      class="search"
+      aria-label="Search, Control K"
+      aria-haspopup="dialog"
+      title="Search"
+      (click)="openPalette()"
+    >
+      <app-icon name="search"></app-icon><span class="t">Search</span><span class="kbd">Ctrl K</span>
+    </button>
+
+    <a
+      *ngFor="let item of mainItems"
+      class="item"
+      [routerLink]="item.link"
+      [attr.aria-current]="isActive(item) ? 'page' : null"
+      [attr.title]="item.label"
+    >
+      <app-icon [name]="item.icon"></app-icon><span class="t">{{ item.label }}</span>
+    </a>
+
+    <div class="foot">
+      <a
+        *ngFor="let item of footItems"
+        class="item"
+        [routerLink]="item.link"
+        [attr.aria-current]="isActive(item) ? 'page' : null"
+        [attr.title]="item.label"
+      >
+        <app-icon [name]="item.icon"></app-icon><span class="t">{{ item.label }}</span>
+      </a>
+
+      <div class="account" #account>
+        <button
+          type="button"
+          class="item"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="accountOpen"
+          [attr.aria-label]="'Account: ' + userName"
+          [attr.title]="userName"
+          (click)="toggleAccount()"
+        >
+          <span class="who" aria-hidden="true">{{ initials }}</span><span class="t">{{ userName }}</span>
+        </button>
+        <div class="menu account-menu" role="menu" *ngIf="accountOpen">
+          <a class="menu-item" role="menuitem" routerLink="/profile"><app-icon name="user"></app-icon>Your profile</a>
+          <div class="menu-sep"></div>
+          <button type="button" class="menu-item" role="menuitem" (click)="signOut()">
+            <app-icon name="log-out" [mirror]="true"></app-icon>Sign out
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main" id="main" tabindex="-1" #main>
+    <div class="page" [class.page-wide]="wide">
+      <nav class="tabs" *ngIf="active?.tabs as tabs" [attr.aria-label]="active?.label + ' sections'">
+        <a
+          *ngFor="let tab of tabs"
+          class="tab"
+          [routerLink]="tab.link"
+          [attr.aria-current]="tab === activeTab ? 'page' : null"
+          >{{ tab.label }}</a
+        >
+      </nav>
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+</div>
+
+<app-command-palette *ngIf="paletteOpen" (closed)="closePalette()"></app-command-palette>

@@ -17,11 +17,7 @@ import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 
 // Import containers
-import {
-  DefaultFooterComponent,
-  DefaultHeaderComponent,
-  DefaultLayoutComponent,
-} from './containers';
+import { CommandPaletteComponent, ShellComponent } from './containers';
 
 import {
   AvatarModule,
@@ -59,11 +55,7 @@ import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ProfileComponent } from './views/profile/profile.component';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
 import { SharedComponentsModule } from './shared/components/shared-components.module';
-const APP_CONTAINERS = [
-  DefaultFooterComponent,
-  DefaultHeaderComponent,
-  DefaultLayoutComponent,
-];
+const APP_CONTAINERS = [ShellComponent, CommandPaletteComponent];
 
 @NgModule({
   declarations: [AppComponent, ...APP_CONTAINERS, ProfileComponent, BulkPriceUploadComponent],
