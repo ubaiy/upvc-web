@@ -25,6 +25,7 @@ import { PaginatorModule } from 'primeng/paginator';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { InputTextModule } from 'primeng/inputtext';
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import { SubQuotationComponent } from './sub-quotation/sub-quotation.component';
 import { QuotationDialogComponent } from './add/quotation-dialog.component';
 import { DuplicateQuotationDialogComponent } from './add/duplicate-quotation-dialog.component';
@@ -54,6 +55,8 @@ import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
   ],
   imports: [
     QuotationRoutingModule,
+    // The windows of a quotation are put in order by dragging (card T82, M8).
+    DragDropModule,
     SharedComponentsModule,
     ConfirmDialogComponent,
     CardModule,

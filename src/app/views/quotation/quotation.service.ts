@@ -222,6 +222,14 @@ export class QuotationService {
     return this._apiHttpService.post(`${API_END_POINT.quatation.lineDuplicate}/${lineId}`, {}, quiet());
   }
 
+  /**
+   * The order of the windows on the page, the PDF and the bill. `order` is
+   * every line id of the quotation, once each, in the order wanted.
+   */
+  public reorderLines(id: number, order: number[]): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(`${API_END_POINT.quatation.reorder}/${id}`, { order }, quiet());
+  }
+
   public renameLine(lineId: number, label: string): Observable<IResponseDto<any>> {
     return this._apiHttpService.post(`${API_END_POINT.quatation.lineDetails}/${lineId}`, { label }, quiet());
   }

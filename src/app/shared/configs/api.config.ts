@@ -114,6 +114,8 @@ export const API_END_POINT = {
     summary: 'quatation/summary',
     lineDetails: 'quatation/product/details',
     lineDuplicate: 'quatation/product/duplicate',
+    // T81 (M8): the order of the windows; takes the quotation id as the next path segment.
+    reorder: 'quatation/reorder',
     copy: 'quatation/copy',
     revise: 'quatation/revise',
     send: 'quatation/send',

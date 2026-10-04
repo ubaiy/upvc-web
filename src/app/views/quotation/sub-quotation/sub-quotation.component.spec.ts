@@ -1,3 +1,4 @@
+import { DragDropModule } from '@angular/cdk/drag-drop';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
@@ -107,6 +108,7 @@ describe('SubQuotationComponent (quotation page)', () => {
       'removeLine',
       'removeQuotation',
       'reviseQuotation',
+      'reorderLines',
     ]);
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
     TestBed.configureTestingModule({
@@ -117,7 +119,7 @@ describe('SubQuotationComponent (quotation page)', () => {
         DuplicateStubComponent,
         EditStubComponent,
       ],
-      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, SharedComponentsModule, DialogModule, MenuModule, ButtonModule, ConfirmDialogComponent],
+      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, SharedComponentsModule, DialogModule, MenuModule, ButtonModule, ConfirmDialogComponent, DragDropModule],
       providers: [
         { provide: QuotationService, useValue: service },
         { provide: ToastService, useValue: toast },
@@ -364,11 +366,53 @@ describe('SubQuotationComponent (quotation page)', () => {
     create();
     expect(pageMenu().labels).toEqual(['Edit details', 'Duplicate', 'Production', 'Update prices', 'Delete']);
     const line = lineMenu(0);
-    expect(line.labels).toEqual(['Edit', 'Rename', 'Duplicate', 'Delete']);
+    expect(line.labels).toEqual(['Edit', 'Rename', 'Duplicate', 'Move down', 'Delete']);
     service.duplicateLine.and.returnValue(ok({ id: 50 }));
     line.pick('Duplicate');
     expect(service.duplicateLine).toHaveBeenCalledWith(19);
     expect(service.getQuotation).toHaveBeenCalledTimes(2);
+  });
+
+  describe('order of the windows (M8)', () => {
+    const names = (): string[] => Array.from(el().querySelectorAll('.item .name')).map((n) => n.textContent!.trim());
+
+    it('offers "Move down" on the first window and "Move up" on the last, and sends the whole order', () => {
+      create();
+      expect(lineMenu(1).labels).toEqual(['Edit', 'Name this window', 'Duplicate', 'Move up', 'Delete']);
+      service.reorderLines.and.returnValue(ok({ quatation_id: 14, order: [20, 19] }));
+      lineMenu(0).pick('Move down');
+      expect(service.reorderLines).toHaveBeenCalledOnceWith(14, [20, 19]);
+      // The page is read again: the order is the API's.
+      expect(service.getQuotation).toHaveBeenCalledTimes(2);
+      expect(el().querySelector('[role="status"].sr-only')?.textContent).toContain('Master bedroom is now 2 of 2');
+    });
+
+    it('moves the row dropped with the drag handle', () => {
+      create();
+      expect(el().querySelectorAll('.item .grip').length).toBe(2);
+      service.reorderLines.and.returnValue(new Subject<any>());
+      component.onLineDrop({ previousIndex: 1, currentIndex: 0 } as any);
+      fixture.detectChanges();
+      expect(service.reorderLines).toHaveBeenCalledOnceWith(14, [20, 19]);
+      // The rows move at once, before the API answers.
+      expect(names()[1]).toBe('Master bedroom');
+    });
+
+    it('puts the rows back and says why when the API refuses', () => {
+      create();
+      const before = names();
+      service.reorderLines.and.returnValue(of({ status: 0, message: 'order must list every window of the quotation exactly once' } as any));
+      lineMenu(0).pick('Move down');
+      expect(names()).toEqual(before);
+      expect(text()).toContain('order must list every window of the quotation exactly once');
+      expect(service.getQuotation).toHaveBeenCalledTimes(1);
+    });
+
+    it('offers no move and no handle on a quotation that was sent, or with one window', () => {
+      show({ status: 'sent' });
+      expect(lineMenu(0).labels).toEqual(['Edit']);
+      expect(el().querySelector('.item .grip')).toBeNull();
+    });
   });
 
   it('offers what fits a sent quotation in the more menu', () => {

@@ -127,8 +127,48 @@ button.name {
 }
 
 // The card ends on the last row when there is no "add" row under it.
-.item:last-child {
+.items:last-child > .item:last-child {
   border-block-end: 0;
+}
+
+// The drag handle of a row: a draft with two or more windows.
+.grip {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 44px;
+  margin-inline: calc(-1 * var(--s-3)) calc(-1 * var(--s-2));
+  border-radius: var(--r-sm);
+  color: var(--c-text-3);
+  cursor: grab;
+  touch-action: none;
+
+  &:hover {
+    color: var(--c-text);
+    background: var(--c-surface-3);
+  }
+}
+
+// The row in the hand, the gap it will land in, and the rows making room.
+.item.cdk-drag-preview {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-pop);
+
+  .grip {
+    cursor: grabbing;
+  }
+}
+
+.item.cdk-drag-placeholder {
+  opacity: 0.35;
+}
+
+.item.cdk-drag-animating,
+.items.cdk-drop-list-dragging > .item:not(.cdk-drag-placeholder) {
+  transition: transform 150ms ease;
 }
 
 .side-title {
@@ -259,6 +299,11 @@ button.name {
       flex-wrap: wrap;
       gap: 0 var(--s-2);
     }
+  }
+
+  // On a phone a window is moved with "Move up" and "Move down" in its menu.
+  .grip {
+    display: none;
   }
 
   // Two windows of one room differ at the end of the name: show all of it.

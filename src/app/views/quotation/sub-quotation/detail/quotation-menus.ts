@@ -17,7 +17,7 @@ export type PageMenuAction =
   | 'prices'
   | 'delete';
 
-export type LineMenuAction = 'edit' | 'rename' | 'duplicate' | 'delete';
+export type LineMenuAction = 'edit' | 'rename' | 'duplicate' | 'move-up' | 'move-down' | 'delete';
 
 function entry(label: string, icon: string, command: () => void, danger = false): MenuItem {
   return { label, state: { icon }, command, ...(danger ? { styleClass: 'danger' } : {}) };
@@ -63,7 +63,17 @@ export function lineMenu(view: QuotationView, line: QuotationLine, run: (action:
   if (view.editable) {
     items.push(
       entry(line.label ? 'Rename' : 'Name this window', 'tag', () => run('rename')),
-      entry('Duplicate', 'copy', () => run('duplicate')),
+      entry('Duplicate', 'copy', () => run('duplicate'))
+    );
+    // The order of the page is the order of the PDF and the bill. The first
+    // window cannot go up and the last cannot go down, so those are not offered.
+    if (line.position > 1) {
+      items.push(entry('Move up', 'arrow-up', () => run('move-up')));
+    }
+    if (line.position < view.lines.length) {
+      items.push(entry('Move down', 'arrow-down', () => run('move-down')));
+    }
+    items.push(
       { separator: true },
       entry('Delete', 'trash', () => run('delete'), true)
     );

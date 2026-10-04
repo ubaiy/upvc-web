@@ -1,3 +1,4 @@
+import { CdkDragDrop } from '@angular/cdk/drag-drop';
 import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
@@ -315,6 +316,45 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Read out after a window is moved: "Master bedroom is now 2 of 5". */
+  moveNote = '';
+
+  /** "Move up" / "Move down" in the row menu: one place, for the keyboard and a phone. */
+  moveLine(line: QuotationLine, by: -1 | 1): void {
+    this._moveLine(line.position - 1, line.position - 1 + by);
+  }
+
+  /** A row dropped at a new place with the drag handle. */
+  onLineDrop(event: CdkDragDrop<unknown>): void {
+    this._moveLine(event.previousIndex, event.currentIndex);
+  }
+
+  /**
+   * Sends the whole order (the API takes every line id). The rows move at
+   * once and are numbered again; the page is then read again, because the
+   * order is the API's. A refusal puts them back.
+   */
+  private _moveLine(from: number, to: number): void {
+    const view = this.view;
+    if (!view || this.busy || from === to || to < 0 || to >= view.lines.length) {
+      return;
+    }
+    const before = view.lines;
+    const lines = [...before];
+    lines.splice(to, 0, lines.splice(from, 1)[0]);
+    const moved = lines[to];
+    this.view = { ...view, lines: lines.map((line, index) => ({ ...line, position: index + 1 })) };
+    this._run(
+      'reorder',
+      this._dataService.reorderLines(this.id, lines.map((line) => line.id)),
+      () => {
+        this.moveNote = `${moved.name} is now ${to + 1} of ${lines.length}`;
+        this.load(true);
+      },
+      () => (this.view = { ...this.view!, lines: before })
+    );
+  }
+
   startRename(line: QuotationLine): void {
     this.renameValue = line.label;
     this.lineToRename = line;
@@ -448,6 +488,8 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
       edit: () => this.openLine(line),
       rename: () => this.startRename(line),
       duplicate: () => this.duplicateLine(line),
+      'move-up': () => this.moveLine(line, -1),
+      'move-down': () => this.moveLine(line, 1),
       delete: () => (this.lineToDelete = line),
     };
     this._openMenu(event, lineMenu(this.view!, line, (action) => actions[action]()));

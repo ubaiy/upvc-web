@@ -167,13 +167,34 @@
         </button>
       </app-empty-state>
 
+      <span class="sr-only" role="status" aria-live="polite">{{ moveNote }}</span>
+      <!-- The order here is the order of the PDF and the bill. A draft's rows are dragged by
+           the handle; "Move up" and "Move down" in the row menu do the same from the keyboard. -->
+      <div
+        class="items"
+        cdkDropList
+        cdkDropListLockAxis="y"
+        [cdkDropListDisabled]="!q.editable || q.lines.length < 2 || !!busy"
+        (cdkDropListDropped)="onLineDrop($event)"
+      >
       <div
         class="item"
         *ngFor="let line of q.lines; trackBy: trackLine"
+        cdkDrag
         [class.is-link]="q.editable || q.revisable"
         [attr.aria-busy]="busy === 'line-' + line.id"
         (click)="onLineClick($event, line)"
       >
+        <span
+          class="grip"
+          cdkDragHandle
+          aria-hidden="true"
+          title="Drag to move this window"
+          *ngIf="q.editable && q.lines.length > 1"
+          (click)="$event.stopPropagation()"
+        >
+          <app-icon name="handle"></app-icon>
+        </span>
         <span class="thumb">
           <img *ngIf="line.image; else drawn" [src]="line.image" [alt]="line.thumbLabel" />
           <ng-template #drawn>
@@ -204,6 +225,7 @@
         >
           <app-icon name="more"></app-icon>
         </button>
+      </div>
       </div>
 
       <button type="button" class="add-row" *ngIf="!empty && (q.editable || q.revisable)" (click)="addWindow()">
