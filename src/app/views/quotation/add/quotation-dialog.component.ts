@@ -11,6 +11,13 @@ export interface CustomerOption {
   id: number;
   name: string;
   phone: string;
+  /** The price list a new quotation for this customer takes (`default_order_type_margin_id`). */
+  marginId?: number | null;
+}
+
+export interface MarginOption {
+  id: number;
+  label: string;
 }
 
 /** Ten digits, after an optional +91 or leading 0 and any spaces or dashes. */
@@ -44,6 +51,9 @@ export class QuotationDialogComponent implements OnChanges {
   /** The quotation to rename or move. Leave out to make a new one. */
   @Input() quotation: QuotationRow | null = null;
 
+  /** A customer to start the new quotation for (from the customer page). */
+  @Input() customerId: number | null = null;
+
   @Output() closed = new EventEmitter<void>();
 
   /** Id of the quotation that was created or changed. */
@@ -53,6 +63,8 @@ export class QuotationDialogComponent implements OnChanges {
 
   form: FormGroup;
   customers: CustomerOption[] = [];
+  /** The company's price lists; the field is hidden when there is none. */
+  margins: MarginOption[] = [];
   loadingCustomers = false;
   customersFailed = false;
   /** 'existing' picks from the list; 'new' types a name and phone. */
@@ -63,6 +75,8 @@ export class QuotationDialogComponent implements OnChanges {
   filterText = '';
   /** Until the user types a quotation name, it follows the customer. */
   private nameEdited = false;
+  /** Until the user picks a price list, it follows the customer. */
+  private marginEdited = false;
 
   constructor(private _fb: FormBuilder, private _dataService: QuotationService) {
     this.form = this._fb.group({
@@ -70,8 +84,12 @@ export class QuotationDialogComponent implements OnChanges {
       customer_name: [''],
       customer_phone: [''],
       quatation_name: [''],
+      order_type_margin_id: [null],
     });
-    this.form.controls['customer_id'].valueChanges.subscribe(() => this._fillName());
+    this.form.controls['customer_id'].valueChanges.subscribe(() => {
+      this._fillName();
+      this._fillMargin();
+    });
     this.form.controls['customer_name'].valueChanges.subscribe(() => this._fillName());
   }
 
@@ -142,12 +160,19 @@ export class QuotationDialogComponent implements OnChanges {
             return;
           }
           this.customers = (res.data || [])
-            .map((c: any) => ({ id: Number(c.id), name: (c.name || '').toString(), phone: (c.phone || '').toString() }))
+            .map((c: any) => ({
+              id: Number(c.id),
+              name: (c.name || '').toString(),
+              phone: (c.phone || '').toString(),
+              marginId: c.default_order_type_margin_id != null ? Number(c.default_order_type_margin_id) : null,
+            }))
             .sort((a: CustomerOption, b: CustomerOption) => a.name.localeCompare(b.name));
           // A fabricator with no customers yet starts by typing the first one.
           if (!this.customers.length && !this.editing) {
             this.mode = 'new';
           }
+          this._fillName();
+          this._fillMargin();
         },
         error: () => (this.customersFailed = true),
       });
@@ -182,6 +207,10 @@ export class QuotationDialogComponent implements OnChanges {
     });
   }
 
+  onMarginChange(): void {
+    this.marginEdited = true;
+  }
+
   onNameInput(): void {
     this.nameEdited = this._value('quatation_name').trim() !== '';
   }
@@ -204,6 +233,11 @@ export class QuotationDialogComponent implements OnChanges {
       .pipe(
         switchMap((customerId) => {
           const body: any = { customer_id: customerId, quatation_name: this._value('quatation_name').trim() };
+          // Left out, the API applies the customer's own price list.
+          const marginId = Number(this._value('order_type_margin_id'));
+          if (!this.quotation && marginId) {
+            body.order_type_margin_id = marginId;
+          }
           return this.quotation
             ? this._dataService.editQuotationDetail({ ...body, id: this.quotation.id })
             : this._dataService.addQuotationDetail(body);
@@ -260,16 +294,44 @@ export class QuotationDialogComponent implements OnChanges {
     this.filterText = '';
     this.mode = 'existing';
     this.nameEdited = this.editing;
+    this.marginEdited = false;
     this.form.reset(
       {
-        customer_id: this.quotation?.customerId ?? null,
+        customer_id: this.quotation?.customerId ?? this.customerId ?? null,
         customer_name: '',
         customer_phone: '',
         quatation_name: this.quotation?.name ?? '',
+        order_type_margin_id: null,
       },
       { emitEvent: false }
     );
     this.loadCustomers();
+    if (!this.editing) {
+      this._loadMargins();
+    }
+  }
+
+  /** The price lists; without them the field stays hidden and the API applies the customer's own. */
+  private _loadMargins(): void {
+    this._dataService.getMarginOptions().subscribe({
+      next: (res) => {
+        this.margins = res?.success
+          ? (res.data || []).map((m: any) => ({ id: Number(m.id), label: `${m.name} (${Number(m.mark_up)}%)` }))
+          : [];
+        this._fillMargin();
+      },
+      error: () => (this.margins = []),
+    });
+  }
+
+  /** Pre-selects the price list of the chosen customer, until the user picks one. */
+  private _fillMargin(): void {
+    if (this.marginEdited || this.editing) {
+      return;
+    }
+    const chosen = this.customers.find((c) => c.id === Number(this.form.controls['customer_id'].value));
+    const id = this.mode === 'existing' && chosen?.marginId && this.margins.some((m) => m.id === chosen.marginId) ? chosen.marginId : null;
+    this.form.controls['order_type_margin_id'].setValue(id, { emitEvent: false });
   }
 
   private _fillName(): void {

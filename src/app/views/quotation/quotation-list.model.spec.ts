@@ -1,13 +1,10 @@
 import {
-  apiHasStatus,
-  buildStatusTabs,
   defaultQuotationName,
   errorText,
-  matchesSearch,
   readStatus,
   shortDate,
+  tabsFromCounts,
   toQuotationRow,
-  toQuotationRows,
 } from './quotation-list.model';
 
 /** A row as the API returns it today, before the status and number migrations. */
@@ -48,12 +45,6 @@ describe('quotation list adapter', () => {
     expect(readStatus({ status: 'something-new' })).toBe('draft');
   });
 
-  it('knows whether the API reports statuses', () => {
-    expect(apiHasStatus([OLD_ROW])).toBeFalse();
-    expect(apiHasStatus([OLD_ROW, NEW_ROW])).toBeTrue();
-    expect(apiHasStatus(null)).toBeFalse();
-  });
-
   it('names a quotation that has no name after its customer', () => {
     expect(toQuotationRow({ id: 1, name: 'Test', quatation_name: null }).name).toBe('Test – windows');
     expect(toQuotationRow({ id: 1 }).name).toBe('Untitled quotation');
@@ -66,24 +57,9 @@ describe('quotation list adapter', () => {
     expect(toQuotationRow({ id: 1 }).windows).toBeNull();
   });
 
-  it('sorts newest first: by date when there is one, otherwise by id', () => {
-    expect(toQuotationRows([{ id: 1 }, { id: 22 }, { id: 14 }]).map((r) => r.id)).toEqual([22, 14, 1]);
-    const dated = toQuotationRows([
-      { id: 1, updated_at: '2026-10-02T00:00:00Z' },
-      { id: 2, updated_at: '2026-09-01T00:00:00Z' },
-    ]);
-    expect(dated.map((r) => r.id)).toEqual([1, 2]);
-    expect(toQuotationRows(null)).toEqual([]);
-  });
-
-  it('builds the tabs with counts, and rare statuses only when present', () => {
-    const rows = toQuotationRows([
-      NEW_ROW,
-      { ...NEW_ROW, id: 15, status: 'draft' },
-      { ...NEW_ROW, id: 16, status: 'draft' },
-      { ...NEW_ROW, id: 17, status: 'declined' },
-    ]);
-    expect(buildStatusTabs(rows).map((t) => `${t.label} ${t.count}`)).toEqual([
+  it('builds the tabs from the counts of the API, and rare statuses only when present', () => {
+    const counts = { all: 4, draft: 2, sent: 1, accepted: 0, declined: 1, expired: 0, billed: 0 };
+    expect(tabsFromCounts(counts).map((t) => `${t.label} ${t.count}`)).toEqual([
       'All 4',
       'Draft 2',
       'Sent 1',
@@ -91,16 +67,7 @@ describe('quotation list adapter', () => {
       'Billed 0',
       'Declined 1',
     ]);
-  });
-
-  it('searches name, customer, number and phone', () => {
-    const row = toQuotationRow(NEW_ROW);
-    expect(matchesSearch(row, 'villa')).toBeTrue();
-    expect(matchesSearch(row, 'AHMED')).toBeTrue();
-    expect(matchesSearch(row, 'q-0014')).toBeTrue();
-    expect(matchesSearch(row, '98123')).toBeTrue();
-    expect(matchesSearch(row, '  ')).toBeTrue();
-    expect(matchesSearch(row, 'sharma')).toBeFalse();
+    expect(tabsFromCounts(null).map((t) => t.count)).toEqual([0, 0, 0, 0, 0]);
   });
 
   it('writes dates the short way', () => {

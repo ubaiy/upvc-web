@@ -2,26 +2,28 @@ import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
-import { Subscription } from 'rxjs';
-import { finalize } from 'rxjs/operators';
+import { Subject, Subscription, of, timer } from 'rxjs';
+import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { DuplicatedQuotation } from './add/duplicate-quotation-dialog.component';
 import { QuotationService } from './quotation.service';
+import { QuotationListService, QuotationPage } from './quotation-list.service';
 import {
-  apiHasStatus,
-  buildStatusTabs,
   errorText,
-  matchesSearch,
   QuotationRow,
   shortDate,
   STATUS_BADGE,
   STATUS_LABELS,
   StatusTab,
-  toQuotationRows,
+  tabsFromCounts,
+  toQuotationRow,
 } from './quotation-list.model';
 
-/** Rows per page. The API returns the whole list; paging is done here. */
-export const PAGE_SIZE = 20;
+/** Rows per page. The API searches, filters by status and pages. */
+export const PAGE_SIZE = 25;
+/** Typing pauses this long before the API is asked. */
+export const SEARCH_DELAY_MS = 300;
 
 /**
  * The quotation list (card U3, mockup quotations.html): status tabs, search,
@@ -40,11 +42,16 @@ export class QuotationComponent implements OnInit, OnDestroy {
   readonly statusLabels = STATUS_LABELS;
   readonly statusBadge = STATUS_BADGE;
 
+  /** The rows of the page that is showing. */
   rows: QuotationRow[] = [];
+  /** Quotations that match the tab and the search, on every page. */
+  total = 0;
   loading = true;
   loadFailed = false;
+  /** True when the company has no quotation at all (not just none matching the filter). */
+  empty = false;
 
-  /** Tabs are shown once the API reports statuses (card A1). */
+  /** Tabs are shown once the API has sent the count per status. */
   showTabs = false;
   tabs: StatusTab[] = [];
   activeTab: StatusTab['key'] = 'all';
@@ -61,11 +68,16 @@ export class QuotationComponent implements OnInit, OnDestroy {
   editRow: QuotationRow | null = null;
 
   duplicateRow: QuotationRow | null = null;
+  /** Customer to start a new quotation for (/quotation?new=1&customer=3, from the customer page). */
+  newForCustomer: number | null = null;
 
   deleteRow: QuotationRow | null = null;
   deleting = false;
 
   private _query?: Subscription;
+  private _pages?: Subscription;
+  /** Each value asks for the page again; the number is the pause before asking. */
+  private _wanted = new Subject<number>();
   /** An ?edit= link that arrived before the list did. */
   private _pendingEditId = 0;
   /** What had the keyboard focus when "New quotation" was pressed. */
@@ -75,15 +87,31 @@ export class QuotationComponent implements OnInit, OnDestroy {
     private _route: ActivatedRoute,
     private _router: Router,
     private _dataService: QuotationService,
+    private _list: QuotationListService,
     private _toastService: ToastService
   ) {}
 
   ngOnInit(): void {
+    // A newer request replaces one still on its way, so the rows always match the tab and the search.
+    this._pages = this._wanted
+      .pipe(
+        switchMap((delay) =>
+          (delay ? timer(delay) : of(0)).pipe(
+            switchMap(() =>
+              this._list.page({ status: this.activeTab, search: this.search, page: this.page + 1, perPage: PAGE_SIZE })
+            ),
+            map((page): QuotationPage | null => page),
+            catchError(() => of(null))
+          )
+        )
+      )
+      .subscribe((page) => this._show(page));
     this.load();
     // /quotation?new=1 opens the dialog (Home and the old /quotation/add link
     // arrive this way); /quotation?edit=14 opens it for that quotation.
     this._query = this._route.queryParamMap.subscribe((params) => {
       if (params.has('new')) {
+        this.newForCustomer = Number(params.get('customer')) || null;
         this.openNew();
       } else if (params.has('edit')) {
         this._openEditById(Number(params.get('edit')));
@@ -93,93 +121,81 @@ export class QuotationComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this._query?.unsubscribe();
+    this._pages?.unsubscribe();
   }
 
-  get filtered(): QuotationRow[] {
-    return this.rows.filter(
-      (row) => (this.activeTab === 'all' || row.status === this.activeTab) && matchesSearch(row, this.search)
-    );
+  get filtering(): boolean {
+    return this.activeTab !== 'all' || !!this.search.trim();
   }
 
   get pageCount(): number {
-    return Math.max(1, Math.ceil(this.filtered.length / PAGE_SIZE));
+    return Math.max(1, Math.ceil(this.total / PAGE_SIZE));
   }
 
-  get pageRows(): QuotationRow[] {
-    const start = Math.min(this.page, this.pageCount - 1) * PAGE_SIZE;
-    return this.filtered.slice(start, start + PAGE_SIZE);
-  }
-
-  /** "8 quotations", or "21–40 of 53 quotations" when there is more than one page. */
+  /** "8 quotations", or "26–50 of 53 quotations" when there is more than one page. */
   get footText(): string {
-    const total = this.filtered.length;
-    const noun = total === 1 ? 'quotation' : 'quotations';
+    const noun = this.total === 1 ? 'quotation' : 'quotations';
     if (this.pageCount === 1) {
-      return `${total} ${noun}`;
+      return `${this.total} ${noun}`;
     }
-    const page = Math.min(this.page, this.pageCount - 1);
-    const first = page * PAGE_SIZE + 1;
-    return `${first}–${Math.min(total, first + PAGE_SIZE - 1)} of ${total} ${noun}`;
-  }
-
-  /** True when the company has no quotation at all (not just none matching the filter). */
-  get empty(): boolean {
-    return !this.loading && !this.loadFailed && this.rows.length === 0;
+    const first = this.page * PAGE_SIZE + 1;
+    return `${first}–${Math.min(this.total, first + PAGE_SIZE - 1)} of ${this.total} ${noun}`;
   }
 
   get columns(): number {
     return 6 + (this.showUpdated ? 1 : 0);
   }
 
+  /** Asks the API for the page that is showing, and for the counts on the tabs. */
   load(): void {
-    this.loading = true;
-    this.loadFailed = false;
-    this._dataService
-      .getAllQuotations()
-      .pipe(finalize(() => (this.loading = false)))
-      .subscribe({
-        next: (res) => {
-          this.loading = false;
-          if (!res?.success) {
-            this.loadFailed = true;
-            return;
-          }
-          this.rows = toQuotationRows(res.data);
-          this.showTabs = apiHasStatus(res.data);
-          this.tabs = buildStatusTabs(this.rows);
-          if (!this.showTabs || !this.tabs.some((tab) => tab.key === this.activeTab)) {
-            this.activeTab = 'all';
-          }
-          this.showUpdated = this.rows.some((row) => !!row.updatedAt);
-          if (this._pendingEditId) {
-            this._openEditById(this._pendingEditId);
-          }
-        },
-        error: () => (this.loadFailed = true),
-      });
+    this._loadPage();
+    this._list.counts().subscribe({
+      next: (counts) => {
+        this.tabs = tabsFromCounts(counts);
+        this.showTabs = true;
+      },
+      // The list works without tabs; they come back with the next load.
+      error: () => (this.showTabs = false),
+    });
   }
 
   selectTab(tab: StatusTab): void {
     this.activeTab = tab.key;
     this.page = 0;
+    this._loadPage();
   }
 
+  /** Called on every keystroke; the API is asked once the typing pauses. */
   onSearch(): void {
     this.page = 0;
+    this._loadPage(SEARCH_DELAY_MS);
   }
 
   clearFilters(): void {
     this.search = '';
     this.activeTab = 'all';
     this.page = 0;
+    this._loadPage();
   }
 
   previous(): void {
-    this.page = Math.max(0, Math.min(this.page, this.pageCount - 1) - 1);
+    if (this.page > 0) {
+      this.page = this.page - 1;
+      this._loadPage();
+    }
   }
 
   next(): void {
-    this.page = Math.min(this.pageCount - 1, this.page + 1);
+    if (this.page < this.pageCount - 1) {
+      this.page = this.page + 1;
+      this._loadPage();
+    }
+  }
+
+  private _loadPage(delay = 0): void {
+    this.loading = true;
+    this.loadFailed = false;
+    this._wanted.next(delay);
   }
 
   updated(row: QuotationRow): string {
@@ -223,6 +239,9 @@ export class QuotationComponent implements OnInit, OnDestroy {
   }
 
   openNew(): void {
+    if (!this._route.snapshot.queryParamMap.has('customer')) {
+      this.newForCustomer = null;
+    }
     this._opener = document.activeElement as HTMLElement | null;
     this.editRow = null;
     this.dialogOpen = true;
@@ -252,10 +271,12 @@ export class QuotationComponent implements OnInit, OnDestroy {
     this._router.navigate(['/quotation/detail', id]);
   }
 
-  onDuplicated(id: number): void {
+  onDuplicated(copy: DuplicatedQuotation): void {
     this.duplicateRow = null;
-    this._toastService.showSuccess('Quotation duplicated');
-    this._router.navigate(['/quotation/detail', id]);
+    this._toastService.showSuccess(
+      copy.pricesChanged ? 'Quotation duplicated. Prices have changed since the original.' : 'Quotation duplicated'
+    );
+    this._router.navigate(['/quotation/detail', copy.id]);
   }
 
   confirmDelete(): void {
@@ -274,8 +295,11 @@ export class QuotationComponent implements OnInit, OnDestroy {
             return;
           }
           this.deleteRow = null;
-          this.rows = this.rows.filter((r) => r.id !== row.id);
-          this.tabs = buildStatusTabs(this.rows);
+          // The last row of a later page went: show the page before it.
+          if (this.rows.length === 1 && this.page > 0) {
+            this.page = this.page - 1;
+          }
+          this.load();
           this._toastService.showSuccess(`“${row.name}” deleted`);
         },
         error: (err) => this._toastService.showError(errorText(err, 'We could not delete the quotation.')),
@@ -297,14 +321,41 @@ export class QuotationComponent implements OnInit, OnDestroy {
     } else if (this.loading) {
       this._pendingEditId = id;
     } else {
+      // Not on the page that is showing: ask for that one quotation.
       this._pendingEditId = 0;
-      this._clearQuery();
+      this._dataService.getQuotation(id).subscribe({
+        next: (res) => (res?.success && res.data ? this.openEdit(toQuotationRow(res.data)) : this._clearQuery()),
+        error: () => this._clearQuery(),
+      });
+    }
+  }
+
+  private _show(page: QuotationPage | null): void {
+    this.loading = false;
+    if (!page) {
+      this.loadFailed = true;
+      return;
+    }
+    // A page past the end (rows were deleted elsewhere): go to the last one.
+    if (!page.rows.length && page.total > 0 && this.page > 0) {
+      this.page = Math.max(0, page.lastPage - 1);
+      this._loadPage();
+      return;
+    }
+    this.rows = page.rows;
+    this.total = page.total;
+    if (!this.filtering) {
+      this.empty = page.total === 0;
+    }
+    this.showUpdated = this.rows.some((row) => !!row.updatedAt);
+    if (this._pendingEditId) {
+      this._openEditById(this._pendingEditId);
     }
   }
 
   private _clearQuery(): void {
     const params = this._route.snapshot.queryParamMap;
-    if (params.has('new') || params.has('edit')) {
+    if (params.has('new') || params.has('edit') || params.has('customer')) {
       this._router.navigate([], { relativeTo: this._route, queryParams: {}, replaceUrl: true });
     }
   }

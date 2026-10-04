@@ -9,7 +9,6 @@ import { DropdownModule } from 'primeng/dropdown';
 import { of, throwError } from 'rxjs';
 
 import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
-import { DropdownService } from '../../../shared/services/dropdown.service';
 import { QuotationRow } from '../quotation-list.model';
 import { QuotationService } from '../quotation.service';
 import { DuplicateQuotationDialogComponent } from './duplicate-quotation-dialog.component';
@@ -60,11 +59,14 @@ describe('QuotationDialogComponent', () => {
   beforeEach(() => {
     service = jasmine.createSpyObj('QuotationService', [
       'getCustomerOptions',
+      'getMarginOptions',
       'addCustomerInline',
       'addQuotationDetail',
       'editQuotationDetail',
     ]);
     service.getCustomerOptions.and.returnValue(of({ success: true, message: '', data: CUSTOMERS }));
+    // No price lists by default: the field stays hidden and the API applies the customer's own.
+    service.getMarginOptions.and.returnValue(of({ success: true, message: '', data: [] }));
     TestBed.configureTestingModule({
       declarations: [QuotationDialogComponent],
       imports: [NoopAnimationsModule, RouterTestingModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, DropdownModule, ButtonModule],
@@ -84,6 +86,50 @@ describe('QuotationDialogComponent', () => {
     expect(text()).toContain('Create quotation');
     expect(text()).not.toContain('Address');
     expect(text()).not.toContain('Area');
+  });
+
+  it('pre-selects the price list of the customer, until the user picks another', () => {
+    service.getCustomerOptions.and.returnValue(
+      of({
+        success: true,
+        message: '',
+        data: [
+          { ...CUSTOMERS[0], default_order_type_margin_id: 1 },
+          { ...CUSTOMERS[1], default_order_type_margin_id: 2 },
+        ],
+      })
+    );
+    service.getMarginOptions.and.returnValue(
+      of({ success: true, message: '', data: [{ id: 1, name: 'Retail', mark_up: '20' }, { id: 2, name: 'Dealer', mark_up: '10' }] })
+    );
+    service.addQuotationDetail.and.returnValue(of({ success: true, message: '', data: { id: 31 } }));
+    open();
+    const labels = Array.from(body().querySelectorAll('label.label')).map((l) => (l.textContent || '').trim());
+    expect(labels).toEqual(['Customer', 'Quotation name', 'Price list']);
+    expect(component.margins.map((m) => m.label)).toEqual(['Retail (20%)', 'Dealer (10%)']);
+    const margin = component.form.controls['order_type_margin_id'];
+    const [first, second] = component.customers;
+
+    component.form.controls['customer_id'].setValue(first.id);
+    expect(margin.value).toBe(first.marginId);
+    component.form.controls['customer_id'].setValue(second.id);
+    expect(margin.value).toBe(second.marginId);
+
+    margin.setValue(first.marginId);
+    component.onMarginChange();
+    component.form.controls['customer_id'].setValue(first.id);
+    component.form.controls['customer_id'].setValue(second.id);
+    expect(margin.value).toBe(first.marginId);
+
+    component.submit();
+    expect(service.addQuotationDetail.calls.mostRecent().args[0].order_type_margin_id).toBe(first.marginId);
+  });
+
+  it('starts with the customer named by the page that opened it', () => {
+    component.customerId = 3;
+    open();
+    expect(component.form.controls['customer_id'].value).toBe(3);
+    expect(component.form.controls['quatation_name'].value).toBe('Sharma Residency – windows');
   });
 
   it('fills the quotation name from the customer until the user types one', () => {
@@ -229,44 +275,13 @@ describe('DuplicateQuotationDialogComponent', () => {
   let component: DuplicateQuotationDialogComponent;
   let service: jasmine.SpyObj<QuotationService>;
 
-  const spec = { category_type: 'Slidding', width: 1800, height: 1200, color_id: 1, glazz_id: 4, is_track: '2 Track', mullion: [] };
-  const DETAIL = {
-    id: 15,
-    quatation_name: 'Sharma Flat Renovation',
-    customer_id: 3,
-    quatation_product: [
-      { id: 70, quantity: 2, image: 'img.png', costhead_information: JSON.stringify({ old_post_data: spec }) },
-      { id: 71, quantity: 1, image: null, costhead_information: '{}' },
-    ],
-  };
-
   beforeEach(() => {
-    service = jasmine.createSpyObj('QuotationService', [
-      'getCustomerOptions',
-      'getQuotationDetail',
-      'addQuotationDetail',
-      'quotationManageProduct',
-    ]);
+    service = jasmine.createSpyObj('QuotationService', ['getCustomerOptions', 'copyQuotation']);
     service.getCustomerOptions.and.returnValue(of({ success: true, message: '', data: CUSTOMERS }));
-    service.getQuotationDetail.and.returnValue(of({ success: true, message: '', data: DETAIL as any }));
-    const dropdowns = {
-      allDropDowns: () =>
-        of({
-          success: true,
-          data: {
-            profile_color: [{ id: 1, color_name: 'White', color_code: '#fff' }, { id: 2, color_name: 'Walnut', color_code: '#5a3' }],
-            costhead: [{ id: 4, name: '5 mm plain' }],
-            slidding_type: ['2 Track', '3 Track'],
-          },
-        }),
-    };
     TestBed.configureTestingModule({
       declarations: [DuplicateQuotationDialogComponent],
       imports: [NoopAnimationsModule, RouterTestingModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, DropdownModule, ButtonModule],
-      providers: [
-        { provide: QuotationService, useValue: service },
-        { provide: DropdownService, useValue: dropdowns },
-      ],
+      providers: [{ provide: QuotationService, useValue: service }],
     });
     fixture = TestBed.createComponent(DuplicateQuotationDialogComponent);
     component = fixture.componentInstance;
@@ -279,42 +294,38 @@ describe('DuplicateQuotationDialogComponent', () => {
   it('defaults to the same customer and "<name> (Copy)", with no address or area', () => {
     expect(component.form.controls['customer_id'].value).toBe(3);
     expect(component.form.controls['quatation_name'].value).toBe('Sharma Flat Renovation (Copy)');
-    expect(component.windowCount).toBe(2);
-    expect(component.hasSliding).toBeTrue();
     const dialogText = (document.querySelector('.p-dialog')?.textContent || '').replace(/\s+/g, ' ');
     expect(dialogText).toContain('Duplicate this quotation?');
-    expect(dialogText).not.toContain('Address');
+    expect(dialogText).toContain('with 1 window, at today’s prices');
     expect(dialogText).not.toContain('Area');
   });
 
-  it('makes the new quotation, then re-posts each window that has a saved specification', () => {
-    service.addQuotationDetail.and.returnValue(of({ success: true, message: '', data: { id: 40 } }));
-    service.quotationManageProduct.and.returnValue(of({ success: true, message: '', data: {} as any }));
+  it('asks the API for the copy with one request and reports a change of prices', () => {
+    service.copyQuotation.and.returnValue(
+      of({ success: true, message: '', data: { id: 40, copy: { prices_changed: true, not_repriced: [] } } })
+    );
     const saved = jasmine.createSpy('saved');
     component.saved.subscribe(saved);
-    component.form.patchValue({ customer_id: 2, color_id: 2, is_track: '3 Track' });
+    component.form.patchValue({ customer_id: 2 });
     component.submit();
 
-    expect(service.addQuotationDetail).toHaveBeenCalledWith({ customer_id: 2, quatation_name: 'Sharma Flat Renovation (Copy)' });
-    expect(service.quotationManageProduct).toHaveBeenCalledTimes(1);
-    const payload = service.quotationManageProduct.calls.mostRecent().args[0];
-    expect(payload).toEqual(
-      jasmine.objectContaining({ quatation_id: 40, quantity: 2, width: 1800, height: 1200, profile_color: '#5a3', image: 'img.png' })
-    );
-    expect(payload.parts[0]).toEqual(jasmine.objectContaining({ color_id: 2, glazz_id: 4, is_track: '3 Track' }));
-    expect(saved).toHaveBeenCalledWith(40);
+    expect(service.copyQuotation).toHaveBeenCalledOnceWith(15, { customer_id: 2, quatation_name: 'Sharma Flat Renovation (Copy)' });
+    expect(saved).toHaveBeenCalledOnceWith({ id: 40, pricesChanged: true });
   });
 
-  it('offers to open the copy when a window could not be copied', () => {
-    service.addQuotationDetail.and.returnValue(of({ success: true, message: '', data: { id: 41 } }));
-    service.quotationManageProduct.and.returnValue(throwError(() => ({ status: 500 })));
+  it('stays open and shows the refusal when the copy is not made', () => {
+    service.copyQuotation.and.returnValue(of({ status: 0, message: 'Invalid customer id' } as any));
     const saved = jasmine.createSpy('saved');
     component.saved.subscribe(saved);
     component.submit();
-    expect(component.partialId).toBe(41);
-    expect(component.saveError).toContain('Some windows could not be copied');
+    expect(component.saveError).toBe('Invalid customer id');
     expect(saved).not.toHaveBeenCalled();
-    component.openPartial();
-    expect(saved).toHaveBeenCalledWith(41);
+  });
+
+  it('asks for a customer before copying', () => {
+    component.form.patchValue({ customer_id: null });
+    component.submit();
+    expect(component.customerError).toBe('Choose a customer.');
+    expect(service.copyQuotation).not.toHaveBeenCalled();
   });
 });

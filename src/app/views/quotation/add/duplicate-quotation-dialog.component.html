@@ -9,12 +9,10 @@
   [style]="{ width: '440px' }"
 >
   <form [formGroup]="form" class="u-col" style="gap: var(--s-4)" (ngSubmit)="submit()" novalidate>
-    <p class="muted small" *ngIf="quotation">
-      <ng-container *ngIf="loading; else ready">Loading “{{ quotation.name }}”…</ng-container>
-      <ng-template #ready>
-        A new draft is made from “{{ quotation.name }}” with
-        {{ windowCount === 1 ? '1 window' : windowCount + ' windows' }}, at today’s prices.
-      </ng-template>
+    <p class="muted small" *ngIf="quotation as q">
+      A new draft is made from “{{ q.name }}”<ng-container *ngIf="q.windows">
+        with {{ q.windows === 1 ? '1 window' : q.windows + ' windows' }}</ng-container
+      >, at today’s prices. The original is not changed.
     </p>
 
     <app-callout tone="warn" *ngIf="loadError">
@@ -37,8 +35,12 @@
         appendTo="body"
         [style]="{ width: '100%' }"
         [styleClass]="customerError ? 'ng-invalid ng-dirty' : ''"
+        aria-describedby="dq-customer-hint"
       ></p-dropdown>
-      <span class="error" *ngIf="customerError">{{ customerError }}</span>
+      <span class="error" *ngIf="customerError; else customerHint">{{ customerError }}</span>
+      <ng-template #customerHint>
+        <span class="hint" id="dq-customer-hint">Another customer gets their own price list and address.</span>
+      </ng-template>
     </div>
 
     <div class="field">
@@ -46,62 +48,13 @@
       <input class="input" id="dq-name" type="text" formControlName="quatation_name" autocomplete="off" maxlength="191" />
     </div>
 
-    <details>
-      <summary class="small">Change colour or glass in the copy (optional)</summary>
-      <div class="u-col" style="gap: var(--s-4); margin-block-start: var(--s-3)">
-        <div class="field">
-          <label class="label" for="dq-color">Profile colour</label>
-          <p-dropdown
-            inputId="dq-color"
-            formControlName="color_id"
-            [options]="colorChoices"
-            appendTo="body"
-            [style]="{ width: '100%' }"
-          ></p-dropdown>
-        </div>
-        <div class="field">
-          <label class="label" for="dq-glass">Glass</label>
-          <p-dropdown
-            inputId="dq-glass"
-            formControlName="glazz_id"
-            [options]="glassChoices"
-            [filter]="glassChoices.length > 12"
-            appendTo="body"
-            [style]="{ width: '100%' }"
-          ></p-dropdown>
-        </div>
-        <div class="field" *ngIf="hasSliding">
-          <label class="label" for="dq-track">Track</label>
-          <p-dropdown
-            inputId="dq-track"
-            formControlName="is_track"
-            [options]="trackChoices"
-            appendTo="body"
-            [style]="{ width: '100%' }"
-            aria-describedby="dq-track-hint"
-          ></p-dropdown>
-          <span class="hint" id="dq-track-hint">Applies to sliding windows only.</span>
-        </div>
-      </div>
-    </details>
-
-    <app-callout tone="danger" *ngIf="saveError">
-      {{ saveError }}
-      <button action type="button" class="btn btn-secondary btn-sm" *ngIf="partialId" (click)="openPartial()">
-        Open copy
-      </button>
-    </app-callout>
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
 
     <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Submit</button>
   </form>
 
   <ng-template pTemplate="footer">
     <p-button label="Cancel" [outlined]="true" [disabled]="copying" (onClick)="close()"></p-button>
-    <p-button
-      label="Duplicate quotation"
-      [loading]="copying"
-      [disabled]="loading || !!loadError || !!partialId"
-      (onClick)="submit()"
-    ></p-button>
+    <p-button label="Duplicate quotation" [loading]="copying" (onClick)="submit()"></p-button>
   </ng-template>
 </p-dialog>

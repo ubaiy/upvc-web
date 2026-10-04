@@ -1,11 +1,11 @@
 <app-page-header title="Quotations">
   <!-- One primary button on the page: with no quotation yet it moves into the empty state. -->
-  <button actions type="button" class="btn btn-primary" *ngIf="!empty" (click)="openNew()">
+  <button actions type="button" class="btn btn-primary" *ngIf="!empty || loading || loadFailed" (click)="openNew()">
     <app-icon name="plus"></app-icon>New quotation
   </button>
 </app-page-header>
 
-<div class="tabs" role="tablist" aria-label="Filter by status" *ngIf="showTabs && !loading && !loadFailed && !empty">
+<div class="tabs" role="tablist" aria-label="Filter by status" *ngIf="showTabs && !loadFailed && !empty">
   <button
     type="button"
     class="tab"
@@ -23,7 +23,7 @@
   <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
 </app-callout>
 
-<section class="card" *ngIf="empty">
+<section class="card" *ngIf="empty && !loading && !loadFailed">
   <app-empty-state
     icon="file"
     title="No quotations yet"
@@ -35,7 +35,7 @@
   </app-empty-state>
 </section>
 
-<section class="card" *ngIf="!loadFailed && !empty" [attr.aria-busy]="loading">
+<section class="card" *ngIf="!loadFailed && !(empty && !loading)" [attr.aria-busy]="loading">
   <div class="toolbar">
     <label class="input-group">
       <app-icon name="search"></app-icon>
@@ -45,7 +45,6 @@
         aria-label="Search quotations"
         [(ngModel)]="search"
         (ngModelChange)="onSearch()"
-        [disabled]="loading"
       />
     </label>
     <span class="grow"></span>
@@ -81,7 +80,7 @@
       </tbody>
 
       <tbody *ngIf="!loading">
-        <tr *ngFor="let row of pageRows; trackBy: trackById" class="q-row" (click)="onRowClick($event, row)">
+        <tr *ngFor="let row of rows; trackBy: trackById" class="q-row" (click)="onRowClick($event, row)">
           <td>
             <a class="title" [routerLink]="['/quotation/detail', row.id]">{{ row.name }}</a>
             <div class="faint tiny">
@@ -108,12 +107,12 @@
             </button>
           </td>
         </tr>
-        <tr *ngIf="!pageRows.length" class="q-none">
+        <tr *ngIf="!rows.length" class="q-none">
           <td [attr.colspan]="columns">
             <div class="q-none-body">
-              <span class="muted">No quotations match{{ search ? ' “' + search + '”' : ' this filter' }}.</span>
+              <span class="muted">No quotations match{{ search.trim() ? ' “' + search.trim() + '”' : ' this filter' }}.</span>
               <button type="button" class="btn btn-secondary btn-sm" (click)="clearFilters()">
-                {{ search ? 'Clear search' : 'Show all' }}
+                {{ search.trim() ? 'Clear search' : 'Show all' }}
               </button>
             </div>
           </td>
@@ -137,6 +136,7 @@
 <app-quotation-dialog
   [visible]="dialogOpen"
   [quotation]="editRow"
+  [customerId]="newForCustomer"
   (closed)="closeDialog()"
   (saved)="onSaved($event)"
 ></app-quotation-dialog>

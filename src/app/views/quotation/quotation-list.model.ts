@@ -65,11 +65,6 @@ function isBilled(raw: any): boolean {
   return Number(raw?.is_convert_bill) === 1;
 }
 
-/** True when the API stores a status on quotations (card A1 is live). */
-export function apiHasStatus(rawRows: any[] | null | undefined): boolean {
-  return (rawRows || []).some((raw) => !!raw && typeof raw.status === 'string' && raw.status !== '');
-}
-
 export function readStatus(raw: any): QuotationRowStatus {
   const status = raw?.status;
   if (typeof status === 'string' && status in STATUS_LABELS) {
@@ -115,38 +110,17 @@ export function toQuotationRow(raw: any): QuotationRow {
   };
 }
 
-/** Newest first: by date when the API gives one, otherwise by id. */
-export function toQuotationRows(rawRows: any[] | null | undefined): QuotationRow[] {
-  return (rawRows || [])
-    .filter((raw) => !!raw)
-    .map(toQuotationRow)
-    .sort((a, b) => {
-      const byDate = (b.updatedAt?.getTime() || 0) - (a.updatedAt?.getTime() || 0);
-      return byDate || b.id - a.id;
-    });
-}
-
-export function buildStatusTabs(rows: QuotationRow[]): StatusTab[] {
-  const count = (status: QuotationRowStatus) => rows.filter((row) => row.status === status).length;
-  const tabs: StatusTab[] = [{ key: 'all', label: 'All', count: rows.length }];
+/** The tabs, from `quatation/status-counts`. Declined and Expired show only when there is one. */
+export function tabsFromCounts(counts: Record<string, number> | null | undefined): StatusTab[] {
+  const count = (key: string) => Number(counts?.[key]) || 0;
+  const tabs: StatusTab[] = [{ key: 'all', label: 'All', count: count('all') }];
   MAIN_TABS.forEach((status) => tabs.push({ key: status, label: STATUS_LABELS[status], count: count(status) }));
   RARE_TABS.forEach((status) => {
-    const n = count(status);
-    if (n) {
-      tabs.push({ key: status, label: STATUS_LABELS[status], count: n });
+    if (count(status)) {
+      tabs.push({ key: status, label: STATUS_LABELS[status], count: count(status) });
     }
   });
   return tabs;
-}
-
-export function matchesSearch(row: QuotationRow, term: string): boolean {
-  const needle = term.trim().toLowerCase();
-  if (!needle) {
-    return true;
-  }
-  return [row.name, row.customerName, row.number, row.phone].some((value) =>
-    (value || '').toLowerCase().includes(needle)
-  );
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

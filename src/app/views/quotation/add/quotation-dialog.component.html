@@ -136,6 +136,21 @@
       </ng-template>
     </div>
 
+    <div class="field" *ngIf="!editing && margins.length">
+      <label class="label" for="nq-margin">Price list</label>
+      <select
+        class="select"
+        id="nq-margin"
+        formControlName="order_type_margin_id"
+        aria-describedby="nq-margin-hint"
+        (change)="onMarginChange()"
+      >
+        <option [ngValue]="null">{{ mode === 'new' ? 'Standard for a new customer' : 'Standard for this customer' }}</option>
+        <option *ngFor="let margin of margins" [ngValue]="margin.id">{{ margin.label }}</option>
+      </select>
+      <span class="hint" id="nq-margin-hint">The margin added to cost. It can be changed on the quotation.</span>
+    </div>
+
     <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
 
     <!-- Lets Enter submit the form; the visible buttons are in the dialog footer. -->
