@@ -259,7 +259,7 @@ describe('SubQuotationComponent (quotation page)', () => {
     expect(service.reviseQuotation).not.toHaveBeenCalled();
 
     service.reviseQuotation.and.returnValue(
-      ok({ id: 31, number: 'Q-0003 R1', quatation_product: [{ id: 40 }, { id: 41 }] })
+      ok({ id: 31, number: 'Q-0003 R1', totals: { items: [{ id: 40 }, { id: 41 }] } })
     );
     component.confirmRevise();
     expect(service.reviseQuotation).toHaveBeenCalledWith(14);

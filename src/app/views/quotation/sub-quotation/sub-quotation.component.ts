@@ -393,8 +393,9 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
         this.reviseIntent = null;
         this._toast.showSuccess(`Revision ${revision?.number || ''} created`.replace('  ', ' '));
         const base = ['/quotation/detail', revision.id];
-        const lines: any[] = revision?.quatation_product || [];
-        if (intent.kind === 'add') {
+        // The revision comes back with its totals; the line ids are in totals.items.
+        const lines: any[] = revision?.totals?.items || revision?.quatation_product || [];
+        if (intent.kind === 'add' && lines.length) {
           this._router.navigate([...base, 'add', lines.length + 1]);
         } else if (intent.kind === 'edit' && lines[intent.position - 1]) {
           // Same windows in the same order: open the one that was clicked.

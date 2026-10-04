@@ -337,7 +337,7 @@
     </form>
     <ng-template pTemplate="footer">
       <p-button label="Cancel" [outlined]="true" (onClick)="lineToRename = null"></p-button>
-      <p-button label="Save" type="submit" form="rename-form" [loading]="busy === 'rename'" (onClick)="saveRename()"></p-button>
+      <p-button label="Save" [loading]="busy === 'rename'" (onClick)="saveRename()"></p-button>
     </ng-template>
   </p-dialog>
 
