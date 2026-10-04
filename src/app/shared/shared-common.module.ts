@@ -1,13 +1,7 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AuthGuard } from './guards/auth.guard';
-import { LogoutGuard } from './guards/logout.guard';
-import { SharedPipesModule } from './pipes/shared-pipes.module';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
-import { MessageService, ConfirmationService } from 'primeng/api';
-import { ConfirmationDialogService } from './services/confirmationdialog.service';
-import { ToastService } from './services/toast.service';
 import { DropdownModule } from 'primeng/dropdown';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 @NgModule({
@@ -20,15 +14,12 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
     FormsModule,
     ReactiveFormsModule,
   ],
-  providers: [
-    AuthGuard,
-    LogoutGuard,
-    SharedPipesModule,
-    ConfirmationService,
-    MessageService,
-    ConfirmationDialogService,
-    ToastService,
-  ],
+  // Nothing is provided here. MessageService and ConfirmationService are
+  // provided once, in AppModule: a module that provides them hands every lazy
+  // module that imports it a private copy, cut off from the one <p-toast> and
+  // <p-confirmDialog> in AppComponent. The guards and the two wrapper services
+  // are `providedIn: 'root'`.
+  providers: [],
   exports: [],
 })
 export class SharedCommonModule {}

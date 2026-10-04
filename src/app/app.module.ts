@@ -44,9 +44,8 @@ import { TokenInterceptor } from './shared/interceptors/token.interceptor';
 import { IconModule, IconSetService } from '@coreui/icons-angular';
 import { SharedCommonModule } from './shared/shared-common.module';
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
-import { ConfirmationDialogService } from './shared/services/confirmationdialog.service';
-import { ToastService } from './shared/services/toast.service';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { LoaderService } from 'src/app/shared/services/loader.service';
@@ -96,8 +95,9 @@ const APP_CONTAINERS = [ShellComponent, CommandPaletteComponent];
     SharedComponentsModule,
   ],
   providers: [
-    ConfirmationDialogService,
-    ToastService,
+    // One toast queue and one confirm dialog for the whole app, lazy modules included.
+    MessageService,
+    ConfirmationService,
     {
       provide: LocationStrategy,
       useClass: HashLocationStrategy,

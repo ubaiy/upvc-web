@@ -12,6 +12,13 @@ import { LoaderService } from '../services/loader.service';
 import { LocalStoreService } from '../services/local-storage.service';
 import { AuthService } from '../services/auth.service';
 import { ToastService } from '../services/toast.service';
+import { SKIP_ERROR_TOAST, SKIP_LOADER } from './request-options';
+
+/**
+ * Raises the global loading overlay while requests are open and a toast when
+ * one fails. A screen with its own skeleton and inline error opts out per
+ * request with `quiet()` from ./request-options.
+ */
 @Injectable()
 export class LoaderInterceptor implements HttpInterceptor {
   private requests: HttpRequest<any>[] = [];
@@ -35,8 +42,10 @@ export class LoaderInterceptor implements HttpInterceptor {
     req: HttpRequest<any>,
     next: HttpHandler
   ): Observable<HttpEvent<any>> {
-    this.requests.push(req);
-    if (!req.url.includes('i18n')) {
+    const showLoader = !req.context.get(SKIP_LOADER) && !req.url.includes('i18n');
+    const showErrors = !req.context.get(SKIP_ERROR_TOAST);
+    if (showLoader) {
+      this.requests.push(req);
       this.loaderService.isLoading.next(true);
     }
     return Observable.create(
@@ -57,6 +66,7 @@ export class LoaderInterceptor implements HttpInterceptor {
               // ToastService de-duplicates if a component also toasts it.
               const body: any = event.body;
               if (
+                showErrors &&
                 body &&
                 typeof body === 'object' &&
                 !(body instanceof Blob) &&
@@ -73,11 +83,12 @@ export class LoaderInterceptor implements HttpInterceptor {
             if (err.status == 401) {
               // Clear local state only — calling logout() here would POST
               // api/v1/logout with the same dead token and 401 in a loop.
-              if (!req.url.endsWith('/logout')) {
-                this._toastService.showError('Session Expired.');
+              // A wrong password on sign in is also a 401: the form says so itself.
+              if (!req.url.endsWith('/logout') && !req.url.endsWith('/login')) {
+                this._toastService.showError('Your session has ended. Sign in again.');
               }
               this.authService.clearSession();
-            } else if (!req.url.includes('i18n')) {
+            } else if (showErrors && !req.url.includes('i18n')) {
               // Surface failed requests (400/500/network) so actions aren't silent.
               const detail =
                 err?.error?.message ||
