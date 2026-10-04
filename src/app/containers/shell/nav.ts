@@ -28,7 +28,8 @@ export const PROFILE_LINK = '/profile?tab=you';
 /** The whole menu: six items. Spec: docs/product/ux/design-system.md §1. */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', link: '/dashboard', match: ['/dashboard'] },
-  { id: 'quotations', label: 'Quotations', icon: 'file', link: '/quotation', match: ['/quotation'] },
+  // A quotation's production documents (/production/:id) are part of the quotation.
+  { id: 'quotations', label: 'Quotations', icon: 'file', link: '/quotation', match: ['/quotation', '/production'] },
   { id: 'customers', label: 'Customers', icon: 'users', link: '/customers', match: ['/customers'] },
   { id: 'bills', label: 'Bills', icon: 'receipt', link: '/bills', match: ['/bills'] },
   {

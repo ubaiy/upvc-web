@@ -67,6 +67,14 @@ const routes: Routes = [
           ),
       },
       {
+        // Production documents of one quotation: /production/:quotationId (card T69). No menu item; opened from the quotation page.
+        path: 'production',
+        loadChildren: () =>
+          import('./views/production/production.module').then(
+            (m) => m.ProductionModule
+          ),
+      },
+      {
         path: 'type-margin',
         loadChildren: () =>
           import('./views/type-margin/type-margin.module').then(

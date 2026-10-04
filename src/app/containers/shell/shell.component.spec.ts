@@ -33,6 +33,7 @@ describe('shell navigation', () => {
     const cases: [string, string][] = [
       ['/dashboard', 'home'],
       ['/quotation/detail/4/add/0', 'quotations'],
+      ['/production/14', 'quotations'],
       ['/customers/add', 'customers'],
       ['/bills', 'bills'],
       ['/masters/glass', 'catalogue'],
