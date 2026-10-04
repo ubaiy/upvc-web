@@ -1,0 +1,28 @@
+<main class="auth">
+  <section class="auth-form">
+    <span class="brand">
+      <span class="ws-mark"><app-icon name="window"></app-icon></span>{{ product }}
+    </span>
+    <h1>{{ heading }}</h1>
+    <p class="muted" *ngIf="lead">{{ lead }}</p>
+    <ng-content></ng-content>
+  </section>
+
+  <aside class="auth-side" aria-label="What UPVC does">
+    <div class="art">
+      <app-window-thumb
+        [spec]="sample"
+        [width]="410"
+        [height]="250"
+        label="Three-pane casement window"
+      ></app-window-thumb>
+      <div class="art-price">
+        <span class="muted small">2200 × 1200 mm · Casement</span>
+        <span class="strong num">{{ samplePrice | inr }}</span>
+      </div>
+    </div>
+    <p class="quote">
+      Draw the window. Get a price the customer accepts and a quote the workshop can build from.
+    </p>
+  </aside>
+</main>

@@ -1,0 +1,19 @@
+// Page-level rules of mockups/sign-in.html. The .auth, .auth-form, .auth-side
+// and .brand classes themselves come from scss/_design-system.scss.
+:host { display: block; }
+
+.ws-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--c-accent); color: var(--c-on-accent); display: grid; place-items: center; flex: none; }
+.brand { align-self: flex-start; }
+
+h1 { font-size: var(--fs-32); margin-block: var(--s-10) var(--s-2); }
+
+.art { background: var(--c-bg); border: 1px solid var(--c-border); border-radius: var(--r-lg); padding: var(--s-6); max-width: 460px; }
+.art app-window-thumb { display: block; }
+// The drawing is 410 px wide; let it shrink with a narrow side panel.
+.art ::ng-deep svg.win { display: block; max-width: 100%; height: auto; }
+.art-price { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); margin-block-start: var(--s-3); padding-block-start: var(--s-4); border-block-start: 1px solid var(--c-border); }
+.quote { font-size: var(--fs-24); line-height: 1.3; letter-spacing: -.02em; font-weight: var(--fw-medium); max-width: 420px; margin-block-start: var(--s-8); }
+
+@media (max-width: 640px) {
+  :host ::ng-deep .auth-form { padding: var(--s-8) var(--s-5); }
+}

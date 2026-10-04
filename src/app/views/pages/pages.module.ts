@@ -1,8 +1,11 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 
 import { PagesRoutingModule } from './pages-routing.module';
+import { AuthLayoutComponent } from './auth-layout/auth-layout.component';
 import { LoginComponent } from './login/login.component';
+import { ForgotPasswordComponent } from './login/forgot-password/forgot-password.component';
 import { RegisterComponent } from './register/register.component';
 import { Page404Component } from './page404/page404.component';
 import { Page500Component } from './page500/page500.component';
@@ -14,12 +17,13 @@ import {
   AlertModule,
 } from '@coreui/angular';
 import { IconModule } from '@coreui/icons-angular';
-import { SharedCommonModule } from 'src/app/shared/shared-common.module';
+import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { ToastModule } from 'primeng/toast';
 @NgModule({
   declarations: [
+    AuthLayoutComponent,
     LoginComponent,
+    ForgotPasswordComponent,
     RegisterComponent,
     Page404Component,
     Page500Component,
@@ -27,16 +31,24 @@ import { ToastModule } from 'primeng/toast';
   imports: [
     CommonModule,
     PagesRoutingModule,
+    // Card U1 owns this module but not pages-routing.module.ts, so its one
+    // new route (/auth/forgot-password) is registered here.
+    RouterModule.forChild([
+      { path: 'forgot-password', component: ForgotPasswordComponent, data: { title: 'Forgot password' } },
+    ]),
+    // The CoreUI modules below are only used by the old register page (card S1).
     CardModule,
     ButtonModule,
     GridModule,
     IconModule,
     FormModule,
-    SharedCommonModule,
+    // SharedCommonModule is deliberately not imported: it provides MessageService,
+    // and a second copy in this lazy module would cut these pages off from the
+    // app's one toast outlet.
+    SharedComponentsModule,
     ReactiveFormsModule,
     FormsModule,
     AlertModule,
-    ToastModule,
   ],
 })
 export class PagesModule {}
