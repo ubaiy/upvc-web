@@ -18,6 +18,9 @@ import {
   effectiveFaceMm,
   widthsFromPositions,
 } from './geometry';
+import { checkDoor } from './door';
+import { checkShape } from './shape';
+import { validateSlide } from './slide';
 import { DESIGN_SCHEMA, PaneNode, WindowDesign, isLeaf } from './types';
 
 export interface InvariantOptions extends LayoutOptions {
@@ -47,6 +50,10 @@ export function checkInvariants(
   if (!(heightMm >= FRAME_MIN_MM && heightMm <= FRAME_MAX_MM)) {
     problems.push(`frame height ${heightMm} outside ${FRAME_MIN_MM}-${FRAME_MAX_MM}`);
   }
+  // Phase 3: shape parameter validity ('rect' always passes).
+  problems.push(...checkShape(design.frame.shape, widthMm, heightMm));
+  // Phase 2: door structure validity (no-ops without a door spec).
+  problems.push(...checkDoor(design));
 
   const ids = new Set<string>();
   const visit = (node: PaneNode, spanW: number, spanH: number): void => {
@@ -76,6 +83,17 @@ export function checkInvariants(
             problems.push(
               `sliding leaf '${node.id}' panels sum ${sum} < daylight ${w}`
             );
+          }
+          // Phase 2 additions. Only states UNREACHABLE through Phase 1
+          // exports hard-fail here (new optional fields); the track/panel
+          // count and mesh-track rules stay advisory in validateSlide so
+          // legacy imports and old setSlide calls never start failing.
+          for (const p of validateSlide(node.slide).filter(
+            (msg) =>
+              msg.startsWith('at least one panel') ||
+              msg.startsWith('interlockMm')
+          )) {
+            problems.push(`sliding leaf '${node.id}': ${p}`);
           }
         }
       } else if (node.slide) {

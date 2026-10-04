@@ -25,7 +25,15 @@
  */
 
 import { Layout, LayoutOptions, layout } from './geometry';
-import { Id, LeafNode, WindowDesign, isLeaf, walkLeaves } from './types';
+import {
+  FrameShape,
+  Id,
+  LeafNode,
+  PaneNode,
+  WindowDesign,
+  isLeaf,
+  walkLeaves,
+} from './types';
 
 /**
  * The full design-spec field set, in the EXACT key order of the legacy
@@ -61,6 +69,12 @@ export interface GlobalSpec {
   ventilation_glazz_id: Id | null;
   fly_mesh: boolean | number | null;
   palla: unknown;
+  /**
+   * Phase 3 additive passthrough (architecture §3.3): present ONLY when
+   * the frame shape is not 'rect', appended after the legacy keys so
+   * rectangular payloads stay byte-identical. Absent = rectangle.
+   */
+  shape?: FrameShape;
 }
 
 export interface SectionPayload {
@@ -71,6 +85,17 @@ export interface SectionPayload {
   hingesType: string | null;
   widthMm: number | null;
   heightMm: number | null;
+  /**
+   * Phase 2 D3 fields (architecture §1.2), appended after the legacy keys
+   * and always emitted: the axis of the leaf's nearest REAL-mullion split
+   * ancestor ('mullion' = vertical bars, 'transom' = horizontal), null
+   * for an un-split window or inside pure sash divisions — exactly what
+   * the api needs to count transoms unambiguously.
+   */
+  orientation?: 'mullion' | 'transom' | null;
+  /** Grid indices: child-index sums over 'y'/'x' split ancestors. */
+  row?: number;
+  col?: number;
 }
 
 export interface MullionPayload {
@@ -187,6 +212,50 @@ export function buildBaseSpec(
   return base;
 }
 
+/** Per-leaf D3 grid info (sections[].orientation/row/col, Phase 2). */
+interface LeafGridInfo {
+  orientation: 'mullion' | 'transom' | null;
+  row: number;
+  col: number;
+}
+
+/**
+ * row/col = sums of child indexes over 'y'/'x' split ancestors (sash
+ * divisions included — they are real visual columns); orientation = the
+ * axis of the nearest REAL-mullion split ancestor (sash splits inherit),
+ * so the api can count mullions/transoms without guessing (decision D3).
+ */
+function leafGrid(root: PaneNode): Map<string, LeafGridInfo> {
+  const out = new Map<string, LeafGridInfo>();
+  const visit = (
+    node: PaneNode,
+    row: number,
+    col: number,
+    orientation: LeafGridInfo['orientation']
+  ): void => {
+    if (isLeaf(node)) {
+      out.set(node.id, { orientation, row, col });
+      return;
+    }
+    const nextOrientation =
+      (node.dividerKind ?? 'mullion') === 'mullion'
+        ? node.axis === 'x'
+          ? 'mullion'
+          : 'transom'
+        : orientation;
+    node.children.forEach((child, i) =>
+      visit(
+        child,
+        node.axis === 'y' ? row + i : row,
+        node.axis === 'x' ? col + i : col,
+        nextOrientation
+      )
+    );
+  };
+  visit(root, 0, 0, null);
+  return out;
+}
+
 /** One per-section part: full spec + the per-leaf overrides, in place. */
 function leafPart(
   base: GlobalSpec,
@@ -236,8 +305,17 @@ export function toPayload(
 
   const root = design.root;
   const singleCasementRoot = isLeaf(root) && root.category === 'Casement';
+  const grid = leafGrid(root);
+  // Phase 3 §3.3: additive `shape` key on every part for non-rect frames
+  // only, appended after the legacy keys (absent = rectangle).
+  const shapeExtra: Partial<GlobalSpec> =
+    design.frame.shape.kind !== 'rect' ? { shape: design.frame.shape } : {};
 
   for (const { leaf, rect } of lay.leaves) {
+    // Phase 2 D3: every section of this leaf carries the same grid cell
+    // (sliding panels overlap inside ONE cell — they are not columns).
+    const cell = grid.get(leaf.id) as LeafGridInfo;
+
     if (leaf.category === 'Slidding' && leaf.slide) {
       // One part (and one section) per sliding PANEL, each carrying the
       // leaf's own track/mesh — panels are a property of the leaf, not
@@ -248,6 +326,7 @@ export function toPayload(
             is_track: leaf.slide.tracks,
             fly_mesh: leaf.slide.mesh,
             opening_direction: panel.direction,
+            ...shapeExtra,
           })
         );
         sections.push({
@@ -258,6 +337,9 @@ export function toPayload(
           hingesType: base.hinges_type,
           widthMm: Math.round(panel.widthMm),
           heightMm: Math.round(rect.hMm),
+          orientation: cell.orientation,
+          row: cell.row,
+          col: cell.col,
         });
       }
       continue;
@@ -267,9 +349,9 @@ export function toPayload(
     // (full spec with the frame outer size), byte-identical to what the
     // old component sent, so single-window pricing is unchanged.
     if (singleCasementRoot) {
-      parts.push({ ...base });
+      parts.push({ ...base, ...shapeExtra });
     } else {
-      parts.push(leafPart(base, leaf, rect.wMm, rect.hMm));
+      parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, shapeExtra));
     }
     sections.push({
       casementType: leaf.casementType ?? base.casement_type,
@@ -279,6 +361,9 @@ export function toPayload(
       hingesType: leaf.opening?.hingesType ?? base.hinges_type,
       widthMm: Math.round(rect.wMm),
       heightMm: Math.round(rect.hMm),
+      orientation: cell.orientation,
+      row: cell.row,
+      col: cell.col,
     });
   }
 

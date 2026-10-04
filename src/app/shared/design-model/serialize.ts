@@ -109,7 +109,10 @@ export function validateShape(doc: unknown): string[] {
   else {
     if (typeof d.frame.widthMm !== 'number') problems.push('frame.widthMm');
     if (typeof d.frame.heightMm !== 'number') problems.push('frame.heightMm');
-    if (d.frame.shape?.kind !== 'rect') problems.push('frame.shape.kind');
+    const shapeKinds = ['rect', 'arch-top', 'circle', 'triangle', 'trapezoid'];
+    if (!shapeKinds.includes(d.frame.shape?.kind as string)) {
+      problems.push('frame.shape.kind');
+    }
   }
   if (d.productType !== 'Window' && d.productType !== 'Door') {
     problems.push(`productType '${String(d.productType)}'`);

@@ -87,6 +87,9 @@ describe('toPayload goldens', () => {
           hingesType: null,
           widthMm: 1380, // daylight: 1500 − 2×60 frame face
           heightMm: 1080,
+          orientation: null, // Phase 2 D3: un-split window has no bars
+          row: 0,
+          col: 0,
         },
       ],
     });
@@ -121,6 +124,10 @@ describe('toPayload goldens', () => {
           hingesType: 'Friction',
           widthMm: 690,
           heightMm: 1080,
+          // D3: sash divisions are columns but never mullions/transoms.
+          orientation: null,
+          row: 0,
+          col: 0,
         },
         {
           casementType: 'Openable',
@@ -130,6 +137,9 @@ describe('toPayload goldens', () => {
           hingesType: 'Friction',
           widthMm: 690,
           heightMm: 1080,
+          orientation: null,
+          row: 0,
+          col: 1,
         },
       ],
     });
@@ -159,6 +169,10 @@ describe('toPayload goldens', () => {
       hingesType: null,
       widthMm,
       heightMm: 1380,
+      // D3: panels overlap inside ONE grid cell — same cell on each.
+      orientation: null as 'mullion' | 'transom' | null,
+      row: 0,
+      col: 0,
     });
     expectBytes(toPayload(slidingTwoTrack()), {
       width: 2000,
@@ -199,6 +213,9 @@ describe('toPayload goldens', () => {
         hingesType: null,
         widthMm: 760,
         heightMm: 1260,
+        orientation: null as 'mullion' | 'transom' | null,
+        row: 0,
+        col: 0,
       })),
     });
   });
@@ -218,7 +235,7 @@ describe('toPayload goldens', () => {
       height: 1200,
       mullion: [{ direction: 'vertical', length: 1080, product_id: 55 }],
       parts: [pane(), pane()],
-      sections: [660, 660].map((w) => ({
+      sections: [660, 660].map((w, i) => ({
         casementType: 'Fixed',
         sashId: '',
         openingDirection: 'Left',
@@ -226,6 +243,10 @@ describe('toPayload goldens', () => {
         hingesType: null,
         widthMm: w,
         heightMm: 1080,
+        // D3: a vertical bar = 'mullion'; panes are columns 0 and 1.
+        orientation: 'mullion' as const,
+        row: 0,
+        col: i,
       })),
     });
   });
@@ -245,7 +266,7 @@ describe('toPayload goldens', () => {
       height: 1200,
       mullion: [{ direction: 'horizontal', length: 1380, product_id: 55 }],
       parts: [pane(), pane()],
-      sections: [1, 2].map(() => ({
+      sections: [1, 2].map((_, i) => ({
         casementType: 'Fixed',
         sashId: '',
         openingDirection: 'Left',
@@ -253,6 +274,10 @@ describe('toPayload goldens', () => {
         hingesType: null,
         widthMm: 1380,
         heightMm: 510,
+        // D3: a horizontal bar = 'transom'; panes are rows 0 and 1.
+        orientation: 'transom' as const,
+        row: i,
+        col: 0,
       })),
     });
   });
@@ -308,6 +333,11 @@ describe('toPayload goldens', () => {
           hingesType: null,
           widthMm: 870,
           heightMm: 1260,
+          // D3 (the decision's own example): the api can now count ONE
+          // vertical mullion and ONE transom from orientation + row/col.
+          orientation: 'mullion' as const,
+          row: 0,
+          col: 0,
         },
         {
           casementType: 'Openable',
@@ -317,6 +347,9 @@ describe('toPayload goldens', () => {
           hingesType: 'Friction',
           widthMm: 1350,
           heightMm: 570,
+          orientation: 'transom' as const,
+          row: 0,
+          col: 1,
         },
         {
           casementType: 'Fixed',
@@ -326,6 +359,9 @@ describe('toPayload goldens', () => {
           hingesType: null,
           widthMm: 1350,
           heightMm: 630,
+          orientation: 'transom' as const,
+          row: 1,
+          col: 1,
         },
       ],
     });

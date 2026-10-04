@@ -12,3 +12,9 @@ export * from './serialize';
 export * from './payload';
 export * from './legacy';
 export * from './history';
+// Phase 2/3 extensions (additive)
+export * from './slide';
+export * from './door';
+export * from './shape';
+export * from './shape-geometry';
+export * from './template';

@@ -32,10 +32,60 @@ export type TrackType = '2 Track' | '2.5 Track' | '3 Track' | '4 Track';
  */
 export type DividerKind = 'mullion' | 'sash';
 
-/** Phase 1 is rectangles only; Phase 3 adds arch/triangle/trapezoid params. */
-export interface FrameShape {
+/** The Phase 1 rectangle (the default frame shape). */
+export interface RectShape {
   kind: 'rect';
 }
+
+/**
+ * Arched head over vertical jambs (Phase 3). The arc's chord is the full
+ * frame width at the SPRING LINE, `riseMm` below the frame top; the apex
+ * touches the frame top. `riseMm === widthMm / 2` is the semicircular
+ * arch; smaller rises are segmental. 0 < riseMm <= min(heightMm, widthMm/2).
+ */
+export interface ArchTopShape {
+  kind: 'arch-top';
+  riseMm: number;
+}
+
+/** Full circle (Phase 3). The frame box is the bounding square: w === h. */
+export interface CircleShape {
+  kind: 'circle';
+}
+
+/**
+ * Triangle on a horizontal sill (Phase 3). `apex` places the top vertex:
+ * 'left'/'right' = right triangle with the vertical jamb on that side;
+ * 'isosceles' = apex centred.
+ */
+export interface TriangleShape {
+  kind: 'triangle';
+  apex: 'left' | 'right' | 'isosceles';
+}
+
+/**
+ * Trapezoid with a sloped head (Phase 3): vertical jambs of
+ * `leftHeightMm` / `rightHeightMm`, horizontal sill, straight sloped top.
+ * frame.heightMm must equal max(leftHeightMm, rightHeightMm).
+ */
+export interface TrapezoidShape {
+  kind: 'trapezoid';
+  leftHeightMm: number;
+  rightHeightMm: number;
+}
+
+/**
+ * Frame outline shape. Phase 1 documents carry {kind:'rect'}; Phase 3 adds
+ * the shaped kinds (additive — every existing 'rect' document is valid).
+ */
+export type FrameShape =
+  | RectShape
+  | ArchTopShape
+  | CircleShape
+  | TriangleShape
+  | TrapezoidShape;
+
+export type FrameShapeKind = FrameShape['kind'];
 
 export interface Frame {
   shape: FrameShape;
@@ -71,12 +121,32 @@ export interface OpeningSpec {
 export interface SlidePanel {
   widthMm: number;
   direction: 'Left' | 'Right';
+  /**
+   * True = this panel is fixed glazing on its track (does not slide).
+   * Absent/false = a moving shutter. Model-only until the api grows a
+   * per-panel fixed flag (see the Phase 2 log's api notes).
+   */
+  fixed?: boolean;
 }
 
 export interface SlideSpec {
   tracks: TrackType;
   mesh: boolean;
   panels: SlidePanel[];
+  /**
+   * Which half of the opening the fly-mesh panel covers ('2.5 Track''s
+   * half-track, or the innermost track on 3/4 track). Default 'Left'.
+   * Model/renderer-only; the payload still carries the boolean `fly_mesh`.
+   */
+  meshPosition?: 'Left' | 'Right';
+  /**
+   * User-intended shutter overlap at each interlock, mm. When absent the
+   * actual overlap is derived from the stored panel widths
+   * (sum(panels) − daylight, spread over the interlocks) — see
+   * slideLayout(). The renderer/pricing derive their own from the sash
+   * profile when neither is given.
+   */
+  interlockMm?: number;
 }
 
 export interface LeafNode {
@@ -131,6 +201,32 @@ export interface SplitNode {
 
 export type PaneNode = LeafNode | SplitNode;
 
+/** Door sill/threshold options (Phase 2). */
+export type ThresholdType = 'Standard' | 'Low' | 'None';
+
+/**
+ * Door-level configuration (Phase 2), present when productType is 'Door'.
+ * The door leaf/leaves themselves are ordinary Openable casement leaves in
+ * the tree (a double door is a 2-child 'sash' split, exactly like a
+ * 2-palla casement); side lights and top lights are ordinary 'mullion'
+ * splits around them. This record carries what the TREE cannot express.
+ */
+export interface DoorSpec {
+  /** 1 = single door, 2 = double (French) door. */
+  leaves: 1 | 2;
+  /** Hinge side of the (active) leaf, as seen from outside. */
+  openingSide: 'Left' | 'Right';
+  /** Swing direction: opens into the room or out of it. */
+  swing: 'In' | 'Out';
+  threshold: ThresholdType;
+  /**
+   * Node id of the door leaf (leaves === 1) or of the 'sash' split holding
+   * both door leaves (leaves === 2). Lets side/top lights wrap the door
+   * without ambiguity about which pane IS the door.
+   */
+  doorNodeId: string;
+}
+
 export interface WindowDesign {
   schema: string;
   unit: 'mm';
@@ -138,6 +234,8 @@ export interface WindowDesign {
   productType: ProductType;
   glazing: Glazing;
   root: PaneNode;
+  /** Door configuration; only meaningful when productType is 'Door'. */
+  door?: DoorSpec;
 }
 
 /* ------------------------------------------------------------------ */
