@@ -201,6 +201,8 @@ export class SubQuotationDesignComponent
   rootPane: PaneNode;
   selectedPaneId: string | null = null;
   private _paneIdSeq = 0;
+  /** Leaf that carries the fly-mesh drawing this render (B2); null = none. */
+  private _meshLeafId: string | null = null;
   /** Glass rect of the root leaf at last render (for corner connectors / frame-click). */
   private _rootGlassRect: Konva.Rect | null = null;
   pallaSelected: boolean;
@@ -989,6 +991,10 @@ export class SubQuotationDesignComponent
             hingesTypeControl.setValue('');
             hingesTypeControl.clearValidators();
             hingesTypeControl.updateValueAndValidity();
+            // Stale sub-config bleed: glazing bars configured under Casement
+            // must not silently persist into (and price into) the slider.
+            glazingBarsV.setValue(0, { emitEvent: false });
+            glazingBarsH.setValue(0, { emitEvent: false });
           }
 
           if (res === 'Casement' && casementTypeControl.value === 'Openable') {
@@ -1097,12 +1103,26 @@ export class SubQuotationDesignComponent
       .pipe(debounceTime(300))
       .subscribe((res) => {
         const n = Number(res) || 0;
-        const leaf = this._selectedLeaf();
-        if (leaf) {
-          // PER-SECTION: divide ONLY the selected section into n panes; do NOT
-          // rebuild the whole tree (that would wipe the mullion split + other
-          // sections). The sub-panes inherit THIS section's system/type.
-          this._applyPallaToLeaf(leaf, n);
+        // B2: decide WHAT the palla count applies to. The old code subdivided
+        // the selected leaf unconditionally, so changing "3 palla" while one
+        // sash of a 2-palla slider was highlighted nested a split INSIDE that
+        // sash — three skinny panes plus a leftover giant pane whose widths no
+        // longer summed to the frame. A leaf that is itself a palla sash now
+        // re-divides its CONTAINER (the window's sash count); only a mullion
+        // section or the root leaf genuinely subdivides itself.
+        const target = resolvePallaTarget(this.rootPane, this.selectedPaneId);
+        if (target.mode === 'container') {
+          if (target.node === this.rootPane) {
+            this._applyPallaDivisions(n);
+          } else {
+            this._applyPallaToLeaf(target.node, n);
+            // The old sash leaves (incl. the selection) no longer exist.
+            this.selectedPaneId = null;
+            this.pallaSelected = false;
+            this.showHeightWidthOption = false;
+          }
+        } else if (target.mode === 'leaf') {
+          this._applyPallaToLeaf(target.node, n);
         } else {
           // Whole-window legacy: palla defines the top-level subdivision and
           // resets any manual mullions (intended when no section is selected).
@@ -1799,6 +1819,15 @@ export class SubQuotationDesignComponent
     // Outer frame: background rect, overall dimension lines, mitred bands.
     this._createOuterFrame(1, xPos, yPos, ratio, widthMm, heightMm, color, true);
 
+    // B2: a 2.5/3-track slider with the fly-mesh option carries a mesh panel.
+    // Resolve which leaf draws it (first sliding sash) BEFORE the pane walk.
+    const track = this.df['is_track']?.value;
+    this._meshLeafId =
+      this.df['fly_mesh']?.value &&
+      (track === '2.5 Track' || track === '3 Track')
+        ? firstSliddingLeafId(this.rootPane, this.df['category_type']?.value)
+        : null;
+
     // Glazed interior box (inside the outer frame) in both px and mm.
     const ix = xPos + this.frameGapPx;
     const iy = yPos + this.frameGapPx;
@@ -2083,6 +2112,12 @@ export class SubQuotationDesignComponent
       this._drawSlidingSymbol(x, y, w, h, direction, handleName);
     }
 
+    // B2: the fly-mesh panel, drawn on the resolved mesh leaf and labelled —
+    // it used to be priced but never drawn.
+    if (node.id === this._meshLeafId) {
+      this._drawFlyMesh(x, y, w, h);
+    }
+
     // Per-leaf structural size label. Only drawn when this leaf is part of a
     // split (not the whole-window root) so the per-pane mm clearly add up across
     // a division — see the note in `_drawPane` on why each pane is NOT a naive
@@ -2090,6 +2125,72 @@ export class SubQuotationDesignComponent
     if (node !== this.rootPane) {
       this._drawPaneSizeLabel(x, y, w, node._wMm, node._hMm);
     }
+  }
+
+  /**
+   * B2: draw the fly-mesh insect screen on one sliding sash: a fine grey grid
+   * clipped to the glazed area plus a "Fly Mesh" label, so the ticked (and
+   * priced) mesh is finally visible on the drawing and the quotation PDF.
+   */
+  private _drawFlyMesh(x: number, y: number, w: number, h: number) {
+    const inset = 2;
+    const gx = x + inset;
+    const gy = y + inset;
+    const gw = w - 2 * inset;
+    const gh = h - 2 * inset;
+    if (gw <= 0 || gh <= 0) return;
+    const mesh = new Konva.Group({ listening: false });
+    const step = 7;
+    for (let mx = gx + step; mx < gx + gw; mx += step) {
+      mesh.add(
+        new Konva.Line({
+          points: [mx, gy, mx, gy + gh],
+          stroke: '#6b7280',
+          strokeWidth: 0.5,
+          opacity: 0.55,
+          listening: false,
+        })
+      );
+    }
+    for (let my = gy + step; my < gy + gh; my += step) {
+      mesh.add(
+        new Konva.Line({
+          points: [gx, my, gx + gw, my],
+          stroke: '#6b7280',
+          strokeWidth: 0.5,
+          opacity: 0.55,
+          listening: false,
+        })
+      );
+    }
+    // Label chip near the bottom of the mesh panel.
+    const labelW = 64;
+    mesh.add(
+      new Konva.Rect({
+        x: gx + gw / 2 - labelW / 2,
+        y: gy + gh - 23,
+        width: labelW,
+        height: 17,
+        fill: '#ffffff',
+        opacity: 0.85,
+        cornerRadius: 3,
+        listening: false,
+      })
+    );
+    mesh.add(
+      new Konva.Text({
+        x: gx,
+        y: gy + gh - 20,
+        width: gw,
+        align: 'center',
+        text: 'Fly Mesh',
+        fontSize: 11,
+        fontStyle: 'bold',
+        fill: '#374151',
+        listening: false,
+      })
+    );
+    this.layer.add(mesh);
   }
 
   /**
