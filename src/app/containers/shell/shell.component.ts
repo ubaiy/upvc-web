@@ -17,7 +17,7 @@ const BAR_ITEMS = 4;
 const WIDE_PAGES = /^\/quotation\/detail\/[^/]+\/(add|edit|super-system)(\/|$)/;
 
 /**
- * The app shell: a light sidebar with the six menu items and the routed screen
+ * The app shell: a light sidebar with the menu items and the routed screen
  * beside it. At 1024 px and below the sidebar becomes an icon rail, and at
  * 640 px and below a bottom bar with four items and "More".
  * Spec: docs/product/ux/design-system.md §3, mockups/dashboard.html.

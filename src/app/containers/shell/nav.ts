@@ -25,13 +25,18 @@ export interface NavItem {
 /** "Your profile" in the account menu: the last tab of Settings. */
 export const PROFILE_LINK = '/profile?tab=you';
 
-/** The whole menu: six items. Spec: docs/product/ux/design-system.md §1. */
+/**
+ * The whole menu. Six items in docs/product/ux/design-system.md §1; Orders and
+ * Outstanding were added with the order and payment screens (card T75).
+ */
 export const NAV_ITEMS: NavItem[] = [
   { id: 'home', label: 'Home', icon: 'home', link: '/dashboard', match: ['/dashboard'] },
   // A quotation's production documents (/production/:id) are part of the quotation.
   { id: 'quotations', label: 'Quotations', icon: 'file', link: '/quotation', match: ['/quotation', '/production'] },
+  { id: 'orders', label: 'Orders', icon: 'layers', link: '/orders', match: ['/orders'] },
   { id: 'customers', label: 'Customers', icon: 'users', link: '/customers', match: ['/customers'] },
   { id: 'bills', label: 'Bills', icon: 'receipt', link: '/bills', match: ['/bills'] },
+  { id: 'outstanding', label: 'Outstanding', icon: 'rupee', link: '/payments/outstanding', match: ['/payments'] },
   {
     id: 'catalogue',
     label: 'Catalogue',

@@ -16,9 +16,9 @@ import { WorkspaceService } from './workspace.service';
 class BlankComponent {}
 
 describe('shell navigation', () => {
-  it('has exactly six menu items', () => {
+  it('has the eight menu items, in the order of the job', () => {
     expect(NAV_ITEMS.map((item) => item.label)).toEqual([
-      'Home', 'Quotations', 'Customers', 'Bills', 'Catalogue', 'Settings',
+      'Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Settings',
     ]);
   });
 
@@ -29,13 +29,16 @@ describe('shell navigation', () => {
     expect(pathMatches('/quotation?page=2', '/quotation')).toBeTrue();
   });
 
-  it('puts every old screen under one of the six items', () => {
+  it('puts every screen under one of the items', () => {
     const cases: [string, string][] = [
       ['/dashboard', 'home'],
       ['/quotation/detail/4/add/0', 'quotations'],
       ['/production/14', 'quotations'],
       ['/customers/add', 'customers'],
       ['/bills', 'bills'],
+      ['/orders/12', 'orders'],
+      ['/payments/outstanding', 'outstanding'],
+      ['/payments/bill/3', 'outstanding'],
       ['/masters/glass', 'catalogue'],
       ['/bulk-price-update', 'catalogue'],
       ['/profile', 'settings'],
@@ -90,10 +93,10 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
   });
 
-  it('shows the company name, the six items and the signed-in user', () => {
+  it('shows the company name, the menu items and the signed-in user', () => {
     expect(text('.ws-name')).toBe('Hakimi Enterprise');
     const labels = [...fixture.nativeElement.querySelectorAll('a.item .t')].map((el: Element) => el.textContent?.trim());
-    expect(labels).toEqual(['Home', 'Quotations', 'Customers', 'Bills', 'Catalogue', 'Settings']);
+    expect(labels).toEqual(['Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Settings']);
     expect(text('.who')).toBe('HE');
     expect(text('.account .item .t')).toBe('Husain Ezzi');
   });
@@ -139,7 +142,7 @@ describe('ShellComponent', () => {
   it('phone bar: four items and "More", which holds the rest, search, the profile and sign out', async () => {
     const bar = fixture.nativeElement.querySelector('nav.bar');
     const labels = () => [...bar.querySelectorAll('.bar-item span')].map((el: Element) => el.textContent?.trim());
-    expect(labels()).toEqual(['Home', 'Quotations', 'Customers', 'Bills', 'More']);
+    expect(labels()).toEqual(['Home', 'Quotations', 'Orders', 'Customers', 'More']);
     expect(bar.querySelector('.sheet')).toBeNull();
 
     const more = bar.querySelector('button.bar-item');
@@ -147,7 +150,7 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
     expect(more.getAttribute('aria-expanded')).toBe('true');
     const sheet = [...bar.querySelectorAll('.sheet .menu-item')].map((el: Element) => el.textContent?.trim().replace(/\s+/g, ' '));
-    expect(sheet).toEqual(['Catalogue', 'Settings', 'Search', 'Your profile Husain Ezzi', 'Sign out']);
+    expect(sheet).toEqual(['Bills', 'Outstanding', 'Catalogue', 'Settings', 'Search', 'Your profile Husain Ezzi', 'Sign out']);
 
     await router.navigateByUrl('/masters/glass');
     await settle();

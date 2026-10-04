@@ -60,6 +60,19 @@ const routes: Routes = [
           import('./views/bills/bills.module').then((m) => m.BillsModule),
       },
       {
+        // Orders and payments (card T75).
+        path: 'orders',
+        loadChildren: () =>
+          import('./views/orders/orders.module').then((m) => m.OrdersModule),
+      },
+      {
+        path: 'payments',
+        loadChildren: () =>
+          import('./views/payments/payments.module').then(
+            (m) => m.PaymentsModule
+          ),
+      },
+      {
         path: 'quotation',
         loadChildren: () =>
           import('./views/quotation/quotation.module').then(
