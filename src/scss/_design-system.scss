@@ -213,7 +213,7 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
   .card-pad { padding: var(--s-4); } .card-head { padding: var(--s-3) var(--s-4); flex-wrap: wrap; }
   .toolbar { flex-wrap: wrap; } .toolbar .input-group { flex: 1 1 100%; }
   .table-foot { flex-wrap: wrap; gap: var(--s-2); }
-  .bulk-bar { flex-wrap: wrap; }
+  .bulk-bar { flex-wrap: wrap; row-gap: var(--s-2); } .bulk-count { flex: 1 1 100%; }
   .dialog-foot { flex-wrap: wrap; } .dialog-foot .btn { flex: 1 1 auto; }
   .steps { flex-wrap: wrap; }
   .empty { padding: var(--s-8) var(--s-4); }
@@ -239,7 +239,7 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
   .table:not(.table-keep) > tbody > tr > td.hide-tablet,
   .table:not(.table-keep) > tbody > tr > td.hide-phone { display: none; }
   .table:not(.table-keep) > tbody > tr > td.row-actions { grid-column: 2; grid-row: 1; display: flex; align-self: start; margin-block: calc(-1 * var(--s-2)); margin-inline-end: calc(-1 * var(--s-2)); opacity: 1; }
-  .table:not(.table-keep) > tbody > tr > td.col-check { position: absolute; inset-block-start: 0; inset-inline-start: 0; width: 48px !important; }
+  .table:not(.table-keep) > tbody > tr > td.col-check { position: absolute; grid-area: auto; inset-block-start: 0; inset-inline-start: 0; width: 48px !important; } /* grid-area auto: measured from the row, not from the first column */
   .table:not(.table-keep) > tbody > tr:has(> td.col-check) { padding-inline-start: 48px; }
   .table:not(.table-keep) > tbody > tr:has(> td.col-check) > td:nth-child(2) { grid-column: 1; }
   .table:not(.table-keep) > tbody > tr:hover > td { background: none; }
