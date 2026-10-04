@@ -53,7 +53,7 @@
           <span class="who" aria-hidden="true">{{ initials }}</span><span class="t">{{ userName }}</span>
         </button>
         <div class="menu account-menu" role="menu" *ngIf="accountOpen">
-          <a class="menu-item" role="menuitem" routerLink="/profile"><app-icon name="user"></app-icon>Your profile</a>
+          <a class="menu-item" role="menuitem" routerLink="/profile" [queryParams]="{ tab: 'you' }"><app-icon name="user"></app-icon>Your profile</a>
           <div class="menu-sep"></div>
           <button type="button" class="menu-item" role="menuitem" (click)="signOut()">
             <app-icon name="log-out" [mirror]="true"></app-icon>Sign out
@@ -63,17 +63,55 @@
     </div>
   </nav>
 
+  <!-- Phone (640 px and below): the sidebar is hidden and this bar takes its place. -->
+  <nav class="bar" aria-label="Main">
+    <a
+      *ngFor="let item of barItems"
+      class="bar-item"
+      [routerLink]="item.link"
+      [attr.aria-current]="isActive(item) ? 'page' : null"
+    >
+      <app-icon [name]="item.icon" [size]="20"></app-icon><span>{{ item.label }}</span>
+    </a>
+    <button
+      type="button"
+      class="bar-item"
+      aria-haspopup="menu"
+      [attr.aria-expanded]="moreOpen"
+      [class.is-current]="moreActive"
+      (click)="toggleMore()"
+    >
+      <app-icon name="menu" [size]="20"></app-icon><span>More</span>
+    </button>
+
+    <div class="sheet" *ngIf="moreOpen">
+      <div class="sheet-backdrop" (click)="moreOpen = false"></div>
+      <div class="menu sheet-menu" role="menu" aria-label="More">
+        <a
+          *ngFor="let item of moreItems"
+          class="menu-item"
+          role="menuitem"
+          [routerLink]="item.link"
+          [attr.aria-current]="isActive(item) ? 'page' : null"
+        >
+          <app-icon [name]="item.icon"></app-icon>{{ item.label }}
+        </a>
+        <button type="button" class="menu-item" role="menuitem" (click)="openPalette()">
+          <app-icon name="search"></app-icon>Search
+        </button>
+        <div class="menu-sep"></div>
+        <a class="menu-item" role="menuitem" routerLink="/profile" [queryParams]="{ tab: 'you' }">
+          <app-icon name="user"></app-icon>Your profile <span class="faint small sheet-who">{{ userName }}</span>
+        </a>
+        <button type="button" class="menu-item" role="menuitem" (click)="signOut()">
+          <app-icon name="log-out" [mirror]="true"></app-icon>Sign out
+        </button>
+      </div>
+    </div>
+  </nav>
+
   <main class="main" id="main" tabindex="-1" #main>
     <div class="page" [class.page-wide]="wide">
-      <nav class="tabs" *ngIf="active?.tabs as tabs" [attr.aria-label]="active?.label + ' sections'">
-        <a
-          *ngFor="let tab of tabs"
-          class="tab"
-          [routerLink]="tab.link"
-          [attr.aria-current]="tab === activeTab ? 'page' : null"
-          >{{ tab.label }}</a
-        >
-      </nav>
       <router-outlet></router-outlet>
     </div>
   </main>

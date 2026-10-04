@@ -73,6 +73,15 @@ describe('shared components', () => {
     expect(el('#steps .badge').classList).toContain('badge-danger');
   });
 
+  it('quote status knows "expired": an amber badge, outside the four steps', () => {
+    fixture.componentInstance.status = 'expired';
+    fixture.detectChanges();
+    expect(el('#badge .badge').textContent?.trim()).toBe('Expired');
+    expect(el('#badge .badge').classList).toContain('badge-warning');
+    expect(el('#steps .steps')).toBeNull();
+    expect(el('#steps .badge').textContent?.trim()).toBe('Expired');
+  });
+
   it('totals format every amount in rupees with Indian grouping', () => {
     const cells = [...fixture.nativeElement.querySelectorAll('app-totals dd')].map((dd: Element) => dd.textContent);
     expect(cells).toEqual(['₹25,039.21', '₹2,253.53', '₹1,41,595.80']);

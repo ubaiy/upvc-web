@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 
-export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'billed' | 'declined';
+export type QuoteStatus = 'draft' | 'sent' | 'accepted' | 'billed' | 'declined' | 'expired';
 
 const LABELS: Record<QuoteStatus, string> = {
   draft: 'Draft',
@@ -8,15 +8,17 @@ const LABELS: Record<QuoteStatus, string> = {
   accepted: 'Accepted',
   billed: 'Billed',
   declined: 'Declined',
+  expired: 'Expired',
 };
 
-/** Badge colour per status: draft grey, sent blue, accepted green, billed teal, declined red. */
+/** Badge colour per status: draft grey, sent blue, accepted green, billed teal, declined red, expired amber. */
 const BADGE: Record<QuoteStatus, string> = {
   draft: '',
   sent: 'badge-info',
   accepted: 'badge-success',
   billed: 'badge-accent',
   declined: 'badge-danger',
+  expired: 'badge-warning',
 };
 
 const FLOW: QuoteStatus[] = ['draft', 'sent', 'accepted', 'billed'];
@@ -29,13 +31,14 @@ const FLOW: QuoteStatus[] = ['draft', 'sent', 'accepted', 'billed'];
  *   <app-quote-status status="sent" variant="steps" note="28 Sep"></app-quote-status>
  *       Draft → Sent 28 Sep → Accepted → Billed, for the quotation page
  *
- * A declined quotation has left the flow, so `steps` shows it as a badge.
+ * A declined or expired quotation (sent, past its validity date) has left the
+ * flow, so `steps` shows it as a badge.
  * A status the app does not know is shown as Draft.
  */
 @Component({
   selector: 'app-quote-status',
   template: `
-    <span *ngIf="variant === 'badge' || current === 'declined'; else steps" class="badge" [ngClass]="badgeClass">{{
+    <span *ngIf="variant === 'badge' || index < 0; else steps" class="badge" [ngClass]="badgeClass">{{
       label
     }}</span>
     <ng-template #steps>

@@ -8,7 +8,7 @@ import { SharedComponentsModule } from '../../shared/components/shared-component
 import { AuthService } from '../../shared/services/auth.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
 import { CommandPaletteComponent } from './command-palette.component';
-import { findNavItem, findNavTab, NAV_ITEMS, pathMatches } from './nav';
+import { findNavItem, NAV_ITEMS, pathMatches } from './nav';
 import { ShellComponent } from './shell.component';
 import { WorkspaceService } from './workspace.service';
 
@@ -49,11 +49,11 @@ describe('shell navigation', () => {
     expect(findNavItem('/ui')).toBeUndefined();
   });
 
-  it('lights the right section tab, including the old add and edit paths', () => {
-    const catalogue = findNavItem('/masters/Glazzing/7');
-    expect(findNavTab('/masters/Glazzing/7', catalogue)?.label).toBe('Glass');
-    expect(findNavTab('/masters/profile-color', catalogue)?.label).toBe('Colours');
-    expect(findNavTab('/masters/profile', catalogue)?.label).toBe('Profiles');
+  it('draws no section tabs: Catalogue and Settings are one page each and only name their places for the page finder', () => {
+    expect(NAV_ITEMS.some((item) => 'tabs' in item)).toBeFalse();
+    const places = (id: string) => NAV_ITEMS.find((item) => item.id === id)?.places?.map((place) => place.label);
+    expect(places('catalogue')).toEqual(['Profiles', 'Colours', 'Glass', 'Hardware', 'Update rates']);
+    expect(places('settings')).toEqual(['Company', 'Team', 'Pricing and tax', 'Documents', 'Your profile']);
   });
 });
 
@@ -97,11 +97,11 @@ describe('ShellComponent', () => {
     expect(text('.account .item .t')).toBe('Husain Ezzi');
   });
 
-  it('marks the current item and draws section tabs for Catalogue', async () => {
+  it('marks the current item and leaves the tab strip to the page', async () => {
     await router.navigateByUrl('/masters/profile-color');
     await settle();
     expect(text('a.item[aria-current="page"] .t')).toBe('Catalogue');
-    expect(text('.tabs .tab[aria-current="page"]')).toBe('Colours');
+    expect(fixture.nativeElement.querySelector('.tabs')).toBeNull();
 
     await router.navigateByUrl('/quotation');
     await settle();
@@ -130,8 +130,38 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
     const items = fixture.nativeElement.querySelectorAll('.account-menu .menu-item');
     expect(items.length).toBe(2);
+    expect(items[0].getAttribute('href')).toContain('/profile?tab=you');
     items[1].click();
     expect(auth.logout).toHaveBeenCalled();
+  });
+
+  it('phone bar: four items and "More", which holds the rest, search, the profile and sign out', async () => {
+    const bar = fixture.nativeElement.querySelector('nav.bar');
+    const labels = () => [...bar.querySelectorAll('.bar-item span')].map((el: Element) => el.textContent?.trim());
+    expect(labels()).toEqual(['Home', 'Quotations', 'Customers', 'Bills', 'More']);
+    expect(bar.querySelector('.sheet')).toBeNull();
+
+    const more = bar.querySelector('button.bar-item');
+    more.click();
+    fixture.detectChanges();
+    expect(more.getAttribute('aria-expanded')).toBe('true');
+    const sheet = [...bar.querySelectorAll('.sheet .menu-item')].map((el: Element) => el.textContent?.trim().replace(/\s+/g, ' '));
+    expect(sheet).toEqual(['Catalogue', 'Settings', 'Search', 'Your profile Husain Ezzi', 'Sign out']);
+
+    await router.navigateByUrl('/masters/glass');
+    await settle();
+    expect(bar.querySelector('.sheet')).withContext('closes on navigation').toBeNull();
+    expect(more.classList).withContext('More is lit for a page it holds').toContain('is-current');
+    expect(bar.querySelector('a.bar-item[aria-current="page"]')).toBeNull();
+  });
+
+  it('every control of the sidebar and the phone bar has a name', () => {
+    const controls = [...fixture.nativeElement.querySelectorAll('nav a, nav button')] as HTMLElement[];
+    expect(controls.length).toBeGreaterThan(10);
+    for (const control of controls) {
+      const name = (control.getAttribute('aria-label') || control.textContent || '').trim();
+      expect(name).withContext(control.outerHTML.slice(0, 80)).not.toBe('');
+    }
   });
 
   it('falls back to the product name until the company has loaded', () => {

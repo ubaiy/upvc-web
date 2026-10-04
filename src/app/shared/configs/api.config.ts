@@ -99,6 +99,11 @@ export const API_END_POINT = {
     manageProduct: 'quatation/manage-product',
     openningDirection: 'product/opening-direction',
     bulkpriceUpdate: 'quatation/updateOldQuatation',
+    // Phase 9 contracts (A1, A3). `status`, `summary` and `lineDetails` take the id as the next path segment.
+    statusCounts: 'quatation/status-counts',
+    status: 'quatation/status',
+    summary: 'quatation/summary',
+    lineDetails: 'quatation/product/details',
   },
   profile_color: {
     list: 'profile-color/list',

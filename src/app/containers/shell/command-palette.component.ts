@@ -15,7 +15,7 @@ import { NAV_ITEMS } from './nav';
 
 interface Destination {
   label: string;
-  /** The menu item a section tab belongs to, e.g. "Catalogue". */
+  /** The menu item a place belongs to, e.g. "Catalogue". */
   group?: string;
   icon: IconName;
   link: string;
@@ -23,7 +23,7 @@ interface Destination {
 
 const DESTINATIONS: Destination[] = NAV_ITEMS.flatMap((item) => [
   { label: item.label, icon: item.icon, link: item.link },
-  ...(item.tabs ?? []).map((tab) => ({ label: tab.label, group: item.label, icon: item.icon, link: tab.link })),
+  ...(item.places ?? []).map((place) => ({ label: place.label, group: item.label, icon: item.icon, link: place.link })),
 ]);
 
 /**

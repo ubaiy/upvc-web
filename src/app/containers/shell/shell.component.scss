@@ -31,7 +31,7 @@
 .kbd { font-size: 11px; padding: 1px 5px; border: 1px solid var(--c-border); border-radius: 4px; color: var(--c-text-3); background: var(--c-surface); margin-inline-start: auto; white-space: nowrap; }
 
 .item {
-  display: flex; align-items: center; gap: var(--s-3); width: 100%; height: 34px; flex: none;
+  display: flex; align-items: center; gap: var(--s-3); width: 100%; height: var(--h-nav); flex: none;
   padding-inline: var(--s-3); border: 0; border-radius: var(--r-sm); background: none;
   color: var(--c-text-2); font: inherit; font-weight: var(--fw-medium); text-align: start; text-decoration: none; cursor: pointer;
   &:hover { background: var(--c-surface-2); color: var(--c-text); text-decoration: none; }
@@ -57,6 +57,9 @@
   &:focus { transform: none; }
 }
 
+// phone bar and its "More" sheet: drawn at 640 px and below only
+.bar, .sheet { display: none; }
+
 // tablet: icon rail
 @media (max-width: 1024px) {
   .t, .kbd { display: none; }
@@ -64,7 +67,36 @@
   .who { margin-inline-start: 0; }
 }
 
+// phone: bottom bar in place of the sidebar
+@media (max-width: 640px) {
+  .shell { display: block; padding-block-end: calc(var(--h-bar) + env(safe-area-inset-bottom, 0px)); }
+  .side { display: none; }
+  .bar {
+    position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 30;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: calc(var(--h-bar) + env(safe-area-inset-bottom, 0px)); padding-block-end: env(safe-area-inset-bottom, 0px);
+    border-block-start: 1px solid var(--c-border); background: var(--c-surface);
+  }
+  .bar-item {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    min-width: 0; height: var(--h-bar); padding: 0 2px; border: 0; background: none;
+    color: var(--c-text-2); font: inherit; font-size: 11px; font-weight: var(--fw-medium); line-height: 1.2; text-decoration: none; cursor: pointer;
+    span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    &[aria-current="page"], &.is-current, &[aria-expanded="true"] { color: var(--c-accent-text); }
+    &:focus-visible { box-shadow: inset var(--focus-ring); border-radius: var(--r-sm); }
+  }
+  .sheet { display: block; }
+  .sheet-backdrop { position: fixed; inset: 0; background: rgba(20, 24, 28, .4); }
+  .sheet-menu {
+    position: fixed; inset-inline: var(--s-2); inset-block-end: calc(var(--h-bar) + var(--s-2) + env(safe-area-inset-bottom, 0px));
+    width: auto; padding: var(--s-2);
+    .menu-item { height: 48px; text-decoration: none; }
+    .menu-item[aria-current="page"] { background: var(--c-accent-soft); color: var(--c-accent-text); }
+  }
+  .sheet-who { margin-inline-start: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
 @media print {
-  .side, .skip, .tabs { display: none; }
+  .side, .skip, .bar { display: none; }
   .shell { display: block; }
 }

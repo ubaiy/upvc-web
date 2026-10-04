@@ -1,10 +1,9 @@
 import { IconName } from '../../shared/components/icon/icon-paths';
 
-export interface NavTab {
+export interface NavPlace {
   label: string;
+  /** Address, with its query string: `/profile?tab=pricing`. */
   link: string;
-  /** Path prefixes that light this tab up. Defaults to `link`. */
-  match?: string[];
 }
 
 export interface NavItem {
@@ -17,15 +16,14 @@ export interface NavItem {
   /** Sits at the foot of the sidebar instead of the main list. */
   foot?: boolean;
   /**
-   * Section tabs the shell draws above the page.
-   *
-   * Interim: Catalogue and Settings are each one page with tabs in the new
-   * design (cards U5 and U7). Until those cards land, the tabs link to the old
-   * separate screens, so every one of them stays reachable from six menu items.
-   * U5 and U7 remove `tabs` from their item when their page draws its own.
+   * Places inside the item that the page finder (Ctrl K) offers by name.
+   * Catalogue and Settings are one page each; these are their tabs.
    */
-  tabs?: NavTab[];
+  places?: NavPlace[];
 }
+
+/** "Your profile" in the account menu: the last tab of Settings. */
+export const PROFILE_LINK = '/profile?tab=you';
 
 /** The whole menu: six items. Spec: docs/product/ux/design-system.md §1. */
 export const NAV_ITEMS: NavItem[] = [
@@ -39,11 +37,11 @@ export const NAV_ITEMS: NavItem[] = [
     icon: 'box',
     link: '/catalogue',
     match: ['/catalogue', '/masters', '/bulk-price-update'],
-    tabs: [
+    places: [
       { label: 'Profiles', link: '/masters/profile' },
       { label: 'Colours', link: '/masters/profile-color' },
-      { label: 'Glass', link: '/masters/glass', match: ['/masters/glass', '/masters/Glazzing'] },
-      { label: 'Hardware', link: '/masters/hardware', match: ['/masters/hardware', '/masters/Hardware'] },
+      { label: 'Glass', link: '/masters/glass' },
+      { label: 'Hardware', link: '/masters/hardware' },
       { label: 'Update rates', link: '/bulk-price-update' },
     ],
   },
@@ -54,13 +52,12 @@ export const NAV_ITEMS: NavItem[] = [
     link: '/settings',
     match: ['/settings', '/profile', '/type-margin', '/payment-terms', '/area', '/crm'],
     foot: true,
-    tabs: [
-      { label: 'Company', link: '/profile' },
-      { label: 'Margins', link: '/type-margin' },
-      { label: 'Payment terms', link: '/payment-terms' },
-      { label: 'Areas', link: '/area' },
-      { label: 'Document header', link: '/crm/header' },
-      { label: 'Document footer', link: '/crm/footer' },
+    places: [
+      { label: 'Company', link: '/profile?tab=company' },
+      { label: 'Team', link: '/profile?tab=team' },
+      { label: 'Pricing and tax', link: '/profile?tab=pricing' },
+      { label: 'Documents', link: '/profile?tab=documents' },
+      { label: 'Your profile', link: PROFILE_LINK },
     ],
   },
 ];
@@ -73,8 +70,4 @@ export function pathMatches(url: string, prefix: string): boolean {
 
 export function findNavItem(url: string, items: NavItem[] = NAV_ITEMS): NavItem | undefined {
   return items.find((item) => item.match.some((prefix) => pathMatches(url, prefix)));
-}
-
-export function findNavTab(url: string, item: NavItem | undefined): NavTab | undefined {
-  return item?.tabs?.find((tab) => (tab.match ?? [tab.link]).some((prefix) => pathMatches(url, prefix)));
 }
