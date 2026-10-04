@@ -24,8 +24,12 @@
   background: var(--c-surface-2);
   color: var(--c-text-3);
   overflow: hidden;
+  position: relative;
 
+  // Out of the grid flow, so a large logo is scaled to the box instead of sizing it.
   img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: contain;
