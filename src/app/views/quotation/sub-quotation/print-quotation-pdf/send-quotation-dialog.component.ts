@@ -143,6 +143,8 @@ export class SendQuotationDialogComponent implements OnChanges {
   }
 
   private _afterSend(channel: SendChannel, q: QuotationView, data: any, chat: Window | null): void {
+    // Tell the page first, so its status refreshes before the PDF is fetched.
+    this.sent.emit(channel);
     if (channel === 'whatsapp') {
       if (chat && data?.whatsapp_url) {
         chat.location.href = data.whatsapp_url;
@@ -159,7 +161,6 @@ export class SendQuotationDialogComponent implements OnChanges {
       });
       this._toast.showSuccess('PDF downloaded. The quotation is marked as sent.');
     }
-    this.sent.emit(channel);
   }
 
   /**

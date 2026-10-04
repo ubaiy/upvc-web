@@ -307,7 +307,8 @@ export function toQuotationView(raw: any): QuotationView {
     total: totals ? num(totals.total) : num(raw?.grand_total),
     marginText: margin ? `${text(margin.name)} margin ${num(margin.percent)}%` : '',
     termsText: text(term?.name),
-    advance: totals?.advance ? { percent: num(totals.advance.percent), amount: num(totals.advance.amount) } : null,
+    // An advance of nothing (no windows yet) is not worth a line.
+    advance: num(totals?.advance?.amount) > 0 ? { percent: num(totals.advance.percent), amount: num(totals.advance.amount) } : null,
     taxNote: text(totals?.tax?.note) || null,
     placeOfSupplyAssumed: !!totals?.tax?.applicable && !!totals?.tax?.place_of_supply_assumed,
     marginId: raw?.order_type_margin_id ?? margin?.id ?? null,

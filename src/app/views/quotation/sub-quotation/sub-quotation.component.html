@@ -14,7 +14,7 @@
     <section class="card">
       <div class="card-head"><span class="skeleton" style="width: 140px"></span></div>
       <div class="item" *ngFor="let i of skeletonRows">
-        <span class="skeleton thumb"></span>
+        <span class="skeleton sk-thumb"></span>
         <div class="grow">
           <span class="skeleton" [style.width]="['38%', '30%', '44%'][i]"></span>
           <span class="skeleton" style="margin-block-start: var(--s-2)" [style.width]="['62%', '54%', '58%'][i]"></span>
@@ -259,7 +259,7 @@
     </aside>
   </div>
 
-  <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body">
+  <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body" styleClass="q-menu">
     <ng-template pTemplate="item" let-item>
       <a class="p-menuitem-link" tabindex="-1">
         <app-icon *ngIf="item.state?.icon" [name]="item.state.icon"></app-icon>

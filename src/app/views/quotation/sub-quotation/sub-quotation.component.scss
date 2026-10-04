@@ -14,6 +14,17 @@ app-callout {
   flex-wrap: wrap;
 }
 
+// Beside a wide primary button the steps have little room: a step never breaks
+// inside its own label, and the last ones drop to a second line if they must.
+:host ::ng-deep .head-meta .steps {
+  flex-wrap: wrap;
+  row-gap: var(--s-1);
+}
+
+:host ::ng-deep .head-meta .step {
+  white-space: nowrap;
+}
+
 // One window or door: drawing, name and specification, quantity, price, menu.
 .item {
   display: flex;
@@ -37,6 +48,7 @@ app-callout {
 }
 
 .thumb {
+  position: relative;
   display: grid;
   place-items: center;
   flex: none;
@@ -49,15 +61,20 @@ app-callout {
 
   // The designer's saved drawing, whole, whatever its proportions.
   img {
-    display: block;
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: contain;
   }
+}
 
-  &.skeleton {
-    border: 0;
-  }
+// Loading: a block where the drawing will be.
+.sk-thumb {
+  flex: none;
+  width: 84px;
+  height: 64px;
+  border-radius: var(--r-sm);
 }
 
 .name {
@@ -181,7 +198,17 @@ button.name {
   }
 }
 
+// The menu is drawn on <body>. The old layout bridge gives every list 2rem of
+// start padding, which pushes the entries off the menu edge; take it back here.
+::ng-deep .q-menu .p-menu-list {
+  padding: 0;
+}
+
 @media (max-width: 1024px) {
+  :host ::ng-deep .head-meta .steps .bar {
+    width: 8px;
+  }
+
   .qty {
     display: none;
   }
@@ -193,7 +220,8 @@ button.name {
     padding-inline: var(--s-4);
   }
 
-  .thumb {
+  .thumb,
+  .sk-thumb {
     width: 64px;
     height: 52px;
   }
