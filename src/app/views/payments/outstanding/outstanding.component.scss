@@ -1,0 +1,89 @@
+// Layout only; colours, sizes and radii come from the tokens.
+.totals { margin-block-end: var(--s-5); }
+
+// "To collect" first, then one figure per age bucket, as many as the api sends.
+.buckets { display: grid; grid-template-columns: 1.4fr repeat(auto-fit, minmax(120px, 1fr)); }
+.bucket {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: var(--s-4) var(--s-5);
+  border-inline-end: 1px solid var(--c-border);
+
+  &:last-child { border-inline-end: 0; }
+  .k { font-size: var(--fs-13); color: var(--c-text-2); }
+  .v { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
+  .d { font-size: var(--fs-12); color: var(--c-text-3); }
+  &.lead .v { font-size: var(--fs-24); letter-spacing: -0.02em; }
+  &.old .v { color: var(--c-danger); }
+}
+.sk-label { width: 60%; height: 12px; }
+.sk-figure { width: 80%; height: 22px; margin-block-start: var(--s-2); }
+
+.customers { list-style: none; margin: 0; padding: 0; }
+.customer { border-block-end: 1px solid var(--c-border); &:last-child { border-block-end: 0; } }
+.customer-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(0, 2fr) auto auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+}
+.who {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 44px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+
+  &:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--r-sm); }
+}
+.who-text { display: flex; flex-direction: column; min-width: 0; }
+.who .title { font-weight: var(--fw-medium); overflow-wrap: anywhere; }
+
+.ages { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: var(--s-3); margin: 0; }
+.ages dt { font-size: var(--fs-12); font-weight: var(--fw-regular); color: var(--c-text-3); white-space: nowrap; }
+.ages dd { margin: 0; font-size: var(--fs-13); }
+.ages .zero dd { color: var(--c-text-3); }
+
+.owed { display: flex; flex-direction: column; align-items: flex-end; }
+.figure { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
+.remind { display: flex; justify-content: flex-end; }
+
+.jobs { background: var(--c-surface-2); border-block-start: 1px solid var(--c-border); }
+
+.sk-search { width: 280px; max-width: 100%; height: var(--h-control); }
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  height: 64px;
+  padding-inline: var(--s-4);
+  border-block-end: 1px solid var(--c-border);
+
+  &:last-child { border-block-end: 0; }
+}
+.sk-name { width: 30%; }
+.sk-cell { width: 14%; }
+
+@media (max-width: 1024px) {
+  .customer-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ages { grid-column: 1 / -1; grid-row: 2; }
+  .remind { grid-column: 1 / -1; justify-content: stretch; }
+  .remind .btn { flex: 1; min-height: 44px; }
+}
+
+@media (max-width: 640px) {
+  .buckets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bucket { padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); }
+  .bucket.lead { grid-column: 1 / -1; }
+  .ages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

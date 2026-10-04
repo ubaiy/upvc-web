@@ -1,0 +1,46 @@
+// Layout only; colours, sizes and radii come from the tokens.
+:host { display: block; }
+h2 { margin: 0; font-size: var(--fs-16); }
+.head-actions { flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); }
+
+.stats { border-block-end: 1px solid var(--c-border); }
+.balance.due ::ng-deep .v { color: var(--c-danger); }
+
+.advance {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s-2) var(--s-3);
+  margin: 0;
+  padding: var(--s-3) var(--s-5);
+  border-block-end: 1px solid var(--c-border);
+  font-size: var(--fs-13);
+}
+.notice { padding-block: var(--s-3); border-block-end: 1px solid var(--c-border); }
+.saved-actions { gap: var(--s-2); }
+
+.flag { margin-inline-start: var(--s-2); }
+.sub-line { display: block; }
+.struck { text-decoration: line-through; color: var(--c-text-3); }
+.is-cancelled .title { color: var(--c-text-3); }
+.row-buttons { justify-content: flex-end; gap: var(--s-1); }
+
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  height: var(--h-row);
+  padding-inline: var(--s-5);
+  border-block-end: 1px solid var(--c-border);
+
+  &:last-child { border-block-end: 0; }
+}
+.sk-name { width: 30%; }
+.sk-cell { width: 16%; }
+
+.pay-preview { margin-block-start: var(--s-5); }
+
+@media (max-width: 640px) {
+  .advance { padding-inline: var(--s-4); }
+  .hide-narrow { display: none; }
+}

@@ -1,0 +1,218 @@
+<section class="card pay-panel" aria-labelledby="pay-panel-title" [attr.aria-busy]="state === 'loading'">
+  <div class="card-head">
+    <h2 id="pay-panel-title">{{ heading }}</h2>
+    <div class="u-row head-actions" *ngIf="state === 'ready' && isJob">
+      <span class="badge badge-success" *ngIf="account && account.status === 'paid' && !account.overpaid">Paid in full</span>
+      <button type="button" class="btn btn-secondary" *ngIf="canRefund" (click)="record('refund')">Refund</button>
+      <button
+        type="button"
+        class="btn"
+        [class.btn-primary]="primaryAction"
+        [class.btn-secondary]="!primaryAction"
+        *ngIf="canRecord"
+        (click)="record('receipt')"
+      >
+        <app-icon name="plus"></app-icon>Record payment
+      </button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="state === 'loading'">
+    <span class="sr-only" role="status">Loading payments</span>
+    <div class="sk-row" aria-hidden="true" *ngFor="let i of placeholders">
+      <span class="skeleton sk-name"></span>
+      <span class="skeleton sk-cell"></span>
+      <span class="skeleton sk-cell"></span>
+    </div>
+  </ng-container>
+
+  <div class="card-pad" *ngIf="state === 'error'">
+    <app-callout tone="warn">
+      {{ errorMessage }}
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </app-callout>
+  </div>
+
+  <ng-container *ngIf="state === 'ready'">
+    <ng-container *ngIf="account as acc">
+      <div class="stats">
+        <app-stat label="Total" [value]="acc.total | inr"></app-stat>
+        <app-stat
+          label="Received"
+          [value]="acc.netReceived | inr"
+          [detail]="acc.refunded > 0 ? (acc.received | inr) + ' received, ' + (acc.refunded | inr) + ' refunded' : undefined"
+        ></app-stat>
+        <app-stat
+          class="balance"
+          [class.due]="acc.balance > 0"
+          label="Balance to pay"
+          [value]="acc.balance | inr"
+          [detail]="acc.balance > 0 ? undefined : 'Nothing left to pay'"
+        ></app-stat>
+      </div>
+      <p class="advance" *ngIf="acc.advance as advance">
+        <span class="muted">Advance ({{ advance.percent }}%)</span>
+        <span class="num">{{ advance.amount | inr }}</span>
+        <span class="badge badge-success" *ngIf="advance.due <= 0">Received</span>
+        <span class="badge badge-warning" *ngIf="advance.due > 0">{{ advance.due | inr }} still to take</span>
+      </p>
+      <div class="card-pad notice" *ngIf="acc.overpaid > 0">
+        <app-callout tone="warn">
+          Refund due: {{ acc.overpaid | inr }} more is held than this job is worth. Record a refund to give it back.
+        </app-callout>
+      </div>
+    </ng-container>
+
+    <div class="card-pad notice" *ngIf="actionError as failure">
+      <app-callout tone="warn">
+        {{ failure.message }}
+        <button action type="button" class="btn btn-secondary btn-sm" (click)="failure.retry()">Try again</button>
+      </app-callout>
+    </div>
+
+    <div class="card-pad notice" *ngIf="lastSaved as saved">
+      <app-callout tone="info" icon="circle-check">
+        {{ docTitle(saved) }} for {{ saved.amount | inr }} is saved.
+        <span action class="u-row saved-actions">
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="!!busy" (click)="openPreview(saved)">
+            {{ isBusy(saved, 'preview') ? 'Opening…' : 'Preview' }}
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="!!busy" (click)="share(saved)">
+            {{ isBusy(saved, 'share') ? 'Preparing…' : 'Share' }}
+          </button>
+        </span>
+      </app-callout>
+    </div>
+
+    <app-empty-state
+      *ngIf="!payments.length && isJob"
+      icon="rupee"
+      title="No payment yet"
+      text="Take the advance when the order is confirmed. Each payment gets a numbered receipt you can print or send on WhatsApp."
+    >
+      <button type="button" class="btn btn-secondary" *ngIf="canRecord && !primaryAction" (click)="record('receipt')">
+        Record the first payment
+      </button>
+    </app-empty-state>
+
+    <app-empty-state
+      *ngIf="!payments.length && !isJob"
+      icon="rupee"
+      title="No payments yet"
+      text="A payment is recorded from an order or a bill. Open one and press Record payment; the receipt appears here."
+    >
+      <a class="btn btn-secondary" routerLink="/orders">Go to orders</a>
+    </app-empty-state>
+
+    <table class="table" *ngIf="payments.length">
+      <thead>
+        <tr>
+          <th scope="col">Receipt</th>
+          <th scope="col">Date</th>
+          <th scope="col" *ngIf="!isJob">Customer</th>
+          <th scope="col" class="hide-tablet">Paid by</th>
+          <th scope="col" class="right">Amount</th>
+          <th scope="col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let payment of payments; trackBy: trackById" [class.is-cancelled]="payment.cancelled">
+          <td>
+            <span class="title num">{{ payment.number }}</span>
+            <span class="badge badge-info flag" *ngIf="payment.kind === 'refund' && !payment.cancelled">Refund</span>
+            <span class="badge badge-danger flag" *ngIf="payment.cancelled">Cancelled</span>
+            <span class="faint tiny sub-line" *ngIf="!isJob && (payment.orderNumber || payment.billNumber)">
+              <a *ngIf="payment.orderId" [routerLink]="['/orders', payment.orderId]">{{ payment.orderNumber }}</a>
+              <ng-container *ngIf="payment.orderId && payment.billId"> · </ng-container>
+              <a *ngIf="payment.billId" [routerLink]="['/payments/bill', payment.billId]">{{ payment.billNumber }}</a>
+            </span>
+          </td>
+          <td class="muted small">{{ payment.date ? (payment.date | date : 'd MMM y') : '–' }}</td>
+          <td *ngIf="!isJob">
+            <bdi>{{ payment.customerName || '–' }}</bdi>
+          </td>
+          <td class="hide-tablet">
+            {{ payment.modeLabel }}
+            <span class="faint tiny sub-line" *ngIf="payment.reference"
+              ><bdi>{{ payment.reference }}</bdi></span
+            >
+          </td>
+          <td class="right num" [class.struck]="payment.cancelled">{{ payment.signedAmount | inr }}</td>
+          <td class="row-actions">
+            <span class="u-row row-buttons">
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                [disabled]="!!busy"
+                [attr.aria-label]="'Preview ' + docTitle(payment)"
+                (click)="openPreview(payment)"
+              >
+                <app-icon [name]="isBusy(payment, 'preview') ? 'loader' : 'eye'"></app-icon
+                ><span class="hide-narrow">{{ payment.kind === 'refund' ? 'Voucher' : 'Receipt' }}</span>
+              </button>
+              <button
+                type="button"
+                class="btn btn-ghost btn-icon btn-sm"
+                aria-haspopup="menu"
+                [attr.aria-label]="'More actions for ' + payment.number"
+                [disabled]="!!busy"
+                (click)="openMenu($event, payment)"
+              >
+                <app-icon
+                  [name]="isBusy(payment, 'download') || isBusy(payment, 'share') ? 'loader' : 'more'"
+                ></app-icon>
+              </button>
+            </span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="table-foot" *ngIf="payments.length && !isJob">
+      <span>{{ payments.length }} {{ payments.length === 1 ? 'entry' : 'entries' }}</span>
+      <span class="num">Received {{ totals.netReceived | inr }}</span>
+    </div>
+  </ng-container>
+</section>
+
+<app-document-preview
+  class="pay-preview"
+  *ngIf="preview as open"
+  [title]="docTitle(open.payment)"
+  [html]="open.html"
+  (closed)="preview = null"
+>
+  <button type="button" class="btn btn-secondary" [disabled]="!!busy" (click)="download(open.payment)">
+    <app-icon name="download"></app-icon>{{ isBusy(open.payment, 'download') ? 'Preparing…' : 'Download PDF' }}
+  </button>
+  <button type="button" class="btn btn-secondary" [disabled]="!!busy" (click)="share(open.payment)">
+    <app-icon name="share"></app-icon>{{ isBusy(open.payment, 'share') ? 'Preparing…' : 'Share' }}
+  </button>
+</app-document-preview>
+
+<p-menu #rowMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+
+<app-record-payment
+  *ngIf="dialog && account"
+  [account]="account"
+  [kind]="dialog"
+  (saved)="onSaved($event)"
+  (closed)="dialog = null"
+></app-record-payment>
+
+<app-reason-dialog
+  *ngIf="cancelling as entry"
+  [title]="'Cancel ' + entry.payment.number + '?'"
+  [text]="
+    'The entry for ' +
+    (entry.payment.amount | inr) +
+    ' stays on record, marked cancelled, and no longer counts. Its number is not used again.'
+  "
+  label="Why is it cancelled?"
+  confirmLabel="Cancel this entry"
+  keepLabel="Keep it"
+  [busy]="entry.busy"
+  [error]="entry.error"
+  (confirmed)="cancelEntry($event)"
+  (closed)="cancelling = null"
+></app-reason-dialog>

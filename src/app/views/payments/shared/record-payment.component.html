@@ -1,0 +1,133 @@
+<div class="backdrop" (click)="close()"></div>
+<form class="dialog" role="dialog" aria-modal="true" aria-labelledby="pay-dialog-title" novalidate (ngSubmit)="save()">
+  <div class="dialog-head">
+    <h2 id="pay-dialog-title">{{ title }}</h2>
+    <p class="muted">
+      <bdi>{{ job }}</bdi>
+    </p>
+    <dl class="dl figures">
+      <ng-container *ngIf="!isRefund">
+        <dt>Total</dt>
+        <dd>{{ account.total | inr }}</dd>
+        <dt>Received so far</dt>
+        <dd>{{ account.netReceived | inr }}</dd>
+        <dt class="strong">Balance to pay</dt>
+        <dd class="strong">{{ account.balance | inr }}</dd>
+      </ng-container>
+      <ng-container *ngIf="isRefund">
+        <dt>Received so far</dt>
+        <dd>{{ account.netReceived | inr }}</dd>
+        <ng-container *ngIf="account.overpaid > 0">
+          <dt class="strong">Refund due</dt>
+          <dd class="strong">{{ account.overpaid | inr }}</dd>
+        </ng-container>
+      </ng-container>
+    </dl>
+  </div>
+
+  <div class="dialog-body">
+    <app-callout tone="danger" *ngIf="error">{{ error }}</app-callout>
+
+    <div class="field">
+      <label class="label" for="pay-amount">{{ isRefund ? 'Amount to give back' : 'Amount received' }}</label>
+      <span class="input-group amount" [class.is-invalid]="submitted && amountMessage">
+        <span aria-hidden="true">₹</span>
+        <input
+          #amountBox
+          id="pay-amount"
+          name="amount"
+          type="text"
+          inputmode="decimal"
+          autocomplete="off"
+          [(ngModel)]="amount"
+          [disabled]="saving"
+          [attr.aria-invalid]="submitted && amountMessage ? 'true' : null"
+          aria-describedby="pay-amount-help"
+        />
+      </span>
+      <span id="pay-amount-help">
+        <span class="error" *ngIf="submitted && amountMessage; else amountHint">{{ amountMessage }}</span>
+        <ng-template #amountHint>
+          <span class="hint" *ngIf="!isRefund">Starts as the full balance. Change it for a part payment.</span>
+          <span class="hint" *ngIf="isRefund">Money given back to the customer. It gets its own voucher.</span>
+        </ng-template>
+      </span>
+      <div class="chips" *ngIf="advanceDue">
+        <button type="button" class="btn btn-secondary" [disabled]="saving" (click)="fill(advanceDue)">
+          Advance {{ advanceDue | inr }}
+        </button>
+        <button type="button" class="btn btn-secondary" [disabled]="saving" (click)="fill(account.balance)">
+          Full balance {{ account.balance | inr }}
+        </button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="label" id="pay-mode-label">{{ isRefund ? 'Given back by' : 'Paid by' }}</span>
+      <div class="modes" role="group" aria-labelledby="pay-mode-label">
+        <button
+          *ngFor="let option of modes"
+          type="button"
+          class="mode"
+          [attr.aria-pressed]="mode === option.mode"
+          [disabled]="saving"
+          (click)="choose(option.mode)"
+        >
+          {{ option.label }}
+        </button>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label class="label" for="pay-reference">{{ referenceLabel }}</label>
+        <input
+          id="pay-reference"
+          name="reference"
+          class="input"
+          type="text"
+          maxlength="100"
+          autocomplete="off"
+          [class.is-invalid]="submitted && referenceMessage"
+          [(ngModel)]="reference"
+          [disabled]="saving"
+          [attr.aria-invalid]="submitted && referenceMessage ? 'true' : null"
+          aria-describedby="pay-reference-help"
+        />
+        <span id="pay-reference-help" class="error" *ngIf="submitted && referenceMessage">{{ referenceMessage }}</span>
+      </div>
+      <div class="field">
+        <label class="label" for="pay-date">Date</label>
+        <input
+          id="pay-date"
+          name="date"
+          class="input"
+          type="date"
+          [max]="today"
+          [class.is-invalid]="submitted && dateMessage"
+          [(ngModel)]="date"
+          [disabled]="saving"
+          [attr.aria-invalid]="submitted && dateMessage ? 'true' : null"
+          aria-describedby="pay-date-help"
+        />
+        <span id="pay-date-help" class="error" *ngIf="submitted && dateMessage">{{ dateMessage }}</span>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn-ghost add-note" *ngIf="!showNote" (click)="showNote = true">
+      <app-icon name="plus"></app-icon>Add a note
+    </button>
+    <div class="field" *ngIf="showNote">
+      <label class="label" for="pay-note">Note (optional)</label>
+      <input id="pay-note" name="note" class="input" type="text" maxlength="500" [(ngModel)]="note" [disabled]="saving" />
+      <span class="hint">Printed on the receipt.</span>
+    </div>
+  </div>
+
+  <div class="dialog-foot">
+    <button type="button" class="btn btn-secondary btn-lg" [disabled]="saving" (click)="close()">Cancel</button>
+    <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving">
+      {{ saving ? 'Saving…' : isRefund ? 'Save refund' : 'Save payment' }}
+    </button>
+  </div>
+</form>

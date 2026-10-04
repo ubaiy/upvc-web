@@ -1,0 +1,190 @@
+<!-- Nothing is created here, so the page has no primary button of its own: each row's action is "Remind". -->
+<app-page-header
+  title="Outstanding"
+  [subtitle]="data?.asOf ? 'Money still to collect, as of ' + (data?.asOf | date : 'd MMM y') : 'Money still to collect'"
+>
+  <a actions class="btn btn-secondary" routerLink="/payments">All payments</a>
+</app-page-header>
+
+<app-callout tone="warn" *ngIf="state === 'error'">
+  {{ errorMessage }}
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<ng-container *ngIf="state !== 'error'">
+  <section class="card totals" [attr.aria-busy]="state === 'loading'" aria-label="Outstanding by age">
+    <ng-container *ngIf="state === 'loading'">
+      <div class="buckets" aria-hidden="true">
+        <span class="bucket" *ngFor="let i of placeholders"
+          ><span class="skeleton sk-label"></span><span class="skeleton sk-figure"></span
+        ></span>
+      </div>
+    </ng-container>
+    <div class="buckets" *ngIf="state === 'ready' && data as list">
+      <div class="bucket lead">
+        <span class="k">To collect</span>
+        <span class="v num">{{ list.totals.balance | inr }}</span>
+        <span class="d"
+          >{{ list.totals.customers }} {{ list.totals.customers === 1 ? 'customer' : 'customers' }},
+          {{ list.totals.accounts }} {{ list.totals.accounts === 1 ? 'job' : 'jobs' }}</span
+        >
+      </div>
+      <div class="bucket" *ngFor="let bucket of list.buckets; let last = last" [class.old]="last && list.totals.buckets[bucket.key] > 0">
+        <span class="k">{{ bucket.label }}</span>
+        <span class="v num">{{ list.totals.buckets[bucket.key] | inr }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" [attr.aria-busy]="state === 'loading'">
+    <ng-container *ngIf="state === 'loading'">
+      <span class="sr-only" role="status">Loading the outstanding list</span>
+      <div class="toolbar" aria-hidden="true"><span class="skeleton sk-search"></span></div>
+      <div class="sk-row" aria-hidden="true" *ngFor="let i of placeholders">
+        <span class="skeleton sk-name"></span>
+        <span class="skeleton sk-cell"></span>
+        <span class="skeleton sk-cell"></span>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="state === 'ready' && data as list">
+      <div class="toolbar">
+        <label class="input-group">
+          <app-icon name="search"></app-icon>
+          <input type="search" placeholder="Search customer or number" aria-label="Search outstanding" [(ngModel)]="search" />
+        </label>
+        <span class="grow"></span>
+        <div class="seg" role="group" aria-label="Which jobs">
+          <button
+            type="button"
+            *ngFor="let option of bases"
+            [attr.aria-pressed]="basis === option.basis"
+            (click)="setBasis(option.basis)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
+      <app-empty-state
+        *ngIf="!list.customers.length && basis === 'all'"
+        icon="circle-check"
+        title="Nothing is outstanding"
+        text="Every order and bill is paid in full. A job appears here as soon as it has a balance, with its age counted from the bill date, or from the order date until it is billed."
+      >
+        <a class="btn btn-primary" routerLink="/orders">Go to orders</a>
+      </app-empty-state>
+
+      <div class="empty" *ngIf="!list.customers.length && basis !== 'all'">
+        <h2>{{ basis === 'bill' ? 'No billed job has a balance' : 'No unbilled order has a balance' }}</h2>
+        <p>Other jobs may still owe money.</p>
+        <button type="button" class="btn btn-secondary" (click)="setBasis('all')">Show all</button>
+      </div>
+
+      <div class="empty" *ngIf="list.customers.length && !customers.length">
+        <h2>No customer matches "{{ search }}"</h2>
+        <p>Check the spelling, or search by bill or order number.</p>
+        <button type="button" class="btn btn-secondary" (click)="search = ''">Clear search</button>
+      </div>
+
+      <ul class="customers" *ngIf="customers.length">
+        <li *ngFor="let customer of customers; trackBy: trackByKey" class="customer">
+          <div class="customer-row">
+            <button
+              type="button"
+              class="who"
+              [attr.aria-expanded]="isOpen(customer)"
+              [attr.aria-label]="(isOpen(customer) ? 'Hide' : 'Show') + ' the jobs of ' + customer.name"
+              (click)="toggle(customer)"
+            >
+              <app-icon [name]="isOpen(customer) ? 'chev-down' : 'chev-right'" [mirror]="!isOpen(customer)"></app-icon>
+              <span class="who-text">
+                <span class="title"
+                  ><bdi>{{ customer.name || 'Customer' }}</bdi></span
+                >
+                <span class="muted small"
+                  >{{ customer.accounts.length }} {{ customer.accounts.length === 1 ? 'job' : 'jobs' }} · oldest
+                  {{ age(customer.oldestDays) | lowercase }}</span
+                >
+              </span>
+            </button>
+            <dl class="ages">
+              <div *ngFor="let bucket of list.buckets" [class.zero]="!customer.buckets[bucket.key]">
+                <dt>{{ bucket.label }}</dt>
+                <dd class="num">{{ customer.buckets[bucket.key] | inr }}</dd>
+              </div>
+            </dl>
+            <div class="owed">
+              <span class="muted small">Balance</span>
+              <span class="num figure">{{ customer.balance | inr }}</span>
+            </div>
+            <div class="remind">
+              <a
+                *ngIf="remindLink(customer) as link; else noPhone"
+                class="btn btn-secondary"
+                target="_blank"
+                rel="noopener"
+                [href]="link"
+                [attr.aria-label]="'Remind ' + customer.name + ' on WhatsApp'"
+              >
+                <app-icon name="send"></app-icon>Remind on WhatsApp
+              </a>
+              <ng-template #noPhone>
+                <a
+                  *ngIf="customer.customerId; else noCustomer"
+                  class="btn btn-secondary"
+                  [routerLink]="['/customers/edit', customer.customerId]"
+                  >Add a mobile number</a
+                >
+                <ng-template #noCustomer><span class="muted small">No mobile number</span></ng-template>
+              </ng-template>
+            </div>
+          </div>
+
+          <table class="table jobs" *ngIf="isOpen(customer)">
+            <thead>
+              <tr>
+                <th scope="col">Job</th>
+                <th scope="col">Since</th>
+                <th scope="col" class="right hide-tablet">Total</th>
+                <th scope="col" class="right hide-tablet">Received</th>
+                <th scope="col" class="right">Balance</th>
+                <th scope="col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let job of customer.accounts">
+                <td>
+                  <a *ngIf="job.bill" class="title num" [routerLink]="['/payments/bill', job.bill.id]">{{ job.bill.number }}</a>
+                  <ng-container *ngIf="job.bill && job.order"> · </ng-container>
+                  <a *ngIf="job.order" class="num" [class.title]="!job.bill" [routerLink]="['/orders', job.order.id]">{{
+                    job.order.number
+                  }}</a>
+                </td>
+                <td class="muted small">
+                  {{ job.date ? (job.date | date : 'd MMM y') : '–' }} · {{ age(job.ageDays) | lowercase }}
+                </td>
+                <td class="right num hide-tablet">{{ job.total | inr }}</td>
+                <td class="right num hide-tablet">{{ job.received | inr }}</td>
+                <td class="right num">{{ job.balance | inr }}</td>
+                <td class="row-actions">
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="pay(customer, job)">
+                    Record payment
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </li>
+      </ul>
+    </ng-container>
+  </section>
+</ng-container>
+
+<app-record-payment
+  *ngIf="paying as account"
+  [account]="account"
+  kind="receipt"
+  (saved)="onSaved($event)"
+  (closed)="paying = null"
+></app-record-payment>
