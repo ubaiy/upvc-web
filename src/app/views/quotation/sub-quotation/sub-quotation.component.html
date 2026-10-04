@@ -254,12 +254,22 @@
             type="button"
             class="link"
             *ngIf="q.editable || q.revisable"
-            aria-label="Change margin, payment terms, discount and validity"
+            aria-label="Change margin, payment terms, discount, charges and validity"
             (click)="changeSummary()"
           >
             Change
           </button>
         </div>
+        <!-- Until a charge is there, say where transport and fitting are added. -->
+        <button
+          type="button"
+          class="link side-gap"
+          data-q="add-charge"
+          *ngIf="(q.editable || q.revisable) && !q.charges.length && !empty"
+          (click)="changeSummary()"
+        >
+          Add transport or fitting
+        </button>
       </section>
 
       <section class="card card-pad" aria-labelledby="h-versions" *ngIf="q.revisions.length > 1">

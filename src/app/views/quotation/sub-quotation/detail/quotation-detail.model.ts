@@ -76,6 +76,8 @@ export interface QuotationView {
   areaSqFt: number | null;
   /** Lines above the total in the Summary card, as the API returns them. */
   summary: TotalsLine[];
+  /** Transport, fitting and other charges beside the windows, in the order they print. */
+  charges: QuotationCharge[];
   total: number;
   /** "Retail margin 20%" */
   marginText: string;
@@ -97,6 +99,37 @@ export interface QuotationView {
   revisions: QuotationRevision[];
   /** Catalogue prices moved after this quotation was priced (sent by the API when it knows). */
   pricesChanged: boolean;
+}
+
+export type ChargeKind = 'transport' | 'installation' | 'other';
+
+export interface QuotationCharge {
+  kind: ChargeKind;
+  label: string;
+  amount: number;
+  /** GST is charged on it, at the quotation's rate. */
+  taxable: boolean;
+  hsnCode: string | null;
+}
+
+/** The name the API gives a charge whose label is left empty. */
+export const CHARGE_KINDS: { kind: ChargeKind; label: string }[] = [
+  { kind: 'transport', label: 'Transport' },
+  { kind: 'installation', label: 'Fitting / installation' },
+  { kind: 'other', label: 'Other charge' },
+];
+
+/** A quotation carries at most this many charges (the API refuses more). */
+export const MAX_CHARGES = 10;
+
+function readCharges(rows: any): QuotationCharge[] {
+  return (Array.isArray(rows) ? rows : []).map((row: any) => ({
+    kind: CHARGE_KINDS.some((k) => k.kind === row?.kind) ? row.kind : 'other',
+    label: text(row?.label),
+    amount: num(row?.amount),
+    taxable: row?.taxable !== false && row?.taxable !== 0,
+    hsnCode: text(row?.hsn_code) || null,
+  }));
 }
 
 const STATUSES: QuotationStatus[] = ['draft', 'sent', 'accepted', 'declined', 'expired', 'billed'];
@@ -256,11 +289,21 @@ function readSummary(raw: any): TotalsLine[] {
     const label = discount.type === 'percent' ? `Discount ${num(discount.value)}%` : 'Discount';
     lines.push({ label, amount: -num(discount.amount) });
   }
-  if (discounted || totals.prices_include_gst) {
+  // Charges, where the PDF prints them: taxed ones above the taxable value, the others under the tax.
+  const charges = readCharges(totals.charges);
+  const taxed = charges.filter((charge) => charge.taxable);
+  for (const charge of taxed) {
+    lines.push({ label: charge.label, amount: charge.amount });
+  }
+  if (discounted || totals.prices_include_gst || taxed.length) {
     lines.push({ label: 'Taxable value', amount: totals.taxable_value });
   }
   for (const tax of totals.tax?.lines || []) {
     lines.push({ label: text(tax.label) || text(tax.code), amount: tax.amount });
+  }
+  for (const charge of charges.filter((c) => !c.taxable)) {
+    // Said only when GST is charged on the rest, as the PDF does.
+    lines.push({ label: totals.tax?.applicable ? `${charge.label} (not taxed)` : charge.label, amount: charge.amount });
   }
   if (num(totals.round_off) !== 0) {
     lines.push({ label: 'Round off', amount: totals.round_off });
@@ -315,6 +358,7 @@ export function toQuotationView(raw: any): QuotationView {
     itemCount: totals?.item_count ?? products.length,
     areaSqFt: totals ? num(totals.total_area_sq_ft) : null,
     summary: readSummary(raw),
+    charges: readCharges(raw?.charges ?? totals?.charges),
     total: totals ? num(totals.total) : num(raw?.grand_total),
     marginText: margin ? `${text(margin.name)} margin ${num(margin.percent)}%` : '',
     termsText: text(term?.name),

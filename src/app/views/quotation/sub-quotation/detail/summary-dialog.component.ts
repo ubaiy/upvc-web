@@ -4,7 +4,7 @@ import { finalize } from 'rxjs/operators';
 
 import { QuotationService } from '../../quotation.service';
 import { errorText } from '../../quotation-list.model';
-import { QuotationView } from './quotation-detail.model';
+import { CHARGE_KINDS, ChargeKind, MAX_CHARGES, QuotationView } from './quotation-detail.model';
 
 interface Choice {
   id: number;
@@ -12,6 +12,15 @@ interface Choice {
 }
 
 type DiscountType = 'none' | 'percent' | 'amount';
+
+/** One charge as it is typed; `amount` is null while the box is empty. */
+interface ChargeRow {
+  kind: ChargeKind;
+  label: string;
+  amount: number | null;
+  taxable: boolean;
+  hsnCode: string | null;
+}
 
 /**
  * "Change" under the total in the Summary card: price list (margin), payment
@@ -51,6 +60,9 @@ export class SummaryDialogComponent implements OnChanges {
   validUntil = '';
   pricesIncludeGst = false;
 
+  readonly chargeKinds = CHARGE_KINDS;
+  charges: ChargeRow[] = [];
+
   constructor(private _dataService: QuotationService) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -79,6 +91,52 @@ export class SummaryDialogComponent implements OnChanges {
       return 'A discount cannot be more than 100%.';
     }
     return '';
+  }
+
+  get canAddCharge(): boolean {
+    return this.charges.length < MAX_CHARGES;
+  }
+
+  /** The name a charge prints under when its own is left empty. */
+  chargeName(kind: ChargeKind): string {
+    return CHARGE_KINDS.find((k) => k.kind === kind)?.label || 'Other charge';
+  }
+
+  addCharge(): void {
+    if (!this.canAddCharge) {
+      return;
+    }
+    // The first is most often transport, the second fitting.
+    const used = this.charges.map((charge) => charge.kind);
+    const kind = CHARGE_KINDS.find((k) => k.kind !== 'other' && !used.includes(k.kind))?.kind || 'other';
+    this.charges = [...this.charges, { kind, label: '', amount: null, taxable: true, hsnCode: null }];
+    const index = this.charges.length - 1;
+    setTimeout(() => document.getElementById('sum-charge-amount-' + index)?.focus());
+  }
+
+  removeCharge(index: number): void {
+    this.charges = this.charges.filter((_, i) => i !== index);
+  }
+
+  /** What is wrong with the amount of this charge, once Save was pressed. */
+  chargeError(index: number): string {
+    if (!this.submitted) {
+      return '';
+    }
+    const amount: unknown = this.charges[index]?.amount;
+    const value = Number(amount);
+    if (amount === null || amount === '' || !Number.isFinite(value) || value <= 0) {
+      return 'Enter the amount, or remove this charge.';
+    }
+    return value > 100000000 ? 'A charge cannot be more than ₹10,00,00,000.' : '';
+  }
+
+  get chargesInvalid(): boolean {
+    return this.charges.some((_, index) => !!this.chargeError(index));
+  }
+
+  trackCharge(index: number): number {
+    return index;
   }
 
   load(): void {
@@ -118,7 +176,7 @@ export class SummaryDialogComponent implements OnChanges {
   submit(): void {
     this.submitted = true;
     this.saveError = '';
-    if (this.discountError || this.saving || !this.quotation) {
+    if (this.discountError || this.chargesInvalid || this.saving || !this.quotation) {
       return;
     }
     const discounted = this.discountType !== 'none' && Number(this.discountValue) > 0;
@@ -127,6 +185,14 @@ export class SummaryDialogComponent implements OnChanges {
       discount_type: discounted ? this.discountType : 'percent',
       discount_value: discounted ? Number(this.discountValue) : 0,
       prices_include_gst: this.pricesIncludeGst,
+      // The list replaces the quotation's charges; an empty list removes them.
+      charges: this.charges.map((charge) => ({
+        kind: charge.kind,
+        label: charge.label.trim(),
+        amount: Number(charge.amount),
+        taxable: charge.taxable,
+        hsn_code: charge.hsnCode,
+      })),
     };
     if (this.marginId) {
       body.order_type_margin_id = this.marginId;
@@ -162,5 +228,10 @@ export class SummaryDialogComponent implements OnChanges {
     this.discountValue = this.discountType === 'none' ? null : q.discountValue;
     this.validUntil = q.validUntilIso;
     this.pricesIncludeGst = q.pricesIncludeGst;
+    this.charges = (q.charges || []).map((charge) => ({
+      ...charge,
+      // The API fills an empty label with the kind's name; show it as empty again.
+      label: charge.label === this.chargeName(charge.kind) ? '' : charge.label,
+    }));
   }
 }

@@ -79,11 +79,80 @@ describe('SummaryDialogComponent', () => {
       discount_type: 'amount',
       discount_value: 500,
       prices_include_gst: false,
+      charges: [],
       order_type_margin_id: 2,
       payment_term_id: 1,
       valid_until: '2026-12-01',
     });
     expect(saved).toHaveBeenCalled();
+  });
+
+  describe('charges (M9)', () => {
+    const CHARGES = [
+      { id: 4, kind: 'transport', label: 'Transport', amount: 1500, taxable: true, hsn_code: null },
+      { id: 5, kind: 'other', label: 'Unloading', amount: 400, taxable: false, hsn_code: '9965' },
+    ];
+    const sent = (): any[] => service.saveQuotationSummary.calls.mostRecent().args[1].charges;
+
+    it('adds transport, then fitting, and saves them with the rest in one request', () => {
+      open();
+      service.saveQuotationSummary.and.returnValue(ok({ id: 14, totals: {} }));
+      const add = () => (document.body.querySelector('[data-sum="add-charge"]') as HTMLButtonElement).click();
+      add();
+      add();
+      fixture.detectChanges();
+      expect(component.charges.map((c) => c.kind)).toEqual(['transport', 'installation']);
+      component.charges[0].amount = 1500;
+      component.charges[1].amount = 2500;
+      component.charges[1].taxable = false;
+      component.submit();
+      expect(sent()).toEqual([
+        { kind: 'transport', label: '', amount: 1500, taxable: true, hsn_code: null },
+        { kind: 'installation', label: '', amount: 2500, taxable: false, hsn_code: null },
+      ]);
+    });
+
+    it('starts from the charges of the quotation and sends them back unchanged', () => {
+      open({ charges: CHARGES });
+      // The kind's own name is shown as the placeholder, not as typed text.
+      expect(component.charges.map((c) => c.label)).toEqual(['', 'Unloading']);
+      expect(document.body.querySelectorAll('[data-charge]').length).toBe(2);
+      service.saveQuotationSummary.and.returnValue(ok({}));
+      component.submit();
+      expect(sent()).toEqual([
+        { kind: 'transport', label: '', amount: 1500, taxable: true, hsn_code: null },
+        { kind: 'other', label: 'Unloading', amount: 400, taxable: false, hsn_code: '9965' },
+      ]);
+    });
+
+    it('removes a charge, and removes them all with an empty list', () => {
+      open({ charges: CHARGES });
+      service.saveQuotationSummary.and.returnValue(ok({}));
+      (document.body.querySelector('[aria-label="Remove charge 1"]') as HTMLButtonElement).click();
+      (document.body.querySelector('[aria-label="Remove charge 1"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      component.submit();
+      expect(sent()).toEqual([]);
+    });
+
+    it('asks for the amount of a charge before anything is sent, and names every field', () => {
+      open();
+      component.addCharge();
+      fixture.detectChanges();
+      component.submit();
+      fixture.detectChanges();
+      expect(service.saveQuotationSummary).not.toHaveBeenCalled();
+      expect(document.body.querySelector('#sum-charge-error-0')?.textContent).toContain('Enter the amount, or remove this charge.');
+      document.body.querySelectorAll('[data-charge] select, [data-charge] input, [data-charge] button').forEach((node) => {
+        const named = node.getAttribute('aria-label') || (node.closest('label')?.textContent || '').trim();
+        expect(named).withContext(node.outerHTML.slice(0, 60)).toBeTruthy();
+      });
+    });
+
+    it('offers no eleventh charge', () => {
+      open({ charges: Array.from({ length: 10 }, (_, i) => ({ kind: 'other', label: 'Charge ' + i, amount: 100, taxable: true })) });
+      expect(document.body.querySelector('[data-sum="add-charge"]')).toBeNull();
+    });
   });
 
   it('removes a discount by sending zero', () => {

@@ -46,6 +46,40 @@ describe('quotation-detail.model', () => {
     expect(toQuotationView(raw).stateMissing).withContext('no tax, no sentence').toBeNull();
   });
 
+  it('prints charges where the PDF does: taxed ones above the taxable value, the others under the tax (M9)', () => {
+    const raw = sampleQuotation();
+    raw.totals.discount = { type: 'percent', value: 5, amount: 878.39 };
+    raw.totals.charges = [
+      { id: 4, kind: 'transport', label: 'Transport', amount: 1500, taxable: true, hsn_code: null },
+      { id: 5, kind: 'other', label: 'Unloading', amount: 400, taxable: false, hsn_code: null },
+    ];
+    raw.totals.taxable_value = 18189.42;
+    raw.charges = raw.totals.charges;
+    const view = toQuotationView(raw);
+    expect(view.summary.map((line) => line.label)).toEqual([
+      'Subtotal',
+      'Discount 5%',
+      'Transport',
+      'Taxable value',
+      'CGST 9%',
+      'SGST 9%',
+      'Unloading (not taxed)',
+      'Round off',
+    ]);
+    expect(view.summary[2].amount).toBe(1500);
+    expect(view.summary[3].amount).toBe(18189.42);
+    expect(view.charges.map((c) => [c.kind, c.label, c.amount, c.taxable])).toEqual([
+      ['transport', 'Transport', 1500, true],
+      ['other', 'Unloading', 400, false],
+    ]);
+  });
+
+  it('has no charge line and no charge on a quotation without any', () => {
+    const view = toQuotationView(sampleQuotation());
+    expect(view.charges).toEqual([]);
+    expect(view.summary.map((line) => line.label)).toEqual(['Subtotal', 'CGST 9%', 'SGST 9%', 'Round off']);
+  });
+
   it('shows the discount and the taxable value only when a discount applies', () => {
     const raw = sampleQuotation();
     raw.totals.discount = { type: 'percent', value: 5, amount: 878.39 };
