@@ -139,15 +139,25 @@ describe('DetailsComponent (customer page)', () => {
       expect(el().querySelector('#cust-name')?.getAttribute('aria-invalid')).toBe('true');
     });
 
-    it('sets the state from a valid GSTIN and refuses a state that disagrees', () => {
+    it('suggests the state of an empty first address from a valid GSTIN', () => {
       component.form.patchValue({ name: 'Amit Mehta', phone: '9812345670', gstin: '27abcde1234f1z5' });
       component.onGstinChange();
       expect(component.form.value.gstin).toBe('27ABCDE1234F1Z5');
       expect(component.addresses.at(0).value.state_code).toBe('27');
-      component.addresses.at(0).patchValue({ state_code: '24' });
-      expect(component.stateMismatch).toBeTrue();
+    });
+
+    it('saves a customer whose GSTIN is of one state and whose address is in another (B1)', () => {
+      component.form.patchValue({ name: 'Amit Mehta', phone: '9812345670', gstin: '24AABCP1234A1Z5' });
+      component.addresses.at(0).patchValue({ address: 'Plot 4', city: 'Pune', state_code: '27', zip_code: '411001' });
+      component.onGstinChange();
+      expect(component.addresses.at(0).value.state_code).withContext('a written address keeps its state').toBe('27');
       component.submit();
-      expect(service.addCustomer).not.toHaveBeenCalled();
+      fixture.detectChanges();
+      expect(service.addCustomer).toHaveBeenCalledTimes(1);
+      const body: any = service.addCustomer.calls.mostRecent().args[0];
+      expect(body.gstin).toBe('24AABCP1234A1Z5');
+      expect(body.address.state).toBe('Maharashtra');
+      expect(el().textContent).not.toContain('belongs to another state');
     });
 
     it('keeps the form and shows the reason when the API refuses', () => {

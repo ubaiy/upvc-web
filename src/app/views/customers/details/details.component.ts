@@ -96,14 +96,9 @@ export class DetailsComponent implements OnInit {
     return this.form.get('addresses') as FormArray;
   }
 
-  /** The state a valid GSTIN names; the first address must agree with it. */
+  /** The state a valid GSTIN names. An address may be in any state: a registered buyer can have a site elsewhere. */
   get gstinState(): string {
     return gstinStateCode(this.form.get('gstin')?.value);
-  }
-
-  get stateMismatch(): boolean {
-    const first = this.addresses.at(0)?.value as AddressValue | undefined;
-    return !!this.gstinState && !!first?.state_code && first.state_code !== this.gstinState;
   }
 
   load(): void {
@@ -158,12 +153,16 @@ export class DetailsComponent implements OnInit {
     this.form.markAsDirty();
   }
 
-  /** A valid GSTIN names its state, so the first address follows it. */
+  /**
+   * A valid GSTIN names its state. It only suggests the state of a first
+   * address that is still empty; an address already written keeps its own.
+   */
   onGstinChange(): void {
     const control = this.form.get('gstin');
     control?.setValue(normaliseGstin(control.value), { emitEvent: false });
-    if (this.gstinState) {
-      this.addresses.at(0)?.get('state_code')?.setValue(this.gstinState);
+    const first = this.addresses.at(0);
+    if (this.gstinState && first && !first.value.id && isBlankAddress(first.value as AddressValue)) {
+      first.get('state_code')?.setValue(this.gstinState);
     }
   }
 
@@ -274,7 +273,7 @@ export class DetailsComponent implements OnInit {
 
   submit(): void {
     this.submitted = true;
-    if (this.form.invalid || this.stateMismatch || this.saving) {
+    if (this.form.invalid || this.saving) {
       return;
     }
     const value = this.form.getRawValue() as CustomerFormValue;

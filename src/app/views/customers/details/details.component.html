@@ -237,24 +237,16 @@
               class="select"
               [id]="'addr-state-' + i"
               formControlName="state_code"
-              [class.is-invalid]="addressInvalid(i, 'state_code') || (i === 0 && stateMismatch)"
-              [attr.aria-invalid]="addressInvalid(i, 'state_code') || (i === 0 && stateMismatch)"
-              [attr.aria-describedby]="'addr-state-h-' + i"
+              [class.is-invalid]="addressInvalid(i, 'state_code')"
+              [attr.aria-invalid]="addressInvalid(i, 'state_code')"
+              [attr.aria-describedby]="addressInvalid(i, 'state_code') ? 'addr-state-h-' + i : null"
             >
               <option value="">Choose a state</option>
               <option *ngFor="let state of states" [value]="state.code">{{ state.name }}</option>
             </select>
-            <span class="error" [id]="'addr-state-h-' + i" *ngIf="i === 0 && stateMismatch; else stateOther"
-              >The GSTIN belongs to another state. Choose that state or correct the GSTIN.</span
+            <span class="error" [id]="'addr-state-h-' + i" *ngIf="addressInvalid(i, 'state_code')"
+              >Choose the state.</span
             >
-            <ng-template #stateOther>
-              <span class="error" [id]="'addr-state-h-' + i" *ngIf="addressInvalid(i, 'state_code'); else stateHint"
-                >Choose the state.</span
-              >
-            </ng-template>
-            <ng-template #stateHint>
-              <span class="hint" [id]="'addr-state-h-' + i" *ngIf="i === 0 && gstinState">Set from the GSTIN.</span>
-            </ng-template>
           </div>
         </div>
       </div>
