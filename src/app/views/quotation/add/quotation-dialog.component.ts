@@ -1,0 +1,275 @@
+import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup } from '@angular/forms';
+import { Dropdown } from 'primeng/dropdown';
+import { Observable, of, throwError } from 'rxjs';
+import { finalize, switchMap } from 'rxjs/operators';
+
+import { QuotationService } from '../quotation.service';
+import { defaultQuotationName, errorText, QuotationRow } from '../quotation-list.model';
+
+export interface CustomerOption {
+  id: number;
+  name: string;
+  phone: string;
+}
+
+/** Ten digits, after an optional +91 or leading 0 and any spaces or dashes. */
+export function normalisePhone(value: string): string {
+  const digits = (value || '').replace(/\D/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    return digits.slice(2);
+  }
+  if (digits.length === 11 && digits.startsWith('0')) {
+    return digits.slice(1);
+  }
+  return digits;
+}
+
+/**
+ * "New quotation" in one dialog (flow gap G5): pick a customer or type a new
+ * name and phone, and a quotation name that is filled in for you. The same
+ * dialog renames a quotation or moves it to another customer.
+ *
+ *   <app-quotation-dialog [visible]="open" [quotation]="rowOrNull"
+ *     (closed)="open = false" (saved)="goTo($event)"></app-quotation-dialog>
+ */
+@Component({
+  selector: 'app-quotation-dialog',
+  templateUrl: './quotation-dialog.component.html',
+  styleUrls: ['./quotation-dialog.component.scss'],
+})
+export class QuotationDialogComponent implements OnChanges {
+  @Input() visible = false;
+
+  /** The quotation to rename or move. Leave out to make a new one. */
+  @Input() quotation: QuotationRow | null = null;
+
+  @Output() closed = new EventEmitter<void>();
+
+  /** Id of the quotation that was created or changed. */
+  @Output() saved = new EventEmitter<number>();
+
+  @ViewChild('customerDropdown') customerDropdown?: Dropdown;
+
+  form: FormGroup;
+  customers: CustomerOption[] = [];
+  loadingCustomers = false;
+  customersFailed = false;
+  /** 'existing' picks from the list; 'new' types a name and phone. */
+  mode: 'existing' | 'new' = 'existing';
+  submitted = false;
+  saving = false;
+  saveError = '';
+  filterText = '';
+  /** Until the user types a quotation name, it follows the customer. */
+  private nameEdited = false;
+
+  constructor(private _fb: FormBuilder, private _dataService: QuotationService) {
+    this.form = this._fb.group({
+      customer_id: [null],
+      customer_name: [''],
+      customer_phone: [''],
+      quatation_name: [''],
+    });
+    this.form.controls['customer_id'].valueChanges.subscribe(() => this._fillName());
+    this.form.controls['customer_name'].valueChanges.subscribe(() => this._fillName());
+  }
+
+  get editing(): boolean {
+    return !!this.quotation;
+  }
+
+  get title(): string {
+    return this.editing ? 'Rename or change customer' : 'New quotation';
+  }
+
+  get customerError(): string {
+    if (!this.submitted || this.mode !== 'existing' || this._value('customer_id')) {
+      return '';
+    }
+    return 'Choose a customer, or add a new one.';
+  }
+
+  get newNameError(): string {
+    if (!this.submitted || this.mode !== 'new' || this._newName()) {
+      return '';
+    }
+    return 'Enter the customer’s name.';
+  }
+
+  get phoneError(): string {
+    if (!this.submitted || this.mode !== 'new') {
+      return '';
+    }
+    return normalisePhone(this._value('customer_phone')).length === 10 ? '' : 'Enter a 10-digit phone number.';
+  }
+
+  get quotationNameError(): string {
+    const name = this._value('quatation_name').trim();
+    return this.submitted && name.length > 191 ? 'Use 191 characters or fewer.' : '';
+  }
+
+  /** An existing customer with the name or phone being typed, so it is not added twice. */
+  get duplicate(): CustomerOption | null {
+    if (this.mode !== 'new') {
+      return null;
+    }
+    const name = this._newName().toLowerCase();
+    const phone = normalisePhone(this._value('customer_phone'));
+    return (
+      this.customers.find(
+        (c) => (name && c.name.trim().toLowerCase() === name) || (phone.length === 10 && normalisePhone(c.phone) === phone)
+      ) || null
+    );
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['visible'] && this.visible) {
+      this._open();
+    }
+  }
+
+  loadCustomers(): void {
+    this.loadingCustomers = true;
+    this.customersFailed = false;
+    this._dataService
+      .getCustomerOptions()
+      .pipe(finalize(() => (this.loadingCustomers = false)))
+      .subscribe({
+        next: (res) => {
+          if (!res?.success) {
+            this.customersFailed = true;
+            return;
+          }
+          this.customers = (res.data || [])
+            .map((c: any) => ({ id: Number(c.id), name: (c.name || '').toString(), phone: (c.phone || '').toString() }))
+            .sort((a: CustomerOption, b: CustomerOption) => a.name.localeCompare(b.name));
+          // A fabricator with no customers yet starts by typing the first one.
+          if (!this.customers.length && !this.editing) {
+            this.mode = 'new';
+          }
+        },
+        error: () => (this.customersFailed = true),
+      });
+  }
+
+  onFilter(event: { filter?: string }): void {
+    this.filterText = (event?.filter || '').trim();
+  }
+
+  /** Switch to typing a new customer; the search text becomes the name. */
+  startNewCustomer(): void {
+    this.customerDropdown?.hide();
+    this.mode = 'new';
+    this.form.patchValue({ customer_id: null, customer_name: this.filterText, customer_phone: '' });
+    this.filterText = '';
+    this.saveError = '';
+  }
+
+  chooseExisting(customer?: CustomerOption | null): void {
+    this.mode = 'existing';
+    this.form.patchValue({ customer_id: customer ? customer.id : null, customer_name: '', customer_phone: '' });
+    this.saveError = '';
+  }
+
+  onNameInput(): void {
+    this.nameEdited = this._value('quatation_name').trim() !== '';
+  }
+
+  close(): void {
+    if (this.saving) {
+      return;
+    }
+    this.closed.emit();
+  }
+
+  submit(): void {
+    this.submitted = true;
+    this.saveError = '';
+    if (this.saving || this.customerError || this.newNameError || this.phoneError || this.quotationNameError) {
+      return;
+    }
+    this.saving = true;
+    this._customerId()
+      .pipe(
+        switchMap((customerId) => {
+          const body: any = { customer_id: customerId, quatation_name: this._value('quatation_name').trim() };
+          return this.quotation
+            ? this._dataService.editQuotationDetail({ ...body, id: this.quotation.id })
+            : this._dataService.addQuotationDetail(body);
+        }),
+        switchMap((res) => (res?.success ? of(res) : throwError(() => res?.message || ''))),
+        finalize(() => (this.saving = false))
+      )
+      .subscribe({
+        next: (res) => this.saved.emit(Number(res.data?.id ?? this.quotation?.id)),
+        error: (err) =>
+          (this.saveError = errorText(
+            err,
+            this.editing ? 'We could not save the quotation. Try again.' : 'We could not create the quotation. Try again.'
+          )),
+      });
+  }
+
+  /** The chosen customer's id; a new customer is saved first. */
+  private _customerId(): Observable<number> {
+    if (this.mode === 'existing') {
+      return of(Number(this._value('customer_id')));
+    }
+    return this._dataService
+      .addCustomerInline({ name: this._newName(), phone: normalisePhone(this._value('customer_phone')) })
+      .pipe(
+        switchMap((res) => {
+          if (!res?.success || !res.data?.id) {
+            return throwError(() => res?.message || 'We could not add the customer. Try again.');
+          }
+          // The customer now exists. If the next step fails, a second try
+          // must reuse it instead of adding it again.
+          const added: CustomerOption = { id: Number(res.data.id), name: res.data.name, phone: res.data.phone || '' };
+          this.customers = [...this.customers, added].sort((a, b) => a.name.localeCompare(b.name));
+          this.mode = 'existing';
+          this.form.patchValue({ customer_id: added.id }, { emitEvent: false });
+          return of(added.id);
+        })
+      );
+  }
+
+  private _newName(): string {
+    return this._value('customer_name').trim();
+  }
+
+  /** Read from the control, not form.value: inside valueChanges the parent value is still the old one. */
+  private _value(name: string): any {
+    return this.form.controls[name].value ?? '';
+  }
+
+  private _open(): void {
+    this.submitted = false;
+    this.saving = false;
+    this.saveError = '';
+    this.filterText = '';
+    this.mode = 'existing';
+    this.nameEdited = this.editing;
+    this.form.reset(
+      {
+        customer_id: this.quotation?.customerId ?? null,
+        customer_name: '',
+        customer_phone: '',
+        quatation_name: this.quotation?.name ?? '',
+      },
+      { emitEvent: false }
+    );
+    this.loadCustomers();
+  }
+
+  private _fillName(): void {
+    if (this.nameEdited) {
+      return;
+    }
+    const customer =
+      this.mode === 'new'
+        ? this._newName()
+        : this.customers.find((c) => c.id === Number(this.form.controls['customer_id'].value))?.name || '';
+    this.form.controls['quatation_name'].setValue(defaultQuotationName(customer), { emitEvent: false });
+  }
+}

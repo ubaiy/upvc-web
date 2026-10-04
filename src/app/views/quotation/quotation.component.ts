@@ -1,428 +1,302 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { SortEvent } from 'primeng/api';
-import { Table } from 'primeng/table';
-import { from } from 'rxjs';
-import { concatMap, finalize, toArray } from 'rxjs/operators';
-import { IQuotationDto } from 'src/app/shared/model/quotation/quotation.model';
-import { IProfileColorDto } from 'src/app/shared/model/profile/profile-color.model';
-import { IMasterListDto } from 'src/app/shared/model/masters/masterList.model';
-import { ICustomerDto } from 'src/app/shared/model/customer/customer.model';
-import { IAreaDto } from 'src/app/shared/model/area/area.model';
-import { ICustomerAdddressDto } from 'src/app/shared/model/customer/customerAddress.model';
-import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
-import { QuotationService } from './quotation.service';
-import { ToastService } from 'src/app/shared/services/toast.service';
-import { CustomerService } from '../customers/customer.service';
-import { AreaService } from '../area/area.service';
-import { DropdownService } from 'src/app/shared/services/dropdown.service';
+import { MenuItem } from 'primeng/api';
+import { Menu } from 'primeng/menu';
+import { Subscription } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
+import { ToastService } from 'src/app/shared/services/toast.service';
+import { QuotationService } from './quotation.service';
+import {
+  apiHasStatus,
+  buildStatusTabs,
+  errorText,
+  matchesSearch,
+  QuotationRow,
+  shortDate,
+  STATUS_BADGE,
+  STATUS_LABELS,
+  StatusTab,
+  toQuotationRows,
+} from './quotation-list.model';
+
+/** Rows per page. The API returns the whole list; paging is done here. */
+export const PAGE_SIZE = 20;
+
+/**
+ * The quotation list (card U3, mockup quotations.html): status tabs, search,
+ * one row per quotation that links to its page, and one "more" menu per row.
+ * "New quotation" opens a dialog instead of a page.
+ */
 @Component({
   selector: 'app-quotation',
   templateUrl: './quotation.component.html',
   styleUrls: ['./quotation.component.scss'],
 })
-export class QuotationComponent {
-  quotationList: IQuotationDto[] = [];
-  inputValue: string = '';
+export class QuotationComponent implements OnInit, OnDestroy {
+  @ViewChild('rowMenu') rowMenu?: Menu;
 
-  // Copy-quotation dialog state
-  copyDropdownsLoaded: boolean = false;
-  copyVisible: boolean = false;
-  copySubmitted: boolean = false;
-  copying: boolean = false;
-  copyForm: FormGroup;
-  sourceDetail: any = null;
-  hasSliding: boolean = false;
+  readonly skeletonRows = [0, 1, 2, 3, 4, 5];
+  readonly statusLabels = STATUS_LABELS;
+  readonly statusBadge = STATUS_BADGE;
 
-  // Dropdown data for the copy dialog
-  customerList: ICustomerDto[] = [];
-  customerAddressList: ICustomerAdddressDto[] = [];
-  areaList: IAreaDto[] = [];
-  colors: IProfileColorDto[] = [];
-  glassList: IMasterListDto[] = [];
-  slidingTypes: string[] = [];
+  rows: QuotationRow[] = [];
+  loading = true;
+  loadFailed = false;
+
+  /** Tabs are shown once the API reports statuses (card A1). */
+  showTabs = false;
+  tabs: StatusTab[] = [];
+  activeTab: StatusTab['key'] = 'all';
+  /** The "Updated" column is shown once the API sends a date with each row. */
+  showUpdated = false;
+
+  search = '';
+  page = 0;
+
+  menuItems: MenuItem[] = [];
+
+  /** New-quotation dialog; `editRow` set means rename or change customer. */
+  dialogOpen = false;
+  editRow: QuotationRow | null = null;
+
+  duplicateRow: QuotationRow | null = null;
+
+  deleteRow: QuotationRow | null = null;
+  deleting = false;
+
+  private _query?: Subscription;
+  /** An ?edit= link that arrived before the list did. */
+  private _pendingEditId = 0;
 
   constructor(
-    private _activeRoute: ActivatedRoute,
+    private _route: ActivatedRoute,
     private _router: Router,
-    private _fb: FormBuilder,
-    private confirmationDialogService: ConfirmationDialogService,
     private _dataService: QuotationService,
-    private _toastService: ToastService,
-    private _customerService: CustomerService,
-    private _areaService: AreaService,
-    private _dropdownService: DropdownService
-  ) {
-    this.quotationList = this._activeRoute.snapshot.data['list'];
-    this.quotationList?.forEach((e) => {
-      e.customer_address = JSON.parse(e.customer_address);
-    });
-    this.copyForm = this._initCopyForm();
-  }
+    private _toastService: ToastService
+  ) {}
 
-  get cf() {
-    return this.copyForm.controls;
-  }
-
-  public customSort(event: SortEvent) {
-    if (event.data) {
-      event.data.sort((data1, data2) => {
-        if (event.field && event.order) {
-          let value1 = data1[event.field];
-          let value2 = data2[event.field];
-          let result = null;
-
-          if (value1 == null && value2 != null) result = -1;
-          else if (value1 != null && value2 == null) result = 1;
-          else if (value1 == null && value2 == null) result = 0;
-          else if (typeof value1 === 'string' && typeof value2 === 'string')
-            result = value1.localeCompare(value2);
-          else result = value1 < value2 ? -1 : value1 > value2 ? 1 : 0;
-
-          return event.order * result;
-        } else {
-          return 0;
-        }
-      });
-    }
-  }
-
-  public clear(table: Table) {
-    table.clear();
-    this.inputValue = '';
-  }
-
-  public deleteQuotation(data: IQuotationDto) {
-    this.confirmationDialogService.confirm(
-      'Are you sure!',
-      `Are you sure you want to Delete Quotation of ${data.name}? `,
-      'pi-info-circle',
-      () => {
-        this._dataService.deleteQuotation(data.id).subscribe(
-          (res) => {
-            if (res.success) {
-              this._toastService.showSuccess(res.message);
-              this._dataService.getQuotationList().subscribe((res) => {
-                if (res.success) {
-                  this.quotationList = res.data;
-                }
-              });
-            } else {
-              this._toastService.showError(res.message);
-            }
-          },
-          (err) => {
-            this._toastService.showError(err.error.message);
-          }
-        );
-      },
-      () => {
-        console.log('Action rejected');
+  ngOnInit(): void {
+    this.load();
+    // /quotation?new=1 opens the dialog (Home and the old /quotation/add link
+    // arrive this way); /quotation?edit=14 opens it for that quotation.
+    this._query = this._route.queryParamMap.subscribe((params) => {
+      if (params.has('new')) {
+        this.openNew();
+      } else if (params.has('edit')) {
+        this._openEditById(Number(params.get('edit')));
       }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this._query?.unsubscribe();
+  }
+
+  get filtered(): QuotationRow[] {
+    return this.rows.filter(
+      (row) => (this.activeTab === 'all' || row.status === this.activeTab) && matchesSearch(row, this.search)
     );
   }
 
-  public bulkUpdate(all: boolean) {
-    const quotationIds: {
-      quatation_ids: string[];
-    } = {
-      quatation_ids: [],
-    };
-    if (all) {
-      this.quotationList.forEach((e) => {
-        quotationIds.quatation_ids.push(e.id.toString());
-      });
-    } else {
-      this.quotationList.forEach((e) => {
-        if (e.selected) {
-          quotationIds.quatation_ids.push(e.id.toString());
-        }
-      });
-    }
+  get pageCount(): number {
+    return Math.max(1, Math.ceil(this.filtered.length / PAGE_SIZE));
+  }
 
-    if (quotationIds.quatation_ids.length) {
-      this._dataService.updateBulkPrice(quotationIds).subscribe(
-        (res) => {
-          if (res.success) {
-            this._toastService.showSuccess(res.message);
-            this.quotationList.forEach((e) => {
-              e.selected = false;
-            });
-            this._dataService.getQuotationList().subscribe((res) => {
-              if (res.success) {
-                this.quotationList = res.data;
-              }
-            });
-          } else {
-            this._toastService.showError(res.message);
+  get pageRows(): QuotationRow[] {
+    const start = Math.min(this.page, this.pageCount - 1) * PAGE_SIZE;
+    return this.filtered.slice(start, start + PAGE_SIZE);
+  }
+
+  /** "8 quotations", or "21–40 of 53 quotations" when there is more than one page. */
+  get footText(): string {
+    const total = this.filtered.length;
+    const noun = total === 1 ? 'quotation' : 'quotations';
+    if (this.pageCount === 1) {
+      return `${total} ${noun}`;
+    }
+    const page = Math.min(this.page, this.pageCount - 1);
+    const first = page * PAGE_SIZE + 1;
+    return `${first}–${Math.min(total, first + PAGE_SIZE - 1)} of ${total} ${noun}`;
+  }
+
+  /** True when the company has no quotation at all (not just none matching the filter). */
+  get empty(): boolean {
+    return !this.loading && !this.loadFailed && this.rows.length === 0;
+  }
+
+  get columns(): number {
+    return 6 + (this.showUpdated ? 1 : 0);
+  }
+
+  load(): void {
+    this.loading = true;
+    this.loadFailed = false;
+    this._dataService
+      .getAllQuotations()
+      .pipe(finalize(() => (this.loading = false)))
+      .subscribe({
+        next: (res) => {
+          this.loading = false;
+          if (!res?.success) {
+            this.loadFailed = true;
+            return;
+          }
+          this.rows = toQuotationRows(res.data);
+          this.showTabs = apiHasStatus(res.data);
+          this.tabs = buildStatusTabs(this.rows);
+          if (!this.showTabs || !this.tabs.some((tab) => tab.key === this.activeTab)) {
+            this.activeTab = 'all';
+          }
+          this.showUpdated = this.rows.some((row) => !!row.updatedAt);
+          if (this._pendingEditId) {
+            this._openEditById(this._pendingEditId);
           }
         },
-        (err) => {
-          this._toastService.showError(err.error.message);
-        }
-      );
+        error: () => (this.loadFailed = true),
+      });
+  }
+
+  selectTab(tab: StatusTab): void {
+    this.activeTab = tab.key;
+    this.page = 0;
+  }
+
+  onSearch(): void {
+    this.page = 0;
+  }
+
+  clearFilters(): void {
+    this.search = '';
+    this.activeTab = 'all';
+    this.page = 0;
+  }
+
+  previous(): void {
+    this.page = Math.max(0, Math.min(this.page, this.pageCount - 1) - 1);
+  }
+
+  next(): void {
+    this.page = Math.min(this.pageCount - 1, this.page + 1);
+  }
+
+  updated(row: QuotationRow): string {
+    return shortDate(row.updatedAt);
+  }
+
+  open(row: QuotationRow): void {
+    this._router.navigate(['/quotation/detail', row.id]);
+  }
+
+  /** The whole row opens the quotation; links and buttons inside it keep their own job. */
+  onRowClick(event: MouseEvent, row: QuotationRow): void {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('a, button, input')) {
+      return;
+    }
+    this.open(row);
+  }
+
+  openMenu(event: Event, row: QuotationRow): void {
+    const billed = row.status === 'billed';
+    this.menuItems = [
+      { label: 'Open', icon: 'pi pi-arrow-right', command: () => this.open(row) },
+      {
+        label: 'Rename or change customer',
+        icon: 'pi pi-pencil',
+        visible: !billed,
+        command: () => this.openEdit(row),
+      },
+      { label: 'Duplicate', icon: 'pi pi-copy', command: () => (this.duplicateRow = row) },
+      { separator: true, visible: !billed },
+      {
+        label: 'Delete',
+        icon: 'pi pi-trash',
+        styleClass: 'danger',
+        visible: !billed,
+        command: () => (this.deleteRow = row),
+      },
+    ];
+    this.rowMenu?.toggle(event);
+  }
+
+  openNew(): void {
+    this.editRow = null;
+    this.dialogOpen = true;
+  }
+
+  openEdit(row: QuotationRow): void {
+    this.editRow = row;
+    this.dialogOpen = true;
+  }
+
+  closeDialog(): void {
+    this.dialogOpen = false;
+    this.editRow = null;
+    this._clearQuery();
+  }
+
+  /** A new or changed quotation opens on its own page, ready for the first window. */
+  onSaved(id: number): void {
+    this.dialogOpen = false;
+    this.editRow = null;
+    this._router.navigate(['/quotation/detail', id]);
+  }
+
+  onDuplicated(id: number): void {
+    this.duplicateRow = null;
+    this._toastService.showSuccess('Quotation duplicated');
+    this._router.navigate(['/quotation/detail', id]);
+  }
+
+  confirmDelete(): void {
+    const row = this.deleteRow;
+    if (!row || this.deleting) {
+      return;
+    }
+    this.deleting = true;
+    this._dataService
+      .deleteQuotation(row.id)
+      .pipe(finalize(() => (this.deleting = false)))
+      .subscribe({
+        next: (res) => {
+          if (!res?.success) {
+            this._toastService.showError(res?.message || 'We could not delete the quotation.');
+            return;
+          }
+          this.deleteRow = null;
+          this.rows = this.rows.filter((r) => r.id !== row.id);
+          this.tabs = buildStatusTabs(this.rows);
+          this._toastService.showSuccess(`“${row.name}” deleted`);
+        },
+        error: (err) => this._toastService.showError(errorText(err, 'We could not delete the quotation.')),
+      });
+  }
+
+  trackById(_: number, row: QuotationRow): number {
+    return row.id;
+  }
+
+  private _openEditById(id: number): void {
+    if (!id) {
+      return;
+    }
+    const row = this.rows.find((r) => r.id === id);
+    if (row) {
+      this._pendingEditId = 0;
+      this.openEdit(row);
+    } else if (this.loading) {
+      this._pendingEditId = id;
     } else {
-      this._toastService.showError('Please select quotation!');
+      this._pendingEditId = 0;
+      this._clearQuery();
     }
   }
 
-  /**
-   * Copy Quotation start
-   */
-  /** Fetch the dialog's dropdown data once, on the first open (not in ngOnInit). */
-  private _loadCopyDropdowns(): void {
-    if (this.copyDropdownsLoaded) {
-      return;
-    }
-    this.copyDropdownsLoaded = true;
-    this._areaService.getAreaList().subscribe((res) => {
-      if (res.success) this.areaList = res.data;
-    });
-    this._customerService.getCustomerList().subscribe((res) => {
-      if (res.success) this.customerList = res.data;
-    });
-    this._dropdownService.allDropDowns().subscribe((res) => {
-      if (res.success) {
-        this.colors = res.data.profile_color;
-        this.glassList = res.data.costhead;
-        this.slidingTypes = res.data.slidding_type || [];
-      }
-    });
-  }
-
-  private _initCopyForm(): FormGroup {
-    const fg = this._fb.group({
-      area_id: ['', [Validators.required]],
-      customer_id: ['', [Validators.required]],
-      customer_address_id: ['', [Validators.required]],
-      color_id: [''], // '' = keep original profile color
-      glazz_id: [''], // '' = keep original glass
-      is_track: [''], // '' = keep original track (sliding windows only)
-    });
-    fg.controls.customer_id.valueChanges.subscribe((res) => {
-      if (res) {
-        this._customerService
-          .getCustomerAddressList({ customer_id: res })
-          .subscribe((list) => {
-            if (list.success) {
-              this.customerAddressList = list.data;
-            }
-          });
-      } else {
-        this.customerAddressList = [];
-      }
-    });
-    return fg;
-  }
-
-  public openCopy(quotation: IQuotationDto): void {
-    this.copySubmitted = false;
-    this.sourceDetail = null;
-    this._loadCopyDropdowns();
-    // Pull the full quotation (header + line items with their saved specs).
-    this._dataService.getQuotationDetail(quotation.id).subscribe(
-      (res) => {
-        if (!res.success) {
-          this._toastService.showError(res.message);
-          return;
-        }
-        const detail: any = res.data;
-        this.sourceDetail = detail;
-
-        // Show the Track option only when the quotation contains sliding windows.
-        this.hasSliding = (detail.quatation_product || []).some((line: any) => {
-          const opd = this._getOldPostData(line);
-          return opd?.category_type === 'Slidding';
-        });
-
-        let addressId: any = '';
-        try {
-          const addr =
-            typeof detail.customer_address === 'string'
-              ? JSON.parse(detail.customer_address)
-              : detail.customer_address;
-          addressId = addr?.id ?? '';
-        } catch {
-          addressId = '';
-        }
-
-        // Preload the source customer's addresses, then prefill the form.
-        this._customerService
-          .getCustomerAddressList({ customer_id: detail.customer_id })
-          .subscribe((list) => {
-            if (list.success) this.customerAddressList = list.data;
-            // Coerce ids to strings so they match the <option> string values even
-            // after the address list re-renders (avoids a first-open prefill miss).
-            // emitEvent:false — the address list is already loaded above; letting
-            // customer_id.valueChanges refetch replaces the options after the
-            // prefill and drops the selected address back to the placeholder.
-            this.copyForm.reset(
-              {
-                area_id: detail.area_id != null ? String(detail.area_id) : '',
-                customer_id: detail.customer_id != null ? String(detail.customer_id) : '',
-                customer_address_id:
-                  addressId != null && addressId !== '' ? String(addressId) : '',
-                color_id: '',
-                glazz_id: '',
-                is_track: '',
-              },
-              { emitEvent: false }
-            );
-          });
-
-        this.copyVisible = true;
-      },
-      (err) => {
-        this._toastService.showError(err?.error?.message || 'Unable to load quotation');
-      }
-    );
-  }
-
-  public handleCopyModal(visible: boolean): void {
-    this.copyVisible = visible;
-    if (!visible) {
-      this.copySubmitted = false;
+  private _clearQuery(): void {
+    const params = this._route.snapshot.queryParamMap;
+    if (params.has('new') || params.has('edit')) {
+      this._router.navigate([], { relativeTo: this._route, queryParams: {}, replaceUrl: true });
     }
   }
-
-  public closeCopy(): void {
-    this.copyVisible = false;
-    this.copySubmitted = false;
-  }
-
-  public submitCopy(): void {
-    this.copySubmitted = true;
-    if (this.copyForm.invalid || !this.sourceDetail) {
-      return;
-    }
-
-    const lines: any[] = this.sourceDetail.quatation_product || [];
-    if (!lines.length) {
-      this._toastService.showError('This quotation has no windows/doors to copy.');
-      return;
-    }
-
-    const fv = this.copyForm.getRawValue();
-    this.copying = true;
-
-    const header = {
-      area_id: fv.area_id,
-      customer_id: fv.customer_id,
-      customer_address_id: fv.customer_address_id,
-      quatation_name: (this.sourceDetail.quatation_name || '') + ' (Copy)',
-    };
-
-    this._dataService.addQuotationDetail(header).subscribe(
-      (hres) => {
-        if (!hres.success) {
-          this.copying = false;
-          this._toastService.showError(hres.message);
-          return;
-        }
-        const newId = hres.data.id;
-
-        const payloads = lines
-          .map((line) =>
-            this._buildLinePayload(line, newId, fv.color_id, fv.glazz_id, fv.is_track)
-          )
-          .filter((p) => !!p);
-
-        if (!payloads.length) {
-          this.copying = false;
-          this._toastService.showSuccess('Quotation copied successfully');
-          this.copyVisible = false;
-          this._router.navigate([`quotation/detail/${newId}`]);
-          return;
-        }
-
-        // Post each window/door sequentially so the grand-total recalculation
-        // on the server stays consistent.
-        from(payloads)
-          .pipe(
-            concatMap((payload) =>
-              this._dataService.quotationManageProduct(payload)
-            ),
-            toArray(),
-            finalize(() => {
-              this.copying = false;
-            })
-          )
-          .subscribe({
-            next: () => {
-              this._toastService.showSuccess('Quotation copied successfully');
-              this.copyVisible = false;
-              this._router.navigate([`quotation/detail/${newId}`]);
-            },
-            error: (err) => {
-              this._toastService.showError(
-                err?.error?.message || 'Failed to copy some windows/doors.'
-              );
-            },
-          });
-      },
-      (err) => {
-        this.copying = false;
-        this._toastService.showError(err?.error?.message || 'Failed to copy quotation.');
-      }
-    );
-  }
-
-  /**
-   * Build a manage-product payload for a copied line, mirroring what the design
-   * screen posts. The original spec is read from costhead_information.old_post_data
-   * and the chosen profile color / glass (if any) is applied before recalculation.
-   */
-  private _getOldPostData(line: any): any {
-    let ci = line?.costhead_information;
-    if (typeof ci === 'string') {
-      try {
-        ci = JSON.parse(ci);
-      } catch {
-        ci = null;
-      }
-    }
-    return ci?.old_post_data ?? null;
-  }
-
-  private _buildLinePayload(
-    line: any,
-    newQuatationId: number,
-    colorId: any,
-    glazzId: any,
-    trackId: any
-  ): any {
-    const opd = this._getOldPostData(line);
-    if (!opd) {
-      return null;
-    }
-
-    const part: any = { ...opd };
-    if (colorId) part.color_id = colorId;
-    if (glazzId) part.glazz_id = glazzId;
-    // Track override only makes sense for sliding windows.
-    if (trackId && part.category_type === 'Slidding') {
-      part.is_track = trackId;
-    }
-
-    const colorObj = this.colors.find((c) => c.id === Number(part.color_id));
-
-    return {
-      quatation_id: newQuatationId,
-      is_saved: true,
-      quantity: line.quantity,
-      width: opd.width,
-      height: opd.height,
-      color: colorObj,
-      profile_color: colorObj?.color_code || '#ffffff',
-      mullion: opd.mullion || [],
-      parts: [part],
-      // Carry the window/door preview image over to the copy.
-      image: line.image || null,
-    };
-  }
-  /**
-   * Copy Quotation end
-   */
 }

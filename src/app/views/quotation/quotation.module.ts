@@ -26,7 +26,9 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { InputTextModule } from 'primeng/inputtext';
 import { SubQuotationComponent } from './sub-quotation/sub-quotation.component';
-import { AddComponent } from './add/add.component';
+import { QuotationDialogComponent } from './add/quotation-dialog.component';
+import { DuplicateQuotationDialogComponent } from './add/duplicate-quotation-dialog.component';
+import { MenuModule } from 'primeng/menu';
 import { CheckboxModule } from 'primeng/checkbox';
 import { PrintQuotationPdfComponent } from './sub-quotation/print-quotation-pdf/print-quotation-pdf.component';
 import { DialogService, DynamicDialogModule } from 'primeng/dynamicdialog';
@@ -44,7 +46,8 @@ import { SharedComponentsModule } from '../../shared/components/shared-component
   declarations: [
     QuotationComponent,
     SubQuotationComponent,
-    AddComponent,
+    QuotationDialogComponent,
+    DuplicateQuotationDialogComponent,
     PrintQuotationPdfComponent,
     DetailComponent,
     DetailDesignComponent,
@@ -85,6 +88,7 @@ import { SharedComponentsModule } from '../../shared/components/shared-component
     InputNumberModule,
     DropdownModule,
     ButtonModule,
+    MenuModule,
   ],
   providers: [DialogService],
 })

@@ -1,0 +1,34 @@
+.nq-form {
+  gap: var(--s-4);
+}
+
+.nq-switch {
+  align-self: flex-start;
+  margin-inline-start: calc(var(--s-3) * -1);
+  color: var(--c-accent-text);
+}
+
+.nq-option {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+  width: 100%;
+}
+
+.nq-footer {
+  padding: var(--s-1);
+  border-block-start: 1px solid var(--c-border);
+}
+
+.nq-add {
+  width: 100%;
+  justify-content: flex-start;
+  color: var(--c-accent-text);
+
+  span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

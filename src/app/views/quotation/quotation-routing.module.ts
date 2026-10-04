@@ -1,11 +1,6 @@
-import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
+import { inject, NgModule } from '@angular/core';
+import { ActivatedRouteSnapshot, Router, RouterModule, Routes } from '@angular/router';
 import { QuotationComponent } from './quotation.component';
-import { QuotationResolver } from './quotation.resolver';
-import { AddComponent } from './add/add.component';
-import { CustomerListResolver } from '../customers/customer-list.resolver';
-import { AreaResolver } from '../area/area.resolver';
-import { AddResolver } from './add/add.resolver';
 import { SubQuotationComponent } from './sub-quotation/sub-quotation.component';
 import { SubQuotationResolver } from './sub-quotation/sub-quotation.resolver';
 import { ProfileListResolver } from 'src/app/shared/resolver/profile-list.resolver';
@@ -14,27 +9,31 @@ import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-desig
 import { MullionResolver } from '../../shared/resolver/mullion.resolver';
 import { SubQuotationDesignResolver } from './sub-quotation/sub-quotation-design/sub-quotation-design.resolver';
 import { SuperSystemComponent } from './sub-quotation/super-system/super-system.component';
+
+/**
+ * "New quotation" and "edit quotation" are dialogs on the list now, not
+ * pages. The old addresses still work: they land on the list with the
+ * dialog open, so links from Home and from the quotation page keep working.
+ */
+export const openNewQuotationDialog = () => inject(Router).createUrlTree(['/quotation'], { queryParams: { new: 1 } });
+export const openEditQuotationDialog = (route: ActivatedRouteSnapshot) =>
+  inject(Router).createUrlTree(['/quotation'], { queryParams: { edit: route.params['id'] } });
+
 const routes: Routes = [
   {
+    // The list loads its own data, so it can show a skeleton and an inline error.
     path: '',
     component: QuotationComponent,
-    resolve: { list: QuotationResolver },
   },
   {
     path: 'add',
-    component: AddComponent,
-    resolve: { customerList: CustomerListResolver, areaList: AreaResolver },
-    data: { edit: false },
+    canActivate: [openNewQuotationDialog],
+    component: QuotationComponent,
   },
   {
     path: 'edit/:id',
-    component: AddComponent,
-    resolve: {
-      detail: AddResolver,
-      customerList: CustomerListResolver,
-      areaList: AreaResolver,
-    },
-    data: { edit: true },
+    canActivate: [openEditQuotationDialog],
+    component: QuotationComponent,
   },
   {
     path: 'detail/:id',

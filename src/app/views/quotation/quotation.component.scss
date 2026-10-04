@@ -1,0 +1,73 @@
+:host {
+  display: block;
+}
+
+app-callout {
+  margin-block-end: var(--s-4);
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.q-row {
+  cursor: pointer;
+}
+
+// The name and its number sit on two lines inside one row.
+.q-row td:first-child {
+  padding-block: var(--s-2);
+}
+
+.title {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.table {
+  table-layout: auto;
+}
+
+.table td:first-child {
+  max-width: 320px;
+}
+
+.q-skeleton td {
+  cursor: default;
+}
+
+.q-none:hover td {
+  background: transparent !important;
+}
+
+.q-none-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-3);
+  padding-block: var(--s-8);
+}
+
+// The customer moves under the name when its own column is hidden.
+.show-tablet {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .show-tablet {
+    display: inline;
+  }
+
+  .toolbar .input-group {
+    width: auto;
+    flex: 1;
+  }
+
+  .toolbar .grow {
+    display: none;
+  }
+}

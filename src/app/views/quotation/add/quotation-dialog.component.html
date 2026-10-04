@@ -1,0 +1,155 @@
+<p-dialog
+  [header]="title"
+  [visible]="visible"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!saving"
+  [dismissableMask]="false"
+  [style]="{ width: '440px' }"
+  styleClass="quotation-dialog"
+>
+  <form [formGroup]="form" class="u-col nq-form" (ngSubmit)="submit()" novalidate>
+    <app-callout tone="warn" *ngIf="customersFailed">
+      We could not load your customers. You can still add a new one.
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="loadCustomers()">Try again</button>
+    </app-callout>
+
+    <!-- Customer: pick one that exists -->
+    <div class="field" *ngIf="mode === 'existing'">
+      <label class="label" for="nq-customer">Customer</label>
+      <p-dropdown
+        #customerDropdown
+        inputId="nq-customer"
+        formControlName="customer_id"
+        [options]="customers"
+        optionLabel="name"
+        optionValue="id"
+        [filter]="true"
+        filterBy="name,phone"
+        filterPlaceholder="Search by name or phone"
+        [placeholder]="loadingCustomers ? 'Loading customers…' : 'Choose a customer'"
+        [autofocus]="true"
+        appendTo="body"
+        [style]="{ width: '100%' }"
+        [styleClass]="customerError ? 'ng-invalid ng-dirty' : ''"
+        [attr.aria-describedby]="customerError ? 'nq-customer-error' : null"
+        (onFilter)="onFilter($event)"
+      >
+        <ng-template pTemplate="item" let-customer>
+          <span class="nq-option">
+            <span>{{ customer.name }}</span>
+            <bdi class="faint tiny num" *ngIf="customer.phone">{{ customer.phone }}</bdi>
+          </span>
+        </ng-template>
+        <ng-template pTemplate="emptyfilter">
+          <span class="muted small">No customer matches “{{ filterText }}”.</span>
+        </ng-template>
+        <ng-template pTemplate="empty">
+          <span class="muted small">{{ loadingCustomers ? 'Loading customers…' : 'No customers yet.' }}</span>
+        </ng-template>
+        <ng-template pTemplate="footer">
+          <div class="nq-footer">
+            <button type="button" class="btn btn-ghost btn-sm nq-add" (click)="startNewCustomer()">
+              <app-icon name="user-plus"></app-icon>
+              <span *ngIf="filterText; else plainAdd">Add “{{ filterText }}” as a new customer</span>
+              <ng-template #plainAdd>New customer</ng-template>
+            </button>
+          </div>
+        </ng-template>
+      </p-dropdown>
+      <span class="error" id="nq-customer-error" *ngIf="customerError">{{ customerError }}</span>
+      <button type="button" class="btn btn-ghost btn-sm nq-switch" (click)="startNewCustomer()">
+        <app-icon name="user-plus"></app-icon>New customer
+      </button>
+    </div>
+
+    <!-- Customer: type a new one, name and phone only -->
+    <ng-container *ngIf="mode === 'new'">
+      <div class="field">
+        <label class="label" for="nq-new-name">Customer name</label>
+        <input
+          class="input"
+          id="nq-new-name"
+          type="text"
+          formControlName="customer_name"
+          autocomplete="off"
+          maxlength="191"
+          autofocus
+          [class.is-invalid]="newNameError"
+          [attr.aria-invalid]="newNameError ? 'true' : null"
+          [attr.aria-describedby]="newNameError ? 'nq-new-name-error' : null"
+        />
+        <span class="error" id="nq-new-name-error" *ngIf="newNameError">{{ newNameError }}</span>
+      </div>
+      <div class="field">
+        <label class="label" for="nq-new-phone">Phone</label>
+        <input
+          class="input num"
+          id="nq-new-phone"
+          type="tel"
+          inputmode="tel"
+          formControlName="customer_phone"
+          autocomplete="off"
+          maxlength="16"
+          [class.is-invalid]="phoneError"
+          [attr.aria-invalid]="phoneError ? 'true' : null"
+          [attr.aria-describedby]="phoneError ? 'nq-new-phone-error' : 'nq-new-phone-hint'"
+        />
+        <span class="error" id="nq-new-phone-error" *ngIf="phoneError; else phoneHint">{{ phoneError }}</span>
+        <ng-template #phoneHint>
+          <span class="hint" id="nq-new-phone-hint">Address and GSTIN can be added later.</span>
+        </ng-template>
+      </div>
+      <app-callout *ngIf="duplicate as match">
+        <span>{{ match.name }} is already a customer.</span>
+        <button action type="button" class="btn btn-secondary btn-sm" (click)="chooseExisting(match)">
+          Use {{ match.name }}
+        </button>
+      </app-callout>
+      <button
+        type="button"
+        class="btn btn-ghost btn-sm nq-switch"
+        *ngIf="customers.length"
+        (click)="chooseExisting()"
+      >
+        <app-icon name="users"></app-icon>Choose an existing customer
+      </button>
+    </ng-container>
+
+    <div class="field">
+      <label class="label" for="nq-name">Quotation name</label>
+      <input
+        class="input"
+        id="nq-name"
+        type="text"
+        formControlName="quatation_name"
+        autocomplete="off"
+        placeholder="For example: Mehta Villa – windows"
+        [class.is-invalid]="quotationNameError"
+        [attr.aria-invalid]="quotationNameError ? 'true' : null"
+        [attr.aria-describedby]="quotationNameError ? 'nq-name-error' : 'nq-name-hint'"
+        (input)="onNameInput()"
+      />
+      <span class="error" id="nq-name-error" *ngIf="quotationNameError; else nameHint">{{ quotationNameError }}</span>
+      <ng-template #nameHint>
+        <span class="hint" id="nq-name-hint">Shown on the quotation and its PDF. You can change it later.</span>
+      </ng-template>
+    </div>
+
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+
+    <!-- Lets Enter submit the form; the visible buttons are in the dialog footer. -->
+    <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Submit</button>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
+    <p-button
+      [label]="editing ? 'Save changes' : 'Create quotation'"
+      [loading]="saving"
+      (onClick)="submit()"
+    ></p-button>
+  </ng-template>
+</p-dialog>

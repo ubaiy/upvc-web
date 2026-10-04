@@ -1,272 +1,171 @@
-<div class="app-page-surface">
-  <app-page-header
-    eyebrow="Sales"
-    title="Quotations"
-    subtitle="Create, update and convert customer quotations."
-  >
-    <div actions style="gap: 10px; display: flex">
-      <p-button (onClick)="bulkUpdate(true)">Update All</p-button>
-      <p-button (onClick)="bulkUpdate(false)">Update Selected</p-button>
-      <p-button routerLink="add">Add New</p-button>
-    </div>
-  </app-page-header>
+<app-page-header title="Quotations">
+  <!-- One primary button on the page: with no quotation yet it moves into the empty state. -->
+  <button actions type="button" class="btn btn-primary" *ngIf="!empty" (click)="openNew()">
+    <app-icon name="plus"></app-icon>New quotation
+  </button>
+</app-page-header>
 
-  <div class="app-table-card">
-    <div class="app-section-heading">
-      <span class="app-section-heading__title">Quotation list</span>
-    </div>
-    <div class="table-responsive">
-    <p-table
-    #dt1
-    [value]="quotationList"
-    [paginator]="true"
-    [rows]="10"
-    [showCurrentPageReport]="true"
-    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-    [globalFilterFields]="[
-      'quatation_identity',
-      'quatation_name',
-      'name',
-      'grand_total',
-      'description',
-      'actions'
-    ]"
-    (sortFunction)="customSort($event)"
-    [customSort]="true"
-    [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[10, 25, 50]"
+<div class="tabs" role="tablist" aria-label="Filter by status" *ngIf="showTabs && !loading && !loadFailed && !empty">
+  <button
+    type="button"
+    class="tab"
+    role="tab"
+    *ngFor="let tab of tabs"
+    [attr.aria-selected]="activeTab === tab.key"
+    (click)="selectTab(tab)"
   >
-    <ng-template pTemplate="caption">
-      <button
-        pButton
-        label="Clear"
-        class="p-button-outlined"
-        icon="pi pi-filter-slash"
-        (click)="clear(dt1)"
-      ></button>
-      <span class="p-input-icon-left ml-auto">
-        <i class="pi pi-search"></i>
-        <input
-          pInputText
-          type="text"
-          [(ngModel)]="inputValue"
-          (input)="dt1?.filterGlobal(inputValue, 'contains')"
-        />
-      </span>
-    </ng-template>
-    <ng-template pTemplate="header">
-      <tr>
-        <th style="width: 5%" scope="col">Select</th>
-        <th pSortableColumn="quatation_identity" style="width: 10%" scope="col">
-          Quotation Identity
-          <p-sortIcon field="quatation_identity"></p-sortIcon>
-        </th>
-        <th pSortableColumn="quatation_name" style="width: 20%" scope="col">
-          Quotation Name
-          <p-sortIcon field="quatation_name"></p-sortIcon>
-        </th>
-        <th pSortableColumn="name" style="width: 20%" scope="col">
-          Customer Name <p-sortIcon field="name"></p-sortIcon>
-        </th>
-        <th pSortableColumn="grand_total" style="width: 15%" scope="col">
-          Grand Total <p-sortIcon field="grand_total"></p-sortIcon>
-        </th>
-        <th pSortableColumn="phone" style="width: 10%" scope="col">
-          Phone <p-sortIcon field="phone"></p-sortIcon>
-        </th>
-        <th style="width: 20%" scope="col">Actions</th>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-quotation>
-      <tr>
-        <td>
-          <p-checkbox
-            [binary]="true"
-            inputId="binary"
-            [(ngModel)]="quotation.selected"
-          ></p-checkbox>
-        </td>
-        <td>{{ quotation.quatation_identity }}</td>
-        <td>{{ quotation.quatation_name }}</td>
-        <td>{{ quotation.name }}</td>
-        <td>{{ quotation.grand_total | currency : "INR" }}</td>
-        <td>{{ quotation.phone }}</td>
-        <td>
-          <p-button
-            icon="pi pi-pencil"
-            pTooltip="Edit quotation"
-            aria-label="Edit quotation"
-            [rounded]="true"
-            [outlined]="true"
-            [routerLink]="['edit', quotation.id]"
-          ></p-button>
-          <p-button
-            icon="pi pi-calculator"
-            pTooltip="Open quotation details"
-            aria-label="Open quotation details"
-            [rounded]="true"
-            [outlined]="true"
-            [routerLink]="['detail', quotation.id]"
-          ></p-button>
-          <p-button
-            icon="pi pi-money-bill"
-            pTooltip="Convert to Bill"
-            aria-label="Convert to Bill"
-            [rounded]="true"
-            [outlined]="true"
-            [routerLink]="['detail', quotation.id]"
-          ></p-button>
-          <p-button
-            icon="pi pi-copy"
-            pTooltip="Copy Quotation"
-            (onClick)="openCopy(quotation)"
-            [rounded]="true"
-            [outlined]="true"
-          ></p-button>
-          <p-button
-            icon="pi pi-trash"
-            pTooltip="Delete quotation"
-            aria-label="Delete quotation"
-            (onClick)="deleteQuotation(quotation)"
-            [rounded]="true"
-            [outlined]="true"
-            severity="danger"
-          ></p-button>
-        </td>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="emptymessage">
-      <tr>
-        <td colspan="7">No records yet</td>
-      </tr>
-    </ng-template>
-  </p-table>
-    </div>
-  </div>
+    {{ tab.label }}<span class="count">{{ tab.count }}</span>
+  </button>
 </div>
 
-<c-modal
-  id="copyQuotationModal"
-  [visible]="copyVisible"
-  backdrop="static"
-  alignment="center"
-  size="lg"
-  (visibleChange)="handleCopyModal($event)"
+<app-callout tone="warn" *ngIf="loadFailed">
+  We could not load your quotations. Check your connection.
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card" *ngIf="empty">
+  <app-empty-state
+    icon="file"
+    title="No quotations yet"
+    text="Choose a customer, draw the first window and send a priced quotation in a few minutes."
+  >
+    <button type="button" class="btn btn-primary" (click)="openNew()">
+      <app-icon name="plus"></app-icon>New quotation
+    </button>
+  </app-empty-state>
+</section>
+
+<section class="card" *ngIf="!loadFailed && !empty" [attr.aria-busy]="loading">
+  <div class="toolbar">
+    <label class="input-group">
+      <app-icon name="search"></app-icon>
+      <input
+        type="search"
+        placeholder="Search by name, customer or number"
+        aria-label="Search quotations"
+        [(ngModel)]="search"
+        (ngModelChange)="onSearch()"
+        [disabled]="loading"
+      />
+    </label>
+    <span class="grow"></span>
+    <span class="muted small">Newest first</span>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th scope="col">Quotation</th>
+          <th scope="col" class="hide-tablet">Customer</th>
+          <th scope="col" class="hide-tablet">Windows</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="right">Total</th>
+          <th scope="col" class="right hide-tablet" *ngIf="showUpdated">Updated</th>
+          <th scope="col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+
+      <!-- Loading: the same columns, as skeleton rows -->
+      <tbody *ngIf="loading">
+        <tr *ngFor="let i of skeletonRows" class="q-skeleton">
+          <td>
+            <span class="skeleton" [style.width]="['62%', '48%', '70%', '54%', '66%', '44%'][i]"></span>
+          </td>
+          <td class="hide-tablet"><span class="skeleton" [style.width]="['56%', '70%', '48%', '62%', '52%', '66%'][i]"></span></td>
+          <td class="hide-tablet"><span class="skeleton" style="width: 20px"></span></td>
+          <td><span class="skeleton" style="width: 56px"></span></td>
+          <td class="right"><span class="skeleton" style="width: 84px; margin-inline-start: auto"></span></td>
+          <td></td>
+        </tr>
+      </tbody>
+
+      <tbody *ngIf="!loading">
+        <tr *ngFor="let row of pageRows; trackBy: trackById" class="q-row" (click)="onRowClick($event, row)">
+          <td>
+            <a class="title" [routerLink]="['/quotation/detail', row.id]">{{ row.name }}</a>
+            <div class="faint tiny">
+              <bdi>{{ row.number }}</bdi>
+              <span class="show-tablet" *ngIf="row.customerName"> · {{ row.customerName }}</span>
+            </div>
+          </td>
+          <td class="muted hide-tablet">{{ row.customerName || '—' }}</td>
+          <td class="muted num hide-tablet">{{ row.windows === null ? '—' : row.windows }}</td>
+          <td>
+            <span class="badge" [ngClass]="statusBadge[row.status]">{{ statusLabels[row.status] }}</span>
+          </td>
+          <td class="right num">{{ row.total | inr }}</td>
+          <td class="right muted small hide-tablet" *ngIf="showUpdated">{{ updated(row) }}</td>
+          <td class="row-actions">
+            <button
+              type="button"
+              class="btn btn-ghost btn-icon btn-sm"
+              aria-haspopup="menu"
+              [attr.aria-label]="'More actions for ' + row.name"
+              (click)="openMenu($event, row)"
+            >
+              <app-icon name="more"></app-icon>
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="!pageRows.length" class="q-none">
+          <td [attr.colspan]="columns">
+            <div class="q-none-body">
+              <span class="muted">No quotations match{{ search ? ' “' + search + '”' : ' this filter' }}.</span>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="clearFilters()">
+                {{ search ? 'Clear search' : 'Show all' }}
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="table-foot" *ngIf="!loading">
+    <span role="status">{{ footText }}</span>
+    <span class="u-row" style="gap: var(--s-2)">
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="page <= 0" (click)="previous()">Previous</button>
+      <button type="button" class="btn btn-secondary btn-sm" [disabled]="page >= pageCount - 1" (click)="next()">Next</button>
+    </span>
+  </div>
+  <span class="sr-only" role="status" *ngIf="loading">Loading your quotations</span>
+</section>
+
+<p-menu #rowMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+
+<app-quotation-dialog
+  [visible]="dialogOpen"
+  [quotation]="editRow"
+  (closed)="closeDialog()"
+  (saved)="onSaved($event)"
+></app-quotation-dialog>
+
+<app-duplicate-quotation-dialog
+  [visible]="!!duplicateRow"
+  [quotation]="duplicateRow"
+  (closed)="duplicateRow = null"
+  (saved)="onDuplicated($event)"
+></app-duplicate-quotation-dialog>
+
+<p-dialog
+  header="Delete this quotation?"
+  [visible]="!!deleteRow"
+  (visibleChange)="$event ? null : (deleteRow = null)"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!deleting"
+  [style]="{ width: '440px' }"
 >
-  <c-modal-header>
-    <h5 cModalTitle>Copy Quotation</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <form [formGroup]="copyForm">
-      <c-row class="mb-3">
-        <label cLabel="col" class="col-sm-4" for="copyCustomer">Customer</label>
-        <c-col [sm]="8">
-          <select cSelect id="copyCustomer" formControlName="customer_id">
-            <option value="">Select customer</option>
-            <option *ngFor="let customer of customerList" [value]="customer.id">
-              {{ customer.name }}
-            </option>
-          </select>
-          <small
-            class="error"
-            *ngIf="cf['customer_id']?.errors?.['required'] && copySubmitted"
-            >Customer is required</small
-          >
-        </c-col>
-      </c-row>
-
-      <c-row class="mb-3">
-        <label cLabel="col" class="col-sm-4" for="copyAddress">Address</label>
-        <c-col [sm]="8">
-          <select cSelect id="copyAddress" formControlName="customer_address_id">
-            <option value="">Select address</option>
-            <option *ngFor="let address of customerAddressList" [value]="address.id">
-              {{ address.name }} - {{ address.flat_no }} {{ address.address }},
-              {{ address.city }}
-            </option>
-          </select>
-          <small
-            class="error"
-            *ngIf="cf['customer_address_id']?.errors?.['required'] && copySubmitted"
-            >Address is required</small
-          >
-        </c-col>
-      </c-row>
-
-      <c-row class="mb-3">
-        <label cLabel="col" class="col-sm-4" for="copyArea">Area</label>
-        <c-col [sm]="8">
-          <select cSelect id="copyArea" formControlName="area_id">
-            <option value="">Select area</option>
-            <option *ngFor="let area of areaList" [value]="area.id">
-              {{ area.name }}
-            </option>
-          </select>
-          <small
-            class="error"
-            *ngIf="cf['area_id']?.errors?.['required'] && copySubmitted"
-            >Area is required</small
-          >
-        </c-col>
-      </c-row>
-
-      <hr />
-      <p class="text-medium-emphasis small mb-3">
-        Leave the options below as <strong>Keep original</strong> to duplicate the
-        quotation as-is, or pick a new profile color / glass to apply it to every
-        window &amp; door in the copy (prices are recalculated).
-      </p>
-
-      <c-row class="mb-3">
-        <label cLabel="col" class="col-sm-4" for="copyColor">Profile Color</label>
-        <c-col [sm]="8">
-          <select cSelect id="copyColor" formControlName="color_id">
-            <option value="">Keep original</option>
-            <option *ngFor="let color of colors" [value]="color.id">
-              {{ color.color_name }}
-            </option>
-          </select>
-        </c-col>
-      </c-row>
-
-      <c-row class="mb-3">
-        <label cLabel="col" class="col-sm-4" for="copyGlass">Glass</label>
-        <c-col [sm]="8">
-          <select cSelect id="copyGlass" formControlName="glazz_id">
-            <option value="">Keep original</option>
-            <option *ngFor="let glass of glassList" [value]="glass.id">
-              {{ glass.name }}
-            </option>
-          </select>
-        </c-col>
-      </c-row>
-
-      <c-row class="mb-3" *ngIf="hasSliding">
-        <label cLabel="col" class="col-sm-4" for="copyTrack">Track</label>
-        <c-col [sm]="8">
-          <select cSelect id="copyTrack" formControlName="is_track">
-            <option value="">Keep original</option>
-            <option *ngFor="let track of slidingTypes" [value]="track">
-              {{ track }}
-            </option>
-          </select>
-          <small class="text-medium-emphasis d-block mt-1"
-            >Applies to sliding windows only.</small
-          >
-        </c-col>
-      </c-row>
-    </form>
-  </c-modal-body>
-  <c-modal-footer>
-    <p-button
-      styleClass="p-button-secondary"
-      [disabled]="copying"
-      (click)="closeCopy()"
-    >
-      Cancel
-    </p-button>
-    <p-button [disabled]="copying" (click)="submitCopy()">
-      {{ copying ? "Copying..." : "Copy" }}
-    </p-button>
-  </c-modal-footer>
-</c-modal>
+  <p class="muted" *ngIf="deleteRow as row">
+    “{{ row.name }}” (<bdi>{{ row.number }}</bdi
+    >)<ng-container *ngIf="row.windows">
+      and its {{ row.windows === 1 ? 'window' : row.windows + ' windows' }}</ng-container
+    >, worth {{ row.total | inr }}, will be deleted. This cannot be undone.
+  </p>
+  <ng-template pTemplate="footer">
+    <p-button label="Keep it" [outlined]="true" [disabled]="deleting" (onClick)="deleteRow = null"></p-button>
+    <p-button label="Delete quotation" severity="danger" [loading]="deleting" (onClick)="confirmDelete()"></p-button>
+  </ng-template>
+</p-dialog>
