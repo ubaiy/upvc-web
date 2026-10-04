@@ -281,7 +281,7 @@ describe('SubQuotationComponent (quotation page)', () => {
 
   it('offers Duplicate for the quotation and for each window', () => {
     create();
-    expect(pageMenu().labels).toEqual(['Edit details', 'Duplicate', 'Update prices', 'Delete']);
+    expect(pageMenu().labels).toEqual(['Edit details', 'Duplicate', 'Production', 'Update prices', 'Delete']);
     const line = lineMenu(0);
     expect(line.labels).toEqual(['Edit', 'Rename', 'Duplicate', 'Delete']);
     service.duplicateLine.and.returnValue(ok({ id: 50 }));
@@ -292,12 +292,12 @@ describe('SubQuotationComponent (quotation page)', () => {
 
   it('offers what fits a sent quotation in the more menu', () => {
     show({ status: 'sent' });
-    expect(pageMenu().labels).toEqual(['Edit details', 'Duplicate', 'Revise (R1)', 'Send again', 'Mark as declined', 'Delete']);
+    expect(pageMenu().labels).toEqual(['Edit details', 'Duplicate', 'Production', 'Revise (R1)', 'Send again', 'Mark as declined', 'Delete']);
   });
 
   it('keeps a billed quotation read only', () => {
     show({ status: 'billed', bill: { id: 3, number: 'INV/26-27/0002', bill_date: '2026-10-04', total: 20730 } });
-    expect(pageMenu().labels).toEqual(['Duplicate']);
+    expect(pageMenu().labels).toEqual(['Duplicate', 'Production']);
     expect(el().querySelector('.item .btn-icon')).toBeNull();
     expect(el().querySelector('.terms .link')).toBeNull();
   });
@@ -325,6 +325,17 @@ describe('SubQuotationComponent (quotation page)', () => {
     create();
     component.onDuplicated({ id: 40, number: 'Q-0010', pricesChanged: true });
     expect(router.navigate).toHaveBeenCalledWith(['/quotation/detail', 40], { queryParams: { repriced: 1 } });
+  });
+
+  it('links to Production for a quotation with windows, as a secondary action', () => {
+    create();
+    pageMenu().pick('Production');
+    expect(router.navigate).toHaveBeenCalledWith(['/production', 14]);
+  });
+
+  it('has no Production link while there is no window', () => {
+    show({ quatation_product: [], totals: { ...sampleQuotation().totals, items: [], item_count: 0 } });
+    expect(pageMenu().labels).not.toContain('Production');
   });
 
   it('marks an earlier version as read only and points to the current one', () => {

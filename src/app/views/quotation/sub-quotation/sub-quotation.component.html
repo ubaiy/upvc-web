@@ -259,7 +259,14 @@
     </aside>
   </div>
 
-  <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>
+  <p-menu #menu [model]="menuItems" [popup]="true" appendTo="body">
+    <ng-template pTemplate="item" let-item>
+      <a class="p-menuitem-link" tabindex="-1">
+        <app-icon *ngIf="item.state?.icon" [name]="item.state.icon"></app-icon>
+        <span class="p-menuitem-text">{{ item.label }}</span>
+      </a>
+    </ng-template>
+  </p-menu>
 
   <app-summary-dialog
     [visible]="summaryOpen"

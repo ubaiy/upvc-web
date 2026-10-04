@@ -346,6 +346,16 @@ export function primaryAction(view: QuotationView): PrimaryAction {
   }
 }
 
+/** Label and icon of the primary button, per action. */
+export const PRIMARY_BUTTON: Record<Exclude<PrimaryAction, null>, { label: string; icon: string }> = {
+  send: { label: 'Send quotation', icon: 'send' },
+  accept: { label: 'Mark as accepted', icon: 'check' },
+  bill: { label: 'Create bill', icon: 'receipt' },
+  'bill-pdf': { label: 'Download bill', icon: 'download' },
+  revise: { label: 'Revise quotation', icon: 'pencil' },
+  'open-current': { label: 'Open current version', icon: 'arrow-right' },
+};
+
 /** "Quotation-Q-0003-Ahmed-Al-Rashid.pdf" */
 export function pdfFileName(view: QuotationView): string {
   const slug = (value: string) => value.replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '');

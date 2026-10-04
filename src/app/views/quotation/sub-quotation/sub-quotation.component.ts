@@ -13,33 +13,17 @@ import { QuotationService } from '../quotation.service';
 import { errorText, QuotationRow, toQuotationRow } from '../quotation-list.model';
 import {
   pdfFileName,
+  PRIMARY_BUTTON,
   primaryAction,
   PrimaryAction,
   QuotationLine,
   QuotationView,
   toQuotationView,
 } from './detail/quotation-detail.model';
+import { lineMenu, LineMenuAction, pageMenu, PageMenuAction } from './detail/quotation-menus';
 
 /** What the user was doing when a sent quotation asked "Create revision?". */
 type ReviseIntent = { kind: 'none' | 'add' | 'summary' } | { kind: 'edit'; position: number };
-
-const PRIMARY_LABEL: Record<Exclude<PrimaryAction, null>, string> = {
-  send: 'Send quotation',
-  accept: 'Mark as accepted',
-  bill: 'Create bill',
-  'bill-pdf': 'Download bill',
-  revise: 'Revise quotation',
-  'open-current': 'Open current version',
-};
-
-const PRIMARY_ICON: Record<Exclude<PrimaryAction, null>, string> = {
-  send: 'send',
-  accept: 'check',
-  bill: 'receipt',
-  'bill-pdf': 'download',
-  revise: 'pencil',
-  'open-current': 'arrow-right',
-};
 
 /**
  * The quotation page (card U4): windows on the left, customer and the Summary
@@ -119,11 +103,11 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   }
 
   get primaryLabel(): string {
-    return this.primary ? PRIMARY_LABEL[this.primary] : '';
+    return this.primary ? PRIMARY_BUTTON[this.primary].label : '';
   }
 
   get primaryIcon(): any {
-    return this.primary ? PRIMARY_ICON[this.primary] : 'check';
+    return this.primary ? PRIMARY_BUTTON[this.primary].icon : 'check';
   }
 
   /** Draft with no window yet: the empty state carries the page's one primary button. */
@@ -428,47 +412,28 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   // ----- menus ----------------------------------------------------------------
 
   openMenu(event: Event): void {
-    const view = this.view!;
-    const status = view.status;
-    const open = !view.supersededBy && status !== 'billed';
-    const items: MenuItem[] = [];
-    if (open) {
-      items.push({ label: 'Edit details', command: () => (this.editRow = toQuotationRow(this._listRow())) });
-    }
-    items.push({ label: 'Duplicate', command: () => (this.duplicateOpen = true) });
-    if (view.revisable && this.primary !== 'revise') {
-      items.push({ label: `Revise (${view.nextRevision})`, command: () => (this.reviseIntent = { kind: 'none' }) });
-    }
-    if (open && status !== 'draft' && status !== 'declined' && view.lines.length) {
-      items.push({ label: 'Send again', command: () => (this.sendOpen = true) });
-    }
-    if (open && (status === 'sent' || status === 'expired')) {
-      items.push({ label: 'Mark as declined', command: () => this.setStatus('declined', 'Marked as declined') });
-    }
-    if (open && (status === 'accepted' || status === 'declined')) {
-      items.push({ label: 'Move back to Sent', command: () => this.setStatus('sent', 'Moved back to Sent') });
-    }
-    if (view.editable && view.lines.length) {
-      items.push({ label: 'Update prices', command: () => this.updatePrices() });
-    }
-    if (open) {
-      items.push({ separator: true }, { label: 'Delete', styleClass: 'danger', command: () => (this.deleteOpen = true) });
-    }
-    this._openMenu(event, items);
+    const actions: Record<PageMenuAction, () => void> = {
+      edit: () => (this.editRow = toQuotationRow(this._listRow())),
+      duplicate: () => (this.duplicateOpen = true),
+      production: () => this._router.navigate(['/production', this.id]),
+      revise: () => (this.reviseIntent = { kind: 'none' }),
+      send: () => (this.sendOpen = true),
+      decline: () => this.setStatus('declined', 'Marked as declined'),
+      'back-to-sent': () => this.setStatus('sent', 'Moved back to Sent'),
+      prices: () => this.updatePrices(),
+      delete: () => (this.deleteOpen = true),
+    };
+    this._openMenu(event, pageMenu(this.view!, this.primary === 'revise', (action) => actions[action]()));
   }
 
   openLineMenu(event: Event, line: QuotationLine): void {
-    const view = this.view!;
-    const items: MenuItem[] = [{ label: 'Edit', command: () => this.openLine(line) }];
-    if (view.editable) {
-      items.push(
-        { label: line.label ? 'Rename' : 'Name this window', command: () => this.startRename(line) },
-        { label: 'Duplicate', command: () => this.duplicateLine(line) },
-        { separator: true },
-        { label: 'Delete', styleClass: 'danger', command: () => (this.lineToDelete = line) }
-      );
-    }
-    this._openMenu(event, items);
+    const actions: Record<LineMenuAction, () => void> = {
+      edit: () => this.openLine(line),
+      rename: () => this.startRename(line),
+      duplicate: () => this.duplicateLine(line),
+      delete: () => (this.lineToDelete = line),
+    };
+    this._openMenu(event, lineMenu(this.view!, line, (action) => actions[action]()));
   }
 
   private _openMenu(event: Event, items: MenuItem[]): void {
