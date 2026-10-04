@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { MenuModule } from 'primeng/menu';
 import { of, Subject, throwError } from 'rxjs';
@@ -93,20 +94,46 @@ describe('ListComponent (bills)', () => {
     expect(el().querySelector('a[href^="/quotation"]')).toBeNull();
   });
 
-  it('offers download, the quotation and cancel in the row menu', () => {
+  it('offers payments, download, the quotation and cancel in the row menu', () => {
     create(ok(BILLS));
     const component = fixture.componentInstance;
     component.openMenu(new MouseEvent('click'), component.bills[0]);
     expect(component.menuItems.filter((item) => item.label).map((item) => item.label)).toEqual([
+      'Record payment',
+      'Payments',
       'Download PDF',
       'Open quotation',
       'Cancel bill',
     ]);
     component.openMenu(new MouseEvent('click'), component.bills[1]);
     expect(component.menuItems.filter((item) => item.label).map((item) => item.label)).toEqual([
+      'Record payment',
+      'Payments',
       'Download PDF',
       'Cancel bill',
     ]);
+  });
+
+  it('opens the payments of the bill, with Record payment already open (card PAY2)', () => {
+    create(ok(BILLS));
+    const component = fixture.componentInstance;
+    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const run = (label: string) => component.menuItems.find((item) => item.label === label)?.command?.({} as any);
+    component.openMenu(new MouseEvent('click'), component.bills[0]);
+    run('Record payment');
+    expect(navigate).toHaveBeenCalledWith(['/payments/bill', 2], { queryParams: { record: 1 } });
+    run('Payments');
+    expect(navigate).toHaveBeenCalledWith(['/payments/bill', 2]);
+  });
+
+  it('does not offer Record payment on a cancelled bill', () => {
+    create(ok(BILLS));
+    const component = fixture.componentInstance;
+    component.bills = component.bills.map((row) => ({ ...row, cancelled: true }));
+    component.openMenu(new MouseEvent('click'), component.bills[0]);
+    const labels = component.menuItems.map((item) => item.label);
+    expect(labels).not.toContain('Record payment');
+    expect(labels).toContain('Payments');
   });
 
   it('downloads in one step, taking the GSTIN from the customer', () => {

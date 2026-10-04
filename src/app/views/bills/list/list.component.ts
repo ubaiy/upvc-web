@@ -91,7 +91,18 @@ export class ListComponent implements OnInit {
   }
 
   openMenu(event: Event, bill: BillRow): void {
-    const items: MenuItem[] = [{ label: 'Download PDF', command: () => this.download(bill) }];
+    const items: MenuItem[] = [];
+    // Payments of the bill live in views/payments (card PAY2); ?record=1 opens "Record payment" straight away.
+    if (!bill.cancelled) {
+      items.push({
+        label: 'Record payment',
+        command: () => this._router.navigate(['/payments/bill', bill.id], { queryParams: { record: 1 } }),
+      });
+    }
+    items.push(
+      { label: 'Payments', command: () => this._router.navigate(['/payments/bill', bill.id]) },
+      { label: 'Download PDF', command: () => this.download(bill) }
+    );
     if (bill.quotationId) {
       items.push({
         label: 'Open quotation',

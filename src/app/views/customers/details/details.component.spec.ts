@@ -181,6 +181,12 @@ describe('DetailsComponent (customer page)', () => {
       expect(el().querySelector('app-quote-status')?.textContent).toContain('Billed');
     });
 
+    it('links to the payments of this customer (card PAY2)', () => {
+      const link = el().querySelector('a.payments-link');
+      expect(link?.textContent).toContain('Payments');
+      expect(link?.getAttribute('href')).toBe('/payments?customer=3');
+    });
+
     it('updates the customer and only the address that changed', () => {
       component.form.patchValue({ price_list: 'dealer' });
       component.addresses.at(1).patchValue({ city: 'Nashik' });

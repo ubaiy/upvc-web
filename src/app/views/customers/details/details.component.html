@@ -285,7 +285,11 @@
     </section>
 
     <section class="card" *ngIf="historyState !== 'error'" [attr.aria-busy]="historyState === 'loading'">
-      <div class="card-head"><h2>Bills</h2></div>
+      <div class="card-head">
+        <h2>Bills</h2>
+        <!-- Receipts and refunds of this customer: views/payments (card PAY2). -->
+        <a class="payments-link" [routerLink]="['/payments']" [queryParams]="{ customer: customerId }">Payments</a>
+      </div>
       <div class="card-pad" *ngIf="historyState === 'loading'" aria-hidden="true">
         <span class="skeleton sk-line"></span>
       </div>
