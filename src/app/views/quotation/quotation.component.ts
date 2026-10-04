@@ -202,7 +202,7 @@ export class QuotationComponent implements OnInit, OnDestroy {
     this.menuItems = [
       { label: 'Open', icon: 'pi pi-arrow-right', command: () => this.open(row) },
       {
-        label: 'Rename or change customer',
+        label: 'Edit details',
         icon: 'pi pi-pencil',
         visible: !billed,
         command: () => this.openEdit(row),

@@ -80,7 +80,7 @@ export class QuotationDialogComponent implements OnChanges {
   }
 
   get title(): string {
-    return this.editing ? 'Rename or change customer' : 'New quotation';
+    return this.editing ? 'Edit quotation' : 'New quotation';
   }
 
   get customerError(): string {
@@ -164,12 +164,22 @@ export class QuotationDialogComponent implements OnChanges {
     this.form.patchValue({ customer_id: null, customer_name: this.filterText, customer_phone: '' });
     this.filterText = '';
     this.saveError = '';
+    this.focusFirst();
   }
 
   chooseExisting(customer?: CustomerOption | null): void {
     this.mode = 'existing';
     this.form.patchValue({ customer_id: customer ? customer.id : null, customer_name: '', customer_phone: '' });
     this.saveError = '';
+    this.focusFirst();
+  }
+
+  /** Put the keyboard on the first field: the picker, or the new customer's name. */
+  focusFirst(): void {
+    setTimeout(() => {
+      const id = this.mode === 'new' ? (this._newName() ? 'nq-new-phone' : 'nq-new-name') : 'nq-customer';
+      document.getElementById(id)?.focus();
+    });
   }
 
   onNameInput(): void {

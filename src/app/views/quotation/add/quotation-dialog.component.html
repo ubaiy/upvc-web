@@ -2,11 +2,11 @@
   [header]="title"
   [visible]="visible"
   (visibleChange)="$event ? null : close()"
+  (onShow)="focusFirst()"
   [modal]="true"
   [draggable]="false"
   [resizable]="false"
   [closable]="!saving"
-  [dismissableMask]="false"
   [style]="{ width: '440px' }"
   styleClass="quotation-dialog"
 >
@@ -30,7 +30,6 @@
         filterBy="name,phone"
         filterPlaceholder="Search by name or phone"
         [placeholder]="loadingCustomers ? 'Loading customers…' : 'Choose a customer'"
-        [autofocus]="true"
         appendTo="body"
         [style]="{ width: '100%' }"
         [styleClass]="customerError ? 'ng-invalid ng-dirty' : ''"
@@ -76,7 +75,6 @@
           formControlName="customer_name"
           autocomplete="off"
           maxlength="191"
-          autofocus
           [class.is-invalid]="newNameError"
           [attr.aria-invalid]="newNameError ? 'true' : null"
           [attr.aria-describedby]="newNameError ? 'nq-new-name-error' : null"

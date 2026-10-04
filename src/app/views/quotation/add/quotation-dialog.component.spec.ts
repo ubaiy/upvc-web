@@ -202,7 +202,7 @@ describe('QuotationDialogComponent', () => {
     const saved = jasmine.createSpy('saved');
     component.saved.subscribe(saved);
     open(ROW);
-    expect(text()).toContain('Rename or change customer');
+    expect(text()).toContain('Edit quotation');
     expect(text()).toContain('Save changes');
     expect(component.form.controls['quatation_name'].value).toBe('Sharma Flat Renovation');
 

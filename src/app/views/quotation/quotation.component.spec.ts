@@ -179,11 +179,11 @@ describe('QuotationComponent (list)', () => {
     expect(router.navigate).not.toHaveBeenCalled();
   });
 
-  it('offers open, rename, duplicate and delete; a billed quotation cannot be renamed or deleted', () => {
+  it('offers open, edit, duplicate and delete; a billed quotation cannot be renamed or deleted', () => {
     create();
     const visible = () => component.menuItems.filter((i) => i.visible !== false && !i.separator).map((i) => i.label);
     component.openMenu(new Event('click'), component.rows[1]);
-    expect(visible()).toEqual(['Open', 'Rename or change customer', 'Duplicate', 'Delete']);
+    expect(visible()).toEqual(['Open', 'Edit details', 'Duplicate', 'Delete']);
     component.openMenu(new Event('click'), component.rows[0]);
     expect(visible()).toEqual(['Open', 'Duplicate']);
   });

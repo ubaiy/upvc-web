@@ -6,6 +6,11 @@ app-callout {
   margin-block-end: var(--s-4);
 }
 
+// Wide enough for the whole placeholder.
+.toolbar .input-group {
+  width: 320px;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
