@@ -41,6 +41,7 @@ h2 { margin: 0; font-size: var(--fs-16); }
 }
 .dot {
   position: relative;
+  z-index: 1; // above the line that runs to the next stage
   display: grid;
   place-items: center;
   width: 28px;

@@ -128,8 +128,12 @@ export class RecordPaymentComponent implements OnInit, AfterViewInit {
       kind: this.kind,
       amount: amountText(this.amount),
       mode: this.mode,
-      payment_date: this.date,
     };
+    // Today is left to the api ("today when not sent"): its clock, not this device's, decides the
+    // date, so a tablet a few hours ahead of the server is not refused for a date "in the future".
+    if (this.date !== this.today) {
+      body.payment_date = this.date;
+    }
     if (this.account.order) {
       body.order_id = this.account.order.id;
     }

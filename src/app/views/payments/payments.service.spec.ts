@@ -39,7 +39,7 @@ describe('PaymentsService', () => {
 
   it('posts a payment as given and returns it with the account', () => {
     let number = '';
-    const body = { kind: 'receipt' as const, order_id: 1, amount: '2500.50', mode: 'cash' as const, payment_date: '2026-10-05' };
+    const body = { kind: 'receipt' as const, order_id: 1, amount: '2500.50', mode: 'cash' as const, payment_date: '2026-10-01' };
     service.add(body).subscribe((result) => (number = result.ok ? result.data.payment.number : ''));
     const request = http.expectOne(`${API}/payment/add`);
     expect(request.request.method).toBe('POST');

@@ -30,7 +30,8 @@ import { previewPage } from '../document-file';
       .doc-preview { overflow: hidden; }
       .doc-frame { display: block; width: 100%; height: min(78vh, 1100px); border: 0; background: #fff; }
       h2 { margin: 0; font-size: var(--fs-16); }
-      .wrap { flex-wrap: wrap; }
+      .card-head { flex-wrap: wrap; }
+      .wrap { flex-wrap: wrap; justify-content: flex-end; gap: var(--s-2); margin-inline-start: auto; }
     `,
   ],
 })

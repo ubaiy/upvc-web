@@ -77,7 +77,8 @@ export interface NewPayment {
   amount: string;
   mode: PaymentMode;
   reference?: string;
-  payment_date: string;
+  /** Left out for today: the api then dates the entry itself. */
+  payment_date?: string;
   note?: string;
 }
 

@@ -2,8 +2,9 @@
 .totals { margin-block-end: var(--s-5); }
 
 // "To collect" first, then one figure per age bucket, as many as the api sends.
-.buckets { display: grid; grid-template-columns: 1.4fr repeat(auto-fit, minmax(120px, 1fr)); }
+.buckets { display: flex; flex-wrap: wrap; }
 .bucket {
+  flex: 1 1 130px;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -15,6 +16,7 @@
   .k { font-size: var(--fs-13); color: var(--c-text-2); }
   .v { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
   .d { font-size: var(--fs-12); color: var(--c-text-3); }
+  &.lead { flex: 1.5 1 220px; }
   &.lead .v { font-size: var(--fs-24); letter-spacing: -0.02em; }
   &.old .v { color: var(--c-danger); }
 }
@@ -59,6 +61,8 @@
 .remind { display: flex; justify-content: flex-end; }
 
 .jobs { background: var(--c-surface-2); border-block-start: 1px solid var(--c-border); }
+// "Record payment" is the reason the row was opened: it does not wait for a hover.
+.jobs .row-actions { opacity: 1; text-align: end; }
 
 .sk-search { width: 280px; max-width: 100%; height: var(--h-control); }
 .sk-row {
@@ -82,8 +86,7 @@
 }
 
 @media (max-width: 640px) {
-  .buckets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .bucket { padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); }
-  .bucket.lead { grid-column: 1 / -1; }
+  .bucket { flex-basis: 40%; padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); }
+  .bucket.lead { flex-basis: 100%; border-inline-end: 0; }
   .ages { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
