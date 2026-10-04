@@ -72,6 +72,7 @@ describe('RecordPaymentComponent (Record payment dialog)', () => {
       kind: 'receipt',
       amount: '2500.50',
       mode: 'cash',
+      payment_date: todayIso(),
       order_id: 1,
       bill_id: 3,
     });
@@ -116,11 +117,11 @@ describe('RecordPaymentComponent (Record payment dialog)', () => {
     expect(service.add).not.toHaveBeenCalled();
   });
 
-  it('leaves today to the api and sends an earlier date as chosen', async () => {
+  it('sends the date on the form: today as it opens, an earlier date as chosen', async () => {
     await create(toAccount(rawAccount())!);
     service.add.and.returnValue(of(saved()));
     submit();
-    expect('payment_date' in service.add.calls.mostRecent().args[0]).toBeFalse();
+    expect(service.add.calls.mostRecent().args[0].payment_date).toBe(todayIso());
     type('pay-date', '2026-01-15');
     submit();
     expect(service.add.calls.mostRecent().args[0].payment_date).toBe('2026-01-15');

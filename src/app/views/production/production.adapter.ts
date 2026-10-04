@@ -1,6 +1,8 @@
 import { IconName } from '../../shared/components/icon/icon-paths';
 import { DocumentFormat, DocumentType, JobResult, JobWarning, ProductionJob } from './production.model';
 
+export { fileNameFromHeader } from '../../shared/class/download-file';
+
 /** One workshop document as the page lists it. */
 export interface DocumentCard {
   type: DocumentType;
@@ -47,29 +49,12 @@ const FILE_STEM: Record<DocumentType | 'pack', string> = {
 };
 
 /**
- * The api's own file name ("Cutting-list-Q-0003-P1.pdf"), rebuilt for when
- * the browser may not read Content-Disposition across origins.
+ * The api's own file name ("Cutting-list-Q-0003-P1.pdf"), rebuilt for an
+ * answer that carries no Content-Disposition.
  */
 export function fileName(job: ProductionJob, type: DocumentType | 'pack', format: DocumentFormat): string {
   const number = (job.quotation?.number || 'job').replace(/[^A-Za-z0-9._-]+/g, '-');
   return `${FILE_STEM[type]}-${number}-P${job.revision}.${format}`;
-}
-
-/** The file name inside a Content-Disposition header, or null. */
-export function fileNameFromHeader(disposition: string | null): string | null {
-  if (!disposition) {
-    return null;
-  }
-  const encoded = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(disposition);
-  if (encoded) {
-    try {
-      return decodeURIComponent(encoded[1].trim().replace(/^"|"$/g, ''));
-    } catch {
-      // fall through to the plain name
-    }
-  }
-  const plain = /filename="?([^";]+)"?/i.exec(disposition);
-  return plain ? plain[1].trim() : null;
 }
 
 /** Sorts a job answer into what the page shows. The wording is the api's (phase 14 log, "Refusals"). */

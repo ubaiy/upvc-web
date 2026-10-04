@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
+import { saveBlob } from 'src/app/shared/class/download-file';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { CustomerService } from '../../customers/customer.service';
 import { BillRow, matchesBill, toBillRows } from '../bills.adapter';
@@ -137,9 +138,9 @@ export class ListComponent implements OnInit {
         )
       )
       .subscribe({
-        next: (pdf) => {
+        next: (file) => {
           this.downloading = null;
-          window.open(URL.createObjectURL(pdf), '_blank');
+          saveBlob(file.blob, file.fileName || `Bill-${bill.number.replace(/[^A-Za-z0-9]+/g, '-')}.pdf`);
         },
         error: () => {
           this.downloading = null;

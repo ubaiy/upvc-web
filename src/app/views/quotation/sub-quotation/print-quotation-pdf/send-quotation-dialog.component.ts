@@ -156,7 +156,7 @@ export class SendQuotationDialogComponent implements OnChanges {
       this._toast.showSuccess(`Emailed to ${data?.emailed_to || this.email.trim()}. The quotation is marked as sent.`);
     } else {
       this._dataService.getQuotationPdf(q.id).subscribe({
-        next: (file) => saveAs(file, pdfFileName(q)),
+        next: (file) => saveAs(file.blob, file.fileName || pdfFileName(q)),
         error: () => this._toast.showError('The quotation is marked as sent, but the PDF could not be downloaded. Use the PDF button.'),
       });
       this._toast.showSuccess('PDF downloaded. The quotation is marked as sent.');

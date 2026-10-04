@@ -138,22 +138,42 @@ describe('ListComponent (bills)', () => {
     expect(labels).toContain('Payments');
   });
 
-  it('downloads in one step, taking the GSTIN from the customer', () => {
+  /** The name the browser was asked to save the file under. */
+  function savedAs(): jasmine.Spy<(this: HTMLAnchorElement) => void> {
+    const names: string[] = [];
+    const click = spyOn(HTMLAnchorElement.prototype, 'click').and.callFake(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+    (click as any).names = names;
+    return click;
+  }
+
+  it('downloads in one step, taking the GSTIN from the customer and the file name from the api', () => {
     create(ok(BILLS));
     customers.getCustomerDetail.and.returnValue(ok({ id: 3, gstin: '27ABCDE1234F1Z5' }));
-    service.downloadBillPdf.and.returnValue(of(new Blob(['pdf'])));
-    spyOn(window, 'open');
+    service.downloadBillPdf.and.returnValue(of({ blob: new Blob(['pdf']), fileName: 'Bill-INV-26-27-0001-Sharma-Residency.pdf' }));
+    const click = savedAs();
     fixture.componentInstance.download(fixture.componentInstance.bills[0]);
     expect(service.downloadBillPdf).toHaveBeenCalledWith({ bill_id: 2, customer_gst_no: '27ABCDE1234F1Z5', download: true });
-    expect(window.open).toHaveBeenCalled();
+    expect((click as any).names).toEqual(['Bill-INV-26-27-0001-Sharma-Residency.pdf']);
     expect(fixture.componentInstance.downloading).toBeNull();
+  });
+
+  it('names the file from the bill number when the api sent no name', () => {
+    create(ok(BILLS));
+    customers.getCustomerDetail.and.returnValue(ok({ id: 3, gstin: '' }));
+    service.downloadBillPdf.and.returnValue(of({ blob: new Blob(['pdf']), fileName: null }));
+    const click = savedAs();
+    const bill = fixture.componentInstance.bills[0];
+    fixture.componentInstance.download(bill);
+    expect((click as any).names).toEqual([`Bill-${bill.number.replace(/[^A-Za-z0-9]+/g, '-')}.pdf`]);
   });
 
   it('still downloads when the customer no longer exists', () => {
     create(ok(BILLS));
     customers.getCustomerDetail.and.returnValue(throwError(() => new Error('404')));
-    service.downloadBillPdf.and.returnValue(of(new Blob(['pdf'])));
-    spyOn(window, 'open');
+    service.downloadBillPdf.and.returnValue(of({ blob: new Blob(['pdf']), fileName: 'Bill-INV-26-27-0001-Sharma-Residency.pdf' }));
+    savedAs();
     fixture.componentInstance.download(fixture.componentInstance.bills[0]);
     expect(service.downloadBillPdf).toHaveBeenCalledWith({ bill_id: 2, customer_gst_no: '', download: true });
   });

@@ -33,7 +33,7 @@ describe('SendQuotationDialogComponent', () => {
   beforeEach(() => {
     service = jasmine.createSpyObj('QuotationService', ['getQuotationPreview', 'sendQuotation', 'getQuotationPdf']);
     service.getQuotationPreview.and.returnValue(of('<html><head></head><body><p>QUOTATION Q-0003</p></body></html>'));
-    service.getQuotationPdf.and.returnValue(of(new Blob(['pdf'])));
+    service.getQuotationPdf.and.returnValue(of({ blob: new Blob(['pdf']), fileName: 'Quotation-Q-0003-Ahmed-Al-Rashid.pdf' }));
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
     chat = { close: jasmine.createSpy('close'), location: { href: '' } };
     spyOn(window, 'open').and.returnValue(chat as any);

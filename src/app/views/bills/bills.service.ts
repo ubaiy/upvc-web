@@ -1,10 +1,11 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import { IResponseDto } from '../../shared/model/common/response.model';
 import { ApiHttpService } from '../../shared/services/api-http.service';
 import { API_END_POINT } from '../../shared/configs/api.config';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
+import { DownloadedFile, downloadedFile } from '../../shared/class/download-file';
 @Injectable({
   providedIn: 'root',
 })
@@ -23,24 +24,24 @@ export class BillsService {
     return this._apiHttpSerivce.post(API_END_POINT.bills.converToBill, data);
   }
 
-  public downloadBillPdf(data: any): Observable<Blob> {
+  /** The bill as a PDF file, with the file name the api gave it. */
+  public downloadBillPdf(data: any): Observable<DownloadedFile> {
     const headers = new HttpHeaders({
       'Cache-Control': 'no-cache, no-store, must-revalidate', // Disable caching
     });
 
-    return this.http.post(
-      `${environment.API_URL}/${API_END_POINT.bills.pdf}`,
-      data,
-      {
-        responseType: 'blob', // Specify responseType as an option here
+    return this.http
+      .post(`${environment.API_URL}/${API_END_POINT.bills.pdf}`, data, {
+        responseType: 'blob',
+        observe: 'response',
         headers: headers,
-      }
-    );
+      })
+      .pipe(map(downloadedFile));
   }
 
   /** Every quotation, billed or not: the list links a bill to the quotation it came from. */
   public getQuotations(): Observable<IResponseDto<any[]>> {
-    return this._apiHttpSerivce.get('quatation/list?status=all');
+    return this._apiHttpSerivce.get(API_END_POINT.quatation.list + '?status=all');
   }
 
   /**
@@ -49,7 +50,7 @@ export class BillsService {
    * The reason (optional, up to 191 characters) is kept with the bill.
    */
   public cancelBill(id: number, reason = ''): Observable<IResponseDto<any>> {
-    return this._apiHttpSerivce.post('bill/cancel', {
+    return this._apiHttpSerivce.post(API_END_POINT.bills.cancel, {
       bill_id: id,
       ...(reason.trim() ? { reason: reason.trim() } : {}),
     });

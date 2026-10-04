@@ -237,7 +237,7 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
       .getQuotationPdf(view.id)
       .pipe(finalize(() => (this.busy = '')))
       .subscribe({
-        next: (file) => saveAs(file, pdfFileName(view)),
+        next: (file) => saveAs(file.blob, file.fileName || pdfFileName(view)),
         error: () => (this.actionError = 'We could not make the PDF. Try again.'),
       });
   }
@@ -250,7 +250,7 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
       .getBillPdf(bill.id)
       .pipe(finalize(() => (this.busy = '')))
       .subscribe({
-        next: (file) => saveAs(file, 'Bill-' + bill.number.replace(/[^A-Za-z0-9]+/g, '-') + '.pdf'),
+        next: (file) => saveAs(file.blob, file.fileName || 'Bill-' + bill.number.replace(/[^A-Za-z0-9]+/g, '-') + '.pdf'),
         error: () => (this.actionError = 'We could not make the bill PDF. Try again.'),
       });
   }

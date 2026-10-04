@@ -1,12 +1,11 @@
 import { HttpResponse } from '@angular/common/http';
 import { Observable, from, of, switchMap, throwError } from 'rxjs';
+import { DownloadedFile, fileNameFromHeader, saveBlob } from '../../shared/class/download-file';
 
-/** A printable document of the api (challan, receipt) as a file. */
-export interface DocumentFile {
-  blob: Blob;
-  /** From the Content-Disposition header, when the api sent one. */
-  fileName: string | null;
-}
+export { fileNameFromHeader, saveBlob };
+
+/** A printable document of the api (challan, receipt) as a file, named by the api. */
+export type DocumentFile = DownloadedFile;
 
 export type DocumentFormat = 'pdf' | 'html';
 
@@ -14,22 +13,6 @@ const MIME: Record<DocumentFormat, string> = {
   pdf: 'application/pdf',
   html: 'text/html;charset=utf-8',
 };
-
-export function fileNameFromHeader(disposition: string | null): string | null {
-  if (!disposition) {
-    return null;
-  }
-  const encoded = /filename\*=(?:UTF-8'')?([^;]+)/i.exec(disposition);
-  if (encoded) {
-    try {
-      return decodeURIComponent(encoded[1].trim().replace(/^"|"$/g, ''));
-    } catch {
-      // fall through to the plain name
-    }
-  }
-  const plain = /filename="?([^";]+)"?/i.exec(disposition);
-  return plain ? plain[1].trim() : null;
-}
 
 /** `Receipt-RCT-26-27-0001.pdf`: the name used when the api sent none. */
 export function documentName(prefix: string, number: string): string {
@@ -72,19 +55,6 @@ const SCREEN_STYLE =
 export function previewPage(html: string): string {
   const head = /<\/head>/i;
   return head.test(html) ? html.replace(head, SCREEN_STYLE + '</head>') : SCREEN_STYLE + html;
-}
-
-/** Hands a file to the browser's downloads. */
-export function saveBlob(blob: Blob, name: string): void {
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = name;
-  link.rel = 'noopener';
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 export type ShareOutcome = 'shared' | 'saved' | 'dismissed';
