@@ -160,6 +160,8 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   templatesOpen = false;
   templateName = '';
   templateMessage = '';
+  /** True while the name of a new template is being typed. */
+  namingTemplate = false;
   startCards: StartCard[] = STARTING_DESIGNS.map((design) => ({
     design,
     thumb: thumbOf(design.build()),
@@ -518,6 +520,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   toggleTemplates(): void {
     this.templatesOpen = !this.templatesOpen;
     this.templateMessage = '';
+    this.namingTemplate = false;
   }
 
   useStart(card: StartCard): void {
@@ -592,6 +595,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       });
       await this.templates.add(toTemplateRequest(template));
       this.templateName = '';
+      this.namingTemplate = false;
       this.templateMessage = `Saved "${name}" to your templates.`;
       await this.loadSavedTemplates();
     } catch (err) {

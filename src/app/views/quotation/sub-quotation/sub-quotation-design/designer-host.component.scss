@@ -293,7 +293,7 @@
 
 .starts-row {
   display: flex;
-  gap: var(--s-2);
+  gap: 6px;
   overflow-x: auto;
   padding-block: 2px;
   scrollbar-width: thin;
@@ -302,12 +302,12 @@
 .start {
   position: relative;
   flex: none;
-  width: 92px;
+  width: 84px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: var(--s-2) var(--s-1);
+  padding: var(--s-2) 2px;
   border: 1px solid var(--c-border);
   border-radius: var(--r-sm);
   background: var(--c-surface);

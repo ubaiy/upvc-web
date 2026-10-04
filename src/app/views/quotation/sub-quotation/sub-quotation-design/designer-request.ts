@@ -129,6 +129,22 @@ export function priceLinesOf(data: any): PriceLine[] {
       cost: Number(p.totalCost) || 0,
     });
   }
-  // The api lists every costhead it knows; only what this window uses is shown.
-  return out.filter((line) => line.cost > 0);
+  // The api lists every costhead it knows, once per pane. Shown: what this
+  // window uses, each item once with its quantities and costs added up.
+  const merged = new Map<string, PriceLine>();
+  for (const line of out) {
+    if (!(line.cost > 0)) continue;
+    const key = `${line.group}|${line.name}`;
+    const seen = merged.get(key);
+    if (!seen) {
+      merged.set(key, { ...line });
+      continue;
+    }
+    seen.cost = Math.round((seen.cost + line.cost) * 100) / 100;
+    seen.quantity =
+      seen.quantity === null || line.quantity === null
+        ? null
+        : Math.round((Number(seen.quantity) + Number(line.quantity)) * 100) / 100;
+  }
+  return [...merged.values()];
 }

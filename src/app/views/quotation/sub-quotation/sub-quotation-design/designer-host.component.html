@@ -73,7 +73,7 @@
     <div class="callout warn" *ngIf="readOnly && !saveError && !confirmLeave" data-dz="readonly">
       <app-icon name="lock"></app-icon>
       <span class="grow">
-        This window was saved by an older version and is shown as it was saved, at its saved price.
+        This window was saved by an older version and cannot be edited safely. It keeps its saved price.
         {{ readOnlyReasons.join(' ') }}
       </span>
       <button type="button" class="btn btn-sm" data-dz="redraw" (click)="redraw()">Redraw this window</button>
@@ -81,8 +81,8 @@
     <div class="callout" *ngIf="repriceNote && !readOnly && !changed && !saveError && !confirmLeave" data-dz="reprice">
       <app-icon name="info"></app-icon>
       <span class="grow">
-        Saved at {{ price.amount | inr }}. At today's rates this window comes to {{ repriceAmount | inr }}.
-        The saved price stays until you change the window.
+        Saved at {{ price.amount | inr }}. Worked out again today, this window comes to
+        {{ repriceAmount | inr }}. The saved price stays until you change the window.
       </span>
     </div>
   </div>
@@ -168,9 +168,13 @@
           </button>
         </div>
         <div class="starts-save">
-          <input class="input" data-dz="template-name" maxlength="150" placeholder="Template name"
-            aria-label="Template name" [(ngModel)]="templateName" (keydown.enter)="saveTemplate()" />
-          <button type="button" class="btn btn-sm" data-dz="save-template" (click)="saveTemplate()">
+          <ng-container *ngIf="namingTemplate">
+            <input class="input" data-dz="template-name" maxlength="150" placeholder="Template name"
+              aria-label="Template name" [(ngModel)]="templateName" (keydown.enter)="saveTemplate()" />
+            <button type="button" class="btn btn-sm" data-dz="save-template-confirm" (click)="saveTemplate()">Save</button>
+          </ng-container>
+          <button type="button" class="btn btn-sm" data-dz="save-template" *ngIf="!namingTemplate"
+            (click)="namingTemplate = true">
             Save as template
           </button>
           <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Close templates" (click)="toggleTemplates()">

@@ -46,6 +46,7 @@ import { EditController } from './canvas-editor';
 import { CanvasHost, DragState, EditState, PosPx } from './canvas-host';
 import { ariaSummary, handleKeydown, selectionText } from './canvas-keyboard';
 import { PointerController } from './canvas-pointer';
+import { applyColourTokens } from './render/render-common';
 import {
   GlassTints,
   RenderGhost,
@@ -200,6 +201,7 @@ export class DesignCanvasComponent
 
   ngAfterViewInit(): void {
     const host = this.canvasHostRef.nativeElement;
+    applyColourTokens(host);
     this.stage = new Konva.Stage({
       container: host,
       width: Math.max(80, host.clientWidth),

@@ -270,7 +270,7 @@ export function openSavedLine(row: any, opts?: SavedLineOptions): OpenedLine {
       tree = rec.root;
       source = 'full_window';
       if (rec.approximate) {
-        c.reasons.push('It was saved by an older version and its layout could only be approximated.');
+        c.reasons.push('Its layout could only be approximated.');
       }
     }
   }

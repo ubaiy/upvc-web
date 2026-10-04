@@ -23,6 +23,7 @@ import { DesignerCatalog, completeDesign } from './designer-catalog';
 import {
   ManageProductBody,
   buildManageProductBody,
+  priceLinesOf,
   pricedPayloadOf,
   ratePerSqFt,
   sellingAmount,
@@ -169,5 +170,24 @@ describe('designer round trip: save, reopen, same payload and same total', () =>
     // The api divides by the unrounded area.
     expect(ratePerSqFt(8851.86, 23.2500465072)).toBe(380.72);
     expect(ratePerSqFt(100, 0)).toBe(0);
+  });
+
+  it('price details list each item once, without the rows that cost nothing', () => {
+    const lines = priceLinesOf({
+      costhead_information: {
+        costhead: [
+          { name: '5mm plain glass', costhead: 'Glazzing', quantity: 1, cost: 72, totalCost: 500 },
+          { name: 'Friction stay', costhead: 'Hinges', quantity: 0, cost: 90, totalCost: 0 },
+          { name: '5mm plain glass', costhead: 'Glazzing', quantity: 1, cost: 72, totalCost: 250.5 },
+        ],
+      },
+      product_information: [
+        { profile_code: 'P60-K-X-R', profile_name: 'Outer frame', quantity: 5.4, rate_meter: 200, totalCost: 1080 },
+      ],
+    });
+    expect(lines).toEqual([
+      { name: '5mm plain glass', group: 'Glazzing', quantity: 2, rate: 72, cost: 750.5 },
+      { name: 'P60-K-X-R · Outer frame', group: 'Profile', quantity: 5.4, rate: 200, cost: 1080 },
+    ]);
   });
 });

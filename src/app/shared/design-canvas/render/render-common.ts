@@ -25,6 +25,36 @@ export const COL = {
   mesh: '#6b7280',
 };
 
+/**
+ * Take the drawing colours from the app's design tokens when the page has
+ * them (--c-accent for selection and opening symbols; --c-frame-line,
+ * --c-dim and --c-glass-1/2 for lines, dimensions and glass). The sheet
+ * itself stays white so the saved picture prints clean, so line and glass
+ * tokens are only used with a light frame token. Without tokens (a bare
+ * test page) the defaults above stay.
+ */
+export function applyColourTokens(el: Element): void {
+  const style = getComputedStyle(el);
+  const token = (name: string): string => style.getPropertyValue(name).trim();
+  const hex = (v: string): boolean => /^#[0-9a-f]{6}$/i.test(v);
+  const accent = token('--c-accent');
+  if (hex(accent)) {
+    COL.symbol = accent;
+    COL.selectStroke = accent;
+    const n = parseInt(accent.slice(1), 16);
+    COL.select = `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, 0.16)`;
+  }
+  if (token('--c-frame').toLowerCase() !== '#ffffff') return;
+  const line = token('--c-frame-line');
+  const dim = token('--c-dim');
+  const glassTop = token('--c-glass-1');
+  const glassBottom = token('--c-glass-2');
+  if (hex(line)) COL.stroke = line;
+  if (hex(dim)) COL.dim = dim;
+  if (hex(glassTop)) COL.glassTop = glassTop;
+  if (hex(glassBottom)) COL.glassBottom = glassBottom;
+}
+
 export interface PxRect {
   x: number;
   y: number;
