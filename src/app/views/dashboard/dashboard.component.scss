@@ -35,6 +35,14 @@
   white-space: nowrap;
 }
 
+/* Touch: the title is the link of the row, so it takes 44 px without moving the lines around it. */
+@media (max-width: 1024px), (pointer: coarse) {
+  .todo-title {
+    padding-block: 12px;
+    margin-block: -12px;
+  }
+}
+
 .table {
   width: 100%;
   margin: 0;

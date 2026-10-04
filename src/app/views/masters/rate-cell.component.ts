@@ -65,6 +65,8 @@ export type RateCellState = 'idle' | 'saving' | 'saved' | 'error';
       .spin { animation: rate-spin 1s linear infinite; }
       @keyframes rate-spin { to { transform: rotate(360deg); } }
       @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+      /* Touch: the rate box is the control of the row. */
+      @media (max-width: 1024px), (pointer: coarse) { input { height: 44px; } }
     `,
   ],
 })

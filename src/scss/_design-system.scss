@@ -202,6 +202,9 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
   /* a text link in a card heading or a table footer ("View all"): the tap area grows, the layout does not */
   .card-head a:not(.btn), .table-foot a:not(.btn) { position: relative; }
   .card-head a:not(.btn)::after, .table-foot a:not(.btn)::after { content: ""; position: absolute; inset: -12px -6px; }
+  /* a row's title link in a list: 14 px of padding above and below, taken back by the margin, so the
+     row keeps its height. Padding, not ::after, because a title that ends in "…" clips what overflows. */
+  .table td a:not(.btn) { padding-block: 14px; margin-block: -14px; }
 }
 
 /* phone (360 to 640 px): one column, nothing scrolls sideways.

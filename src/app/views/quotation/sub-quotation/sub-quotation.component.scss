@@ -179,6 +179,13 @@ button.name {
   &:hover {
     text-decoration: underline;
   }
+
+  /* Touch: 44 px to tap, the same line height to read. */
+  @media (max-width: 1024px), (pointer: coarse) {
+    min-width: 44px;
+    padding-block: 12px;
+    margin-block: -12px;
+  }
 }
 
 .versions {
