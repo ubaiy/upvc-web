@@ -2,11 +2,13 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
+import { ApiHttpService } from '../../shared/services/api-http.service';
 import { AuthService } from '../../shared/services/auth.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
+import { QuotationListService } from '../../views/quotation/quotation-list.service';
 import { CommandPaletteComponent } from './command-palette.component';
 import { findNavItem, NAV_ITEMS, pathMatches } from './nav';
 import { ShellComponent } from './shell.component';
@@ -86,6 +88,9 @@ describe('ShellComponent', () => {
         { provide: AuthService, useValue: auth },
         { provide: WorkspaceService, useValue: { workspace$, load: () => undefined } },
         { provide: LocalStoreService, useValue: { getItem: () => null } },
+        // The search dialog looks records up; its own spec covers that.
+        { provide: ApiHttpService, useValue: { get: () => of({ success: true, data: [] }) } },
+        { provide: QuotationListService, useValue: { page: () => of({ rows: [], total: 0, lastPage: 1 }) } },
       ],
     }).compileComponents();
     router = TestBed.inject(Router);
