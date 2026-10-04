@@ -1,126 +1,179 @@
-.wrapper {
-  width: 100%;
-  @include ltr-rtl("padding-left", var(--cui-sidebar-occupy-start, 0));
-  @include ltr-rtl("padding-right", var(--cui-sidebar-occupy-end, 0));
-  will-change: auto;
-  @include transition(padding .15s);
+// Bridge for screens not rebuilt yet (rollout card U0).
+// The old screens are written with Bootstrap and CoreUI classes. This file
+// points those classes at the UPVC tokens so the old screens pick up the new
+// colours, type and controls inside the new shell. Screen cards U1 to U7 stop
+// using these classes; card Z1 deletes this file together with CoreUI.
+
+// Bootstrap (--bs-*) and CoreUI (--cui-*) are both loaded and name the same
+// variables, so every value is written for both prefixes.
+@mixin both($name, $value) {
+  --bs-#{$name}: #{$value};
+  --cui-#{$name}: #{$value};
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  App-shell polish (additive — refines the CoreUI shell chrome)
-// ═══════════════════════════════════════════════════════════════════
-
-// ── Body canvas: soft tinted surface so elevated cards read clearly ──
-.wrapper.bg-light {
-  background-color: #f4f6fb !important;
+@mixin btn-vars($bg, $fg, $border, $hover-bg, $hover-fg: $fg) {
+  @include both(btn-bg, $bg); @include both(btn-color, $fg); @include both(btn-border-color, $border);
+  @include both(btn-hover-bg, $hover-bg); @include both(btn-hover-color, $hover-fg); @include both(btn-hover-border-color, $border);
+  @include both(btn-active-bg, $hover-bg); @include both(btn-active-color, $hover-fg); @include both(btn-active-border-color, $border);
+  @include both(btn-disabled-bg, $bg); @include both(btn-disabled-color, $fg); @include both(btn-disabled-border-color, $border);
+  background-color: $bg; color: $fg; border-color: $border;
 }
 
-// ── Header bar ───────────────────────────────────────────────────────
-.header.header-sticky {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--cui-border-color, #dee2e6);
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-
-  .header-toggler {
-    border-radius: 0.5rem;
-    transition: background-color 0.15s ease, color 0.15s ease;
-
-    &:hover {
-      background-color: var(--cui-tertiary-bg, #f0f2f7);
-      color: var(--cui-primary, #0d6efd);
-    }
-  }
-
-  .c-avatar,
-  c-avatar {
-    box-shadow: 0 0 0 2px rgba(13, 110, 253, 0.12);
-    transition: box-shadow 0.15s ease;
-  }
-
-  .dropdown-toggle:hover .c-avatar,
-  .dropdown-toggle:hover c-avatar {
-    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.22);
-  }
+:root {
+  @include both(body-font-family, var(--font-sans));
+  @include both(body-font-size, var(--fs-14));
+  @include both(body-line-height, var(--lh-body));
+  @include both(body-color, var(--c-text));
+  @include both(body-bg, var(--c-bg));
+  @include both(emphasis-color, var(--c-text));
+  @include both(secondary-color, var(--c-text-2));
+  @include both(tertiary-color, var(--c-text-3));
+  @include both(secondary-bg, var(--c-surface-2));
+  @include both(tertiary-bg, var(--c-surface-2));
+  @include both(heading-color, var(--c-text));
+  @include both(border-color, var(--c-border));
+  @include both(border-radius, var(--r-sm));
+  @include both(border-radius-sm, var(--r-sm));
+  @include both(border-radius-lg, var(--r-md));
+  @include both(primary, var(--c-accent));
+  @include both(primary-rgb, "14, 111, 106");
+  @include both(link-color, var(--c-accent-text));
+  @include both(link-color-rgb, "11, 90, 86");
+  @include both(link-hover-color, var(--c-accent-text));
+  @include both(link-hover-color-rgb, "11, 90, 86");
+  @include both(success, var(--c-success));
+  @include both(danger, var(--c-danger));
+  @include both(warning, var(--c-warning));
+  @include both(info, var(--c-info));
+  @include both(card-bg, var(--c-surface));
+  @include both(card-cap-bg, var(--c-surface));
+  @include both(card-border-color, var(--c-border));
+  @include both(primary-bg-subtle, var(--c-accent-soft));
+  @include both(primary-text-emphasis, var(--c-accent-text));
+  @include both(primary-border-subtle, var(--c-border));
+}
+[data-theme="dark"] {
+  @include both(primary-rgb, "63, 181, 173");
+  @include both(link-color-rgb, "111, 210, 202");
+  @include both(link-hover-color-rgb, "111, 210, 202");
 }
 
-// ── Sidebar shell ────────────────────────────────────────────────────
-.sidebar {
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+h4, .h4 { margin: 0; font-size: var(--fs-16); font-weight: var(--fw-semibold); line-height: var(--lh-tight); letter-spacing: -.01em; }
+h5, .h5, h6, .h6 { margin: 0; font-size: var(--fs-14); font-weight: var(--fw-semibold); line-height: var(--lh-tight); }
+hr { border-color: var(--c-border); opacity: 1; }
 
-  .sidebar-brand {
-    padding-block: 0.75rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  }
+/* buttons: four looks, however the old screen asked for its colour */
+.btn {
+  @include both(btn-focus-box-shadow, var(--focus-ring));
+  @include both(btn-disabled-opacity, .5);
+  @include both(btn-active-shadow, none);
+  @include both(btn-border-radius, var(--r-sm));
+  @include both(btn-font-family, var(--font-sans));
+  @include both(btn-font-size, var(--fs-14));
+  @include both(btn-font-weight, var(--fw-medium));
+  box-shadow: none;
+}
+.btn:disabled, .btn.disabled, fieldset:disabled .btn { opacity: .5; }
+.btn-primary, .btn-success, .btn-info {
+  @include btn-vars(var(--c-accent), var(--c-on-accent), transparent, var(--c-accent-hover));
+}
+.btn-secondary, .btn-light, .btn-dark, .btn-warning,
+.btn-outline-primary, .btn-outline-secondary, .btn-outline-success, .btn-outline-info, .btn-outline-warning, .btn-outline-dark, .btn-outline-light {
+  @include btn-vars(var(--c-surface), var(--c-text), var(--c-border-strong), var(--c-surface-2));
+}
+.btn-ghost, .btn-link, .btn-transparent {
+  @include btn-vars(transparent, var(--c-text-2), transparent, var(--c-surface-2), var(--c-text));
+}
+.btn-danger, .btn-outline-danger {
+  @include btn-vars(var(--c-surface), var(--c-danger), var(--c-border-strong), var(--c-danger-soft));
+}
+.btn-close { border-radius: var(--r-sm); opacity: .6; &:hover { opacity: 1; } &:focus { box-shadow: none; } &:focus-visible { box-shadow: var(--focus-ring); } }
+[data-theme="dark"] .btn-close { filter: invert(1) grayscale(1); }
+
+/* form controls */
+.form-label, .col-form-label { margin-block-end: 6px; font-size: var(--fs-13); font-weight: var(--fw-medium); color: var(--c-text); }
+.form-control, .form-select {
+  height: var(--h-control); padding-block: 0; padding-inline: var(--s-3);
+  border: 1px solid var(--c-border-strong); border-radius: var(--r-sm);
+  background-color: var(--c-surface); color: var(--c-text); font-size: var(--fs-14); line-height: var(--lh-body);
+  &::placeholder { color: var(--c-text-3); }
+  &:focus { border-color: var(--c-accent); background-color: var(--c-surface); color: var(--c-text); box-shadow: var(--focus-ring); }
+  &:disabled, &[readonly] { background-color: var(--c-surface-2); color: var(--c-text-2); }
+  &.is-invalid, &.ng-touched.ng-invalid { border-color: var(--c-danger); background-image: none; }
+}
+textarea.form-control { height: auto; min-height: 88px; padding-block: var(--s-2); }
+.form-select { padding-inline-end: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23676d73' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m4 6 4 4 4-4'/%3E%3C/svg%3E"); background-size: 16px; background-position: right 10px center; }
+[dir="rtl"] .form-select { background-position: left 10px center; }
+.form-text { font-size: var(--fs-12); color: var(--c-text-3); }
+.invalid-feedback { font-size: var(--fs-12); color: var(--c-danger); }
+.form-check-input {
+  width: 16px; height: 16px; margin-block-start: 3px; border: 1px solid var(--c-border-strong); background-color: var(--c-surface);
+  &:checked { background-color: var(--c-accent); border-color: var(--c-accent); }
+  &:focus { border-color: var(--c-accent); box-shadow: var(--focus-ring); }
+}
+.form-check-label { color: var(--c-text); }
+// Bootstrap's group is a row of bordered boxes; the design draws one box with a unit inside.
+.input-group {
+  > .form-control, > .form-select { flex: 1 1 auto; width: 1%; height: 100%; padding: 0; border: 0; border-radius: 0; background-color: transparent; box-shadow: none; }
+  > .form-control:focus, > .form-select:focus { box-shadow: none; }
+  .input-group-text { padding: 0; border: 0; background: transparent; color: var(--c-text-3); font-size: var(--fs-12); }
 }
 
-// ── Sidebar nav items ────────────────────────────────────────────────
-.sidebar-nav {
-  padding: 0.75rem 0.6rem;
+/* cards */
+.card { @include both(card-spacer-y, var(--s-5)); @include both(card-spacer-x, var(--s-5)); @include both(card-border-radius, var(--r-md)); @include both(card-inner-border-radius, var(--r-md)); }
+.card-header { padding: var(--s-4) var(--s-5); border-block-end: 1px solid var(--c-border); background: transparent; color: var(--c-text); font-size: var(--fs-16); font-weight: var(--fw-semibold); }
+.card-body { padding: var(--s-5); color: var(--c-text); }
+.card-footer { padding: var(--s-4) var(--s-5); border-block-start: 1px solid var(--c-border); background: transparent; }
+.card-group > .card { border-radius: var(--r-md) !important; }
 
-  // Section / group titles
-  .nav-title {
-    padding-top: 1rem;
-    font-size: 0.68rem;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    opacity: 0.6;
-  }
+/* tables */
+.table {
+  @include both(table-bg, transparent); @include both(table-color, var(--c-text)); @include both(table-border-color, var(--c-border));
+  @include both(table-accent-bg, transparent); @include both(table-striped-bg, transparent); @include both(table-hover-bg, var(--c-surface-2));
+  > :not(caption) > * > * { box-shadow: none; }
+}
+.table-responsive { scrollbar-width: thin; }
 
-  .nav-link {
-    display: flex;
-    align-items: center;
-    margin: 0.12rem 0;
-    padding: 0.6rem 0.85rem;
-    border-radius: 0.6rem;
-    font-weight: 500;
-    transition: background-color 0.15s ease, color 0.15s ease;
+/* dialogs */
+.modal { @include both(modal-width, 440px); }
+.modal-content { border: 1px solid var(--c-border); border-radius: var(--r-lg); background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-pop); }
+.modal-header { padding: var(--s-5) var(--s-5) 0; border: 0; }
+.modal-title { font-size: var(--fs-16); font-weight: var(--fw-semibold); letter-spacing: -.01em; }
+.modal-body { padding: var(--s-4) var(--s-5); }
+.modal-footer { gap: var(--s-2); padding: var(--s-4) var(--s-5) var(--s-5); border: 0; > * { margin: 0; } }
+.modal-backdrop { background-color: #14181c; &.show { opacity: .4; } }
 
-    .nav-icon {
-      transition: color 0.15s ease;
-    }
+/* alerts read as callouts */
+.alert { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) var(--s-4); border: 0; border-radius: var(--r-md); background: var(--c-accent-soft); color: var(--c-accent-text); font-size: var(--fs-13); }
+.alert-danger, .alert.bg-danger { background: var(--c-danger-soft) !important; color: var(--c-danger) !important; }
+.alert-warning, .alert.bg-warning { background: var(--c-warning-soft) !important; color: var(--c-warning) !important; }
+.alert-success, .alert.bg-success { background: var(--c-success-soft) !important; color: var(--c-success) !important; }
+.alert-info, .alert-primary, .alert.bg-info, .alert.bg-primary { background: var(--c-info-soft) !important; color: var(--c-info) !important; }
+.alert .btn-close { margin-inline-start: auto; position: static; padding: var(--s-1); filter: none; }
 
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.08);
-    }
-
-    // Clear active highlight: tinted pill + accent bar + bold icon
-    &.active {
-      position: relative;
-      background-color: rgba(255, 255, 255, 0.12);
-      font-weight: 600;
-      color: #fff;
-
-      &::before {
-        content: "";
-        position: absolute;
-        inset-block: 0.45rem;
-        inset-inline-start: 0;
-        width: 3px;
-        border-radius: 0 3px 3px 0;
-        background: var(--cui-primary, #0d6efd);
-      }
-
-      .nav-icon {
-        color: var(--cui-primary, #5b8def);
-      }
-    }
-  }
-
-  // Expandable groups
-  .nav-group.show > .nav-group-toggle {
-    background-color: rgba(255, 255, 255, 0.04);
-  }
-
-  .nav-group-items .nav-link {
-    padding-block: 0.45rem;
-    font-size: 0.92rem;
-  }
+/* menus */
+.dropdown-menu { padding: var(--s-1); border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface); color: var(--c-text); box-shadow: var(--shadow-pop); font-size: var(--fs-14); }
+.dropdown-item { display: flex; align-items: center; gap: var(--s-3); min-height: 32px; padding: 0 var(--s-3); border-radius: var(--r-sm); color: var(--c-text);
+  &:hover, &:focus { background: var(--c-surface-2); color: var(--c-text); }
+  &.active, &:active { background: var(--c-accent-soft); color: var(--c-accent-text); }
 }
 
-// ── Footer ───────────────────────────────────────────────────────────
-.footer {
-  border-top: 1px solid var(--cui-border-color, #dee2e6);
-  background: transparent;
+/* colour utilities used by the old templates */
+.text-medium-emphasis, .text-muted, .text-secondary, .text-body-secondary { color: var(--c-text-2) !important; }
+.text-primary { color: var(--c-accent-text) !important; }
+.text-danger { color: var(--c-danger) !important; }
+.text-success { color: var(--c-success) !important; }
+.bg-light, .bg-body-tertiary { background-color: var(--c-bg) !important; }
+.bg-white, .bg-body { background-color: var(--c-surface) !important; }
+.bg-primary { background-color: var(--c-accent) !important; color: var(--c-on-accent); }
+.border, .border-top, .border-bottom, .border-start, .border-end { border-color: var(--c-border) !important; }
+.rounded { border-radius: var(--r-sm) !important; }
+.shadow, .shadow-sm, .shadow-lg { box-shadow: none !important; }
+
+/* scrollbars follow the theme */
+@supports (scrollbar-width: thin) {
+  * { scrollbar-color: var(--c-border-strong) transparent; }
 }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--c-border-strong); border-color: var(--c-bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--c-text-3); }

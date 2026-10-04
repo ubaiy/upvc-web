@@ -1,71 +1,37 @@
-/* You can add global styles to this file, and also import other style files */
-// If you want to override variables do it here
+// Global styles. This file only orders the layers; rules live in the partials.
+//
+//   1. vendor     PrimeNG (Lara), CoreUI, Bootstrap: still needed by screens not rebuilt yet
+//   2. tokens     colour, type, space, radius, elevation as CSS custom properties
+//   3. system     base rules and the component classes from the design mockups
+//   4. theme      PrimeNG restyled through the tokens
+//   5. bridge     Bootstrap / CoreUI classes and old .app-* helpers pointed at the tokens
+//
+// Spec: docs/product/ux/design-system.md. Screen cards do not edit this folder.
+
+// 1. vendor (CoreUI's Sass build reads its defaults from _variables.scss)
 @import "variables";
 
 $enable-ltr: true;
 $enable-rtl: true;
-// If you want to add something do it here
 
-// Import styles with default layout.
 @import "primeng/resources/themes/lara-light-blue/theme.css";
 @import "primeng/resources/primeng.css";
 @import "primeicons/primeicons.css";
 @import "@coreui/coreui/scss/coreui";
 @import "~bootstrap/dist/css/bootstrap.min.css";
-// Import Chart.js custom tooltips styles
 @import "@coreui/chartjs/scss/coreui-chartjs";
-
-@import "layout";
-
-// Some temp fixes
 @import "fixes";
-
-// Prism.js
 @import "examples";
-@import "custom";
 
-// Shared design system (tokens + .app-* utility classes)
+// 2. tokens
+@import "tokens";
+
+// 3. design system
 @import "design-system";
 
-body {
-  font-family: var(--font-family);
-}
-.table-action {
-  gap: 8px;
-  display: flex;
-}
+// 4. PrimeNG theme
+@import "primeng-theme";
 
-.error {
-  color: red;
-}
-
-.p-button {
-  border-radius: 11px;
-}
-.p-button-icon-only {
-  margin-left: 5px !important;
-  border-radius: 11px;
-  background: transparent;
-  color: #3b82f6;
-}
-
-.p-paginator {
-  justify-content: end !important;
-}
-
-.p-datatable .p-datatable-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.p-progressbar .p-progressbar-value {
-  background: #4f5d73 !important;
-}
-
-.p-datatable .p-datatable-tbody > tr > td {
-  text-align: left;
-  border: 1px solid #dee2e6;
-  border-width: 0 0 1px 0;
-  padding: 1rem 1rem;
-}
+// 5. bridge for old screens (removed by card Z1)
+@import "layout";
+@import "custom";

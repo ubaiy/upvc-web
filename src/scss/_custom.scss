@@ -1,1 +1,71 @@
-// Here you can add other styles
+// Helper classes the old screens already use (.app-*, .table-action).
+// Kept under their old names and redrawn with the UPVC tokens, so those screens
+// match the new look until their own card (U2 to U7) replaces the markup with
+// the classes in _design-system.scss. Card Z1 deletes this file.
+
+// Page padding now comes from the shell's .page wrapper.
+.app-page-surface { padding: 0; }
+
+.app-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+
+  &__body { padding: var(--s-5); }
+}
+
+.app-section-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-4) var(--s-5);
+  border-block-end: 1px solid var(--c-border);
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -.01em;
+  color: var(--c-text);
+
+  i, svg { color: var(--c-text-3); }
+  &__title { margin: 0; }
+  &__spacer { margin-inline-start: auto; }
+}
+
+// Old KPI tile, flattened to the .stat pattern: label, value, detail. No icon, no coloured bar.
+.app-stat-card {
+  display: flex;
+  height: 100%;
+  padding: var(--s-5);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+
+  &__icon { display: none; }
+  &__body { display: flex; flex-direction: column; min-width: 0; }
+  &__label { font-size: var(--fs-13); color: var(--c-text-2); }
+  &__value { margin-block-start: 2px; font-size: var(--fs-24); font-weight: var(--fw-semibold); line-height: var(--lh-tight); letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--c-text); overflow-wrap: anywhere; }
+  &__hint { font-size: var(--fs-12); color: var(--c-text-3); }
+}
+
+.app-table-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+
+  .p-datatable, .table { margin-block-end: 0; }
+}
+
+.app-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--s-2);
+  padding: var(--s-1) var(--s-3);
+  border-radius: var(--r-full);
+  background: var(--c-accent-soft);
+
+  &__label { font-size: var(--fs-12); color: var(--c-text-2); }
+  &__value { font-size: var(--fs-16); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; color: var(--c-accent-text); }
+}
+
+.table-action { display: flex; align-items: center; gap: var(--s-1); }

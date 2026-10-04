@@ -1,0 +1,67 @@
+// UPVC design tokens (rollout card U0).
+// The :root and [data-theme="dark"] blocks are an unchanged copy of
+// docs/product/ux/mockups/assets/upvc.css. Change a colour, size or radius
+// here and nowhere else. Spec: docs/product/ux/design-system.md §2.
+// Font: Inter variable (SIL OFL 1.1).
+
+@font-face {
+  font-family: "Inter var";
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("../assets/fonts/Inter-roman.var.woff2") format("woff2");
+}
+
+:root {
+  /* colour — neutrals (warm paper) */
+  --c-bg: #f7f7f4;            /* app background */
+  --c-surface: #ffffff;       /* cards, tables, inputs */
+  --c-surface-2: #f2f2ee;     /* subtle fills, table header, hover */
+  --c-surface-3: #e9e9e4;     /* pressed, skeleton */
+  --c-border: #e5e4de;
+  --c-border-strong: #cfcec7;
+  --c-text: #1a1d1f;
+  --c-text-2: #565c61;
+  --c-text-3: #676d73;
+  /* colour — brand accent (glazier teal) */
+  --c-accent: #0e6f6a;
+  --c-accent-hover: #0b5a56;
+  --c-accent-soft: #e2f1ef;
+  --c-accent-text: #0b5a56;
+  --c-on-accent: #ffffff;
+  /* colour — status */
+  --c-success: #1c7a4b; --c-success-soft: #e3f3e9;
+  --c-warning: #8f5b00; --c-warning-soft: #fbf0d8;
+  --c-danger: #b3261b;  --c-danger-soft: #fce9e6;
+  --c-info: #1c5ea6;    --c-info-soft: #e5eef9;
+  /* colour — window drawing */
+  --c-glass-1: #e3f1f4; --c-glass-2: #c9e2e9; --c-frame: #ffffff; --c-frame-line: #2b3136; --c-dim: #6a7076;
+  /* type */
+  --font-sans: "Inter var", "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, "Noto Sans", "Noto Sans Arabic", sans-serif;
+  --fs-12: 12px; --fs-13: 13px; --fs-14: 14px; --fs-16: 16px; --fs-20: 20px; --fs-24: 24px; --fs-32: 32px;
+  --lh-tight: 1.25; --lh-body: 1.5;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600;
+  /* space (4-pt) */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 20px; --s-6: 24px; --s-8: 32px; --s-10: 40px; --s-12: 48px; --s-16: 64px;
+  /* shape */
+  --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-full: 999px;
+  --shadow-pop: 0 8px 24px rgba(20, 24, 28, .10), 0 1px 2px rgba(20, 24, 28, .06);
+  --focus-ring: 0 0 0 3px rgba(14, 111, 106, .28);
+  /* sizing */
+  --h-control: 36px; --h-control-sm: 30px; --h-row: 48px; --w-sidebar: 236px; --w-page: 1120px;
+  --dur: 140ms; --ease: cubic-bezier(.2, 0, 0, 1);
+}
+[data-theme="dark"] {
+  --c-bg: #121416; --c-surface: #1a1d20; --c-surface-2: #22262a; --c-surface-3: #2b3035;
+  --c-border: #2c3136; --c-border-strong: #3d444a;
+  --c-text: #eceeef; --c-text-2: #a9b0b6; --c-text-3: #8a9299;
+  --c-accent: #3fb5ad; --c-accent-hover: #5cc7bf; --c-accent-soft: #143634; --c-accent-text: #6fd2ca; --c-on-accent: #06211f;
+  --c-success: #5fc790; --c-success-soft: #14301f; --c-warning: #e3b150; --c-warning-soft: #33280f;
+  --c-danger: #f08a80; --c-danger-soft: #3a1915; --c-info: #7fb2ee; --c-info-soft: #14273d;
+  --c-glass-1: #24383d; --c-glass-2: #1c2d32; --c-frame: #2b3035; --c-frame-line: #c9cfd4; --c-dim: #99a1a8;
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, .5);
+}
+
+/* tablet: icon rail and 40 px touch controls (same breakpoint as upvc.css) */
+@media (max-width: 1024px) {
+  :root { --w-sidebar: 60px; --h-control: 40px; --h-row: 52px; }
+}
