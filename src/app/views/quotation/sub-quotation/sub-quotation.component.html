@@ -233,7 +233,11 @@
         <app-totals [lines]="q.summary" [total]="q.total"></app-totals>
 
         <p class="muted small side-gap" *ngIf="q.taxNote">{{ q.taxNote }}</p>
-        <p class="muted small side-gap" *ngIf="q.placeOfSupplyAssumed && q.customer.id">
+        <p class="muted small side-gap" data-q="state-missing" *ngIf="q.stateMissing === 'company'">
+          Your company’s state is not set, so GST is shown as a sale within one state.
+          <a routerLink="/settings">Set it in Settings</a>
+        </p>
+        <p class="muted small side-gap" data-q="state-missing" *ngIf="q.stateMissing === 'customer' && q.customer.id">
           The customer’s state is not set, so GST is shown as a sale within your state.
           <a [routerLink]="['/customers/edit', q.customer.id]">Set the state</a>
         </p>

@@ -174,6 +174,26 @@ describe('SubQuotationComponent (quotation page)', () => {
     expect(flat).toContain('Valid until 3 Nov 2026');
   });
 
+  function stateNote(sellerState: string | null): HTMLElement {
+    const raw = sampleQuotation();
+    raw.totals.tax.place_of_supply_assumed = true;
+    raw.totals.tax.seller_state_code = sellerState;
+    create(ok(raw));
+    return el().querySelector('[data-q="state-missing"]') as HTMLElement;
+  }
+
+  it('sends the user to Settings when the company state is the one missing (M5)', () => {
+    const note = stateNote(null);
+    expect(note.textContent).toContain('Your company’s state is not set');
+    expect(note.querySelector('a')?.getAttribute('href')).toContain('/settings');
+  });
+
+  it('sends the user to the customer when only the customer state is missing (M5)', () => {
+    const note = stateNote('24');
+    expect(note.textContent).toContain('The customer’s state is not set');
+    expect(note.querySelector('a')?.getAttribute('href')).toContain('/customers/edit/');
+  });
+
   it('has one primary button, and it follows the status', () => {
     show({ status: 'draft' });
     expect(el().querySelectorAll('.btn-primary').length).toBe(1);

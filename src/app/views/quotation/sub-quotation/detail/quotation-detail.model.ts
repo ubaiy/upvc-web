@@ -83,8 +83,11 @@ export interface QuotationView {
   advance: { percent: number; amount: number } | null;
   /** Why no tax is charged, or null. */
   taxNote: string | null;
-  /** The customer's state is not known, so the API assumed a sale within the state. */
-  placeOfSupplyAssumed: boolean;
+  /**
+   * The API had to assume a sale within one state, and whose state is missing:
+   * the company's (Settings) or the customer's (the customer page). Null when both are known.
+   */
+  stateMissing: 'company' | 'customer' | null;
   marginId: number | null;
   paymentTermId: number | null;
   discountType: 'percent' | 'amount' | null;
@@ -265,6 +268,14 @@ function readSummary(raw: any): TotalsLine[] {
   return lines;
 }
 
+/** Whose state the API did not have when it worked out the tax split. The seller's state comes first: without it no split can be right. */
+function readStateMissing(tax: any): 'company' | 'customer' | null {
+  if (!tax?.applicable || !tax.place_of_supply_assumed) {
+    return null;
+  }
+  return text(tax.seller_state_code) ? 'customer' : 'company';
+}
+
 export function toQuotationView(raw: any): QuotationView {
   const totals = raw?.totals || null;
   const status = readStatus(raw);
@@ -310,7 +321,7 @@ export function toQuotationView(raw: any): QuotationView {
     // An advance of nothing (no windows yet) is not worth a line.
     advance: num(totals?.advance?.amount) > 0 ? { percent: num(totals.advance.percent), amount: num(totals.advance.amount) } : null,
     taxNote: text(totals?.tax?.note) || null,
-    placeOfSupplyAssumed: !!totals?.tax?.applicable && !!totals?.tax?.place_of_supply_assumed,
+    stateMissing: readStateMissing(totals?.tax),
     marginId: raw?.order_type_margin_id ?? margin?.id ?? null,
     paymentTermId: raw?.payment_term_id ?? term?.id ?? null,
     discountType: raw?.discount_type === 'percent' || raw?.discount_type === 'amount' ? raw.discount_type : null,

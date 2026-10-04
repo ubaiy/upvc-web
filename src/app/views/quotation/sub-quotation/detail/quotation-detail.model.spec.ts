@@ -34,6 +34,18 @@ describe('quotation-detail.model', () => {
     expect(labels).toEqual(['Subtotal', 'IGST 18%', 'Round off']);
   });
 
+  it('says whose state is missing when the API had to assume the place of supply (M5)', () => {
+    const raw = sampleQuotation();
+    expect(toQuotationView(raw).stateMissing).toBeNull();
+    raw.totals.tax.place_of_supply_assumed = true;
+    raw.totals.tax.seller_state_code = null;
+    expect(toQuotationView(raw).stateMissing).withContext('no company state').toBe('company');
+    raw.totals.tax.seller_state_code = '24';
+    expect(toQuotationView(raw).stateMissing).withContext('company state known').toBe('customer');
+    raw.totals.tax.applicable = false;
+    expect(toQuotationView(raw).stateMissing).withContext('no tax, no sentence').toBeNull();
+  });
+
   it('shows the discount and the taxable value only when a discount applies', () => {
     const raw = sampleQuotation();
     raw.totals.discount = { type: 'percent', value: 5, amount: 878.39 };
