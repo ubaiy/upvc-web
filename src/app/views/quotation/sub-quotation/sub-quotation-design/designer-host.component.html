@@ -1,0 +1,319 @@
+<div class="dz" [class.dz-noticed]="readOnly || repriceNote || saveError || confirmLeave">
+  <!-- Top bar: one way out, the price, one primary action -->
+  <header class="dz-top">
+    <button type="button" class="btn btn-ghost btn-icon" (click)="back()" aria-label="Back to quotation">
+      <app-icon name="arrow-left" [mirror]="true"></app-icon>
+    </button>
+    <div class="dz-title grow">
+      <input
+        class="dz-name"
+        data-dz="label"
+        maxlength="100"
+        placeholder="Name this window, for example Master bedroom"
+        aria-label="Window name"
+        [ngModel]="label"
+        (ngModelChange)="onLabel($event)"
+      />
+      <div class="muted small dz-sub">
+        {{ quotationName }}<ng-container *ngIf="quotationNumber"> · {{ quotationNumber }}</ng-container> ·
+        {{ position }}
+      </div>
+    </div>
+
+    <div class="u-row dz-history" *ngIf="ready && !readOnly">
+      <button type="button" class="btn btn-ghost btn-icon" aria-label="Undo" title="Undo (Ctrl+Z)"
+        [disabled]="!canvas?.canUndo" (click)="canvas?.undo()">
+        <app-icon name="undo"></app-icon>
+      </button>
+      <button type="button" class="btn btn-ghost btn-icon" aria-label="Redo" title="Redo (Ctrl+Y)"
+        [disabled]="!canvas?.canRedo" (click)="canvas?.redo()">
+        <app-icon name="redo"></app-icon>
+      </button>
+    </div>
+
+    <div class="dz-price" data-dz="price" aria-live="polite" aria-atomic="true">
+      <ng-container [ngSwitch]="price.state">
+        <ng-container *ngSwitchCase="'error'">
+          <span class="dz-price-error">Price not available</span>
+          <button type="button" class="dz-link" (click)="retryPrice()">Try again</button>
+        </ng-container>
+        <ng-container *ngSwitchDefault>
+          <span class="v num" [class.dz-stale]="price.state === 'loading'">
+            <ng-container *ngIf="price.amount || price.state !== 'loading'; else pricing">{{ price.amount | inr }}</ng-container>
+            <ng-template #pricing>Working out the price…</ng-template>
+          </span>
+          <span class="faint tiny num" *ngIf="price.amount">
+            {{ price.rate | inr }} / sq ft · {{ price.areaSqFt | number: '1.1-2' }} sq ft<ng-container
+              *ngIf="quantity > 1"> · {{ quantity }} nos</ng-container><ng-container
+              *ngIf="price.state === 'stored'"> · saved price</ng-container>
+          </span>
+        </ng-container>
+      </ng-container>
+    </div>
+
+    <button type="button" class="btn dz-another" data-dz="save-another" [disabled]="!canSave" (click)="save(true)">
+      Save and add another
+    </button>
+    <button type="button" class="btn btn-primary" data-dz="save" [disabled]="!canSave" (click)="save(false)">
+      {{ saving ? 'Saving…' : 'Save window' }}
+    </button>
+  </header>
+
+  <!-- One line of notice, only when there is something to say -->
+  <div class="dz-notice" *ngIf="readOnly || repriceNote || saveError || confirmLeave" role="status">
+    <div class="callout danger" *ngIf="saveError" role="alert">
+      <app-icon name="circle-alert"></app-icon>
+      <span class="grow">{{ saveError }}</span>
+    </div>
+    <div class="callout warn" *ngIf="confirmLeave && !saveError">
+      <span class="grow">This window has changes that are not saved.</span>
+      <button type="button" class="btn btn-sm" (click)="stay()">Keep editing</button>
+      <button type="button" class="btn btn-sm" data-dz="leave" (click)="back()">Leave without saving</button>
+    </div>
+    <div class="callout warn" *ngIf="readOnly && !saveError && !confirmLeave" data-dz="readonly">
+      <app-icon name="lock"></app-icon>
+      <span class="grow">
+        This window was saved by an older version and is shown as it was saved, at its saved price.
+        {{ readOnlyReasons.join(' ') }}
+      </span>
+      <button type="button" class="btn btn-sm" data-dz="redraw" (click)="redraw()">Redraw this window</button>
+    </div>
+    <div class="callout" *ngIf="repriceNote && !readOnly && !changed && !saveError && !confirmLeave" data-dz="reprice">
+      <app-icon name="info"></app-icon>
+      <span class="grow">
+        Saved at {{ price.amount | inr }}. At today's rates this window comes to {{ repriceAmount | inr }}.
+        The saved price stays until you change the window.
+      </span>
+    </div>
+  </div>
+
+  <div class="dz-loading" *ngIf="!ready && !loadError">
+    <span class="skeleton" style="width: 220px"></span>
+    <span class="muted small">Opening the designer…</span>
+  </div>
+  <div class="dz-loading" *ngIf="loadError">
+    <div class="callout danger" role="alert">
+      <app-icon name="circle-alert"></app-icon>
+      <span class="grow">{{ loadError }}</span>
+      <button type="button" class="btn btn-sm" (click)="back()">Back to quotation</button>
+    </div>
+  </div>
+
+  <div class="dz-body" *ngIf="ready">
+    <aside class="palette" aria-label="Tools">
+      <button type="button" class="tool" [attr.aria-pressed]="!armedTool" [disabled]="readOnly" (click)="selectTool()">
+        <app-icon name="pointer" [size]="20"></app-icon>Select
+      </button>
+      <button
+        type="button"
+        class="tool"
+        data-dz="tool-split"
+        title="Add a vertical divider: drag onto a pane, or click here and then click a pane (V)"
+        [attr.aria-pressed]="armedTool === 'split-x'"
+        [disabled]="readOnly"
+        (pointerdown)="canvas?.onPaletteDown($event, 'split-x')"
+        (pointermove)="canvas?.onPaletteMove($event)"
+        (pointerup)="canvas?.onPaletteUp($event)"
+      >
+        <app-icon name="split-v" [size]="20"></app-icon>Split
+      </button>
+      <button
+        type="button"
+        class="tool"
+        data-dz="tool-transom"
+        title="Add a horizontal divider: drag onto a pane, or click here and then click a pane (H)"
+        [attr.aria-pressed]="armedTool === 'split-y'"
+        [disabled]="readOnly"
+        (pointerdown)="canvas?.onPaletteDown($event, 'split-y')"
+        (pointermove)="canvas?.onPaletteMove($event)"
+        (pointerup)="canvas?.onPaletteUp($event)"
+      >
+        <app-icon name="split-h" [size]="20"></app-icon>Transom
+      </button>
+      <hr />
+      <button type="button" class="tool" data-dz="tool-templates" [attr.aria-pressed]="templatesOpen"
+        [disabled]="readOnly" (click)="toggleTemplates()">
+        <app-icon name="template" [size]="20"></app-icon>Templates
+      </button>
+    </aside>
+
+    <section class="canvas" aria-label="Drawing">
+      <!-- Starting designs -->
+      <div class="starts" *ngIf="templatesOpen && !readOnly" data-dz="starts">
+        <div class="starts-row" role="list" aria-label="Starting designs">
+          <button type="button" class="start" role="listitem" *ngFor="let card of startCards; trackBy: trackKey"
+            [attr.data-start]="card.design.key" (click)="useStart(card)">
+            <svg [attr.viewBox]="'0 0 ' + card.thumb.width + ' 100'" aria-hidden="true">
+              <rect x="1" y="1" [attr.width]="card.thumb.width - 2" height="98" class="t-frame" />
+              <ng-container *ngFor="let p of card.thumb.panes">
+                <rect [attr.x]="p.x * card.thumb.width" [attr.y]="p.y * 100" [attr.width]="p.w * card.thumb.width"
+                  [attr.height]="p.h * 100" class="t-pane" />
+                <path *ngIf="p.kind === 'openable'" class="t-mark"
+                  [attr.d]="'M' + (p.x + p.w) * card.thumb.width + ' ' + p.y * 100 + ' L' + p.x * card.thumb.width + ' ' + (p.y + p.h / 2) * 100 + ' L' + (p.x + p.w) * card.thumb.width + ' ' + (p.y + p.h) * 100" />
+                <path *ngIf="p.kind === 'sliding'" class="t-mark"
+                  [attr.d]="'M' + (p.x + p.w * 0.25) * card.thumb.width + ' ' + (p.y + p.h / 2) * 100 + ' L' + (p.x + p.w * 0.75) * card.thumb.width + ' ' + (p.y + p.h / 2) * 100" />
+              </ng-container>
+            </svg>
+            <span>{{ card.design.label }}</span>
+          </button>
+          <button type="button" class="start start-saved" role="listitem" *ngFor="let card of savedCards"
+            [attr.data-saved]="card.id" (click)="useSaved(card)">
+            <img *ngIf="card.image" [src]="card.image" alt="" />
+            <app-icon *ngIf="!card.image" name="template" [size]="20"></app-icon>
+            <span>{{ card.name }}</span>
+            <span class="start-x" role="button" tabindex="0" [attr.aria-label]="'Delete template ' + card.name"
+              (click)="deleteTemplate(card, $event)" (keydown.enter)="deleteTemplate(card, $event)">
+              <app-icon name="x" [size]="12"></app-icon>
+            </span>
+          </button>
+        </div>
+        <div class="starts-save">
+          <input class="input" data-dz="template-name" maxlength="150" placeholder="Template name"
+            aria-label="Template name" [(ngModel)]="templateName" (keydown.enter)="saveTemplate()" />
+          <button type="button" class="btn btn-sm" data-dz="save-template" (click)="saveTemplate()">
+            Save as template
+          </button>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Close templates" (click)="toggleTemplates()">
+            <app-icon name="x"></app-icon>
+          </button>
+        </div>
+        <p class="starts-msg small" *ngIf="templateMessage" role="status">{{ templateMessage }}</p>
+      </div>
+
+      <span class="tip" *ngIf="!readOnly && !templatesOpen">
+        Drag a divider to resize · double-click a size to type it
+      </span>
+
+      <div class="stage">
+        <app-design-canvas
+          chrome="none"
+          [model]="model"
+          [readOnly]="readOnly"
+          [frameFaceMm]="frameFaceMm"
+          [glassTints]="glassTints"
+          (modelChange)="onModelChange($event)"
+          (selectionChange)="onSelectionChange($event)"
+        ></app-design-canvas>
+      </div>
+
+      <div class="float" role="toolbar" aria-label="View">
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Zoom out" (click)="canvas?.zoomOut()">
+          <app-icon name="zoom-out"></app-icon>
+        </button>
+        <span class="zoom num">{{ canvas?.zoomPercent ?? 100 }}%</span>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Zoom in" (click)="canvas?.zoomIn()">
+          <app-icon name="zoom-in"></app-icon>
+        </button>
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Fit to screen" (click)="canvas?.fitToScreen()">
+          <app-icon name="fit"></app-icon>
+        </button>
+        <ng-container *ngIf="!readOnly">
+          <span class="sep"></span>
+          <button type="button" class="btn btn-ghost btn-sm" data-dz="equal" (click)="canvas?.equalizeSelected()">
+            <app-icon name="equal"></app-icon>Equal panes
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" *ngIf="dividerSelected" (click)="canvas?.deleteSelectedDivider()">
+            <app-icon name="trash"></app-icon>Remove divider
+          </button>
+        </ng-container>
+      </div>
+    </section>
+
+    <aside class="panel" aria-label="Properties">
+      <div class="panel-sec panel-tabs">
+        <div class="seg" role="group" aria-label="Edit">
+          <button type="button" data-dz="tab-window" [attr.aria-pressed]="tab === 'window'" (click)="tab = 'window'">Whole window</button>
+          <button type="button" data-dz="tab-pane" [attr.aria-pressed]="tab === 'pane'" (click)="tab = 'pane'">Selected pane</button>
+        </div>
+      </div>
+
+      <div class="panel-scroll">
+        <div class="panel-sec" *ngIf="tab === 'window'">
+          <div class="form-grid dz-size">
+            <div class="field">
+              <label class="label" for="dz-w">Width</label>
+              <div class="input-group">
+                <input id="dz-w" data-dz="width" type="number" inputmode="numeric" class="num" [min]="frameMinMm"
+                  [max]="frameMaxMm" [value]="widthMm" [disabled]="readOnly" (change)="onSize('w', $any($event.target).value)" />
+                <span class="unit">mm</span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="dz-h">Height</label>
+              <div class="input-group">
+                <input id="dz-h" data-dz="height" type="number" inputmode="numeric" class="num" [min]="frameMinMm"
+                  [max]="frameMaxMm" [value]="heightMm" [disabled]="readOnly" (change)="onSize('h', $any($event.target).value)" />
+                <span class="unit">mm</span>
+              </div>
+            </div>
+            <div class="field">
+              <label class="label" for="dz-q">Quantity</label>
+              <div class="input-group" [class.is-invalid]="!quantityValid">
+                <input id="dz-q" data-dz="quantity" type="number" inputmode="numeric" class="num" min="1" max="10000"
+                  [value]="quantity" [disabled]="readOnly" (change)="onQuantity($any($event.target).value)" />
+                <span class="unit">nos</span>
+              </div>
+            </div>
+          </div>
+          <p class="error" *ngIf="!quantityValid">Quantity must be a whole number between 1 and 10000.</p>
+        </div>
+
+        <div class="panel-sec panel-inspector">
+          <app-design-inspector
+            [design]="effective"
+            [selection]="selection"
+            [frameFaceMm]="frameFaceMm"
+            [glassOptions]="glassOptions"
+            [colorOptions]="colourOptions"
+            [trackOptions]="catalog.tracks"
+            [handleOptions]="handleOptions"
+            [hingeOptions]="hingeOptions"
+            [sashOptions]="sashOptions"
+            [show]="tab"
+            [readOnly]="readOnly"
+            (designChange)="onInspectorChange($event)"
+          ></app-design-inspector>
+        </div>
+      </div>
+
+      <div class="panel-foot">
+        <button type="button" class="dz-details-link" data-dz="details" (click)="detailsOpen = true"
+          [disabled]="!price.lines.length">
+          <span>Price details</span>
+          <span class="u-row muted small">{{ parts }} parts<app-icon name="chev-right" [mirror]="true"></app-icon></span>
+        </button>
+      </div>
+
+      <!-- Price details: slides over the properties, the drawing stays in view -->
+      <div class="details" *ngIf="detailsOpen" role="dialog" aria-label="Price details" data-dz="details-panel">
+        <div class="details-head">
+          <b class="grow">Price details</b>
+          <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Close price details" (click)="detailsOpen = false">
+            <app-icon name="x"></app-icon>
+          </button>
+        </div>
+        <div class="details-body">
+          <table class="details-table">
+            <thead>
+              <tr><th scope="col">Part</th><th scope="col" class="right">Qty</th><th scope="col" class="right">Cost</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let line of price.lines">
+                <td>{{ line.name }}<span class="faint tiny details-group">{{ line.group }}</span></td>
+                <td class="right num">{{ line.quantity === null ? '' : (line.quantity | number: '1.0-2') }}</td>
+                <td class="right num">{{ line.cost | inr }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <dl class="details-total">
+          <div><dt>Cost</dt><dd class="num">{{ price.cost | inr }}</dd></div>
+          <div *ngIf="marginPercent"><dt>{{ marginName || 'Margin' }} {{ marginPercent | number: '1.0-2' }}%</dt><dd class="num">{{ price.amount - price.cost | inr }}</dd></div>
+          <div class="strong"><dt>Price of this window</dt><dd class="num">{{ price.amount | inr }}</dd></div>
+          <div class="muted small"><dt>{{ price.areaSqFt | number: '1.1-2' }} sq ft</dt><dd class="num">{{ price.rate | inr }} / sq ft</dd></div>
+        </dl>
+        <p class="faint tiny details-note">Tax is added on the quotation, not per window.</p>
+      </div>
+    </aside>
+  </div>
+</div>
