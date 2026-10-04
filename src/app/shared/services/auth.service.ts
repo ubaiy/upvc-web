@@ -58,15 +58,28 @@ export class AuthService {
       next: () => {},
       error: () => {},
     });
-    this.clearSession();
+    this.clearSession(false);
+  }
+
+  /**
+   * Query parameters for the sign-in page that bring the user back to `url`
+   * afterwards. Home and the auth pages themselves are not worth returning to.
+   */
+  public signInParams(url: string): { returnUrl?: string } {
+    const path = (url || '').split(/[?#]/)[0];
+    const worthIt = path.startsWith('/') && path !== '/' && path !== '/dashboard' && !path.startsWith('/auth');
+    return worthIt ? { returnUrl: url } : {};
   }
 
   /**
    * Clear local session state only (no API call). Used by the 401 handler so
    * an expired/revoked token doesn't trigger a logout call that would 401
    * again in a loop. Removes only our own keys (not localStorage.clear()).
+   *
+   * `keepPlace`: the session ended by itself, so sign-in returns to the page
+   * the user was on. A deliberate sign-out passes false and lands on Home.
    */
-  public clearSession() {
+  public clearSession(keepPlace = true) {
     this.token = '';
     this.isAuthenticated = false;
     this.user = new UserDto();
@@ -75,7 +88,14 @@ export class AuthService {
     this._ls.remove(this.TOKEN);
     this._ls.remove(this.USER);
     this._ls.remove('profile');
-    this._router.navigate(['/auth/login']);
+    const url = this._router.url || '';
+    if (url.startsWith('/auth')) {
+      // Already on a sign-in page (a wrong password is a 401 too): stay, and keep its ?returnUrl=.
+      return;
+    }
+    this._router.navigate(['/auth/login'], {
+      queryParams: keepPlace ? this.signInParams(url) : {},
+    });
   }
 
   public setUserAndToken(user: IUserDto, isAuthenticated: Boolean) {

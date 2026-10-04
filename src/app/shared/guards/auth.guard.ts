@@ -7,7 +7,8 @@ import {
 } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
-@Injectable()
+/** Lets a signed-in user through; anyone else goes to sign in and comes back to the page they asked for. */
+@Injectable({ providedIn: 'root' })
 export class AuthGuard implements CanActivate {
   constructor(private _router: Router, private _authService: AuthService) {}
 
@@ -15,8 +16,9 @@ export class AuthGuard implements CanActivate {
     if (this._authService.getToken()) {
       return true;
     } else {
-      //this._alertService.errorAlert('Please login.'); //TODO need to add alert
-      this._router.navigate(['/auth/login']);
+      this._router.navigate(['/auth/login'], {
+        queryParams: this._authService.signInParams(state.url),
+      });
       return false;
     }
   }
