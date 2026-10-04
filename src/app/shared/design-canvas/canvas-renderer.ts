@@ -398,17 +398,31 @@ function drawLeaf(
     const wMm = Math.round(r.w / view.pxPerMm);
     const hMm = Math.round(r.h / view.pxPerMm);
     const label = new Konva.Text({
-      x: r.x,
-      y: r.y + 4,
-      width: Math.max(10, r.w),
-      align: 'center',
       text: `${wMm} × ${hMm} mm`,
       fontSize: 11,
       fill: COL.label,
       listening: false,
       name: 'pane-label',
     });
+    // Centred on a white pill so sash bands / opening symbols never cross it.
+    const textW = label.width();
+    const lx = r.x + (r.w - textW) / 2;
+    const ly = r.y + 6;
+    label.position({ x: lx, y: ly });
     label.setAttrs({ paneId: leaf.id, wMm, hMm });
+    layer.add(
+      new Konva.Rect({
+        x: lx - 4,
+        y: ly - 2,
+        width: textW + 8,
+        height: label.height() + 4,
+        cornerRadius: 3,
+        fill: '#ffffff',
+        opacity: 0.85,
+        listening: false,
+        name: 'pane-label-bg',
+      })
+    );
     layer.add(label);
   }
 }

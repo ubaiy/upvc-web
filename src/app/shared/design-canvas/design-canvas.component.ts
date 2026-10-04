@@ -803,8 +803,10 @@ export class DesignCanvasComponent
     const nl = lay.nodes.get(paneId);
     if (!nl) return;
     const axis = tool === 'split-x' ? 'x' : 'y';
-    const pos =
-      axis === 'x' ? mm.xMm - nl.content.xMm : mm.yMm - nl.content.yMm;
+    // Whole millimetres only: a dropped divider never lands on a fraction.
+    const pos = Math.round(
+      axis === 'x' ? mm.xMm - nl.content.xMm : mm.yMm - nl.content.yMm
+    );
     this.trySplit(paneId, axis, pos);
   }
 

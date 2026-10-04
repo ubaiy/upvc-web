@@ -205,6 +205,7 @@ describe('DesignCanvasComponent', () => {
     expect(split.axis).toBe('x');
     expect(split.children.length).toBe(2);
     expect(split.positionsMm[0]).toBeCloseTo(500, 0);
+    expect(Number.isInteger(split.positionsMm[0])).toBeTrue(); // whole mm
     expect(changes.length).toBe(1);
   });
 
