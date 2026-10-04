@@ -158,6 +158,10 @@ const words = (key: string, names: Record<string, string>) => names[key] || key.
 export function plainWarnings(warnings: JobWarning[] | null | undefined, windowCount = 0): PlainWarning[] {
   const lines: PlainWarning[] = [];
   const rules = new Map<string, { windows: string; values: string[] }>();
+  // Two engine messages can come to the same plain sentence: they are one line for all their windows.
+  const byText = new Map<string, string[]>();
+  const label = (codes: string[]) =>
+    windowCount > 1 && codes.length >= windowCount ? 'All windows' : codes.join(', ');
 
   for (const warning of warnings || []) {
     const message = (warning?.message || '').trim();
@@ -165,17 +169,23 @@ export function plainWarnings(warnings: JobWarning[] | null | undefined, windowC
       continue;
     }
     const codes = warning.windows || [];
-    const windows = windowCount > 1 && codes.length >= windowCount ? 'All windows' : codes.join(', ');
 
     const rule = /^Rule '([^']+)' missing .*default ([\d.]+) ?mm/i.exec(message);
     if (rule) {
+      const windows = label(codes);
       const group = rules.get(windows) || { windows, values: [] };
       group.values.push(`${words(rule[1], RULE)} ${rule[2]} mm`);
       rules.set(windows, group);
       continue;
     }
 
-    lines.push({ text: plainMessage(message), windows });
+    const text = plainMessage(message);
+    const known = byText.get(text) || [];
+    byText.set(text, known.concat(codes.filter((code) => !known.includes(code))));
+  }
+
+  for (const [text, codes] of byText) {
+    lines.push({ text, windows: label(codes) });
   }
 
   for (const group of rules.values()) {

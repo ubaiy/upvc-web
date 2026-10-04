@@ -147,6 +147,18 @@ describe('production adapter', () => {
       }
     });
 
+    it('says the same thing once, for all the windows it applies to', () => {
+      const lines = plainWarnings(
+        [
+          { message: 'Sizes were calculated when the job was frozen, not when the window was saved (one reason).', windows: ['W1'] },
+          { message: 'Sizes were calculated when the job was frozen, not when the window was saved (another reason).', windows: ['W2', 'W3'] },
+        ],
+        3
+      );
+      expect(lines.length).toBe(1);
+      expect(lines[0].windows).toBe('All windows');
+    });
+
     it('keeps a message it does not know as the engine wrote it', () => {
       expect(plainWarnings([{ message: 'Bars in both directions are sized as an even grid.', windows: ['W2'] }], 3)).toEqual([
         { text: 'Bars in both directions are sized as an even grid.', windows: 'W2' },

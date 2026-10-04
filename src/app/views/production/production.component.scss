@@ -21,10 +21,13 @@
 
 .job {
   display: flex;
+  // The old Bootstrap bridge still makes every .card a column.
+  flex-direction: row;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--s-4);
 
+  .grow { flex: 1 1 320px; min-width: 0; }
   h2 { margin-block-end: var(--s-1); }
 }
 
@@ -127,6 +130,7 @@
 .sub-line { display: block; }
 
 .summary .table td { padding-block: var(--s-2); }
+.summary .table td.num { white-space: nowrap; }
 
 // Loading: the same blocks as the page.
 .sk-job,
