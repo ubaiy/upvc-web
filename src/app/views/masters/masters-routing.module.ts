@@ -1,80 +1,33 @@
 import { NgModule } from '@angular/core';
-import { RouterModule, Routes } from '@angular/router';
-import { MastersComponent } from './masters.component';
-import { GlassResolver } from './glass.resolver';
-import { HardwareResolver } from './hardware.resolver';
-import { DetailComponent } from './detail/detail.component';
-import { DetailResolver } from './detail/detail.resolver';
-import { CostheadListResolver } from 'src/app/shared/resolver/costhead-list.resolver';
-import { ProfileCategoryResolver } from 'src/app/shared/resolver/profile-category.resolver';
-import { UnitResolver } from 'src/app/shared/resolver/unit.resolver';
+import { RouterModule, Routes, UrlMatchResult, UrlSegment } from '@angular/router';
+
+import { CatalogueComponent } from './catalogue.component';
+import { CATALOGUE_TABS } from './catalogue.model';
+
+/**
+ * Matches `/masters/<tab>` for the four tabs with one route, so moving between
+ * tabs keeps the page (and the lists it has loaded) instead of rebuilding it.
+ */
+export function catalogueTabMatcher(segments: UrlSegment[]): UrlMatchResult | null {
+  return segments.length === 1 && CATALOGUE_TABS.some((tab) => tab.id === segments[0].path)
+    ? { consumed: segments, posParams: { tab: segments[0] } }
+    : null;
+}
+
 const routes: Routes = [
-  {
-    path: 'profile',
-    loadChildren: () =>
-      import('./profile/profile.module').then((m) => m.ProfileModule),
-  },
-  {
-    path: 'profile-color',
-    loadChildren: () =>
-      import('./profile-color/profile-color.module').then(
-        (m) => m.ProfileColorModule
-      ),
-  },
-  {
-    path: 'glass',
-    component: MastersComponent,
-    title: 'Glazzing',
-    resolve: { list: GlassResolver },
-  },
-  {
-    path: 'hardware',
-    component: MastersComponent,
-    title: 'Hardware',
-    resolve: { list: HardwareResolver },
-  },
-  {
-    path: 'Glazzing',
-    component: DetailComponent,
-    resolve: {
-      costheadList: CostheadListResolver,
-      category: ProfileCategoryResolver,
-      unitList: UnitResolver,
-    },
-    title: 'Glazzing Add',
-  },
-  {
-    path: 'Glazzing/:id',
-    component: DetailComponent,
-    resolve: {
-      data: DetailResolver,
-      costheadList: CostheadListResolver,
-      category: ProfileCategoryResolver,
-      unitList: UnitResolver,
-    },
-    title: 'Glazzing Edit',
-  },
-  {
-    path: 'Hardware',
-    component: DetailComponent,
-    resolve: {
-      costheadList: CostheadListResolver,
-      category: ProfileCategoryResolver,
-      unitList: UnitResolver,
-    },
-    title: 'Hardware add',
-  },
-  {
-    path: 'Hardware/:id',
-    component: DetailComponent,
-    resolve: {
-      data: DetailResolver,
-      costheadList: CostheadListResolver,
-      category: ProfileCategoryResolver,
-      unitList: UnitResolver,
-    },
-    title: 'Hardware Edit',
-  },
+  { path: '', redirectTo: 'profile', pathMatch: 'full' },
+  { matcher: catalogueTabMatcher, component: CatalogueComponent, title: 'Catalogue' },
+
+  // Addresses of the old separate add and edit screens. Each now opens its tab;
+  // adding and editing happen in a dialog there.
+  { path: 'profile/add', redirectTo: 'profile' },
+  { path: 'profile/edit/:id', redirectTo: 'profile' },
+  { path: 'profile-color/add', redirectTo: 'profile-color' },
+  { path: 'profile-color/edit/:id', redirectTo: 'profile-color' },
+  { path: 'Glazzing', redirectTo: 'glass' },
+  { path: 'Glazzing/:id', redirectTo: 'glass' },
+  { path: 'Hardware', redirectTo: 'hardware' },
+  { path: 'Hardware/:id', redirectTo: 'hardware' },
 ];
 
 @NgModule({

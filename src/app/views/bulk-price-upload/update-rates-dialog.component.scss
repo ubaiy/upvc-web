@@ -1,0 +1,15 @@
+.rates { display: grid; gap: var(--s-4); }
+.seg { align-self: flex-start; }
+.seg button:disabled { color: var(--c-text-3); cursor: not-allowed; }
+.pct { max-width: 160px; }
+details > summary { cursor: pointer; font-size: var(--fs-13); font-weight: var(--fw-medium); color: var(--c-text-2); }
+details > .hint { display: block; margin-block: var(--s-2) var(--s-3); }
+
+.preview {
+  display: grid; gap: var(--s-2); padding: var(--s-4);
+  border: 1px solid var(--c-border); border-radius: var(--r-md); background: var(--c-surface-2);
+}
+.preview-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+.preview-sum { display: flex; align-items: center; gap: var(--s-3); flex-wrap: wrap; color: var(--c-text-3); }
+.preview-sum .after { font-size: var(--fs-20); font-weight: var(--fw-semibold); color: var(--c-text); letter-spacing: -.01em; }
+.progress-text { margin-inline-end: auto; }

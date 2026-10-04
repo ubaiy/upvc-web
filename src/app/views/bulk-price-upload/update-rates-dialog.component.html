@@ -1,0 +1,154 @@
+<p-dialog
+  header="Update rates"
+  [visible]="visible"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!saving"
+  [closeOnEscape]="!saving"
+  [style]="{ width: '560px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <form id="rates-form" class="rates" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="field">
+      <label class="label" for="ur-scope">Apply to</label>
+      <select class="select" id="ur-scope" formControlName="category">
+        <option value="">All profiles ({{ profiles.length }})</option>
+        <option *ngFor="let c of categories" [value]="c.value">{{ fixSpelling(c.value) }} only ({{ c.count }})</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <span class="label" id="ur-mode">Change</span>
+      <div class="seg" role="group" aria-labelledby="ur-mode">
+        <button type="button" [attr.aria-pressed]="mode === 'percent'" [disabled]="!canUsePercent" (click)="setMode('percent')">
+          By a percentage
+        </button>
+        <button type="button" [attr.aria-pressed]="mode === 'rate'" (click)="setMode('rate')">New rate per kg</button>
+      </div>
+      <span class="hint" *ngIf="!canUsePercent">Set your rate per kg once; after that you can move rates by a percentage.</span>
+    </div>
+
+    <div class="field" *ngIf="mode === 'percent'">
+      <label class="label" for="ur-percent">Raise or lower by</label>
+      <div class="input-group pct" [class.is-invalid]="bad('percent')">
+        <input
+          id="ur-percent"
+          class="num"
+          inputmode="decimal"
+          autocomplete="off"
+          placeholder="5"
+          formControlName="percent"
+          [attr.aria-invalid]="bad('percent') ? 'true' : null"
+          aria-describedby="ur-percent-h"
+        />
+        <span class="unit">%</span>
+      </div>
+      <span class="error" id="ur-percent-h" *ngIf="bad('percent'); else percentHint">
+        Enter a percentage from -90 to 500, for example 5 or -3.
+      </span>
+      <ng-template #percentHint>
+        <span class="hint" id="ur-percent-h">Put a minus sign in front to lower rates, for example -3.</span>
+      </ng-template>
+    </div>
+
+    <ng-container *ngIf="mode === 'rate'">
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="ur-kg">Rate per kg</label>
+          <div class="input-group" [class.is-invalid]="bad('per_kg')">
+            <span aria-hidden="true">₹</span>
+            <input id="ur-kg" class="num" inputmode="decimal" autocomplete="off" formControlName="per_kg"
+              [attr.aria-invalid]="bad('per_kg') ? 'true' : null" />
+            <span class="unit">/ kg</span>
+          </div>
+          <span class="error" *ngIf="bad('per_kg')">Enter a rate above 0.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="ur-ckg">Coloured rate per kg</label>
+          <div class="input-group" [class.is-invalid]="bad('color_per_kg')">
+            <span aria-hidden="true">₹</span>
+            <input id="ur-ckg" class="num" inputmode="decimal" autocomplete="off" formControlName="color_per_kg"
+              [attr.aria-invalid]="bad('color_per_kg') ? 'true' : null" />
+            <span class="unit">/ kg</span>
+          </div>
+          <span class="error" *ngIf="bad('color_per_kg')">Enter a rate above 0.</span>
+        </div>
+      </div>
+      <details [attr.open]="bad('rate_bar') || bad('color_rate_bar') ? '' : null">
+        <summary>Bar length</summary>
+        <p class="hint">The price of one bar is the rate per metre times this length.</p>
+        <div class="form-grid">
+          <div class="field">
+            <label class="label" for="ur-bar">Bar length</label>
+            <div class="input-group" [class.is-invalid]="bad('rate_bar')">
+              <input id="ur-bar" class="num" inputmode="decimal" autocomplete="off" formControlName="rate_bar" />
+              <span class="unit">m</span>
+            </div>
+            <span class="error" *ngIf="bad('rate_bar')">Enter a length above 0.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="ur-cbar">Coloured bar length</label>
+            <div class="input-group" [class.is-invalid]="bad('color_rate_bar')">
+              <input id="ur-cbar" class="num" inputmode="decimal" autocomplete="off" formControlName="color_rate_bar" />
+              <span class="unit">m</span>
+            </div>
+            <span class="error" *ngIf="bad('color_rate_bar')">Enter a length above 0.</span>
+          </div>
+        </div>
+      </details>
+    </ng-container>
+
+    <section class="preview" aria-live="polite" aria-label="Preview">
+      <ng-container *ngIf="preview as p; else noPreview">
+        <div class="preview-head">
+          <span class="label">Sample window, {{ sample.widthMm }} × {{ sample.heightMm }} mm</span>
+          <span class="hint">Profile material only</span>
+        </div>
+        <div class="preview-sum">
+          <span class="num muted">{{ p.before | inr }}</span>
+          <app-icon name="arrow-right" [size]="16"></app-icon>
+          <span class="num after">{{ p.after | inr }}</span>
+          <span class="badge plain" [class.badge-warning]="p.after > p.before" [class.badge-success]="p.after < p.before">
+            {{ p.after >= p.before ? '+' : '' }}{{ p.after - p.before | inr }}
+          </span>
+        </div>
+        <p class="hint">
+          {{ sample.frameMetres }} m of {{ fixSpelling(p.frame.profile_name) }}<ng-container *ngIf="p.sash">
+            and {{ sample.sashMetres }} m of {{ fixSpelling(p.sash.profile_name) }}</ng-container>.
+          <ng-container *ngIf="nextFactors as n">
+            Rate per kg {{ factors?.per_kg | inr }} to {{ n.per_kg | inr }}, coloured {{ factors?.color_per_kg | inr }} to
+            {{ n.color_per_kg | inr }}.
+          </ng-container>
+        </p>
+      </ng-container>
+      <ng-template #noPreview>
+        <span class="hint">
+          {{ mode === 'percent' ? 'Enter a percentage to see what a sample window will cost.' : 'Enter the rates to see what a sample window will cost.' }}
+        </span>
+      </ng-template>
+    </section>
+
+    <app-callout tone="warn" *ngIf="!category">
+      All {{ profiles.length }} profile rates are worked out again from their weight. Rates typed by hand in the list are replaced.
+    </app-callout>
+    <app-callout tone="info" *ngIf="category && affected.length > 40">
+      {{ affected.length }} profiles are saved one at a time. This takes about a minute; keep this window open.
+    </app-callout>
+    <app-callout tone="danger" *ngIf="error" role="alert">{{ error }}</app-callout>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <span class="hint progress-text" *ngIf="saving && category" role="status">Saved {{ done }} of {{ affected.length }}</span>
+    <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
+    <button
+      pButton
+      type="submit"
+      form="rates-form"
+      [label]="'Update ' + affected.length + (affected.length === 1 ? ' profile' : ' profiles')"
+      [loading]="saving"
+      [disabled]="!profiles.length"
+    ></button>
+  </ng-template>
+</p-dialog>

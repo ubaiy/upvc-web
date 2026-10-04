@@ -1,0 +1,296 @@
+<app-page-header title="Catalogue" subtitle="The materials and rates every quotation is priced from.">
+  <ng-container ngProjectAs="[actions]">
+    <button type="button" class="btn btn-secondary" *ngIf="tab === 'profile'" [disabled]="status !== 'ready' || !profiles.length" (click)="ratesOpen = true">
+      Update rates
+    </button>
+    <button type="button" class="btn btn-primary" [disabled]="status !== 'ready'" (click)="add()">
+      <app-icon name="plus"></app-icon>Add {{ def.noun }}
+    </button>
+  </ng-container>
+</app-page-header>
+
+<div class="tabs" role="tablist" aria-label="Catalogue sections">
+  <a
+    *ngFor="let t of tabs"
+    class="tab"
+    role="tab"
+    [routerLink]="['/masters', t.id]"
+    [attr.aria-selected]="t.id === tab"
+    [attr.aria-current]="t.id === tab ? 'page' : null"
+    >{{ t.label }}<span class="count" *ngIf="count(t.id) !== null">{{ count(t.id) }}</span></a
+  >
+</div>
+
+<section class="card" role="tabpanel" [attr.aria-label]="def.label" [attr.aria-busy]="status === 'loading'">
+  <!-- Could not load: say so in place, with a way to try again -->
+  <div class="card-pad" *ngIf="status === 'error'">
+    <app-callout tone="danger" role="alert">
+      The {{ def.plural }} could not be loaded. Check your connection and try again.
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="retry()">Try again</button>
+    </app-callout>
+  </div>
+
+  <ng-container *ngIf="status !== 'error'">
+    <div class="toolbar">
+      <label class="input-group search">
+        <app-icon name="search"></app-icon>
+        <input
+          type="search"
+          [placeholder]="'Search ' + def.plural"
+          [attr.aria-label]="'Search ' + def.plural"
+          [value]="search[tab]"
+          (input)="onSearch($any($event.target).value)"
+        />
+      </label>
+      <select
+        *ngIf="hasFilter"
+        class="select filter"
+        [attr.aria-label]="tab === 'profile' ? 'Category' : 'Group'"
+        [value]="filter[tab]"
+        (change)="onFilter($any($event.target).value)"
+      >
+        <option value="">{{ tab === 'profile' ? 'All categories' : 'All groups' }}</option>
+        <option *ngFor="let option of filterOptions" [value]="option" [selected]="option === filter[tab]">{{ fixSpelling(option) }}</option>
+      </select>
+      <span class="grow"></span>
+      <span class="muted small hide-tablet" *ngIf="tab === 'profile' && ratesUpdated as stamp">
+        Rates last updated {{ stamp | date : 'd MMM' }}
+      </span>
+    </div>
+
+    <!-- Loading: rows of the same height as the real ones -->
+    <table class="table" *ngIf="status === 'loading'" aria-hidden="true">
+      <tbody>
+        <tr *ngFor="let i of skeletonRows">
+          <td><span class="skeleton" [style.width.%]="38 + (i % 3) * 9"></span><span class="skeleton sk-sub"></span></td>
+          <td class="hide-tablet"><span class="skeleton" style="width: 72px"></span></td>
+          <td class="right"><span class="skeleton sk-rate"></span></td>
+        </tr>
+      </tbody>
+    </table>
+    <span class="sr-only" role="status" *ngIf="status === 'loading'">Loading {{ def.plural }}</span>
+
+    <ng-container *ngIf="status === 'ready'">
+      <!-- Empty: nothing in this tab yet, or nothing matches the search -->
+      <app-empty-state
+        *ngIf="!rows.length && !filtered"
+        [icon]="tab === 'profile-color' ? 'palette' : 'box'"
+        [title]="'No ' + def.plural + ' yet'"
+        [text]="tab === 'profile' ? 'Quotations are priced from your profiles. Add the first one to start.' : 'Add the first one to use it in a quotation.'"
+      >
+        <button type="button" class="btn btn-secondary" (click)="add()"><app-icon name="plus"></app-icon>Add {{ def.noun }}</button>
+      </app-empty-state>
+      <app-empty-state *ngIf="!rows.length && filtered" icon="search" [title]="'No ' + def.plural + ' match'" text="Try a shorter search, or clear the filter.">
+        <button type="button" class="btn btn-secondary" (click)="clearFilters()">Clear search</button>
+      </app-empty-state>
+
+      <ng-container *ngIf="rows.length" [ngSwitch]="tab">
+        <!-- Profiles -->
+        <table class="table" *ngSwitchCase="'profile'">
+          <thead>
+            <tr>
+              <th scope="col">Profile</th>
+              <th scope="col">Category</th>
+              <th scope="col" class="hide-tablet">Used as</th>
+              <th scope="col" class="right hide-tablet">Weight</th>
+              <th scope="col" class="right">Rate</th>
+              <th scope="col" class="right">Coloured rate</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let p of pageRows; trackBy: trackById">
+              <td>
+                <span class="title">{{ fixSpelling(p.profile_name) }}</span>
+                <div class="faint tiny">{{ p.profile_code }}</div>
+              </td>
+              <td class="muted">{{ fixSpelling(p.category) }}</td>
+              <td class="muted hide-tablet">{{ fixSpelling(usedAs(p)) || '–' }}</td>
+              <td class="right num muted hide-tablet">{{ p.kg_meter | number : '1.2-3' }} kg/m</td>
+              <td class="right rate">
+                <app-rate-cell
+                  [value]="p.rate_meter"
+                  unit="m"
+                  [label]="'Rate per metre for ' + p.profile_name"
+                  [state]="cell(p.id, 'rate_meter').state"
+                  [error]="cell(p.id, 'rate_meter').error"
+                  (save)="saveProfileRate(p, 'rate_meter', $event)"
+                ></app-rate-cell>
+              </td>
+              <td class="right rate">
+                <app-rate-cell
+                  [value]="p.rate_meter_color"
+                  unit="m"
+                  [label]="'Coloured rate per metre for ' + p.profile_name"
+                  [state]="cell(p.id, 'rate_meter_color').state"
+                  [error]="cell(p.id, 'rate_meter_color').error"
+                  (save)="saveProfileRate(p, 'rate_meter_color', $event)"
+                ></app-rate-cell>
+              </td>
+              <td class="row-actions">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + p.profile_name" (click)="edit(p)">
+                  <app-icon name="pencil"></app-icon>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Colours -->
+        <table class="table" *ngSwitchCase="'profile-color'">
+          <thead>
+            <tr>
+              <th scope="col">Colour</th>
+              <th scope="col">Code</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of pageRows; trackBy: trackById">
+              <td>
+                <span class="swatch" [style.background]="c.color_code" aria-hidden="true"></span>
+                <span class="title">{{ c.color_name }}</span>
+                <span class="badge plain default" *ngIf="c.is_default === 1">Standard</span>
+              </td>
+              <td class="muted num">{{ c.color_code }}</td>
+              <td class="row-actions">
+                <ng-container *ngIf="c.is_default !== 1; else locked">
+                  <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + c.color_name" (click)="edit(c)">
+                    <app-icon name="pencil"></app-icon>
+                  </button>
+                  <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + c.color_name" (click)="askDelete(c)">
+                    <app-icon name="trash"></app-icon>
+                  </button>
+                </ng-container>
+                <ng-template #locked><span class="faint tiny">Cannot be changed</span></ng-template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Glass -->
+        <table class="table" *ngSwitchCase="'glass'">
+          <thead>
+            <tr>
+              <th scope="col">Glass</th>
+              <th scope="col" class="right">Rate</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let g of pageRows; trackBy: trackById">
+              <td>
+                <span class="title">{{ g.name }}</span>
+                <div class="faint tiny" *ngIf="g.description && g.description !== g.name">{{ g.description }}</div>
+              </td>
+              <td class="right rate">
+                <app-rate-cell
+                  [value]="g.cost"
+                  [unit]="unitLabel(g.unit)"
+                  [label]="'Rate for ' + g.name"
+                  [state]="cell(g.id, 'cost').state"
+                  [error]="cell(g.id, 'cost').error"
+                  (save)="saveItemRate(g, $event)"
+                ></app-rate-cell>
+              </td>
+              <td class="row-actions">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + g.name" (click)="edit(g)">
+                  <app-icon name="pencil"></app-icon>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Hardware -->
+        <table class="table" *ngSwitchCase="'hardware'">
+          <thead>
+            <tr>
+              <th scope="col">Item</th>
+              <th scope="col">Group</th>
+              <th scope="col" class="hide-tablet">Used for</th>
+              <th scope="col" class="right">Rate</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of pageRows; trackBy: trackById">
+              <td>
+                <span class="title">{{ h.name }}</span>
+                <div class="faint tiny" *ngIf="h.conditions || (h.description && h.description !== h.name)">
+                  {{ fixSpelling(h.conditions || h.description) }}
+                </div>
+              </td>
+              <td class="muted">{{ fixSpelling(h.costhead) }}</td>
+              <td class="muted hide-tablet">{{ fixSpelling(h.category) || 'Every window' }}</td>
+              <td class="right rate">
+                <app-rate-cell
+                  [value]="h.cost"
+                  [unit]="unitLabel(h.unit)"
+                  [label]="'Rate for ' + h.name"
+                  [state]="cell(h.id, 'cost').state"
+                  [error]="cell(h.id, 'cost').error"
+                  (save)="saveItemRate(h, $event)"
+                ></app-rate-cell>
+              </td>
+              <td class="row-actions">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + h.name" (click)="edit(h)">
+                  <app-icon name="pencil"></app-icon>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </ng-container>
+
+      <div class="table-foot" *ngIf="rows.length">
+        <span>{{ range }}</span>
+        <span class="pager" *ngIf="rows.length > pageRows.length">
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="page === 0" (click)="page = page - 1">Previous</button>
+          <button type="button" class="btn btn-secondary btn-sm" [disabled]="!hasNext" (click)="page = page + 1">Next</button>
+        </span>
+      </div>
+    </ng-container>
+  </ng-container>
+</section>
+
+<app-update-rates-dialog [(visible)]="ratesOpen" [profiles]="profiles" [factors]="factors" (updated)="onRatesUpdated($event)"></app-update-rates-dialog>
+
+<app-profile-dialog
+  [(visible)]="profileOpen"
+  [profile]="editing.profile"
+  [categories]="categories"
+  [factors]="factors"
+  (saved)="onProfileSaved($event)"
+></app-profile-dialog>
+
+<app-colour-dialog [(visible)]="colourOpen" [colour]="editing.colour" (saved)="onColourSaved($event)"></app-colour-dialog>
+
+<app-item-dialog
+  [(visible)]="itemOpen"
+  [item]="editing.item"
+  [glass]="tab === 'glass'"
+  [groups]="hardwareGroups"
+  [categories]="hardwareCategories"
+  [units]="units"
+  [items]="allItems"
+  (saved)="onItemSaved($event)"
+></app-item-dialog>
+
+<p-dialog
+  header="Delete this colour?"
+  [visible]="!!deleting"
+  (visibleChange)="$event ? null : (deleting = null)"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '440px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <p>"{{ deleting?.color_name }}" will be removed from the colour list and can no longer be picked for a window.</p>
+  <app-callout class="delete-error" tone="danger" *ngIf="deleteError" role="alert">{{ deleteError }}</app-callout>
+  <ng-template pTemplate="footer">
+    <p-button label="Keep it" [outlined]="true" [disabled]="deleteBusy" (onClick)="deleting = null"></p-button>
+    <p-button label="Delete colour" severity="danger" [loading]="deleteBusy" (onClick)="confirmDelete()"></p-button>
+  </ng-template>
+</p-dialog>

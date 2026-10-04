@@ -1,0 +1,131 @@
+<p-dialog
+  [header]="title"
+  [visible]="visible"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [dismissableMask]="!saving"
+  [style]="{ width: '560px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <form id="profile-form" class="form-grid" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <div class="field">
+      <label class="label" for="pf-category">Category</label>
+      <select
+        *ngIf="categories.length; else typedCategory"
+        class="select"
+        id="pf-category"
+        formControlName="category"
+        [class.is-invalid]="bad('category')"
+        [attr.aria-invalid]="bad('category') ? 'true' : null"
+        aria-describedby="pf-category-e"
+      >
+        <option value="" disabled>Choose a category</option>
+        <option *ngFor="let category of categories" [value]="category">{{ fixSpelling(category) }}</option>
+      </select>
+      <ng-template #typedCategory>
+        <input
+          class="input"
+          id="pf-category"
+          formControlName="category"
+          placeholder="Casement"
+          [class.is-invalid]="bad('category')"
+          aria-describedby="pf-category-e"
+        />
+      </ng-template>
+      <span class="error" id="pf-category-e" *ngIf="bad('category')">Choose a category.</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="pf-code">Code</label>
+      <input
+        class="input"
+        id="pf-code"
+        formControlName="profile_code"
+        placeholder="CO-6040-R"
+        autocomplete="off"
+        [class.is-invalid]="bad('profile_code')"
+        [attr.aria-invalid]="bad('profile_code') ? 'true' : null"
+        aria-describedby="pf-code-e"
+      />
+      <span class="error" id="pf-code-e" *ngIf="bad('profile_code')">Enter the supplier's profile code.</span>
+    </div>
+
+    <div class="field span-2">
+      <label class="label" for="pf-name">Name</label>
+      <input
+        class="input"
+        id="pf-name"
+        formControlName="profile_name"
+        placeholder="Casement outward outer frame"
+        autocomplete="off"
+        [class.is-invalid]="bad('profile_name')"
+        [attr.aria-invalid]="bad('profile_name') ? 'true' : null"
+        aria-describedby="pf-name-e"
+      />
+      <span class="error" id="pf-name-e" *ngIf="bad('profile_name')">Enter a name.</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="pf-weight">Weight</label>
+      <div class="input-group" [class.is-invalid]="bad('kg_meter')">
+        <input
+          id="pf-weight"
+          class="num"
+          inputmode="decimal"
+          formControlName="kg_meter"
+          placeholder="1.12"
+          autocomplete="off"
+          [attr.aria-invalid]="bad('kg_meter') ? 'true' : null"
+          aria-describedby="pf-weight-h"
+        />
+        <span class="unit">kg/m</span>
+      </div>
+      <span class="error" id="pf-weight-h" *ngIf="bad('kg_meter'); else weightHint">
+        Enter the weight in kg per metre, for example 1.12.
+      </span>
+      <ng-template #weightHint>
+        <span class="hint" id="pf-weight-h" *ngIf="rates as r">
+          Rate {{ r.rate_meter | inr }} / m, coloured {{ r.rate_meter_color | inr }} / m.
+        </span>
+        <span class="hint" id="pf-weight-h" *ngIf="!rates">The rate is worked out from the weight.</span>
+      </ng-template>
+    </div>
+
+    <div class="field">
+      <label class="label" for="pf-role">Used as</label>
+      <select class="select" id="pf-role" formControlName="role">
+        <option value="">Not set</option>
+        <option *ngFor="let role of roles" [value]="role.value">{{ role.label }}</option>
+      </select>
+    </div>
+
+    <details class="span-2 sizes" [attr.open]="hasSizes ? '' : null">
+      <summary>Drawing sizes (optional)</summary>
+      <p class="hint">Used to draw the window to scale and to work out cut sizes. Leave empty if you do not know them.</p>
+      <div class="form-grid">
+        <div class="field" *ngFor="let size of [
+            { key: 'face_width_mm', label: 'Face width' },
+            { key: 'profile_depth_mm', label: 'Depth' },
+            { key: 'rebate_mm', label: 'Glazing rebate' },
+            { key: 'sightline_mm', label: 'Sightline' }
+          ]">
+          <label class="label" [for]="'pf-' + size.key">{{ size.label }}</label>
+          <div class="input-group" [class.is-invalid]="bad(size.key)">
+            <input [id]="'pf-' + size.key" class="num" inputmode="decimal" autocomplete="off" [formControlName]="size.key" />
+            <span class="unit">mm</span>
+          </div>
+          <span class="error" *ngIf="bad(size.key)">Enter a size in mm.</span>
+        </div>
+      </div>
+    </details>
+
+    <app-callout class="span-2" tone="danger" *ngIf="error" role="alert">{{ error }}</app-callout>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
+    <button pButton type="submit" form="profile-form" [label]="profile ? 'Save profile' : 'Add profile'" [loading]="saving"></button>
+  </ng-template>
+</p-dialog>

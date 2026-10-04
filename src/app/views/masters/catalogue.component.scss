@@ -1,0 +1,26 @@
+/*
+ * Interim: the shell still draws its own section tabs for Catalogue
+ * (containers/shell/nav.ts). This page draws the real ones, with counts, so
+ * the shell's strip is hidden while it is on screen. Delete this rule once
+ * `tabs` is removed from the Catalogue item in nav.ts (U0 follow-up).
+ */
+::ng-deep .page:has(> app-catalogue) > nav.tabs { display: none; }
+
+.search { width: 280px; max-width: 100%; }
+.filter { width: 170px; }
+
+.rate { padding-block: 0; }
+.swatch {
+  display: inline-block; width: 18px; height: 18px; margin-inline-end: var(--s-3); vertical-align: middle;
+  border-radius: 4px; border: 1px solid var(--c-border-strong);
+}
+.default { margin-inline-start: var(--s-2); }
+.pager { display: inline-flex; gap: var(--s-2); }
+.sk-sub { width: 90px; height: 8px; margin-block-start: 8px; }
+.sk-rate { width: 96px; margin-inline-start: auto; }
+.delete-error { display: block; margin-block-start: var(--s-4); }
+
+@media (max-width: 1024px) {
+  .search { width: 220px; }
+  .filter { width: 150px; }
+}

@@ -1,60 +1,31 @@
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
-
-import { MastersRoutingModule } from './masters-routing.module';
-import { MastersComponent } from './masters.component';
-import { ReactiveFormsModule, FormsModule } from '@angular/forms';
-import {
-  CardModule,
-  NavModule,
-  TabsModule,
-  GridModule,
-  ProgressModule,
-  FormModule,
-  ButtonGroupModule,
-  AvatarModule,
-  ModalModule,
-  AlertModule,
-} from '@coreui/angular';
-import { ChartjsModule } from '@coreui/angular-chartjs';
-import { IconModule } from '@coreui/icons-angular';
-import { TableModule } from 'primeng/table';
-import { TooltipModule } from 'primeng/tooltip';
-import { PaginatorModule } from 'primeng/paginator';
 import { ButtonModule } from 'primeng/button';
-import { ConfirmDialogModule } from 'primeng/confirmdialog';
-import { ToastModule } from 'primeng/toast';
-import { DetailComponent } from './detail/detail.component';
-import { InputTextModule } from 'primeng/inputtext';
+import { DialogModule } from 'primeng/dialog';
+
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
+import { UpdateRatesDialogComponent } from '../bulk-price-upload/update-rates-dialog.component';
+import { CatalogueComponent } from './catalogue.component';
+import { ColourDialogComponent } from './colour-dialog.component';
+import { ItemDialogComponent } from './item-dialog.component';
+import { MastersRoutingModule } from './masters-routing.module';
+import { ProfileDialogComponent } from './profile-dialog.component';
+import { RateCellComponent } from './rate-cell.component';
+
+/** The Catalogue page (card U5): one page, four tabs, under `/masters`. */
 @NgModule({
-  declarations: [MastersComponent, DetailComponent],
+  declarations: [CatalogueComponent],
   imports: [
+    CommonModule,
     MastersRoutingModule,
     SharedComponentsModule,
-    CardModule,
-    NavModule,
-    IconModule,
-    TabsModule,
-    CommonModule,
-    GridModule,
-    ProgressModule,
-    ReactiveFormsModule,
     ButtonModule,
-    FormModule,
-    ButtonModule,
-    ButtonGroupModule,
-    PaginatorModule,
-    ConfirmDialogModule,
-    ToastModule,
-    ChartjsModule,
-    AvatarModule,
-    TableModule,
-    TooltipModule,
-    ModalModule,
-    AlertModule,
-    FormsModule,
-    InputTextModule,
+    DialogModule,
+    RateCellComponent,
+    ProfileDialogComponent,
+    ColourDialogComponent,
+    ItemDialogComponent,
+    UpdateRatesDialogComponent,
   ],
 })
 export class MastersModule {}
