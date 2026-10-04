@@ -18,6 +18,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   HostListener,
   OnDestroy,
   OnInit,
@@ -112,6 +113,11 @@ interface SavedCard {
 })
 export class DesignerHostComponent implements OnInit, OnDestroy {
   @ViewChild(DesignCanvasComponent) canvas?: DesignCanvasComponent;
+
+  /** "Save as template" shows the name box; typing goes straight into it. */
+  @ViewChild('templateNameInput') set templateNameInput(input: ElementRef<HTMLInputElement> | undefined) {
+    input?.nativeElement.focus();
+  }
 
   readonly frameFaceMm = FRAME_FACE_MM;
   readonly frameMinMm = FRAME_MIN_MM;

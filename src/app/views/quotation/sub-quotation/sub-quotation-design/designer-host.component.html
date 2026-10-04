@@ -141,6 +141,16 @@
       <!-- Starting designs -->
       <div class="starts" *ngIf="templatesOpen && !readOnly" data-dz="starts">
         <div class="starts-row" role="list" aria-label="Starting designs">
+          <button type="button" class="start start-saved" role="listitem" *ngFor="let card of savedCards"
+            [attr.data-saved]="card.id" (click)="useSaved(card)">
+            <img *ngIf="card.image" [src]="card.image" alt="" />
+            <app-icon *ngIf="!card.image" name="template" [size]="20"></app-icon>
+            <span>{{ card.name }}</span>
+            <span class="start-x" role="button" tabindex="0" [attr.aria-label]="'Delete template ' + card.name"
+              (click)="deleteTemplate(card, $event)" (keydown.enter)="deleteTemplate(card, $event)">
+              <app-icon name="x" [size]="12"></app-icon>
+            </span>
+          </button>
           <button type="button" class="start" role="listitem" *ngFor="let card of startCards; trackBy: trackKey"
             [attr.data-start]="card.design.key" (click)="useStart(card)">
             <svg [attr.viewBox]="'0 0 ' + card.thumb.width + ' 100'" aria-hidden="true">
@@ -156,20 +166,10 @@
             </svg>
             <span>{{ card.design.label }}</span>
           </button>
-          <button type="button" class="start start-saved" role="listitem" *ngFor="let card of savedCards"
-            [attr.data-saved]="card.id" (click)="useSaved(card)">
-            <img *ngIf="card.image" [src]="card.image" alt="" />
-            <app-icon *ngIf="!card.image" name="template" [size]="20"></app-icon>
-            <span>{{ card.name }}</span>
-            <span class="start-x" role="button" tabindex="0" [attr.aria-label]="'Delete template ' + card.name"
-              (click)="deleteTemplate(card, $event)" (keydown.enter)="deleteTemplate(card, $event)">
-              <app-icon name="x" [size]="12"></app-icon>
-            </span>
-          </button>
         </div>
         <div class="starts-save">
           <ng-container *ngIf="namingTemplate">
-            <input class="input" data-dz="template-name" maxlength="150" placeholder="Template name"
+            <input #templateNameInput class="input" data-dz="template-name" maxlength="150" placeholder="Template name"
               aria-label="Template name" [(ngModel)]="templateName" (keydown.enter)="saveTemplate()" />
             <button type="button" class="btn btn-sm" data-dz="save-template-confirm" (click)="saveTemplate()">Save</button>
           </ng-container>

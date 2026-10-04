@@ -653,15 +653,45 @@
     grid-template-rows: auto auto minmax(0, 1fr);
   }
 
+  /* Two rows: back, name and price; then undo, redo and the two save buttons.
+     Every action of the wide layout stays on the screen. */
   .dz-top {
     flex-wrap: wrap;
+    row-gap: var(--s-1);
     padding-block: var(--s-2);
+
+    &::after {
+      content: '';
+      order: 3;
+      flex-basis: 100%;
+      height: 0;
+    }
   }
 
-  .dz-sub,
-  .dz-history,
+  .dz-title {
+    order: 1;
+  }
+
+  .dz-price {
+    order: 2;
+  }
+
+  .dz-history {
+    order: 4;
+    margin-inline-end: auto;
+  }
+
   .dz-another {
-    display: none;
+    order: 5;
+  }
+
+  .dz-top > .btn-primary {
+    order: 6;
+  }
+
+  .starts-row {
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   .dz-body {
@@ -705,5 +735,105 @@
 
   .panel-scroll {
     overflow: visible;
+  }
+}
+
+/* ---- phone: nothing wider than the screen, every control in reach -------- */
+
+@media (max-width: 600px) {
+  /* Three rows: back and the name; undo, redo and the price; the two save buttons. */
+  .dz-top {
+    padding-inline: var(--s-3);
+    column-gap: var(--s-2);
+
+    &::before {
+      content: '';
+      order: 2;
+      flex-basis: 100%;
+      height: 0;
+    }
+
+    &::after {
+      order: 5;
+    }
+  }
+
+  .dz-title {
+    flex: 1 1 0;
+  }
+
+  .dz-name {
+    max-width: none;
+  }
+
+  .dz-history {
+    order: 3;
+  }
+
+  .dz-price {
+    order: 4;
+    align-self: center;
+    min-width: 0;
+    padding-inline: 0;
+    border-inline: 0;
+  }
+
+  .dz-another {
+    order: 6;
+  }
+
+  .dz-top > .btn-primary {
+    order: 7;
+  }
+
+  .dz-another,
+  .dz-top > .btn-primary {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: var(--s-2);
+    white-space: nowrap;
+  }
+
+  .palette {
+    justify-content: stretch;
+    padding: var(--s-1);
+
+    hr {
+      margin: 0 var(--s-1);
+    }
+  }
+
+  .tool {
+    flex: 1 1 0;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--s-2) 2px;
+  }
+
+  /* On a phone the starting designs stay one row that is swiped. */
+  .starts {
+    padding-inline: var(--s-3);
+  }
+
+  .starts-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .stage {
+    padding-inline: var(--s-2);
+  }
+
+  .canvas {
+    min-height: 380px;
+  }
+
+  .float {
+    max-width: calc(100% - 2 * var(--s-2));
+  }
+
+  .panel {
+    min-width: 0;
   }
 }
