@@ -40,6 +40,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 import { ButtonModule } from '@coreui/angular';
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
+import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 @NgModule({
   declarations: [
     QuotationComponent,
@@ -54,6 +55,7 @@ import { SharedComponentsModule } from '../../shared/components/shared-component
   imports: [
     QuotationRoutingModule,
     SharedComponentsModule,
+    ConfirmDialogComponent,
     CardModule,
     NavModule,
     IconModule,

@@ -42,7 +42,7 @@ import { keepFocusInside } from './focus-trap';
   `,
   styles: [
     `
-      :host { position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: var(--s-4); overflow-y: auto; }
+      :host { position: fixed; inset: 0; z-index: 1100; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; padding: var(--s-4); overflow-y: auto; }
       .backdrop { position: fixed; inset: 0; background: rgba(20, 24, 28, 0.4); }
       .dialog { position: relative; }
       h2 { margin: 0 0 var(--s-1); font-size: var(--fs-16); }

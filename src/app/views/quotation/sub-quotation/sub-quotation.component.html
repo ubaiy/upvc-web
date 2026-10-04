@@ -417,3 +417,21 @@
     </ng-template>
   </p-dialog>
 </ng-container>
+
+<!-- A bill is a tax invoice with a number that is never reused: one small confirm (T84). -->
+<app-confirm-dialog
+  *ngIf="billAsking && view as q"
+  [title]="'Create the bill for ' + q.number + '?'"
+  text="This issues a tax invoice with the next bill number. A bill cannot be deleted afterwards, only cancelled."
+  confirmLabel="Create bill"
+  keepLabel="Not now"
+  (confirmed)="createBill()"
+  (closed)="billAsking = false"
+>
+  <dl class="dl">
+    <dt>Quotation</dt>
+    <dd>{{ q.number }}</dd>
+    <dt class="total">Bill total</dt>
+    <dd class="total">{{ q.total | inr }}</dd>
+  </dl>
+</app-confirm-dialog>

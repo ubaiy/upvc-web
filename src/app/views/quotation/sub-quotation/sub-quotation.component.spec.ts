@@ -11,6 +11,7 @@ import { BehaviorSubject, of, Subject, throwError } from 'rxjs';
 
 import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
 import { ToastService } from '../../../shared/services/toast.service';
+import { ConfirmDialogComponent } from '../../bills/confirm-dialog.component';
 import { QuotationService } from '../quotation.service';
 import { sampleQuotation } from './detail/quotation-detail.testing';
 import { SubQuotationComponent } from './sub-quotation.component';
@@ -116,13 +117,20 @@ describe('SubQuotationComponent (quotation page)', () => {
         DuplicateStubComponent,
         EditStubComponent,
       ],
-      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, SharedComponentsModule, DialogModule, MenuModule, ButtonModule],
+      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, SharedComponentsModule, DialogModule, MenuModule, ButtonModule, ConfirmDialogComponent],
       providers: [
         { provide: QuotationService, useValue: service },
         { provide: ToastService, useValue: toast },
       ],
     });
   });
+
+  /** "Create bill" in the confirm that the page button opens. */
+  function confirmBill(): void {
+    const yes = Array.from(el().querySelectorAll<HTMLButtonElement>('app-confirm-dialog button')).find((b) => b.textContent!.includes('Create bill'))!;
+    yes.click();
+    fixture.detectChanges();
+  }
 
   it('shows a skeleton while loading, then the windows', () => {
     const pending = new Subject<any>();
@@ -244,7 +252,22 @@ describe('SubQuotationComponent (quotation page)', () => {
     expect(el().querySelector('.page-actions [data-action="bill"]')?.textContent).toContain('Create bill');
   });
 
-  it('creates the bill with no dialog and links to it', () => {
+  it('asks before it issues a bill, with the quotation number and the total', () => {
+    show({ status: 'accepted' });
+    el().querySelector<HTMLButtonElement>('.page-actions [data-action="bill"]')!.click();
+    fixture.detectChanges();
+    expect(service.createBill).not.toHaveBeenCalled();
+    const dialog = el().querySelector('app-confirm-dialog')!;
+    expect(dialog.textContent).toContain('Create the bill for ' + component.view!.number + '?');
+    expect(dialog.textContent).toContain('tax invoice');
+    expect(dialog.querySelector('dd.total')?.textContent).toContain('₹');
+    Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent!.includes('Not now'))!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
+    expect(service.createBill).not.toHaveBeenCalled();
+  });
+
+  it('creates the bill after the confirm and links to it', () => {
     show({ status: 'accepted' });
     const bill = { id: 3, number: 'INV/26-27/0002', bill_date: '2026-10-04', total: 20730 };
     service.createBill.and.returnValue(ok(bill));
@@ -253,7 +276,9 @@ describe('SubQuotationComponent (quotation page)', () => {
     expect(createBill.classList).toContain('btn-secondary');
     createBill.click();
     fixture.detectChanges();
+    confirmBill();
     expect(service.createBill).toHaveBeenCalledWith(14);
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
     expect(toast.showSuccess).toHaveBeenCalledWith('Bill INV/26-27/0002 created');
     expect(text()).toContain('Billed as INV/26-27/0002 on 4 Oct 2026 for ₹20,730.00');
     expect(primary()?.textContent).toContain('Download bill');
@@ -296,6 +321,7 @@ describe('SubQuotationComponent (quotation page)', () => {
     service.createBill.and.returnValue(of({ status: 0, message: 'Quatation has no items to bill' } as any));
     el().querySelector<HTMLButtonElement>('.page-actions [data-action="bill"]')!.click();
     fixture.detectChanges();
+    confirmBill();
     expect(el().querySelector('app-callout .danger')?.textContent).toContain('Quatation has no items to bill');
   });
 

@@ -200,7 +200,8 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
         this.setStatus('accepted', 'Marked as accepted');
         break;
       case 'bill':
-        this.createBill();
+        // A tax invoice takes a number that is never reused: ask first (T84).
+        this.billAsking = true;
         break;
       case 'bill-pdf':
         this.downloadBill();
@@ -221,8 +222,12 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** No dialog: the bill copies the quotation's lines, discount and tax. */
+  /** True while "Create bill" waits for a yes. */
+  billAsking = false;
+
+  /** "Create bill" in the confirm. The bill copies the quotation's lines, discount and tax. */
   createBill(): void {
+    this.billAsking = false;
     this._run('bill', this._dataService.createBill(this.id), (bill) => {
       this._toast.showSuccess(bill?.number ? `Bill ${bill.number} created` : 'Bill created');
       this.load(true);
