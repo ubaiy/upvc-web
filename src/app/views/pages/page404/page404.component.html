@@ -1,22 +1,17 @@
-<div class="bg-light min-vh-100 d-flex flex-row align-items-center">
-  <c-container>
-    <c-row class="justify-content-center">
-      <c-col md="6">
-        <div class="clearfix">
-          <h1 class="float-start display-3 me-4">404</h1>
-          <h4 class="pt-3">Oops! You're lost.</h4>
-          <p class="text-medium-emphasis float-start">
-            The page you are looking for was not found.
-          </p>
-        </div>
-        <c-input-group class="input-prepend">
-          <span cInputGroupText>
-            <svg cIcon name="cilMagnifyingGlass"></svg>
-          </span>
-          <input cFormControl placeholder="What are you looking for?" type="text" />
-          <button cButton color="info">Search</button>
-        </c-input-group>
-      </c-col>
-    </c-row>
-  </c-container>
-</div>
+<main class="status-page">
+  <span class="brand">
+    <span class="ws-mark"><app-icon name="window"></app-icon></span>UPVC
+  </span>
+  <div class="empty">
+    <span class="empty-art"><app-icon name="search" [size]="20"></app-icon></span>
+    <p class="faint tiny num">Error 404</p>
+    <h1>We could not find that page</h1>
+    <p>The address may be mistyped, or the page may have moved. Nothing of yours was lost.</p>
+    <div class="u-row wrap actions">
+      <a class="btn btn-primary" routerLink="/"><app-icon name="home"></app-icon>Go to Home</a>
+      <button type="button" class="btn btn-secondary" (click)="back()">
+        <app-icon name="arrow-left" [mirror]="true"></app-icon>Go back
+      </button>
+    </div>
+  </div>
+</main>

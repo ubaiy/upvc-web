@@ -1,0 +1,10 @@
+// A full page outside the shell: brand at the top, the message in the middle.
+:host { display: block; }
+
+.status-page { min-height: 100vh; display: grid; grid-template-rows: auto 1fr; padding: var(--s-6); }
+.ws-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--c-accent); color: var(--c-on-accent); display: grid; place-items: center; flex: none; }
+.empty { align-self: center; padding-block-end: var(--s-16); }
+.empty h1 { margin-block-end: var(--s-1); }
+.actions { justify-content: center; margin-block-start: var(--s-4); }
+.empty .actions .btn { margin-block-start: 0; }
+.actions a.btn:hover { text-decoration: none; }

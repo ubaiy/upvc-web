@@ -1,35 +1,40 @@
+import { Location } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { Title } from '@angular/platform-browser';
+import { RouterTestingModule } from '@angular/router/testing';
 
-import { ButtonModule, FormModule, GridModule } from '@coreui/angular';
-import { IconModule } from '@coreui/icons-angular';
-import { IconSetService } from '@coreui/icons-angular';
-import { iconSubset } from '../../../icons/icon-subset';
+import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { Page500Component } from './page500.component';
 
 describe('Page500Component', () => {
-  let component: Page500Component;
   let fixture: ComponentFixture<Page500Component>;
-  let iconSetService: IconSetService;
+  let el: HTMLElement;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      declarations: [ Page500Component ],
-      imports: [GridModule, ButtonModule, FormModule, IconModule],
-      providers: [IconSetService]
-    })
-    .compileComponents();
-  });
-
-  beforeEach(() => {
-    iconSetService = TestBed.inject(IconSetService);
-    iconSetService.icons = { ...iconSubset };
-
+      declarations: [Page500Component],
+      imports: [RouterTestingModule, SharedComponentsModule],
+    }).compileComponents();
     fixture = TestBed.createComponent(Page500Component);
-    component = fixture.componentInstance;
+    el = fixture.nativeElement;
     fixture.detectChanges();
   });
 
-  it('should create', () => {
-    expect(component).toBeTruthy();
+  it('says the fault is ours and sets the tab title', () => {
+    expect(el.querySelector('h1')!.textContent).toBe('Something went wrong on our side');
+    expect(TestBed.inject(Title).getTitle()).toBe('Something went wrong · UPVC');
+  });
+
+  it('has one primary button, "Try again", which returns to the page that failed', () => {
+    const back = spyOn(TestBed.inject(Location), 'back');
+    const primary = el.querySelectorAll('.btn-primary');
+    expect(primary.length).toBe(1);
+    expect(primary[0].textContent).toContain('Try again');
+    (primary[0] as HTMLButtonElement).click();
+    expect(back).toHaveBeenCalled();
+  });
+
+  it('offers a way Home', () => {
+    expect(el.querySelector('a.btn-secondary')!.getAttribute('href')).toBe('/');
   });
 });
