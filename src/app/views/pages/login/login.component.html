@@ -1,90 +1,70 @@
-<p-toast></p-toast>
-<div class="bg-light min-vh-100 d-flex flex-row align-items-center">
-  <c-container>
-    <c-row class="justify-content-center">
-      <c-col md="4">
-        <c-alert
-          (visibleChange)="onVisibleAlertChange($event)"
-          [visible]="visibleAlert"
-          [color]="alertType"
-          dismissible
-          fade
-          variant="solid"
+<app-auth-layout heading="Welcome back" lead="Sign in to your workshop." pageTitle="Sign in">
+  <form class="stack-4 signin" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <app-callout *ngIf="error" tone="danger" class="signin-error">
+      {{ error.text }}
+      <button *ngIf="error.retry" action type="button" class="btn btn-secondary btn-sm" (click)="submit()">
+        Try again
+      </button>
+    </app-callout>
+
+    <div class="field">
+      <label class="label" for="loginEmail">Work email</label>
+      <input
+        #emailInput
+        class="input"
+        [class.is-invalid]="invalid('email')"
+        id="loginEmail"
+        type="email"
+        inputmode="email"
+        autocomplete="email"
+        autocapitalize="none"
+        spellcheck="false"
+        autofocus
+        formControlName="email"
+        [attr.aria-invalid]="invalid('email') ? 'true' : null"
+        [attr.aria-describedby]="invalid('email') ? 'loginEmailError' : null"
+      />
+      <span class="error" id="loginEmailError" *ngIf="invalid('email')">
+        {{ f['email'].errors?.['required'] ? 'Enter your email' : 'Enter a full email, like name@company.in' }}
+      </span>
+    </div>
+
+    <div class="field">
+      <div class="u-row between">
+        <label class="label" for="loginPassword">Password</label>
+        <a class="small" routerLink="/auth/forgot-password">Forgot password?</a>
+      </div>
+      <div class="input-group" [class.is-invalid]="invalid('password')">
+        <input
+          #passwordInput
+          id="loginPassword"
+          [type]="showPassword ? 'text' : 'password'"
+          autocomplete="current-password"
+          formControlName="password"
+          (keyup)="onPasswordKey($event)"
+          [attr.aria-invalid]="invalid('password') ? 'true' : null"
+          [attr.aria-describedby]="invalid('password') ? 'loginPasswordError' : capsLock ? 'loginCapsLock' : null"
+        />
+        <button
+          type="button"
+          class="btn btn-ghost btn-icon btn-sm"
+          (click)="togglePassword()"
+          [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'"
+          [attr.aria-pressed]="showPassword"
         >
-          <ng-template cTemplateId="alertButtonCloseTemplate">
-            <button (click)="visibleAlert = false" cButtonClose white></button>
-          </ng-template>
-          <strong>{{ alertMessage }}</strong>
-        </c-alert>
-        <c-card-group>
-          <c-card class="p-4">
-            <c-card-body>
-              <form cForm [formGroup]="form" (ngSubmit)="submit()">
-                <h1>Login</h1>
-                <p class="text-medium-emphasis">Sign In to your account</p>
-                <label cLabel for="loginEmail" class="mb-1">Email</label>
-                <c-input-group class="mb-3">
-                  <span cInputGroupText>
-                    <svg cIcon name="cilUser"></svg>
-                  </span>
-                  <input
-                    id="loginEmail"
-                    autoComplete="email"
-                    cFormControl
-                    placeholder="Email"
-                    formControlName="email"
-                  />
-                </c-input-group>
-                <small
-                  class="error d-block mb-2"
-                  *ngIf="
-                    form.controls['email'].errors?.['required'] &&
-                    (form.controls['email'].touched || submitted)
-                  "
-                  >Email is required</small
-                >
-                <label cLabel for="loginPassword" class="mb-1">Password</label>
-                <c-input-group class="mb-4">
-                  <span cInputGroupText>
-                    <svg cIcon name="cilLockLocked"></svg>
-                  </span>
-                  <input
-                    id="loginPassword"
-                    autoComplete="current-password"
-                    cFormControl
-                    placeholder="Password"
-                    type="password"
-                    formControlName="password"
-                  />
-                </c-input-group>
-                <small
-                  class="error d-block mb-2"
-                  *ngIf="
-                    form.controls['password'].errors?.['required'] &&
-                    (form.controls['password'].touched || submitted)
-                  "
-                  >Password is required</small
-                >
-                <small
-                  class="error d-block mb-2"
-                  *ngIf="
-                    form.controls['password'].errors?.['minlength'] &&
-                    (form.controls['password'].touched || submitted)
-                  "
-                  >Password must be at least 8 characters</small
-                >
-                <c-row>
-                  <c-col xs="6">
-                    <button cButton class="px-4" color="dark" type="submit">
-                      Login
-                    </button>
-                  </c-col>
-                </c-row>
-              </form>
-            </c-card-body>
-          </c-card>
-        </c-card-group>
-      </c-col>
-    </c-row>
-  </c-container>
-</div>
+          <app-icon [name]="showPassword ? 'eye-off' : 'eye'"></app-icon>
+        </button>
+      </div>
+      <span class="error" id="loginPasswordError" *ngIf="invalid('password')">
+        {{ f['password'].errors?.['required'] ? 'Enter your password' : 'Password must be at least 8 characters' }}
+      </span>
+      <span class="hint" id="loginCapsLock" *ngIf="capsLock && !invalid('password')">Caps Lock is on</span>
+    </div>
+
+    <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy" [attr.aria-busy]="busy">
+      {{ busy ? 'Signing in…' : 'Sign in' }}
+    </button>
+  </form>
+
+  <p class="muted small signup">New to UPVC? <a routerLink="/auth/register">Start a 30-day free trial</a></p>
+</app-auth-layout>
