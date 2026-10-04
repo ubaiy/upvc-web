@@ -37,8 +37,17 @@ export class BillsService {
     );
   }
 
-  public deleteBill(id: number): Observable<IResponseDto<any>> {
-    return this._apiHttpSerivce.post(API_END_POINT.bills.pdf, {
+  /** Every quotation, billed or not: the list links a bill to the quotation it came from. */
+  public getQuotations(): Observable<IResponseDto<any[]>> {
+    return this._apiHttpSerivce.get('quatation/list?status=all');
+  }
+
+  /**
+   * Cancels a bill. The API has no cancel yet, so this removes the bill
+   * (bill/delete); it moves to the cancel endpoint when that exists.
+   */
+  public cancelBill(id: number): Observable<IResponseDto<any>> {
+    return this._apiHttpSerivce.post(API_END_POINT.bills.delete, {
       bill_id: id,
     });
   }

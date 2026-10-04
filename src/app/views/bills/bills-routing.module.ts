@@ -1,13 +1,14 @@
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { ListComponent } from './list/list.component';
-import { BillsResolver } from './bills.resolver';
 
+// No resolver: the list loads its own data, so it can show a skeleton
+// while it waits and an inline error with "Try again" when it fails.
 const routes: Routes = [
   {
     path: '',
     component: ListComponent,
-    resolve: { list: BillsResolver },
+    data: { title: 'Bills' },
   },
 ];
 

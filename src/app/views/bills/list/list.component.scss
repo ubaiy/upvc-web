@@ -1,0 +1,16 @@
+// Layout of the loading rows only; colours, sizes and radii come from the tokens.
+.sk-search { width: 280px; max-width: 100%; height: var(--h-control); }
+.sk-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s-6);
+  height: var(--h-row);
+  padding-inline: var(--s-4);
+  border-block-end: 1px solid var(--c-border);
+
+  &:last-child { border-block-end: 0; }
+}
+.sk-name { width: 30%; }
+.sk-cell { width: 14%; }
+.foot-nav { gap: var(--s-2); }
+.bill-flag { margin-inline-start: var(--s-2); }

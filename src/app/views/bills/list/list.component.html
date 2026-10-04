@@ -1,119 +1,114 @@
-<div class="app-page-surface">
-  <app-page-header
-    eyebrow="Sales"
-    title="Bills"
-    subtitle="Review billed quotations and download invoices."
-  ></app-page-header>
+<!-- A bill is made from a quotation, so this page has no "New" button; its one primary button is in the empty state. -->
+<app-page-header title="Bills"></app-page-header>
 
-  <div class="app-table-card">
-    <div class="app-section-heading">
-      <span class="app-section-heading__title">Bill list</span>
+<app-callout tone="warn" *ngIf="state === 'error'">
+  We could not load your bills. Check your connection.
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card" *ngIf="state !== 'error'" [attr.aria-busy]="state === 'loading'">
+  <ng-container *ngIf="state === 'loading'">
+    <span class="sr-only" role="status">Loading bills</span>
+    <div class="toolbar" aria-hidden="true"><span class="skeleton sk-search"></span></div>
+    <div class="sk-row" aria-hidden="true" *ngFor="let i of placeholders">
+      <span class="skeleton sk-name"></span>
+      <span class="skeleton sk-cell"></span>
+      <span class="skeleton sk-cell"></span>
     </div>
-    <div class="table-responsive">
-    <p-table
-    #dt1
-    [value]="bills"
-    [paginator]="true"
-    [rows]="10"
-    [showCurrentPageReport]="true"
-    currentPageReportTemplate="Showing {first} to {last} of {totalRecords} entries"
-    [globalFilterFields]="['customerName']"
-    (sortFunction)="customSort($event)"
-    [customSort]="true"
-    [tableStyle]="{ 'min-width': '60rem' }"
-    [rowsPerPageOptions]="[10, 25, 50]"
+  </ng-container>
+
+  <app-empty-state
+    *ngIf="state === 'ready' && !bills.length"
+    icon="receipt"
+    title="No bills yet"
+    text="A bill is made from a quotation the customer has accepted. Open the quotation and create its bill."
   >
-    <ng-template pTemplate="caption">
-      <button
-        pButton
-        label="Clear"
-        class="p-button-outlined"
-        icon="pi pi-filter-slash"
-        (click)="clear(dt1)"
-      ></button>
-      <span class="p-input-icon-left ml-auto">
-        <i class="pi pi-search"></i>
+    <a class="btn btn-primary" routerLink="/quotation">Go to quotations</a>
+  </app-empty-state>
+
+  <ng-container *ngIf="state === 'ready' && bills.length">
+    <div class="toolbar">
+      <label class="input-group">
+        <app-icon name="search"></app-icon>
         <input
-          pInputText
-          type="text"
-          [(ngModel)]="inputValue"
-          (input)="dt1?.filterGlobal(inputValue, 'contains')"
+          type="search"
+          placeholder="Search by number, customer or quotation"
+          aria-label="Search bills"
+          [(ngModel)]="search"
+          (ngModelChange)="onSearch()"
         />
+      </label>
+      <span class="grow"></span>
+      <span class="muted small">Newest first</span>
+    </div>
+
+    <table class="table" *ngIf="rows.length">
+      <thead>
+        <tr>
+          <th scope="col">Bill</th>
+          <th scope="col" class="hide-tablet">Date</th>
+          <th scope="col">Customer</th>
+          <th scope="col" class="hide-tablet">Quotation</th>
+          <th scope="col" class="right">Amount</th>
+          <th scope="col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let bill of rows; trackBy: trackById">
+          <td>
+            <span class="title num">{{ bill.number }}</span>
+            <span class="badge badge-danger bill-flag" *ngIf="bill.cancelled">Cancelled</span>
+          </td>
+          <td class="muted small hide-tablet">{{ bill.date ? (bill.date | date : 'd MMM y') : '—' }}</td>
+          <td>
+            <a *ngIf="bill.customerId; else customerText" [routerLink]="['/customers/edit', bill.customerId]"
+              ><bdi>{{ bill.customer || 'Customer' }}</bdi></a
+            >
+            <ng-template #customerText
+              ><span class="muted">{{ bill.customer || '—' }}</span></ng-template
+            >
+          </td>
+          <td class="hide-tablet">
+            <a *ngIf="bill.quotationId; else quotationText" [routerLink]="['/quotation/detail', bill.quotationId]"
+              ><bdi>{{ bill.quotation }}</bdi></a
+            >
+            <ng-template #quotationText
+              ><span class="muted">{{ bill.quotation || '—' }}</span></ng-template
+            >
+          </td>
+          <td class="right num">{{ bill.amount | inr }}</td>
+          <td class="row-actions">
+            <button
+              type="button"
+              class="btn btn-ghost btn-icon btn-sm"
+              aria-haspopup="menu"
+              [attr.aria-label]="'More actions for ' + bill.number"
+              [disabled]="downloading === bill.id"
+              (click)="openMenu($event, bill)"
+            >
+              <app-icon [name]="downloading === bill.id ? 'loader' : 'more'"></app-icon>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty" *ngIf="!rows.length">
+      <h2>No bill matches "{{ search }}"</h2>
+      <p>Check the spelling, or search by customer name.</p>
+      <button type="button" class="btn btn-secondary" (click)="clearSearch()">Clear search</button>
+    </div>
+
+    <div class="table-foot" *ngIf="rows.length">
+      <span>{{ countLabel }}</span>
+      <span class="u-row foot-nav">
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page === 0" (click)="go(-1)">Previous</button>
+        <button type="button" class="btn btn-secondary btn-sm" [disabled]="page >= pageCount - 1" (click)="go(1)">
+          Next
+        </button>
       </span>
-    </ng-template>
-    <ng-template pTemplate="header">
-      <tr>
-        <th pSortableColumn="name" style="width: 40%" scope="col">
-          Quotation Name <p-sortIcon field="name"></p-sortIcon>
-        </th>
-        <th pSortableColumn="grand_total" style="width: 40%" scope="col">
-          Amount <p-sortIcon field="grand_total"></p-sortIcon>
-        </th>
-        <th style="width: 20%" scope="col">Actions</th>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="body" let-bill>
-      <tr>
-        <td>{{ bill.name }}</td>
-        <td>{{ bill.grand_total | currency : "INR" }}</td>
-        <td>
-          <p-button
-            icon="pi pi-download"
-            pTooltip="Download bill"
-            aria-label="Download bill"
-            (click)="downloadBill(bill)"
-            styleClass="p-button-rounded p-button-text"
-          ></p-button>
-          <p-button
-            icon="pi pi-trash"
-            pTooltip="Delete bill"
-            aria-label="Delete bill"
-            (click)="deleteBill(bill)"
-            styleClass="p-button-rounded p-button-text p-button-danger"
-          ></p-button>
-        </td>
-      </tr>
-    </ng-template>
-    <ng-template pTemplate="emptymessage">
-      <tr>
-        <td colspan="3">No records yet</td>
-      </tr>
-    </ng-template>
-  </p-table>
     </div>
-  </div>
-<c-modal
-  id="liveDemoModal"
-  [visible]="visible"
-  backdrop="static"
-  alignment="center"
-  (visibleChange)="handleFormModal($event)"
->
-  <c-modal-header>
-    <h5 cModalTitle color="warm">Print Bill</h5>
-  </c-modal-header>
-  <c-modal-body>
-    <div>
-      <c-row>
-        <label cLabel="col" class="col-sm-3" for="GSTIN">
-          Customer GSTIN
-        </label>
-        <c-col [sm]="9">
-          <input
-            cFormControl
-            id="GSTIN"
-            type="text"
-            [formControl]="customerGstin"
-          />
-        </c-col>
-      </c-row>
-    </div>
-  </c-modal-body>
-  <c-modal-footer>
-    <p-button styleClass="p-button-secondary" (click)="toggleWarningModal()">
-      Cancel
-    </p-button>
-    <p-button (click)="submit()"> Print </p-button>
-  </c-modal-footer>
-</c-modal>
-</div>
+  </ng-container>
+</section>
+
+<p-menu #rowMenu [model]="menuItems" [popup]="true" appendTo="body"></p-menu>

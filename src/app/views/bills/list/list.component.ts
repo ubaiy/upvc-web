@@ -1,148 +1,164 @@
-import { Component } from '@angular/core';
-import {
-  FormBuilder,
-  FormControl,
-  FormGroup,
-  Validators,
-} from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
-import { BillsService } from '../bills.service';
-import { Table } from 'primeng/table';
-import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
-import { SortEvent } from 'primeng/api';
-import { IBillListDto } from '../../../shared/model/bill/billList.model';
+import { Component, OnInit, ViewChild } from '@angular/core';
+import { Router } from '@angular/router';
+import { MenuItem } from 'primeng/api';
+import { Menu } from 'primeng/menu';
+import { catchError, forkJoin, map, of, switchMap } from 'rxjs';
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
+import { CustomerService } from '../../customers/customer.service';
+import { BillRow, matchesBill, toBillRows } from '../bills.adapter';
+import { BillsService } from '../bills.service';
+
+const PAGE_SIZE = 10;
+
 @Component({
   selector: 'app-list',
   templateUrl: './list.component.html',
   styleUrls: ['./list.component.scss'],
 })
-export class ListComponent {
-  bills: IBillListDto[] = [];
-  inputValue: string = '';
-  visible: boolean = false;
-  submitted: boolean = false;
-  selectedBill: IBillListDto;
-  customerGstin: FormControl = new FormControl();
+export class ListComponent implements OnInit {
+  @ViewChild('rowMenu') rowMenu?: Menu;
+
+  state: 'loading' | 'error' | 'ready' = 'loading';
+  bills: BillRow[] = [];
+  search = '';
+  page = 0;
+  menuItems: MenuItem[] = [];
+  /** Id of the bill whose PDF is being fetched. */
+  downloading: number | null = null;
+  readonly placeholders = [0, 1, 2, 3, 4, 5];
+
   constructor(
-    private _activeRoute: ActivatedRoute,
+    private _router: Router,
     private _billService: BillsService,
-    private confirmationDialogService: ConfirmationDialogService,
+    private _customerService: CustomerService,
+    private _confirm: ConfirmationDialogService,
     private _toastService: ToastService
-  ) {
-    this.bills = this._activeRoute.snapshot.data['list'];
-    console.log(this.bills);
+  ) {}
+
+  ngOnInit(): void {
+    this.load();
   }
 
-  submit() {
-    let data = {
-      bill_id: this.selectedBill.id,
-      customer_gst_no: this.customerGstin.getRawValue(),
-      download: true,
-    };
-    this._billService.downloadBillPdf(data).subscribe(
-      (info) => {
-        const filename = 'document.pdf'; // Use the retrieved filename or a default filename
-
-        // Create a Blob URL for the PDF
-        const blobUrl = URL.createObjectURL(info);
-        this.visible = false;
-        this.customerGstin.reset();
-        // Open the Blob URL in a new tab
-        const newTab = window.open(blobUrl, '_blank');
-        // this.ref.close();
-        // Set the filename for the new tab (works in some browsers)
-        if (newTab) {
-          newTab.document.title = filename;
+  load(): void {
+    this.state = 'loading';
+    forkJoin({
+      bills: this._billService.getBillsList(),
+      // Only used to link each bill to its quotation; the list still shows without it.
+      quotations: this._billService.getQuotations().pipe(catchError(() => of({ success: false, data: [] as any[] }))),
+    }).subscribe({
+      next: ({ bills, quotations }) => {
+        if (!bills.success) {
+          this.state = 'error';
+          return;
         }
+        this.bills = toBillRows(bills.data, (quotations.success && quotations.data) || []);
+        this.state = 'ready';
       },
-      (err) => {
-        // Handle any errors here
-      }
-    );
+      error: () => (this.state = 'error'),
+    });
   }
 
-  public downloadBill(bill: IBillListDto) {
-    this.selectedBill = bill;
-    this.visible = true;
-  }
-  public toggleWarningModal() {
-    if (this.customerGstin.dirty && this.customerGstin.touched) {
-      this.confirmationDialogService.confirm(
-        'Are you sure!',
-        'Are you sure you want to Cancel ? ',
-        'pi-info-circle',
-        () => {
-          this.visible = false;
-        },
-        () => {
-          console.log('Action rejected');
-        }
-      );
-    } else {
-      this.visible = false;
-    }
-  }
-  public clear(table: Table) {
-    table.clear();
-    this.inputValue = '';
+  get filtered(): BillRow[] {
+    return this.bills.filter((bill) => matchesBill(bill, this.search));
   }
 
-  public customSort(event: SortEvent) {
-    if (event.data) {
-      event.data.sort((data1, data2) => {
-        if (event.field && event.order) {
-          let value1 = data1[event.field];
-          let value2 = data2[event.field];
-          let result = null;
+  get pageCount(): number {
+    return Math.max(1, Math.ceil(this.filtered.length / PAGE_SIZE));
+  }
 
-          if (value1 == null && value2 != null) result = -1;
-          else if (value1 != null && value2 == null) result = 1;
-          else if (value1 == null && value2 == null) result = 0;
-          else if (typeof value1 === 'string' && typeof value2 === 'string')
-            result = value1.localeCompare(value2);
-          else result = value1 < value2 ? -1 : value1 > value2 ? 1 : 0;
+  get rows(): BillRow[] {
+    const page = Math.min(this.page, this.pageCount - 1);
+    return this.filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  }
 
-          return event.order * result;
-        } else {
-          return 0;
-        }
+  get countLabel(): string {
+    const count = this.filtered.length;
+    return `${count} ${count === 1 ? 'bill' : 'bills'}`;
+  }
+
+  onSearch(): void {
+    this.page = 0;
+  }
+
+  clearSearch(): void {
+    this.search = '';
+    this.page = 0;
+  }
+
+  go(step: number): void {
+    this.page = Math.min(Math.max(this.page + step, 0), this.pageCount - 1);
+  }
+
+  openMenu(event: Event, bill: BillRow): void {
+    const items: MenuItem[] = [{ label: 'Download PDF', command: () => this.download(bill) }];
+    if (bill.quotationId) {
+      items.push({
+        label: 'Open quotation',
+        command: () => this._router.navigate(['/quotation/detail', bill.quotationId]),
       });
     }
+    if (!bill.cancelled) {
+      items.push({ separator: true }, { label: 'Cancel bill', styleClass: 'danger', command: () => this.cancel(bill) });
+    }
+    this.menuItems = items;
+    this.rowMenu?.toggle(event);
   }
 
-  public deleteBill(id: number) {
-    this.confirmationDialogService.confirm(
-      'Are you sure!',
-      `Are you sure you want to Delete ? `,
-      'pi-info-circle',
+  /** One click: the customer's GSTIN comes from the customer, not from a dialog. */
+  download(bill: BillRow): void {
+    if (this.downloading) {
+      return;
+    }
+    this.downloading = bill.id;
+    const gstin$ = bill.customerId
+      ? this._customerService.getCustomerDetail(bill.customerId).pipe(
+          map((res) => (res.success && (res.data as any)?.gstin) || ''),
+          catchError(() => of(''))
+        )
+      : of('');
+    gstin$
+      .pipe(
+        switchMap((gstin) =>
+          this._billService.downloadBillPdf({ bill_id: bill.id, customer_gst_no: gstin, download: true })
+        )
+      )
+      .subscribe({
+        next: (pdf) => {
+          this.downloading = null;
+          window.open(URL.createObjectURL(pdf), '_blank');
+        },
+        error: () => {
+          this.downloading = null;
+          this._toastService.showError(`Could not download ${bill.number}. Try again.`);
+        },
+      });
+  }
+
+  cancel(bill: BillRow): void {
+    this._confirm.confirm(
+      `Cancel ${bill.number}?`,
+      `The bill for ${bill.customer || 'this customer'} is removed from your bills. Its number is not used again.`,
+      'pi-exclamation-triangle',
       () => {
-        this._billService.deleteBill(id).subscribe(
-          (res) => {
+        this._billService.cancelBill(bill.id).subscribe({
+          next: (res) => {
             if (res.success) {
-              this._toastService.showSuccess(res.message);
-              this._billService.getBillsList().subscribe((res) => {
-                if (res.success) {
-                  this.bills = res.data;
-                }
-              });
+              this._toastService.showSuccess(`${bill.number} cancelled`);
+              this.bills = this.bills.filter((row) => row.id !== bill.id);
+              this.go(0);
             } else {
               this._toastService.showError(res.message);
             }
           },
-          (err) => {
-            this._toastService.showError(err.error.message);
-          }
-        );
+          error: (err) => this._toastService.showError(err?.error?.message || 'Could not cancel the bill'),
+        });
       },
-      () => {
-        console.log('Action rejected');
-      }
+      () => {}
     );
   }
 
-  public handleFormModal(event: any) {
-    this.customerGstin.patchValue('');
-    this.visible = event;
+  trackById(_: number, bill: BillRow): number {
+    return bill.id;
   }
 }
