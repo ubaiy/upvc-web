@@ -15,7 +15,8 @@ export class BillsService {
   ) {}
 
   public getBillsList(): Observable<IResponseDto<any[]>> {
-    return this._apiHttpSerivce.get(API_END_POINT.bills.list);
+    // Cancelled bills stay in the list: a number in the series is never reused.
+    return this._apiHttpSerivce.get(API_END_POINT.bills.list + '?status=all');
   }
 
   public getPDF(data: any): Observable<IResponseDto<any>> {
@@ -43,11 +44,11 @@ export class BillsService {
   }
 
   /**
-   * Cancels a bill. The API has no cancel yet, so this removes the bill
-   * (bill/delete); it moves to the cancel endpoint when that exists.
+   * Cancels a bill (bill/cancel). The bill keeps its number and stays in the
+   * list as cancelled; its quotation goes back to the status it had before.
    */
   public cancelBill(id: number): Observable<IResponseDto<any>> {
-    return this._apiHttpSerivce.post(API_END_POINT.bills.delete, {
+    return this._apiHttpSerivce.post('bill/cancel', {
       bill_id: id,
     });
   }

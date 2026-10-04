@@ -6,6 +6,7 @@
 .sk-label { width: 80px; }
 .sk-input { height: var(--h-control); }
 .sk-line { width: 40%; }
+.bill-flag { margin-inline-start: var(--s-2); }
 
 @media (max-width: 640px) {
   .form-grid { grid-template-columns: minmax(0, 1fr); }

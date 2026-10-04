@@ -138,15 +138,14 @@ export class ListComponent implements OnInit {
   cancel(bill: BillRow): void {
     this._confirm.confirm(
       `Cancel ${bill.number}?`,
-      `The bill for ${bill.customer || 'this customer'} is removed from your bills. Its number is not used again.`,
+      `The bill for ${bill.customer || 'this customer'} stays in the list as cancelled and its number is not used again. The quotation can be billed again.`,
       'pi-exclamation-triangle',
       () => {
         this._billService.cancelBill(bill.id).subscribe({
           next: (res) => {
             if (res.success) {
               this._toastService.showSuccess(`${bill.number} cancelled`);
-              this.bills = this.bills.filter((row) => row.id !== bill.id);
-              this.go(0);
+              this.bills = this.bills.map((row) => (row.id === bill.id ? { ...row, cancelled: true } : row));
             } else {
               this._toastService.showError(res.message);
             }

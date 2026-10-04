@@ -302,6 +302,7 @@
           <tr *ngFor="let bill of bills">
             <td>
               <span class="title num">{{ bill.number }}</span>
+              <span class="badge badge-danger bill-flag" *ngIf="bill.cancelled">Cancelled</span>
               <div class="faint tiny" *ngIf="bill.date">{{ bill.date | date : 'd MMM y' }}</div>
             </td>
             <td>

@@ -129,14 +129,18 @@ describe('ListComponent (bills)', () => {
     expect(service.downloadBillPdf).toHaveBeenCalledWith({ bill_id: 2, customer_gst_no: '', download: true });
   });
 
-  it('cancels a bill after confirmation and drops the row', () => {
+  it('cancels a bill after confirmation and keeps the row, marked cancelled', () => {
     create(ok(BILLS));
     service.cancelBill.and.returnValue(ok());
     confirm.confirm.and.callFake((_h, _m, _i, accept) => accept());
     fixture.componentInstance.cancel(fixture.componentInstance.bills[0]);
     expect(confirm.confirm.calls.mostRecent().args[0]).toBe('Cancel Bill 2?');
     expect(service.cancelBill).toHaveBeenCalledWith(2);
-    expect(fixture.componentInstance.bills.map((row) => row.id)).toEqual([1]);
+    expect(fixture.componentInstance.bills.map((row) => row.cancelled)).toEqual([true, false]);
+    fixture.detectChanges();
+    expect(el().querySelector('tbody tr .badge-danger')?.textContent).toContain('Cancelled');
+    fixture.componentInstance.openMenu(new MouseEvent('click'), fixture.componentInstance.bills[0]);
+    expect(fixture.componentInstance.menuItems.some((item) => item.label === 'Cancel bill')).toBeFalse();
     expect(toast.showSuccess).toHaveBeenCalledWith('Bill 2 cancelled');
   });
 });

@@ -1,15 +1,14 @@
 /**
- * Adapter between the bills list and the API as it is today.
+ * Adapter between the bills list and bill/list.
  *
- * bill/list sends the quotation's identity, the customer and the amount. It
- * does not send a bill number, a date, a status or the quotation's id yet.
- * This file reads those fields where the API will put them and falls back
- * to what exists, so the screen does not change when they arrive.
+ * Since card A5 a bill row carries number (INV/26-27/0042), bill_date,
+ * status with cancelled_at, quatation_id, quatation_number and total. The
+ * fallbacks below keep the screen working against an API without them.
  */
 
 export interface BillRow {
   id: number;
-  /** INV/26-27/0042 once the API numbers bills; "Bill 12" until then. */
+  /** INV/26-27/0042; "Bill 12" for a bill that has no number. */
   number: string;
   hasNumber: boolean;
   date: string | null;
@@ -35,10 +34,10 @@ function customerName(dto: any): string {
 }
 
 /**
- * @param quotations quatation/list?status=all. It links the bill to the
- * quotation it came from (by identity until the bill carries the id) and
- * supplies the amount: a bill freezes its quotation's totals, and bill/list
- * only sends grand_total, which is the cost sum, not what the customer pays.
+ * @param quotations quatation/list?status=all. It gives the name of the
+ * quotation a bill came from, and stands in for the id, number and total
+ * when the bill row does not carry them. grand_total is the cost sum, not
+ * what the customer pays, so it is the last fallback for the amount.
  */
 export function toBillRow(dto: any, quotations: any[] = []): BillRow {
   const source =
@@ -46,7 +45,7 @@ export function toBillRow(dto: any, quotations: any[] = []): BillRow {
     quotations.find(
       (quotation) => !!dto.quatation_identity && quotation.quatation_identity === dto.quatation_identity
     );
-  const number = dto.bill_number || dto.number || '';
+  const number = dto.number || dto.bill_number || '';
   return {
     id: dto.id,
     number: number || `Bill ${dto.id}`,
@@ -55,8 +54,8 @@ export function toBillRow(dto: any, quotations: any[] = []): BillRow {
     customerId: dto.customer_id ?? null,
     customer: customerName(dto),
     quotationId: source?.id ?? dto.quatation_id ?? null,
-    quotation: source?.quatation_name || dto.quatation_name || source?.number || dto.quatation_identity || '',
-    quotationNumber: source?.number || '',
+    quotation: source?.quatation_name || dto.quatation_name || source?.number || dto.quatation_number || dto.quatation_identity || '',
+    quotationNumber: source?.number || dto.quatation_number || '',
     amount: Number(dto.total ?? dto.totals?.total ?? source?.total ?? dto.grand_total ?? 0),
     cancelled: dto.status === 'cancelled' || !!dto.cancelled_at,
   };
