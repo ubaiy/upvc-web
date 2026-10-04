@@ -68,6 +68,8 @@ export class QuotationComponent implements OnInit, OnDestroy {
   private _query?: Subscription;
   /** An ?edit= link that arrived before the list did. */
   private _pendingEditId = 0;
+  /** What had the keyboard focus when "New quotation" was pressed. */
+  private _opener: HTMLElement | null = null;
 
   constructor(
     private _route: ActivatedRoute,
@@ -221,6 +223,7 @@ export class QuotationComponent implements OnInit, OnDestroy {
   }
 
   openNew(): void {
+    this._opener = document.activeElement as HTMLElement | null;
     this.editRow = null;
     this.dialogOpen = true;
   }
@@ -234,6 +237,12 @@ export class QuotationComponent implements OnInit, OnDestroy {
     this.dialogOpen = false;
     this.editRow = null;
     this._clearQuery();
+    // Hand the keyboard back to the button that opened the dialog.
+    const opener = this._opener;
+    this._opener = null;
+    if (opener && document.body.contains(opener)) {
+      setTimeout(() => opener.focus());
+    }
   }
 
   /** A new or changed quotation opens on its own page, ready for the first window. */
