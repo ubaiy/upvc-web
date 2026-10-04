@@ -272,7 +272,15 @@ describe('toPayload goldens — doors', () => {
         row: 0,
         col: i,
       })),
+      door: { threshold: 'Standard', swing: 'In' },
     });
+  });
+
+  it('sends only the threshold and swing keys, and only for a door', () => {
+    let d = makeDoor(doorBase(), 'p1');
+    d = setDoorSpec(d, { threshold: 'Low', swing: 'Out' });
+    expect(toPayload(d).door).toEqual({ threshold: 'Low', swing: 'Out' });
+    expect('door' in toPayload(doorBase())).toBeFalse();
   });
 
   it('single door with a left side light: door part + light part + mullion', () => {

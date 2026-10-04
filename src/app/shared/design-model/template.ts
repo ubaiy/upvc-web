@@ -205,8 +205,8 @@ export const TEMPLATE_TAGS_MAX = 20;
 export const TEMPLATE_TAG_MAX = 50;
 
 /**
- * The api row has no resize-rule column, so a non-default rule travels as
- * this reserved tag and is stripped again on read.
+ * Rows saved before the api had a `resize_rule` column carry the rule as
+ * this reserved tag. It is still read (and stripped), never written.
  */
 export const TEMPLATE_RESIZE_TAG_PREFIX = 'resize:';
 
@@ -218,6 +218,7 @@ export interface DesignTemplateRequest {
   tags: string[];
   product_type: 'Window' | 'Door';
   design: WindowDesign;
+  resize_rule: TemplateResizeRule;
   /** PNG data URI only (the api rejects anything else); omitted if none. */
   thumbnail?: string;
 }
@@ -229,6 +230,8 @@ export interface DesignTemplateRow {
   tags?: string[] | null;
   product_type?: string | null;
   design: unknown;
+  /** null on rows saved before the column existed. */
+  resize_rule?: string | null;
   thumbnail?: string | null;
 }
 
@@ -239,15 +242,12 @@ export function toTemplateRequest(
   const tags = template.tags
     .filter((t) => !t.startsWith(TEMPLATE_RESIZE_TAG_PREFIX))
     .map((t) => t.slice(0, TEMPLATE_TAG_MAX));
-  const reserved =
-    template.resizeRule === 'proportional'
-      ? []
-      : [TEMPLATE_RESIZE_TAG_PREFIX + template.resizeRule];
   const request: DesignTemplateRequest = {
     name: template.name.slice(0, TEMPLATE_NAME_MAX),
-    tags: [...tags.slice(0, TEMPLATE_TAGS_MAX - reserved.length), ...reserved],
+    tags: tags.slice(0, TEMPLATE_TAGS_MAX),
     product_type: template.design.productType,
     design: template.design,
+    resize_rule: template.resizeRule,
   };
   const thumb = template.thumbnail;
   if (thumb.kind === 'dataUrl' && thumb.value?.startsWith(PNG_DATA_URI)) {
@@ -261,9 +261,12 @@ export function fromTemplateRow(row: DesignTemplateRow): DesignTemplate {
   const tags = (Array.isArray(row.tags) ? row.tags : []).filter(
     (t): t is string => typeof t === 'string'
   );
-  const rule = tags
-    .find((t) => t.startsWith(TEMPLATE_RESIZE_TAG_PREFIX))
-    ?.slice(TEMPLATE_RESIZE_TAG_PREFIX.length);
+  // The column wins; the old `resize:*` tag is the fallback.
+  const rule =
+    row.resize_rule ||
+    tags
+      .find((t) => t.startsWith(TEMPLATE_RESIZE_TAG_PREFIX))
+      ?.slice(TEMPLATE_RESIZE_TAG_PREFIX.length);
   return parseTemplate({
     schema: TEMPLATE_SCHEMA,
     name: row.name,

@@ -91,8 +91,9 @@ describe('DesignTemplateStore (no login: this browser)', () => {
     const row = await store.add(toTemplateRequest(template));
     expect(row.id).toBe(1);
     expect(row.product_type).toBe('Door');
-    // preserve-locks travels as a reserved tag on the row…
-    expect(row.tags).toEqual(['door', 'entrance', 'resize:preserve-locks']);
+    // preserve-locks travels in its own field, not as a tag…
+    expect(row.tags).toEqual(['door', 'entrance']);
+    expect(row.resize_rule).toBe('preserve-locks');
 
     const rows = await store.list();
     expect(rows.length).toBe(1);

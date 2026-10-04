@@ -3,8 +3,18 @@
  * mapping to the existing `parts[]` / `sections[]` / `mullion[]` contract
  * (phase-3-api-log item 5) and the only place that contract lives.
  *
+ * THE PRICING RULE (one window, one payload, however it was drawn):
+ *  - every pane is priced from ITS OWN configuration. A part never borrows
+ *    a sash, handle, hinge, track or mesh from another pane, so a window
+ *    and its mirror image cost the same;
+ *  - an opening sash is always one part at its own daylight size with
+ *    `palla_type: 1` (the per-sash form), whether it is the only pane or
+ *    one of several. The old screen sent either that or one whole-window
+ *    part depending on what was selected, and the two gave different totals;
+ *  - a sliding pane is always one part per panel.
+ *
  * Byte-compatibility contract (golden-tested):
- *  - a single un-split casement window emits the legacy single-part array —
+ *  - a single un-split FIXED window emits the legacy single-part array —
  *    the full design-spec field set in the exact key order of the legacy
  *    `designSpecificationForm.getRawValue()`, with the FRAME outer size as
  *    `height`/`width` (what `designSpecArray[0]` produced);
@@ -21,7 +31,10 @@
  *    product_id}`, in the legacy depth-first emit order (child i's subtree
  *    before divider i);
  *  - leaf order everywhere: depth-first reading order; parts[i] ↔
- *    sections[i] ↔ i-th leaf.
+ *    sections[i] ↔ i-th leaf;
+ *  - a leaf that a shaped frame cuts away completely (the corner beyond a
+ *    triangle's slope) has no part and no section: the charged path is not
+ *    shape-aware and would price it as a rectangle.
  */
 
 import {
@@ -31,8 +44,10 @@ import {
   layout,
   leafGrid,
 } from './geometry';
+import { clipPanesToShape } from './shape-geometry';
 import { API_SHAPE_KINDS, ShapePayload, toShapePayload } from './shape-payload';
 import {
+  DoorSpec,
   FrameShape,
   Id,
   LeafNode,
@@ -122,6 +137,12 @@ export interface DesignPayload {
    * the api accepts (API_SHAPE_KINDS) — rect payloads are unchanged.
    */
   shape?: ShapePayload;
+  /**
+   * Doors only (phase-8-design-api-gaps-log.md item 2): the two door keys
+   * the api stores and returns. The full DoorSpec travels in the design
+   * document; the api drops any other key sent here.
+   */
+  door?: Pick<DoorSpec, 'threshold' | 'swing'>;
 }
 
 export interface ToPayloadOptions extends LayoutOptions {
@@ -224,29 +245,69 @@ export function buildBaseSpec(
   return base;
 }
 
-/** One per-section part: full spec + the per-leaf overrides, in place. */
+function isOpenable(leaf: LeafNode): boolean {
+  return leaf.category === 'Casement' && leaf.casementType === 'Openable';
+}
+
+/**
+ * The hardware of ONE pane, from that pane alone (see THE PRICING RULE):
+ * fixed glass has no sash, handle or hinges; a casement has no track or
+ * mesh. Values match the legacy form's empty state ('' sash, null rest).
+ */
+function ownHardware(leaf: LeafNode): Pick<
+  GlobalSpec,
+  'sash_id' | 'handle_id' | 'hinges_type' | 'opening_direction' | 'is_track' | 'fly_mesh'
+> {
+  const blank = defaultSpec();
+  if (leaf.category === 'Slidding') {
+    return {
+      sash_id: leaf.sashId ?? blank.sash_id,
+      handle_id: null,
+      hinges_type: null,
+      opening_direction: leaf.slide?.panels[0]?.direction ?? blank.opening_direction,
+      is_track: leaf.slide?.tracks ?? null,
+      fly_mesh: leaf.slide?.mesh ?? null,
+    };
+  }
+  if (!isOpenable(leaf)) {
+    return {
+      sash_id: blank.sash_id,
+      handle_id: null,
+      hinges_type: null,
+      opening_direction: blank.opening_direction,
+      is_track: null,
+      fly_mesh: null,
+    };
+  }
+  return {
+    sash_id: leaf.sashId ?? blank.sash_id,
+    handle_id: leaf.opening?.handleId ?? null,
+    hinges_type: leaf.opening?.hingesType ?? null,
+    opening_direction: leaf.opening?.direction ?? blank.opening_direction,
+    is_track: null,
+    fly_mesh: null,
+  };
+}
+
+/** One per-section part: full spec + the pane's own configuration. */
 function leafPart(
   base: GlobalSpec,
   leaf: LeafNode,
   widthMm: number,
   heightMm: number,
+  frameProductId: Id | null,
   override?: Partial<GlobalSpec>
 ): GlobalSpec {
   return {
     ...base,
-    product_id: leaf.productId ?? base.product_id,
+    product_id: leaf.productId ?? frameProductId ?? base.product_id,
     category_type: leaf.category,
     casement_type:
-      leaf.category === 'Slidding'
-        ? null
-        : leaf.casementType ?? base.casement_type,
-    sash_id: leaf.sashId ?? base.sash_id,
+      leaf.category === 'Slidding' ? null : leaf.casementType ?? 'Fixed',
     palla_type: 1,
     height: Math.round(heightMm),
     width: Math.round(widthMm),
-    handle_id: leaf.opening?.handleId ?? base.handle_id,
-    opening_direction: leaf.opening?.direction ?? base.opening_direction,
-    hinges_type: leaf.opening?.hingesType ?? base.hinges_type,
+    ...ownHardware(leaf),
     ...override,
   };
 }
@@ -272,14 +333,22 @@ export function toPayload(
   const sections: SectionPayload[] = [];
 
   const root = design.root;
-  const singleCasementRoot = isLeaf(root) && root.category === 'Casement';
+  // Only a single FIXED pane keeps the legacy whole-window part. A single
+  // opening sash is priced like every other sash (and the api refuses an
+  // Openable part without a palla count).
+  const singleFixedRoot =
+    isLeaf(root) && root.category === 'Casement' && !isOpenable(root);
   const grid = leafGrid(root);
   // Phase 3 §3.3: additive `shape` key on every part for non-rect frames
   // only, appended after the legacy keys (absent = rectangle).
   const shapeExtra: Partial<GlobalSpec> =
     design.frame.shape.kind !== 'rect' ? { shape: design.frame.shape } : {};
+  const cutAway = cutAwayLeafIds(design, opts);
+  // A pane without its own frame profile uses the window's, never a neighbour's.
+  const frameProductId = design.frame.productId;
 
   for (const { leaf, rect } of lay.leaves) {
+    if (cutAway.has(leaf.id)) continue;
     // Phase 2 D3: every section of this leaf carries the same grid cell
     // (sliding panels overlap inside ONE cell — they are not columns).
     const cell = grid.get(leaf.id) as LeafGridInfo;
@@ -290,19 +359,17 @@ export function toPayload(
       // geometric splits (the structural fix for defect B2).
       for (const panel of leaf.slide.panels) {
         parts.push(
-          leafPart(base, leaf, panel.widthMm, rect.hMm, {
-            is_track: leaf.slide.tracks,
-            fly_mesh: leaf.slide.mesh,
+          leafPart(base, leaf, panel.widthMm, rect.hMm, frameProductId, {
             opening_direction: panel.direction,
             ...shapeExtra,
           })
         );
         sections.push({
           casementType: null,
-          sashId: leaf.sashId ?? base.sash_id,
+          sashId: leaf.sashId ?? defaultSpec().sash_id,
           openingDirection: panel.direction,
-          handleId: base.handle_id,
-          hingesType: base.hinges_type,
+          handleId: null,
+          hingesType: null,
           widthMm: Math.round(panel.widthMm),
           heightMm: Math.round(rect.hMm),
           orientation: cell.orientation,
@@ -313,20 +380,21 @@ export function toPayload(
       continue;
     }
 
-    // Casement leaf. The single un-split window keeps the LEGACY part
-    // (full spec with the frame outer size), byte-identical to what the
-    // old component sent, so single-window pricing is unchanged.
-    if (singleCasementRoot) {
+    // Casement leaf. The single un-split fixed window keeps the LEGACY
+    // part (full spec with the frame outer size), byte-identical to what
+    // the old component sent, so its pricing is unchanged.
+    const own = ownHardware(leaf);
+    if (singleFixedRoot) {
       parts.push({ ...base, ...shapeExtra });
     } else {
-      parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, shapeExtra));
+      parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, frameProductId, shapeExtra));
     }
     sections.push({
-      casementType: leaf.casementType ?? base.casement_type,
-      sashId: leaf.sashId ?? base.sash_id,
-      openingDirection: leaf.opening?.direction ?? base.opening_direction,
-      handleId: leaf.opening?.handleId ?? base.handle_id,
-      hingesType: leaf.opening?.hingesType ?? base.hinges_type,
+      casementType: leaf.casementType ?? 'Fixed',
+      sashId: singleFixedRoot ? base.sash_id : own.sash_id,
+      openingDirection: singleFixedRoot ? base.opening_direction : own.opening_direction,
+      handleId: singleFixedRoot ? base.handle_id : own.handle_id,
+      hingesType: singleFixedRoot ? base.hinges_type : own.hinges_type,
       widthMm: Math.round(rect.wMm),
       heightMm: Math.round(rect.hMm),
       orientation: cell.orientation,
@@ -346,5 +414,29 @@ export function toPayload(
   if (shapePayload && API_SHAPE_KINDS.includes(shapePayload.kind)) {
     payload.shape = shapePayload;
   }
+  if (design.productType === 'Door' && design.door) {
+    payload.door = {
+      threshold: design.door.threshold,
+      swing: design.door.swing,
+    };
+  }
   return payload;
+}
+
+/**
+ * Leaves with no glass left inside a shaped frame. Never every leaf: a
+ * window always keeps at least one part.
+ */
+function cutAwayLeafIds(
+  design: WindowDesign,
+  opts?: ToPayloadOptions
+): Set<string> {
+  const out = new Set<string>();
+  if (design.frame.shape.kind === 'rect') return out;
+  const clips = clipPanesToShape(design, opts);
+  for (const clip of clips) {
+    if (clip.polygonMm.length < 3 || !(clip.areaMm2 > 0)) out.add(clip.leafId);
+  }
+  if (out.size === clips.length) out.clear();
+  return out;
 }

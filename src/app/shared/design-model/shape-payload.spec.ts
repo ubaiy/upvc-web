@@ -17,7 +17,7 @@ import {
   instantiateTemplate,
   toTemplateRequest,
 } from './template';
-import { FrameShape, WindowDesign } from './types';
+import { FrameShape, SplitNode, WindowDesign, walkLeaves } from './types';
 
 function shaped(w: number, h: number, shape: FrameShape): WindowDesign {
   const d = createDesign({
@@ -119,15 +119,38 @@ describe('toShapePayload', () => {
     ]);
   });
 
-  it('toPayload carries the descriptor for api kinds, not for a circle', () => {
+  it('toPayload carries the descriptor for every api kind, circle included', () => {
     const arch = shaped(2000, 1500, { kind: 'arch-top', riseMm: 500 });
     expect(toPayload(arch).shape).toEqual(toShapePayload(arch)!);
     const circle = shaped(2000, 2000, { kind: 'circle' });
-    expect('shape' in toPayload(circle)).toBeFalse();
-    // Still available for the day the api accepts it: one ring of 2πr.
-    expect(toShapePayload(circle)?.members).toEqual([
+    const sent = toPayload(circle).shape;
+    expect(sent?.kind).toBe('circle');
+    expect(sent?.params).toEqual({ radiusMm: 1000 });
+    // One ring of 2πr.
+    expect(sent?.members).toEqual([
       { role: 'frame', length_mm: 6283.2, qty: 1, curved: true },
     ]);
+  });
+
+  it('a pane the shape cuts away completely has no part and no section', () => {
+    // Right-angled triangle (apex left) over a 2 × 2 tree: the top-right
+    // cell lies wholly beyond the slope.
+    let d = shaped(2000, 2000, { kind: 'triangle', apex: 'left' });
+    d = splitPane(d, 'p1', 'x', 1000);
+    const [left, right] = (d.root as SplitNode).children;
+    d = splitPane(d, left.id, 'y', 940);
+    d = splitPane(d, right.id, 'y', 940);
+    expect(walkLeaves(d.root).length).toBe(4);
+    const p = toPayload(d);
+    expect(p.shape?.panes.length).toBe(3);
+    expect(p.parts.length).toBe(3);
+    expect(p.sections.length).toBe(3);
+    // The cells that remain keep their own grid position.
+    expect(p.sections.map((s) => [s.col, s.row])).toEqual([[0, 0], [0, 1], [1, 1]]);
+    expect(p.shape?.panes.map((x) => [x.col, x.row])).toEqual([[0, 0], [0, 1], [1, 1]]);
+    // A rectangle of the same tree keeps all four.
+    const rect = setFrameShape(d, { kind: 'rect' });
+    expect(toPayload(rect).parts.length).toBe(4);
   });
 });
 
@@ -204,11 +227,27 @@ describe('design_templates api mapping', () => {
     });
     expect(toTemplateRequest(t)).toEqual({
       name: 'Standard bedroom',
-      tags: ['bedroom', 'resize:preserve-locks'],
+      tags: ['bedroom'],
       product_type: 'Window',
       design: t.design,
+      resize_rule: 'preserve-locks',
       thumbnail: png,
     });
+  });
+
+  it('reads the resize rule from the column, and from the old tag on old rows', () => {
+    const d = createDesign({ frame: { widthMm: 1200, heightMm: 1200 } });
+    const base = { name: 'x', design: d, thumbnail: null };
+    const column = fromTemplateRow({ ...base, tags: ['a'], resize_rule: 'preserve-locks' });
+    expect(column.resizeRule).toBe('preserve-locks');
+    const tagged = fromTemplateRow({ ...base, tags: ['a', 'resize:preserve-locks'], resize_rule: null });
+    expect(tagged.resizeRule).toBe('preserve-locks');
+    expect(tagged.tags).toEqual(['a']);
+    // The column wins over a stale tag.
+    const both = fromTemplateRow({ ...base, tags: ['resize:preserve-locks'], resize_rule: 'proportional' });
+    expect(both.resizeRule).toBe('proportional');
+    expect(both.tags).toEqual([]);
+    expect(toTemplateRequest(tagged).tags).toEqual(['a']);
   });
 
   it('drops a non-PNG thumbnail and keeps within the api limits', () => {

@@ -37,13 +37,13 @@ export type ShapePayloadKind =
   | 'trapezoid';
 
 /**
- * Kinds the api's manage-product validation accepts today. 'circle' is
- * modelled and drawn but NOT in the api enum yet, so toPayload leaves the
- * descriptor out for circles (see the Phase 6 model log's api notes).
+ * Kinds the api's manage-product validation accepts. 'circle' joined the
+ * enum with phase-8-design-api-gaps-log.md item 1.
  */
 export const API_SHAPE_KINDS: ShapePayloadKind[] = [
   'arch_segmental',
   'arch_semicircular',
+  'circle',
   'triangle',
   'trapezoid',
 ];

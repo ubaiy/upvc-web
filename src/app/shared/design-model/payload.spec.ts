@@ -10,7 +10,10 @@
  * here is a reviewed pricing-contract change, never a refactor side-effect.
  */
 
+import { setLeafSpec, setSlide } from './leaf-ops';
+import { createDesign, splitPane, splitPaneEqualSash } from './operations';
 import { DesignPayload, GlobalSpec, toPayload } from './payload';
+import { SplitNode, WindowDesign } from './types';
 import {
   horizontalTransom,
   mixedExampleB,
@@ -381,5 +384,96 @@ describe('toPayload goldens', () => {
   it('is deterministic: same design, identical payload bytes', () => {
     const d = mixedExampleB();
     expect(JSON.stringify(toPayload(d))).toBe(JSON.stringify(toPayload(d)));
+  });
+});
+
+/**
+ * THE PRICING RULE: one window, one payload, however it was drawn. The old
+ * screen priced the same 1500 × 1200 opening window at 7263.29 or 6106.53
+ * depending on what was selected when it was configured.
+ */
+describe('toPayload pricing rule', () => {
+  const HARDWARE = {
+    sashId: 27,
+    opening: { direction: 'Left', handleId: 55, hingesType: 'Flate Hinges' },
+  };
+  const blank = (): WindowDesign =>
+    createDesign({
+      frame: { widthMm: 1500, heightMm: 1200, productId: 26, colorId: 1 },
+      glazing: { glassId: 1 },
+    });
+  const openable = (d: WindowDesign, id: string): WindowDesign =>
+    setLeafSpec(d, id, { category: 'Casement', casementType: 'Openable', productId: 32, ...HARDWARE });
+
+  it('one opening sash is one per-sash part, whichever way it was made', () => {
+    // Way 1: click the pane, choose "Openable".
+    const direct = toPayload(openable(blank(), 'p1'));
+    // Way 2: the legacy "1 palla" sash division.
+    const divided = toPayload(splitPaneEqualSash(openable(blank(), 'p1'), 'p1', 1));
+    expect(direct.parts.length).toBe(1);
+    expect(direct.parts[0].palla_type).toBe(1);
+    expect(direct.parts[0].width).toBe(1380); // 1500 − 2 × 60, not the frame
+    expect(direct.parts[0].height).toBe(1080);
+    expect(direct.parts[0].casement_type).toBe('Openable');
+    expect(JSON.stringify(direct.parts)).toBe(JSON.stringify(divided.parts));
+    expect(direct.width).toBe(1500);
+    expect(direct.height).toBe(1200);
+  });
+
+  it('a pane never borrows hardware from another pane: mirror images match', () => {
+    const base = splitPane(blank(), 'p1', 'x', 690, { dividerProfileId: 29 });
+    const [l, r] = (base.root as SplitNode).children;
+    const leftOpens = toPayload(openable(base, l.id));
+    const rightOpens = toPayload(openable(base, r.id));
+    const fixedOf = (p: DesignPayload) => p.parts.find((x) => x.casement_type === 'Fixed')!;
+    const sashOf = (p: DesignPayload) => p.parts.find((x) => x.casement_type === 'Openable')!;
+    // The fixed light has no sash, handle or hinges in either drawing ...
+    for (const p of [leftOpens, rightOpens]) {
+      expect(fixedOf(p).sash_id).toBe('');
+      expect(fixedOf(p).handle_id).toBeNull();
+      expect(fixedOf(p).hinges_type).toBeNull();
+      expect(sashOf(p).sash_id).toBe(27);
+      expect(sashOf(p).handle_id).toBe(55);
+    }
+    // ... so both drawings send the same two parts, in mirrored order.
+    expect(JSON.stringify(fixedOf(leftOpens))).toBe(JSON.stringify(fixedOf(rightOpens)));
+    expect(JSON.stringify(sashOf(leftOpens))).toBe(JSON.stringify(sashOf(rightOpens)));
+    const sectionOf = (p: DesignPayload, type: string) =>
+      p.sections.find((x) => x.casementType === type)!;
+    expect(sectionOf(leftOpens, 'Fixed').sashId).toBe('');
+    expect(sectionOf(leftOpens, 'Fixed').handleId).toBeNull();
+    expect(sectionOf(rightOpens, 'Openable').sashId).toBe(27);
+  });
+
+  it('a casement beside a slider carries no track or mesh, and the slider no hinges', () => {
+    let d = splitPane(blank(), 'p1', 'x', 690, { dividerProfileId: 29 });
+    const [l, r] = (d.root as SplitNode).children;
+    d = setSlide(d, l.id, {
+      tracks: '3 Track',
+      mesh: true,
+      panels: [
+        { widthMm: 330, direction: 'Left' },
+        { widthMm: 330, direction: 'Right' },
+      ],
+    });
+    d = setLeafSpec(d, l.id, { productId: 34, sashId: 35 });
+    d = openable(d, r.id);
+    const p = toPayload(d);
+    expect(p.parts.length).toBe(3);
+    expect(p.parts[0].is_track).toBe('3 Track');
+    expect(p.parts[0].fly_mesh).toBeTrue();
+    expect(p.parts[0].hinges_type).toBeNull();
+    expect(p.parts[0].handle_id).toBeNull();
+    expect(p.parts[2].casement_type).toBe('Openable');
+    expect(p.parts[2].is_track).toBeNull();
+    expect(p.parts[2].fly_mesh).toBeNull();
+    expect(p.parts[2].hinges_type).toBe('Flate Hinges');
+  });
+
+  it('a single fixed pane keeps the whole-window part', () => {
+    const p = toPayload(blank());
+    expect(p.parts.length).toBe(1);
+    expect(p.parts[0].width).toBe(1500);
+    expect(p.parts[0].palla_type).toBeNull();
   });
 });
