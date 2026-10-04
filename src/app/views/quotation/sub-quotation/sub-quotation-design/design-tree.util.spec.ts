@@ -5,6 +5,8 @@ import {
   reconstructFromFullWindow,
   resolvePallaTarget,
   firstSliddingLeafId,
+  usesLegacySinglePart,
+  listKeepingSaved,
 } from './design-tree.util';
 
 /** Sequential id factory matching the component's `p${++seq}` scheme. */
@@ -329,6 +331,204 @@ describe('design-tree.util (B1/B2 regression)', () => {
     it('returns null for unusable input', () => {
       expect(reconstructFromFullWindow(null, idFactory())).toBeNull();
       expect(reconstructFromFullWindow(undefined, idFactory())).toBeNull();
+    });
+  });
+
+  describe('legacy whole-window pricing (B1: pre-fix rows reopen at the stored price)', () => {
+    // Owner row "Al-Rashid Villa Windows" line 2: saved as ONE part at the
+    // full frame size. Rebuilding it as per-sash parts repriced it
+    // 7263.29 -> 6106.53 on reopen.
+    const wholeWindow = (palla: number | string | null, extra: any = {}) => {
+      const part = {
+        category_type: 'Casement',
+        casement_type: 'Openable',
+        palla_type: palla,
+        product_id: 32,
+        sash_id: 27,
+        handle_id: '55',
+        hinges_type: 'Flate Hinges',
+        opening_direction: 'Right',
+        width: 1500,
+        height: 1200,
+        ...extra,
+      };
+      return { ...part, full_window: { width: 1500, height: 1200, parts: [part], mullion: [] } };
+    };
+
+    it('flags a single part at the full frame size as legacy-priced', () => {
+      const rec = reconstructFromFullWindow(wholeWindow('1'), idFactory())!;
+      expect(rec.legacySinglePart).toBeTrue();
+      expect(rec.palla).toBe(1);
+      expect(leavesOf(rec.root).length).toBe(1);
+      expect(leavesOf(rec.root)[0].openingDirection).toBe('Right');
+      expect(usesLegacySinglePart(rec.root, rec.legacySinglePart)).toBeTrue();
+    });
+
+    it('flags the oldest shape (no full_window) from the window dims', () => {
+      const opd: any = wholeWindow(2);
+      delete opd.full_window;
+      const rec = reconstructFromFullWindow(opd, idFactory(), { width: '1500', height: '1200' })!;
+      expect(rec.legacySinglePart).toBeTrue();
+      expect(leavesOf(rec.root).length).toBe(2);
+      // Without any window dims there is nothing to compare against.
+      expect(reconstructFromFullWindow(opd, idFactory())!.legacySinglePart).toBeFalse();
+    });
+
+    it('does not flag a part saved at its own daylight size', () => {
+      const opd = wholeWindow(1);
+      opd.full_window.parts[0] = { ...opd.full_window.parts[0], width: 1380, height: 1080 };
+      const rec = reconstructFromFullWindow(opd, idFactory())!;
+      expect(rec.legacySinglePart).toBeFalse();
+    });
+
+    it('never flags multi-part or fixed single-pane rows', () => {
+      const fixed = reconstructFromFullWindow(
+        wholeWindow(null, { casement_type: 'Fixed', sash_id: null }),
+        idFactory()
+      )!;
+      expect(fixed.legacySinglePart).toBeFalse();
+      expect(fixed.root.split).toBeUndefined();
+      const multi = reconstructFromFullWindow(
+        {
+          full_window: {
+            width: 1500,
+            height: 1200,
+            parts: [
+              { category_type: 'Casement', casement_type: 'Openable', width: 690, height: 1080 },
+              { category_type: 'Casement', casement_type: 'Openable', width: 690, height: 1080 },
+            ],
+            mullion: [],
+          },
+        },
+        idFactory()
+      )!;
+      expect(multi.legacySinglePart).toBeFalse();
+      expect(multi.approximate).toBeFalse();
+    });
+
+    it('stays legacy-priced only while the sashes share one priced config', () => {
+      const rec = reconstructFromFullWindow(wholeWindow(2), idFactory())!;
+      expect(usesLegacySinglePart(rec.root, true)).toBeTrue();
+      // Not a legacy row at all.
+      expect(usesLegacySinglePart(rec.root, false)).toBeFalse();
+      // Opening direction is not priced: the sashes alternate Left/Right.
+      expect(leavesOf(rec.root).map((l) => l.openingDirection)).toEqual(['Left', 'Right']);
+      // One sash gets its own configuration -> composite, priced per section.
+      leavesOf(rec.root)[1].casementType = 'Fixed';
+      expect(usesLegacySinglePart(rec.root, true)).toBeFalse();
+    });
+
+    it('drops legacy pricing once the window is split further', () => {
+      const rec = reconstructFromFullWindow(wholeWindow(2), idFactory())!;
+      const ids = idFactory();
+      const wrapped: PaneNode = {
+        id: ids(),
+        framed: false,
+        split: {
+          direction: 'vertical',
+          kind: 'mullion',
+          mullionWidthMm: 60,
+          children: [rec.root, { id: ids(), framed: false }],
+          fractions: [0.5, 0.5],
+        },
+      };
+      expect(usesLegacySinglePart(wrapped, true)).toBeFalse();
+      // A sash sub-divided again is no longer the saved plain palla window.
+      const nested = reconstructFromFullWindow(wholeWindow(2), idFactory())!;
+      nested.root.split!.children[0].split = {
+        direction: 'vertical',
+        kind: 'palla',
+        mullionWidthMm: 60,
+        children: [{ id: ids(), framed: true }],
+        fractions: [1],
+      };
+      expect(usesLegacySinglePart(nested.root, true)).toBeFalse();
+    });
+  });
+
+  describe('listKeepingSaved (B1: the saved frame is never swapped on reopen)', () => {
+    const offered = [{ id: 32, profile_name: 'French Mullion' }];
+    const priced = [
+      { id: 26, profile_name: 'Casment Outward Outer Frame - R' },
+      { id: 27, profile_name: 'Sash' },
+    ];
+
+    it('returns the list untouched when it offers the saved product', () => {
+      expect(listKeepingSaved(offered, '32', priced)).toBe(offered);
+    });
+
+    it('appends the saved product when the list no longer offers it', () => {
+      // Demo quotation 12 line 1: saved with frame 26, list now offers only 32;
+      // defaulting to 32 repriced it 5137.02 -> 4830.59 on reopen.
+      const list = listKeepingSaved(offered, 26, priced)!;
+      expect(list.map((p) => p.id)).toEqual([32, 26]);
+      expect(offered.length).toBe(1);
+    });
+
+    it('gives up when the saved product is unknown or nothing is selected', () => {
+      expect(listKeepingSaved(offered, 99, priced)).toBeNull();
+      expect(listKeepingSaved(offered, 99, undefined)).toBeNull();
+      expect(listKeepingSaved(offered, '', priced)).toBeNull();
+      expect(listKeepingSaved(offered, null, priced)).toBeNull();
+    });
+  });
+
+  describe('nested legacy rows (B1 fallback is approximate, and says so)', () => {
+    it('sizes a nested mullion chain from the saved section sizes', () => {
+      // T32 line 3: 900 | (1320 over 1320), saved before the snapshot.
+      const opd = {
+        full_window: {
+          width: 2400,
+          height: 1800,
+          parts: [
+            { category_type: 'Casement', casement_type: 'Fixed', width: 900, height: 1680 },
+            { category_type: 'Casement', casement_type: 'Fixed', width: 1320, height: 810 },
+            { category_type: 'Casement', casement_type: 'Openable', width: 1320, height: 810, sash_id: 7 },
+          ],
+          mullion: [
+            { direction: 'vertical', length: 1680, product_id: 29 },
+            { direction: 'horizontal', length: 1320, product_id: 29 },
+          ],
+        },
+      };
+      const rec = reconstructFromFullWindow(opd, idFactory())!;
+      expect(rec.approximate).toBeTrue();
+      expect(rec.legacySinglePart).toBeFalse();
+      expect(rec.root.split!.direction).toBe('vertical');
+      expect(rec.root.split!.fractions[0]).toBeCloseTo(900 / 2220, 12);
+      expect(rec.root.split!.fractions[1]).toBeCloseTo(1320 / 2220, 12);
+      const inner = rec.root.split!.children[1];
+      expect(inner.split!.direction).toBe('horizontal');
+      expect(inner.split!.fractions).toEqual([0.5, 0.5]);
+      expect(leavesOf(rec.root).map((l) => l.casementType)).toEqual(['Fixed', 'Fixed', 'Openable']);
+    });
+
+    it('falls back to an equal split when the saved sizes are unusable', () => {
+      const opd = {
+        full_window: {
+          parts: [{ category_type: 'Casement' }, { category_type: 'Casement' }, { category_type: 'Casement' }],
+          mullion: [{ direction: 'vertical' }, { direction: 'horizontal' }],
+        },
+      };
+      const rec = reconstructFromFullWindow(opd, idFactory())!;
+      expect(rec.approximate).toBeTrue();
+      expect(rec.root.split!.fractions).toEqual([0.5, 0.5]);
+    });
+
+    it('flags a palla row whose sash heights differ (nested palla saved by the B2 bug)', () => {
+      // T32 line 2: 340x1260 x3 + 1140x1380 — not one flat palla division.
+      const part = (width: number, height: number) => ({ category_type: 'Slidding', width, height });
+      const opd = {
+        full_window: {
+          width: 2400,
+          height: 1500,
+          parts: [part(340, 1260), part(340, 1260), part(340, 1260), part(1140, 1380)],
+          mullion: [],
+        },
+      };
+      const rec = reconstructFromFullWindow(opd, idFactory())!;
+      expect(rec.approximate).toBeTrue();
+      expect(leavesOf(rec.root).length).toBe(4);
     });
   });
 

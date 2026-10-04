@@ -55,6 +55,8 @@ import {
   serializePaneTree,
   deserializePaneTree,
   reconstructFromFullWindow,
+  usesLegacySinglePart,
+  listKeepingSaved,
   resolvePallaTarget,
   firstSliddingLeafId,
 } from './design-tree.util';
@@ -201,6 +203,12 @@ export class SubQuotationDesignComponent
   rootPane: PaneNode;
   selectedPaneId: string | null = null;
   private _paneIdSeq = 0;
+  /**
+   * B1: the reopened row was saved as ONE whole-window part (pre per-section
+   * pricing). While true, {@link usesLegacySinglePart} decides whether the
+   * window is still priced that way.
+   */
+  private _legacySinglePart = false;
   /** Leaf that carries the fly-mesh drawing this render (B2); null = none. */
   private _meshLeafId: string | null = null;
   /** Glass rect of the root leaf at last render (for corner connectors / frame-click). */
@@ -481,6 +489,7 @@ export class SubQuotationDesignComponent
    * told, so nothing is silently rewritten.
    */
   private _restoreSavedDesign() {
+    this._legacySinglePart = false;
     const nextId = () => `p${++this._paneIdSeq}`;
     let objectData: any = null;
     const raw = (this.quotDetails as any)?.quatation_object_data;
@@ -505,14 +514,19 @@ export class SubQuotationDesignComponent
             emitEvent: false,
           });
         }
+        this._legacySinglePart = snapshot.legacy_single_part === true;
         return;
       }
     }
 
     const opd = this.quotDetails?.costhead_information?.old_post_data as any;
-    const rec = reconstructFromFullWindow(opd, nextId);
+    const rec = reconstructFromFullWindow(opd, nextId, {
+      width: this.quotDetails?.width,
+      height: this.quotDetails?.height,
+    });
     if (rec) {
       this.rootPane = rec.root;
+      this._legacySinglePart = rec.legacySinglePart;
       if (rec.palla != null) {
         this.df['palla_type'].setValue(rec.palla, { emitEvent: false });
       }
@@ -597,6 +611,7 @@ export class SubQuotationDesignComponent
         this.rectSelected = false;
         // Reset the state model back to a single un-split, un-framed pane.
         this.rootPane = this._newLeaf(false);
+        this._legacySinglePart = false;
         this.selectedPaneId = null;
         this.mullionArray = [];
         this.pallaSelected = false;
@@ -644,6 +659,12 @@ export class SubQuotationDesignComponent
         v: 1,
         root: serializePaneTree(this.rootPane),
         spec: this.designSpecificationForm.getRawValue(),
+        // Keeps a legacy whole-window-priced row on the same pricing after
+        // it is re-saved (see usesLegacySinglePart).
+        legacy_single_part: usesLegacySinglePart(
+          this.rootPane,
+          this._legacySinglePart
+        ),
       };
       data.is_saved = true;
       data.quatation_id = this.quotationId ? this.quotationId : null;
@@ -1103,6 +1124,9 @@ export class SubQuotationDesignComponent
       .pipe(debounceTime(300))
       .subscribe((res) => {
         const n = Number(res) || 0;
+        // Re-dividing the window is a new layout: it is priced per sash like
+        // any other, no longer as the legacy whole-window part it reopened as.
+        this._legacySinglePart = false;
         // B2: decide WHAT the palla count applies to. The old code subdivided
         // the selected leaf unconditionally, so changing "3 palla" while one
         // sash of a 2-palla slider was highlighted nested a split INSIDE that
@@ -1290,11 +1314,20 @@ export class SubQuotationDesignComponent
     this._profileService.productDropdown(query).subscribe((res) => {
       if (res.success) {
         this.profileList = res.data;
-        const current = this.df['product_id'].value;
-        const keep =
-          preserveSelection &&
-          current &&
-          this.profileList.some((p) => String(p.id) === String(current));
+        // Edit reload: the saved frame stays selected even when the list for
+        // this system no longer offers it (it is appended from the row's own
+        // priced products) — never swapped for the first entry.
+        const kept = preserveSelection
+          ? listKeepingSaved(
+              this.profileList,
+              this.df['product_id'].value,
+              this.quotDetails?.product_information
+            )
+          : null;
+        const keep = !!kept;
+        if (kept) {
+          this.profileList = kept;
+        }
         if (!keep) {
           this.df['product_id'].patchValue(this.profileList[0].id, {
             emitEvent: !preserveSelection,
@@ -1536,6 +1569,23 @@ export class SubQuotationDesignComponent
     // Single un-split window → identical to the legacy `designSpecArray[0]` part.
     if (!root.split) {
       return [this.designSpecificationForm.getRawValue()];
+    }
+    // B1: a reopened row that was saved as ONE whole-window part (full frame
+    // size + palla count) keeps that pricing while it is still the plain
+    // palla window that was saved, so reopening shows the stored price and
+    // re-saving it unchanged changes nothing.
+    if (usesLegacySinglePart(root, this._legacySinglePart)) {
+      const width = Number(this.f['width'].value);
+      const height = Number(this.f['height'].value);
+      const spec = this.designSpecificationForm.getRawValue();
+      return [
+        {
+          ...spec,
+          palla_type: root.split.children.length,
+          width: width > 0 ? width : spec.width,
+          height: height > 0 ? height : spec.height,
+        },
+      ];
     }
     const parts: any[] = [];
     this._collectLeafParts(root, parts);

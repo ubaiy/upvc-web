@@ -219,6 +219,47 @@ export interface ReconstructedTree {
   palla: number | null;
   /** True when the layout could only be approximated (nested legacy save). */
   approximate: boolean;
+  /**
+   * True when the row was saved (and priced) as ONE whole-window part: a
+   * single `parts[]` entry at the full frame size carrying `palla_type` N.
+   * See {@link usesLegacySinglePart}.
+   */
+  legacySinglePart: boolean;
+}
+
+/** Leaf fields that feed the price of a section. */
+const PRICED_LEAF_KEYS: (keyof PaneNode)[] = [
+  'category',
+  'casementType',
+  'sashId',
+  'productId',
+  'handleId',
+  'hingesType',
+];
+
+/**
+ * Should this window still be priced as ONE whole-window part?
+ *
+ * Rows saved before the per-section cost contract were priced from a single
+ * part at the full frame size with `palla_type` N. The designer now prices a
+ * palla-divided window per sash (N parts at their own daylight size), which
+ * gives a different total for the same drawing — so reopening such a row
+ * showed a lower price than the one stored, and Save overwrote it.
+ *
+ * A reconstructed legacy row keeps its original whole-window pricing for as
+ * long as it is still what was saved: one palla division of plain sashes
+ * that all share the same priced configuration. Giving one sash its own
+ * system/sash/handle, or adding a mullion, makes it a composite window and
+ * it is priced per section from then on.
+ */
+export function usesLegacySinglePart(root: PaneNode, legacy: boolean): boolean {
+  if (!legacy || !root.split || root.split.kind !== 'palla') return false;
+  const leaves = root.split.children;
+  if (!leaves.length || leaves.some((c) => !!c.split)) return false;
+  const norm = (v: any) => (v === undefined || v === null ? '' : String(v));
+  return leaves.every((leaf) =>
+    PRICED_LEAF_KEYS.every((k) => norm(leaf[k]) === norm(leaves[0][k]))
+  );
 }
 
 /**
@@ -236,7 +277,8 @@ export interface ReconstructedTree {
  */
 export function reconstructFromFullWindow(
   oldPostData: any,
-  nextId: () => string
+  nextId: () => string,
+  windowDims?: { width: any; height: any }
 ): ReconstructedTree | null {
   if (!oldPostData || typeof oldPostData !== 'object') return null;
   const fw = oldPostData.full_window;
@@ -263,19 +305,41 @@ export function reconstructFromFullWindow(
         children.push(leaf);
         fractions.push(1 / palla);
       }
-      return { root: pallaSplitOf(children, fractions, nextId), palla, approximate: false };
+      // A part still at the full frame size was priced as one whole-window
+      // part (per-sash parts carry their own, smaller, daylight size).
+      const winW = Number(fw?.width ?? windowDims?.width);
+      const winH = Number(fw?.height ?? windowDims?.height);
+      const legacySinglePart =
+        winW > 0 && winH > 0 && Number(p.width) === winW && Number(p.height) === winH;
+      return {
+        root: pallaSplitOf(children, fractions, nextId),
+        palla,
+        approximate: false,
+        legacySinglePart,
+      };
     }
-    return { root: leafFromPart(p, false, nextId), palla: null, approximate: false };
+    return {
+      root: leafFromPart(p, false, nextId),
+      palla: null,
+      approximate: false,
+      legacySinglePart: false,
+    };
   }
 
   if (mullion.length === 0) {
     // One palla division: N framed sashes side by side.
     const children = parts.map((p) => leafFromPart(p, true, nextId));
     const fractions = fractionsFromSizes(parts.map((p) => Number(p.width)));
+    // Sashes of ONE palla division all share the same height. Differing
+    // heights mean the row was saved from a nested layout (a palla division
+    // inside a sash), which this flat rebuild can only approximate.
+    const heights = parts.map((p) => Number(p.height));
+    const approximate = heights.some((h) => !(Math.abs(h - heights[0]) <= 1));
     return {
       root: pallaSplitOf(children, fractions, nextId),
       palla: parts.length,
-      approximate: false,
+      approximate,
+      legacySinglePart: false,
     };
   }
 
@@ -302,22 +366,31 @@ export function reconstructFromFullWindow(
         fractions: fractionsFromSizes(sizes),
       },
     };
-    return { root, palla: null, approximate: false };
+    return { root, palla: null, approximate: false, legacySinglePart: false };
   }
 
   // Nested legacy layout: approximate with a chain of binary mullion splits
-  // (first section | rest), assigning saved parts to leaves in order.
+  // (first section | rest), assigning saved parts to leaves in order. Each
+  // split is sized from the saved section sizes (e.g. 900 | 1320), falling
+  // back to an equal split when they are unusable.
   let leafIndex = 0;
   const takePart = () => parts[Math.min(leafIndex++, parts.length - 1)];
-  const buildChain = (depth: number): PaneNode => {
+  type Built = { node: PaneNode; w: number; h: number };
+  const leafOf = (part: any): Built => ({
+    node: leafFromPart(part, false, nextId),
+    w: Number(part?.width),
+    h: Number(part?.height),
+  });
+  const buildChain = (depth: number): Built => {
     if (depth >= mullion.length) {
-      return leafFromPart(takePart(), false, nextId);
+      return leafOf(takePart());
     }
     const m = mullion[depth];
     const direction = m && m.direction === 'horizontal' ? 'horizontal' : 'vertical';
-    const first = leafFromPart(takePart(), false, nextId);
+    const first = leafOf(takePart());
     const rest = buildChain(depth + 1);
-    return {
+    const vertical = direction === 'vertical';
+    const node: PaneNode = {
       id: nextId(),
       framed: false,
       split: {
@@ -325,12 +398,23 @@ export function reconstructFromFullWindow(
         kind: 'mullion',
         profileId: m ? m.product_id : undefined,
         mullionWidthMm: designConst.mullionWidthMm,
-        children: [first, rest],
-        fractions: [0.5, 0.5],
+        children: [first.node, rest.node],
+        fractions: fractionsFromSizes(
+          vertical ? [first.w, rest.w] : [first.h, rest.h]
+        ),
       },
     };
+    const mw = designConst.mullionWidthMm;
+    return vertical
+      ? { node, w: first.w + rest.w + mw, h: Math.max(first.h, rest.h) }
+      : { node, w: Math.max(first.w, rest.w), h: first.h + rest.h + mw };
   };
-  return { root: buildChain(0), palla: null, approximate: true };
+  return {
+    root: buildChain(0).node,
+    palla: null,
+    approximate: true,
+    legacySinglePart: false,
+  };
 }
 
 /** Depth-first search for a node by id (standalone twin of the component's). */
@@ -404,4 +488,27 @@ export function firstSliddingLeafId(
     if (found) return found;
   }
   return null;
+}
+
+/**
+ * Edit reload (B1): keep the SAVED frame product selectable.
+ *
+ * The frame list offered for a system can stop containing the product a row
+ * was saved with (catalog rules changed since). Defaulting to the first list
+ * entry then silently swapped the frame and repriced the window on reopen.
+ * When the saved product is missing from `list` but is one of the row's own
+ * priced products (`savedProducts`, from show-product), it is appended so the
+ * dropdown still shows it. Returns the list to use, or null when the saved
+ * selection cannot be kept (the caller then falls back to its default).
+ */
+export function listKeepingSaved<T extends { id: any }>(
+  list: T[],
+  currentId: any,
+  savedProducts: { id: any }[] | null | undefined
+): T[] | null {
+  if (currentId === undefined || currentId === null || currentId === '') return null;
+  const same = (p: { id: any }) => String(p.id) === String(currentId);
+  if (list.some(same)) return list;
+  const saved = (savedProducts || []).find(same);
+  return saved ? [...list, saved as unknown as T] : null;
 }
