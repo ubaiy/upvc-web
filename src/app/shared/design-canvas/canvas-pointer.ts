@@ -157,7 +157,9 @@ export class PointerController {
       const midX = (a.x + b.x) / 2;
       const midY = (a.y + b.y) / 2;
       if (this.pinch.dist > 0 && dist > 0) {
-        h.zoomAt(midX, midY, dist / this.pinch.dist);
+        // Scale about where the fingers WERE, then follow them: the content
+        // under the fingers stays under them (no drift on a pure pan).
+        h.zoomAt(this.pinch.midX, this.pinch.midY, dist / this.pinch.dist);
       }
       h.panX += midX - this.pinch.midX;
       h.panY += midY - this.pinch.midY;

@@ -340,6 +340,6 @@ export function drawDoorThreshold(
       });
     }
   }
-  node.setAttr('threshold', door.threshold);
+  node.setAttr('thresholdType', door.threshold);
   parent.add(node);
 }

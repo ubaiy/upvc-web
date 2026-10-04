@@ -1,0 +1,157 @@
+:host {
+  display: block;
+  font-size: 12px;
+  color: #1f2937;
+}
+
+.di-root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.di-group {
+  border: 1px solid #d8dbe0;
+  border-radius: 6px;
+  padding: 8px 10px 10px;
+  margin: 0;
+  background: #ffffff;
+  min-width: 0;
+
+  legend {
+    font-weight: 600;
+    font-size: 12px;
+    padding: 0 4px;
+    width: auto;
+    margin: 0;
+    float: none;
+  }
+}
+
+.di-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+
+  > span:first-child {
+    color: #4b5563;
+    flex: 0 0 auto;
+  }
+
+  select,
+  input[type='number'] {
+    flex: 0 1 150px;
+    min-width: 0;
+    width: 150px;
+  }
+}
+
+select,
+input[type='number'] {
+  height: 28px;
+  padding: 2px 6px;
+  border: 1px solid #c9ced6;
+  border-radius: 4px;
+  background: #ffffff;
+  font-size: 12px;
+
+  &:focus-visible {
+    outline: 2px solid #1f6feb;
+    outline-offset: 1px;
+  }
+}
+
+.di-pair {
+  display: inline-flex;
+  gap: 8px;
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin: 0;
+  }
+
+  input[type='number'] {
+    width: 52px;
+    flex: 0 0 52px;
+  }
+}
+
+.di-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.di-empty,
+.di-note {
+  color: #6b7280;
+  margin: 0 0 6px;
+}
+
+.di-problem {
+  margin: 0;
+  padding: 6px 8px;
+  border: 1px solid #f0b4b4;
+  border-radius: 4px;
+  background: #fdecec;
+  color: #8a1f1f;
+}
+
+.di-panels {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 3px 4px;
+    text-align: left;
+    border-top: 1px solid #eceef1;
+  }
+
+  th {
+    color: #4b5563;
+    font-weight: 600;
+    border-top: 0;
+  }
+
+  select {
+    width: 86px;
+  }
+
+  input[type='number'] {
+    width: 72px;
+  }
+
+  tr.selected td {
+    background: #e7f0ff;
+  }
+}
+
+.di-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  button {
+    padding: 5px 9px;
+    border: 1px solid #c9ced6;
+    border-radius: 4px;
+    background: #ffffff;
+    font-size: 12px;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      border-color: #1f6feb;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+  }
+}

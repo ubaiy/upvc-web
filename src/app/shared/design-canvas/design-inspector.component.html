@@ -1,0 +1,267 @@
+<div class="di-root" [class.di-readonly]="readOnly">
+  <p class="di-problem" *ngIf="problem" role="alert">{{ problem }}</p>
+
+  <!-- Frame -->
+  <fieldset class="di-group" [disabled]="readOnly">
+    <legend>Frame</legend>
+    <label class="di-row">
+      <span>Shape</span>
+      <select
+        data-di="shape"
+        [ngModel]="design.frame.shape.kind"
+        (ngModelChange)="onShapeKind($event)"
+      >
+        <option *ngFor="let s of shapeKinds" [value]="s.kind">{{ s.label }}</option>
+      </select>
+    </label>
+    <ng-container [ngSwitch]="design.frame.shape.kind">
+      <label class="di-row" *ngSwitchCase="'arch-top'">
+        <span>Rise (mm)</span>
+        <input
+          type="number"
+          data-di="rise"
+          [value]="round($any(design.frame.shape).riseMm)"
+          (change)="onRise($any($event.target).value)"
+        />
+      </label>
+      <label class="di-row" *ngSwitchCase="'triangle'">
+        <span>Apex</span>
+        <select
+          data-di="apex"
+          [ngModel]="$any(design.frame.shape).apex"
+          (ngModelChange)="onApex($event)"
+        >
+          <option *ngFor="let a of apexes" [value]="a">{{ a }}</option>
+        </select>
+      </label>
+      <ng-container *ngSwitchCase="'trapezoid'">
+        <label class="di-row">
+          <span>Left jamb (mm)</span>
+          <input
+            type="number"
+            data-di="trap-left"
+            [value]="round($any(design.frame.shape).leftHeightMm)"
+            (change)="onTrapezoid('left', $any($event.target).value)"
+          />
+        </label>
+        <label class="di-row">
+          <span>Right jamb (mm)</span>
+          <input
+            type="number"
+            data-di="trap-right"
+            [value]="round($any(design.frame.shape).rightHeightMm)"
+            (change)="onTrapezoid('right', $any($event.target).value)"
+          />
+        </label>
+      </ng-container>
+    </ng-container>
+    <label class="di-row" *ngIf="glassOptions.length">
+      <span>Glass</span>
+      <select
+        data-di="glass"
+        [ngModel]="'' + design.glazing.glassId"
+        (ngModelChange)="onGlass($event)"
+      >
+        <option *ngFor="let g of glassOptions" [value]="'' + g.id">{{ g.label }}</option>
+      </select>
+    </label>
+    <label class="di-row" *ngIf="colorOptions.length">
+      <span>Profile colour</span>
+      <select
+        data-di="color"
+        [ngModel]="design.frame.profileColor || '#ffffff'"
+        (ngModelChange)="onColor($event)"
+      >
+        <option *ngFor="let c of colorOptions" [value]="c.hex">{{ c.label }}</option>
+      </select>
+    </label>
+    <div class="di-row">
+      <span>Glazing bars</span>
+      <span class="di-pair">
+        <label>
+          V
+          <input
+            type="number"
+            min="0"
+            max="6"
+            data-di="bars-v"
+            [value]="design.glazing.barsV"
+            (change)="onBars('barsV', $any($event.target).value)"
+            aria-label="Vertical glazing bars"
+          />
+        </label>
+        <label>
+          H
+          <input
+            type="number"
+            min="0"
+            max="6"
+            data-di="bars-h"
+            [value]="design.glazing.barsH"
+            (change)="onBars('barsH', $any($event.target).value)"
+            aria-label="Horizontal glazing bars"
+          />
+        </label>
+      </span>
+    </div>
+  </fieldset>
+
+  <!-- Selected pane -->
+  <fieldset class="di-group" [disabled]="readOnly">
+    <legend>Selected pane</legend>
+    <p class="di-empty" *ngIf="!leaf">Click a pane on the drawing to edit it.</p>
+    <ng-container *ngIf="leaf as l">
+      <label class="di-row">
+        <span>Type</span>
+        <select data-di="pane-kind" [ngModel]="paneKind" (ngModelChange)="onPaneKind($event)">
+          <option *ngFor="let k of paneKinds" [value]="k.kind">{{ k.label }}</option>
+        </select>
+      </label>
+
+      <label class="di-row" *ngIf="paneKind === 'openable'">
+        <span>Opens</span>
+        <select
+          data-di="direction"
+          [ngModel]="l.opening?.direction || 'Left'"
+          (ngModelChange)="onDirection($event)"
+        >
+          <option *ngFor="let d of directions" [value]="d">{{ d }}</option>
+        </select>
+      </label>
+
+      <ng-container *ngIf="l.slide as s">
+        <label class="di-row">
+          <span>Tracks</span>
+          <select data-di="tracks" [ngModel]="s.tracks" (ngModelChange)="onTracks($event)">
+            <option *ngFor="let t of trackTypes" [value]="t">{{ t }}</option>
+          </select>
+        </label>
+        <label class="di-row">
+          <span>Panels (pallas)</span>
+          <select
+            data-di="panel-count"
+            [ngModel]="'' + s.panels.length"
+            (ngModelChange)="onPanelCount($event)"
+          >
+            <option *ngFor="let c of panelCounts" [value]="'' + c">{{ c }}</option>
+          </select>
+        </label>
+        <div class="di-row">
+          <label class="di-check">
+            <input
+              type="checkbox"
+              data-di="mesh"
+              [checked]="s.mesh"
+              [disabled]="!meshAllowed"
+              (change)="onMesh($any($event.target).checked)"
+            />
+            Fly mesh
+          </label>
+          <select
+            *ngIf="s.mesh"
+            data-di="mesh-position"
+            [ngModel]="s.meshPosition || 'Left'"
+            (ngModelChange)="onMeshPosition($event)"
+            aria-label="Fly mesh side"
+          >
+            <option value="Left">Left</option>
+            <option value="Right">Right</option>
+          </select>
+        </div>
+        <p class="di-note" *ngIf="!meshAllowed">Fly mesh needs a 2.5, 3 or 4 track.</p>
+        <table class="di-panels">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Slides</th>
+              <th>Fixed</th>
+              <th>Width</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let p of s.panels; let i = index"
+              [class.selected]="i === selectedPanel"
+              [attr.data-panel]="i"
+            >
+              <td>{{ i + 1 }}</td>
+              <td>
+                <select
+                  [ngModel]="p.direction"
+                  (ngModelChange)="onPanelDirection(i, $event)"
+                  [disabled]="!!p.fixed"
+                  [attr.aria-label]="'Panel ' + (i + 1) + ' slide direction'"
+                >
+                  <option value="Left">◀ Left</option>
+                  <option value="Right">Right ▶</option>
+                </select>
+              </td>
+              <td>
+                <input
+                  type="checkbox"
+                  [checked]="!!p.fixed"
+                  (change)="onPanelFixed(i, $any($event.target).checked)"
+                  [attr.aria-label]="'Panel ' + (i + 1) + ' fixed'"
+                />
+              </td>
+              <td>
+                <input
+                  type="number"
+                  [value]="round(p.widthMm)"
+                  (change)="onPanelWidth(i, $any($event.target).value)"
+                  [disabled]="s.panels.length < 2"
+                  [attr.aria-label]="'Panel ' + (i + 1) + ' width in millimetres'"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </ng-container>
+    </ng-container>
+  </fieldset>
+
+  <!-- Door -->
+  <fieldset class="di-group" [disabled]="readOnly">
+    <legend>Door</legend>
+    <ng-container *ngIf="!design.door">
+      <p class="di-empty">Select a pane, then turn it into a door.</p>
+      <div class="di-buttons">
+        <button type="button" data-di="make-door-1" [disabled]="!leaf" (click)="onMakeDoor(1)">
+          Single door
+        </button>
+        <button type="button" data-di="make-door-2" [disabled]="!leaf" (click)="onMakeDoor(2)">
+          Double door
+        </button>
+      </div>
+    </ng-container>
+    <ng-container *ngIf="design.door as door">
+      <p class="di-note">{{ door.leaves === 2 ? 'Double (French) door' : 'Single door' }}</p>
+      <label class="di-row" *ngIf="door.leaves === 1">
+        <span>Hinge side</span>
+        <select data-di="door-side" [ngModel]="door.openingSide" (ngModelChange)="onDoorSide($event)">
+          <option value="Left">Left (from outside)</option>
+          <option value="Right">Right (from outside)</option>
+        </select>
+      </label>
+      <label class="di-row">
+        <span>Swing</span>
+        <select data-di="door-swing" [ngModel]="door.swing" (ngModelChange)="onDoorSwing($event)">
+          <option value="In">Opens in</option>
+          <option value="Out">Opens out</option>
+        </select>
+      </label>
+      <label class="di-row">
+        <span>Threshold</span>
+        <select data-di="threshold" [ngModel]="door.threshold" (ngModelChange)="onThreshold($event)">
+          <option *ngFor="let t of thresholds" [value]="t">{{ t }}</option>
+        </select>
+      </label>
+      <div class="di-buttons">
+        <button type="button" data-di="side-light-left" (click)="onSideLight('left')">+ Left light</button>
+        <button type="button" data-di="side-light-right" (click)="onSideLight('right')">+ Right light</button>
+        <button type="button" data-di="top-light" (click)="onTopLight()">+ Top light</button>
+        <button type="button" data-di="remove-door" (click)="onRemoveDoor()">Back to window</button>
+      </div>
+    </ng-container>
+  </fieldset>
+</div>

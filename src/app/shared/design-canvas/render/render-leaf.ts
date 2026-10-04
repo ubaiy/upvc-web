@@ -40,7 +40,7 @@ export function drawLeaf(
       ? [0, shadeColor(tint, 0.55), 1, tint]
       : [0, COL.glassTop, 1, COL.glassBottom],
   });
-  glass.setAttrs({ paneId: leaf.id, tint: tint ?? null });
+  glass.setAttrs({ paneId: leaf.id, glassTint: tint ?? '' });
   parent.add(glass);
   drawGlassReflection(parent, r);
   drawGlazingBars(parent, r, ctx);

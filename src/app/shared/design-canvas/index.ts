@@ -8,3 +8,4 @@ export * from './canvas-renderer';
 export * from './canvas-host';
 export * from './design-edit-ops';
 export * from './design-canvas.component';
+export * from './design-inspector.component';
