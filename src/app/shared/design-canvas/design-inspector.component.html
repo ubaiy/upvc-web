@@ -65,6 +65,13 @@
         <option *ngFor="let g of glassOptions" [value]="'' + g.id">{{ g.label }}</option>
       </select>
     </label>
+    <p class="di-note" *ngIf="glassOptions.length && paneCount > 1" data-di="glass-note">
+      <ng-container *ngIf="ownGlassCount; else allSame">
+        {{ ownGlassCount }} of {{ paneCount }} panes {{ ownGlassCount === 1 ? 'has its' : 'have their' }} own glass.
+        Choosing a glass here sets every pane.
+      </ng-container>
+      <ng-template #allSame>For every pane. To glaze one pane differently, select it on the drawing.</ng-template>
+    </p>
     <label class="di-row" *ngIf="colorOptions.length">
       <span>Profile colour</span>
       <select
@@ -117,6 +124,23 @@
           <option *ngFor="let k of paneKinds" [value]="k.kind">{{ k.label }}</option>
         </select>
       </label>
+
+      <label class="di-row" *ngIf="glassOptions.length">
+        <span data-di="pane-glass-label">{{ paneGlass.mixed ? 'Glass: mixed' : 'Glass' }}</span>
+        <select data-di="pane-glass" [ngModel]="paneGlassValue" (ngModelChange)="onPaneGlass($event)">
+          <option *ngIf="paneGlass.mixed" value="" disabled>Mixed</option>
+          <option *ngFor="let g of glassOptions" [value]="'' + g.id">
+            {{ g.label }}{{ isWindowGlass(g) ? ' (window)' : '' }}
+          </option>
+        </select>
+      </label>
+      <p class="di-note" *ngIf="selectedIds.length > 1" data-di="multi-note">
+        {{ selectedIds.length }} panes selected. Glass is set for all of them; the other settings are for the pane
+        picked last.
+      </p>
+      <p class="di-note" *ngIf="selectedIds.length === 1 && paneCount > 1 && glassOptions.length">
+        For this pane only. Shift-click, or press and hold, another pane to glaze several alike.
+      </p>
 
       <label class="di-row" *ngIf="paneKind === 'openable'">
         <span>Opens</span>

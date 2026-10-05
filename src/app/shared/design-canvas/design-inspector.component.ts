@@ -36,6 +36,8 @@ import {
   allowedPanelCounts,
   checkInvariants,
   findNode,
+  glassOfPanes,
+  hasOwnGlass,
   isLeaf,
   makeDoor,
   setDoorSpec,
@@ -43,13 +45,16 @@ import {
   setFrameSpec,
   setGlazing,
   setLeafSpec,
+  setPaneGlass,
   setSlideMesh,
   setSlidePanel,
   setSlidePanelCount,
   setSlidePanelWidthMm,
   setSlideTracks,
+  setWindowGlass,
+  walkLeaves,
 } from '../design-model';
-import { CanvasSelection } from './canvas-view';
+import { CanvasSelection, selectedPaneIds } from './canvas-view';
 import {
   PaneKind,
   leafWidthMm,
@@ -145,6 +150,38 @@ export class DesignInspectorComponent {
     return node && isLeaf(node) ? node : null;
   }
 
+  /** Every selected pane (one, or several after shift-click / long-press). */
+  get selectedIds(): string[] {
+    return selectedPaneIds(this.selection).filter((id) => {
+      const node = findNode(this.design.root, id);
+      return !!node && isLeaf(node);
+    });
+  }
+
+  /** The glass of the selection; `mixed` when its panes differ. */
+  get paneGlass(): { glassId: Id | null; mixed: boolean } {
+    return glassOfPanes(this.design, this.selectedIds);
+  }
+
+  /** Value of the pane glass list: '' while the selection is mixed. */
+  get paneGlassValue(): string {
+    const g = this.paneGlass;
+    return g.mixed ? '' : '' + g.glassId;
+  }
+
+  /** How many panes are glazed differently from the window. */
+  get ownGlassCount(): number {
+    return walkLeaves(this.design.root).filter((l) => hasOwnGlass(this.design, l)).length;
+  }
+
+  get paneCount(): number {
+    return walkLeaves(this.design.root).length;
+  }
+
+  isWindowGlass(g: GlassOption): boolean {
+    return String(g.id) === String(this.design.glazing.glassId);
+  }
+
   get paneKind(): PaneKind | null {
     return this.leaf ? paneKindOf(this.leaf) : null;
   }
@@ -212,9 +249,18 @@ export class DesignInspectorComponent {
     });
   }
 
+  /** "Whole window": every pane gets this glass. */
   onGlass(raw: string): void {
     const match = this.glassOptions.find((g) => String(g.id) === raw);
-    this.run((d) => setGlazing(d, { glassId: match ? match.id : null }));
+    this.run((d) => setWindowGlass(d, match ? match.id : null));
+  }
+
+  /** Glass of the selected pane(s) only. */
+  onPaneGlass(raw: string): void {
+    const ids = this.selectedIds;
+    const match = this.glassOptions.find((g) => String(g.id) === raw);
+    if (!ids.length || !match) return;
+    this.run((d) => setPaneGlass(d, ids, match.id));
   }
 
   onBars(which: 'barsV' | 'barsH', raw: string): void {
