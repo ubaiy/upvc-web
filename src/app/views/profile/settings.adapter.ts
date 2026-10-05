@@ -83,11 +83,18 @@ export class SettingsAdapter {
       form.append('main_logo', logo);
     }
     const registered = company.registrationType !== 'unregistered';
+    // City, district and PIN code are saved with the GST identity; an empty one clears it.
+    const place = {
+      city: company.city.trim() || null,
+      district: company.district.trim() || null,
+      pincode: company.pincode.trim() || null,
+    };
     // The user said yes to "change the state to the GSTIN's": the api then takes the
     // state from the GSTIN, and must not be sent the old one beside it (phase 30 log, section 5).
     const gst: Record<string, unknown> = confirmStateChange
-      ? { gst_registration_type: company.registrationType, gstin: normaliseGstin(company.gstin), confirm_state_change: true }
+      ? { ...place, gst_registration_type: company.registrationType, gstin: normaliseGstin(company.gstin), confirm_state_change: true }
       : {
+          ...place,
           gst_registration_type: company.registrationType,
           gstin: registered ? normaliseGstin(company.gstin) : null,
           state_code: company.stateCode || null,
@@ -190,6 +197,10 @@ export function toSnapshot(data: any): SettingsSnapshot {
   const company: CompanySettings = {
     name: text(d.name),
     address: text(d.address),
+    city: text(d.city),
+    district: text(d.district),
+    pincode: text(d.pincode),
+    pincodeWarning: (Array.isArray(d.warnings) && d.warnings.find((w: any) => w?.field === 'pincode')?.message) || '',
     email: text(d.email),
     phone: text(d.phone),
     // Before the second number became optional, "none" was saved as the first number again.

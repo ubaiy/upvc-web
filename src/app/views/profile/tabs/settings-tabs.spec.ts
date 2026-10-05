@@ -1,9 +1,10 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject, of, throwError } from 'rxjs';
 
 import { WorkspaceService } from 'src/app/containers/shell/workspace.service';
 import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
+import { LocationService } from 'src/app/shared/services/location.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { PaymentTermsService } from '../../payment-terms/payment-terms.service';
 import { TypeMarginService } from '../../type-margin/type-margin.service';
@@ -49,12 +50,24 @@ function setUp<T>(component: new (...args: any[]) => T, row: any = ROW) {
   adapter.saveTax.and.returnValue(of(toSnapshot(row)));
   adapter.saveDocuments.and.returnValue(of(toSnapshot(row)));
   const toast = jasmine.createSpyObj<ToastService>('ToastService', ['showSuccess', 'showError']);
+  const location = jasmine.createSpyObj<LocationService>('LocationService', ['lookupPin', 'cities']);
+  location.cities.and.returnValue(of([]));
+  location.lookupPin.and.callFake((pin: string) =>
+    of(
+      pin === '395007'
+        ? { pincode: pin, city: 'Surat', district: 'Surat', stateCode: '24', stateName: 'Gujarat', localities: ['Adajan'] }
+        : pin === '400050'
+        ? { pincode: pin, city: 'Mumbai', district: 'Mumbai', stateCode: '27', stateName: 'Maharashtra', localities: [] }
+        : null
+    )
+  );
   const workspace = { workspace$: new BehaviorSubject({ name: '' }) };
   const lists = { success: true, data: [] };
   TestBed.configureTestingModule({
     imports: [component as any, RouterTestingModule],
     providers: [
       { provide: SettingsAdapter, useValue: adapter },
+      { provide: LocationService, useValue: location },
       { provide: ToastService, useValue: toast },
       { provide: WorkspaceService, useValue: workspace },
       { provide: ConfirmationDialogService, useValue: { confirm: () => undefined } },
@@ -195,6 +208,77 @@ describe('CompanyTabComponent', () => {
     expect(sent.stateCode).toBe('24');
     expect(workspace.workspace$.value.name).toBe('Hakimi Windows');
     expect(toast.showSuccess).toHaveBeenCalledWith('Company details saved');
+  });
+
+  describe('city and PIN code (T90)', () => {
+    function typePin(fixture: any, el: HTMLElement, pin: string): void {
+      const input = el.querySelector('#co-pin') as HTMLInputElement;
+      input.value = pin;
+      input.dispatchEvent(new Event('input'));
+      tick(400);
+      fixture.detectChanges();
+    }
+
+    it('asks for the PIN code before the address; PIN 395007 fills Surat and they are saved', fakeAsync(() => {
+      const { fixture, el, adapter } = setUp(CompanyTabComponent);
+      const c = fixture.componentInstance;
+      const ids = Array.from(el.querySelectorAll('#co-pin, #co-city, #co-address')).map((field) => field.id);
+      expect(ids).toEqual(['co-pin', 'co-city', 'co-address']);
+      expect(el.querySelectorAll('select#co-state').length).withContext('one State field, beside the GSTIN').toBe(1);
+
+      c.f['gstin'].setValue('24ABCDE1234F1Z5');
+      typePin(fixture, el, '395007');
+      expect(c.form.value).toEqual(jasmine.objectContaining({ pincode: '395007', city: 'Surat', district: 'Surat', stateCode: '24' }));
+      c.save();
+      const sent = adapter.saveCompany.calls.mostRecent().args[0];
+      expect(sent).toEqual(jasmine.objectContaining({ pincode: '395007', city: 'Surat', district: 'Surat', stateCode: '24' }));
+    }));
+
+    it('never changes the company state from a PIN code: it says the two disagree', fakeAsync(() => {
+      const { fixture, el } = setUp(CompanyTabComponent, { ...ROW, gstin: '24ABCDE1234F1Z5', state_code: '24' });
+      const c = fixture.componentInstance;
+      typePin(fixture, el, '400050');
+      expect(c.f['stateCode'].value).toBe('24');
+      expect(c.f['city'].value).toBe('Mumbai');
+      expect(el.querySelector('[data-af="mismatch"]')?.textContent).toContain('PIN 400050 is in Maharashtra, not Gujarat.');
+      expect(c.stateQuestion).toBeNull();
+    }));
+
+    it('saves a company that has no city or PIN code yet, and one with a PIN the directory does not have', fakeAsync(() => {
+      const { fixture, el, adapter } = setUp(CompanyTabComponent, { ...ROW, gstin: '24ABCDE1234F1Z5', state_code: '24' });
+      const c = fixture.componentInstance;
+      c.save();
+      expect(adapter.saveCompany).toHaveBeenCalledTimes(1);
+      expect(adapter.saveCompany.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ pincode: '', city: '' }));
+
+      c.f['city'].setValue('Navagam');
+      typePin(fixture, el, '999999');
+      expect(el.textContent).toContain('This PIN is not in our list.');
+      c.save();
+      expect(adapter.saveCompany).toHaveBeenCalledTimes(2);
+      expect(adapter.saveCompany.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ pincode: '999999', city: 'Navagam' }));
+    }));
+
+    it('does not send a PIN code that is not 6 digits', () => {
+      const { fixture, el, adapter } = setUp(CompanyTabComponent, { ...ROW, gstin: '24ABCDE1234F1Z5', state_code: '24' });
+      fixture.componentInstance.f['pincode'].setValue('3950');
+      fixture.componentInstance.save();
+      fixture.detectChanges();
+      expect(adapter.saveCompany).not.toHaveBeenCalled();
+      expect(el.textContent).toContain('Enter a 6-digit PIN code.');
+    });
+
+    it('shows the sentence of the api when the saved PIN code belongs to another state', () => {
+      const { el } = setUp(CompanyTabComponent, {
+        ...ROW,
+        gstin: '24ABCDE1234F1Z5',
+        state_code: '24',
+        city: 'Mumbai',
+        pincode: '400050',
+        warnings: [{ code: 'state_mismatch', field: 'pincode', message: 'PIN code 400050 is in Maharashtra (Mumbai) in the PIN code directory; the state given is Gujarat.' }],
+      });
+      expect(el.querySelector('[data-af="mismatch"]')?.textContent).toContain('PIN code 400050 is in Maharashtra (Mumbai)');
+    });
   });
 
   it('keeps the form and shows the reason when the save is refused', () => {

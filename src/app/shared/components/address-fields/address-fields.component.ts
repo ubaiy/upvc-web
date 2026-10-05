@@ -65,6 +65,18 @@ export class AddressFieldsComponent implements OnChanges, OnInit, OnDestroy {
   @Input() idPrefix = 'addr';
   @Input() idSuffix = '';
 
+  /**
+   * False where the form draws State itself (company settings, beside the GSTIN).
+   * The state control is still read, and filled as `keepState` allows.
+   */
+  @Input() showState = true;
+  /**
+   * True where the state is a decision of its own (the company's state decides
+   * the tax on every bill): a PIN or a city fills it only while none is chosen,
+   * and says so when it belongs to another state.
+   */
+  @Input() keepState = false;
+
   /** True once the form was submitted: errors then show on untouched fields too. */
   @Input() submitted = false;
   /** Marks State as required with an asterisk. The rule itself is the group's. */
@@ -294,9 +306,7 @@ export class AddressFieldsComponent implements OnChanges, OnInit, OnDestroy {
   pickCity(option: CityOption): void {
     this.set(this.cityName, option.city);
     this.set(this.districtName, option.district);
-    if (option.stateCode && this.knows(option.stateCode)) {
-      this.set(this.stateName, option.stateCode);
-    }
+    this.fillState(option.stateCode);
     this.closeCities();
     this.cityOptions = [];
     this.cityNoMatch = '';
@@ -382,9 +392,7 @@ export class AddressFieldsComponent implements OnChanges, OnInit, OnDestroy {
       this.set(this.cityName, result.city);
     }
     this.set(this.districtName, result.district);
-    if (result.stateCode && this.knows(result.stateCode)) {
-      this.set(this.stateName, result.stateCode);
-    }
+    this.fillState(result.stateCode);
     this.announcement = `PIN code ${pin}: ${this.foundText} filled.`;
   }
 
@@ -455,6 +463,14 @@ export class AddressFieldsComponent implements OnChanges, OnInit, OnDestroy {
     }
     control.setValue(value);
     control.markAsDirty();
+  }
+
+  /** The state follows the PIN or the city, unless the form keeps a state already chosen. */
+  private fillState(code: string): void {
+    if (!code || !this.knows(code) || (this.keepState && this.value(this.stateName))) {
+      return;
+    }
+    this.set(this.stateName, code);
   }
 
   private knows(code: string): boolean {

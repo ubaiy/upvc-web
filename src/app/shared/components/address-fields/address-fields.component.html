@@ -30,6 +30,8 @@
           >
           <span class="hint" *ngSwitchDefault>6 digits. It fills the city and the state.</span>
         </ng-container>
+        <!-- State is drawn elsewhere on this form: the disagreement is said here. -->
+        <span class="hint af-warn af-line" data-af="mismatch" role="status" *ngIf="!showState && mismatch">{{ mismatch }}</span>
       </ng-template>
     </span>
   </div>
@@ -111,7 +113,7 @@
     </ng-template>
   </div>
 
-  <div class="field af-state">
+  <div class="field af-state" *ngIf="showState">
     <label class="label" [for]="id('state')"
       >State <span class="req" aria-hidden="true" *ngIf="stateRequired">*</span></label
     >

@@ -25,11 +25,24 @@
             [class.is-invalid]="invalid('name')" [attr.aria-invalid]="invalid('name')" aria-describedby="co-name-err" />
           <span class="error" id="co-name-err" *ngIf="invalid('name')">Enter the company's legal name.</span>
         </div>
+        <!-- PIN code first: it fills the city. The company's state is with the GSTIN below and is never changed from here (T90). -->
+        <app-address-fields
+          [group]="form"
+          [states]="states"
+          idPrefix="co"
+          pinName="pincode"
+          stateName="stateCode"
+          areaName=""
+          [showState]="false"
+          [keepState]="true"
+          [submitted]="submitted"
+          [stateWarning]="pincodeWarning"
+        ></app-address-fields>
         <div class="field span-2">
           <label class="label" for="co-address">Address <span class="req" aria-hidden="true">*</span></label>
           <textarea class="input" id="co-address" rows="3" formControlName="address" autocomplete="street-address"
             [class.is-invalid]="invalid('address')" [attr.aria-invalid]="invalid('address')" aria-describedby="co-address-err"></textarea>
-          <span class="error" id="co-address-err" *ngIf="invalid('address')">Enter the address, with city and PIN code.</span>
+          <span class="error" id="co-address-err" *ngIf="invalid('address')">Enter the building, street and area.</span>
         </div>
         <div class="field">
           <label class="label" for="co-phone">Phone <span class="req" aria-hidden="true">*</span></label>

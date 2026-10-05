@@ -35,7 +35,15 @@ const DAHOD: CityOption = { city: 'Dahod', district: 'Dahod', stateCode: '24', p
 @Component({
   template: `
     <form class="form-grid" [formGroup]="group">
-      <app-address-fields [group]="group" [states]="states" idSuffix="-0" [submitted]="submitted" [stateWarning]="warning">
+      <app-address-fields
+        [group]="group"
+        [states]="states"
+        idSuffix="-0"
+        [submitted]="submitted"
+        [stateWarning]="warning"
+        [showState]="showState"
+        [keepState]="keepState"
+      >
         <div class="field span-2"><input id="line" formControlName="address" /></div>
         <div class="field span-2"><input id="area" formControlName="address_line2" /></div>
       </app-address-fields>
@@ -46,6 +54,8 @@ class HostComponent {
   states = STATES;
   submitted = false;
   warning = '';
+  showState = true;
+  keepState = false;
   group: FormGroup = new FormBuilder().group({
     address: [''],
     address_line2: [''],
@@ -354,6 +364,28 @@ describe('AddressFieldsComponent', () => {
       tick(400);
       fixture.detectChanges();
       expect(value().state_code).toBe('27');
+    }));
+  });
+
+  describe('where the state is a decision of its own (company settings)', () => {
+    beforeEach(() => {
+      host.showState = false;
+      host.keepState = true;
+      fixture.detectChanges();
+    });
+
+    it('leaves State to the form, keeps a chosen state and says when the PIN belongs to another', fakeAsync(() => {
+      expect(el('#addr-state-0')).toBeNull();
+      type('#addr-pin-0', '400050');
+      expect(value()).toEqual(jasmine.objectContaining({ city: 'Mumbai', district: 'Mumbai Suburban', state_code: '24' }));
+      expect(el('[data-af="mismatch"]').textContent).toContain('PIN 400050 is in Maharashtra, not Gujarat.');
+    }));
+
+    it('fills the state while none is chosen', fakeAsync(() => {
+      host.group.patchValue({ state_code: '' });
+      type('#addr-pin-0', '400050');
+      expect(value().state_code).toBe('27');
+      expect(el('[data-af="mismatch"]')).toBeNull();
     }));
   });
 

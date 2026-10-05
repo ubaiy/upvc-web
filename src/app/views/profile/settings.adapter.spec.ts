@@ -94,8 +94,31 @@ describe('SettingsAdapter', () => {
       expect((form as FormData).has('main_logo')).toBeFalse();
       expect(api.post.calls.argsFor(1)).toEqual([
         SETTINGS_API.settings,
-        { gst_registration_type: 'regular', gstin: '24ABCDE1234F1Z5', state_code: '24' },
+        { city: null, district: null, pincode: null, gst_registration_type: 'regular', gstin: '24ABCDE1234F1Z5', state_code: '24' },
       ]);
+      done();
+    });
+  });
+
+  it('reads and saves the city, district and PIN code of the company, and the warning of the api (T90)', (done) => {
+    const row = {
+      ...API_ROW,
+      city: 'Mumbai',
+      district: 'Mumbai',
+      pincode: '400050',
+      warnings: [{ code: 'state_mismatch', field: 'pincode', message: 'PIN code 400050 is in Maharashtra (Mumbai) in the PIN code directory; the state given is Gujarat.' }],
+    };
+    const company = toSnapshot(row).company;
+    expect(company.city).toBe('Mumbai');
+    expect(company.pincode).toBe('400050');
+    expect(company.pincodeWarning).toContain('PIN code 400050 is in Maharashtra');
+    expect(toSnapshot(API_ROW).company).withContext('a company saved before T90').toEqual(
+      jasmine.objectContaining({ city: '', district: '', pincode: '', pincodeWarning: '' })
+    );
+
+    api.post.and.returnValue(of({ success: true, data: row }));
+    adapter.saveCompany({ ...company, city: ' Surat ', district: 'Surat', pincode: '395007' }).subscribe(() => {
+      expect(api.post.calls.argsFor(1)[1]).toEqual(jasmine.objectContaining({ city: 'Surat', district: 'Surat', pincode: '395007' }));
       done();
     });
   });

@@ -19,7 +19,14 @@ export interface GstState {
 /** Settings → Company. */
 export interface CompanySettings {
   name: string;
+  /** Building, street and area. City and PIN code have their own fields since T90. */
   address: string;
+  city: string;
+  /** Filled by the PIN code directory. */
+  district: string;
+  pincode: string;
+  /** The api's sentence when the PIN code belongs to another state than the company's. */
+  pincodeWarning?: string;
   email: string;
   phone: string;
   phone2: string;

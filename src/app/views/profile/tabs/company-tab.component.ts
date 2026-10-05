@@ -4,7 +4,9 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Subscription, forkJoin } from 'rxjs';
 
 import { WorkspaceService } from 'src/app/containers/shell/workspace.service';
+import { AddressFieldsComponent } from 'src/app/shared/components/address-fields/address-fields.component';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
+import { PIN_PATTERN } from 'src/app/shared/services/location.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { imageProblem } from '../image-rules';
 import { ConfirmDialogComponent } from '../../bills/confirm-dialog.component';
@@ -22,7 +24,7 @@ import {
 @Component({
   selector: 'app-settings-company',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, ConfirmDialogComponent],
+  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, ConfirmDialogComponent, AddressFieldsComponent],
   templateUrl: './company-tab.component.html',
   styleUrls: ['../settings-tab.scss', './company-tab.component.scss'],
 })
@@ -38,6 +40,8 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
   logoUrl: string | null = null;
   logoFile: File | null = null;
   logoError = '';
+  /** The api's sentence when the saved PIN code belongs to another state than the company's. */
+  pincodeWarning = '';
   /** The api's sentence for the GSTIN field, when it refuses one. */
   gstinError = '';
   /**
@@ -62,6 +66,10 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
       phone: ['', [Validators.required, Validators.pattern(/^[0-9+ -]{8,15}$/)]],
       phone2: ['', [Validators.pattern(/^[0-9+ -]{8,15}$/)]],
       address: ['', [Validators.required]],
+      // Optional, and free text is accepted: the PIN code directory only helps (T90).
+      pincode: ['', [Validators.pattern(PIN_PATTERN)]],
+      city: ['', [Validators.maxLength(191)]],
+      district: [''],
       registrationType: ['regular', [Validators.required]],
       gstin: ['', [gstinValidator]],
       stateCode: [''],
@@ -169,6 +177,9 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
     const company: CompanySettings = {
       name: value.name,
       address: value.address,
+      city: value.city ?? '',
+      district: value.district ?? '',
+      pincode: value.pincode ?? '',
       email: value.email,
       phone: value.phone,
       phone2: value.phone2 ?? '',
@@ -233,6 +244,7 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
 
   private patch(company: CompanySettings): void {
     this.filledState = '';
+    this.pincodeWarning = company.pincodeWarning ?? '';
     this.logoUrl = company.logoUrl;
     this.form.reset(
       {
@@ -241,6 +253,9 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
         phone: company.phone,
         phone2: company.phone2,
         address: company.address,
+        pincode: company.pincode ?? '',
+        city: company.city ?? '',
+        district: company.district ?? '',
         registrationType: company.registrationType,
         gstin: company.gstin ?? '',
         stateCode: company.stateCode ?? '',
