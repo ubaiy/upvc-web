@@ -97,6 +97,9 @@ textarea.input { height: auto; min-height: 88px; padding-block: var(--s-2); }
 .table th { text-align: start; font-size: var(--fs-12); font-weight: var(--fw-medium); color: var(--c-text-3); padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); white-space: nowrap; }
 .table td { padding-block: 0; padding-inline: var(--s-4); height: var(--h-row); border-block-end: 1px solid var(--c-border); vertical-align: middle; }
 .table tr:last-child td { border-block-end: 0; }
+/* A date, a code or another short value in a list (td.small) stays on one line: "5 Oct 2026" is never broken in two.
+   On a phone the rows are cards and the value may wrap. */
+@media (min-width: 641px) { .table td.small { white-space: nowrap; } }
 .table tbody tr:hover td { background: var(--c-surface-2); }
 .table .right { text-align: end; }
 .table .row-actions { opacity: 0; text-align: end; white-space: nowrap; } .table tr:hover .row-actions, .table tr:focus-within .row-actions { opacity: 1; }
