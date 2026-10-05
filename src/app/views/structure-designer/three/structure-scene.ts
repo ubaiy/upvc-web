@@ -2,6 +2,10 @@
  * structure-designer scene — renderer, camera, light, ground, orbit, picking,
  * drag handles and pictures for ONE structure.
  *
+ * The look follows the studio of shared/design-3d (a procedural room for the
+ * reflections, a gradient behind, a contact shadow under the product), with a
+ * lit floor and a real shadow map added because a structure stands on a floor.
+ *
  * Rules: a frame is drawn only when something changed; the pixel ratio is
  * capped at 2; the shadow map is redrawn only when the structure changes;
  * geometry is disposed on every rebuild and everything on destroy.
@@ -9,6 +13,7 @@
 
 import {
   ACESFilmicToneMapping,
+  CanvasTexture,
   CircleGeometry,
   Color,
   DirectionalLight,
@@ -22,12 +27,14 @@ import {
   MeshBasicMaterial,
   PCFSoftShadowMap,
   PerspectiveCamera,
+  PlaneGeometry,
   PMREMGenerator,
   Raycaster,
   Scene,
   ShadowMaterial,
   Shape,
   ShapeGeometry,
+  SRGBColorSpace,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -53,7 +60,12 @@ export const MAX_PIXEL_RATIO = 2;
 export type ViewPreset = '3d' | 'front' | 'side' | 'top';
 const FOV_DEG = 32;
 const WORLD_UP = new Vector3(0, 1, 0);
-const BACKGROUND = '#eef1f1';
+/** The backdrop: a soft sky that darkens to the floor line. The fog is the colour where they meet. */
+const BACKDROP = { top: '#e3eaf1', middle: '#c6d1db', bottom: '#9ba8b5' };
+const HORIZON = '#bcc8d2';
+const PAPER = '#ffffff';
+/** How much of the free view a fitted structure fills. */
+const FIT_FILL = 0.8;
 const ACCENT = '#0e6f6a';
 const VIEW: Record<ViewPreset, Vector3> = {
   '3d': new Vector3(0.62, 0.4, 1).normalize(),
@@ -61,6 +73,14 @@ const VIEW: Record<ViewPreset, Vector3> = {
   side: new Vector3(1, 0.02, 0).normalize(),
   top: new Vector3(0, 1, 0.001).normalize(),
 };
+
+/** Parts of the canvas covered by panels and toolbars, CSS px: the structure is fitted to what is left. */
+export interface ViewInsets {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
 
 export interface LabelPosition {
   id: string;
@@ -96,6 +116,17 @@ export class StructureScene {
   private readonly materials: StructureMaterials = createMaterials();
   private readonly sun = new DirectionalLight(0xffffff, 2.1);
   private readonly ground: Mesh;
+  private readonly backdrop = backdropTexture();
+  /** A pool of light on the floor, and the soft dark the structure leaves where it stands. */
+  private readonly floor = new Mesh(
+    new CircleGeometry(1, 64),
+    new MeshBasicMaterial({ map: radialTexture('255,255,255', [1, 0.75, 0]), transparent: true, opacity: 0.5, depthWrite: false, toneMapped: false, fog: false })
+  );
+  private readonly contact = new Mesh(
+    new PlaneGeometry(1, 1),
+    new MeshBasicMaterial({ map: radialTexture('18,28,34', [1, 0.5, 0]), transparent: true, opacity: 0.3, depthWrite: false, toneMapped: false, fog: false })
+  );
+  private insets: ViewInsets = { left: 0, right: 0, top: 0, bottom: 0 };
   private grid: GridHelper | null = null;
   private readonly human: Mesh;
   private readonly gizmos: Gizmos;
@@ -106,6 +137,8 @@ export class StructureScene {
   private centre = new Vector3();
   private radius = 1000;
   private half = new Vector3(500, 500, 500);
+  /** The ends of every bar, from the centre: what Fit keeps in view (tighter than the box for a dome or a bay). */
+  private extent: Vector3[] = [];
   /** Centre and radius the camera was last fitted to. */
   private fitted = { centre: new Vector3(), radius: 0 };
   private direction = VIEW['3d'].clone();
@@ -129,8 +162,8 @@ export class StructureScene {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.shadowMap.autoUpdate = false;
-    this.scene.background = new Color(BACKGROUND);
-    this.scene.fog = new Fog(BACKGROUND, 20000, 60000);
+    this.scene.background = this.backdrop;
+    this.scene.fog = new Fog(HORIZON, 20000, 60000);
 
     // A soft studio room for the reflections in glass and the gloss of the profile.
     const pmrem = new PMREMGenerator(this.renderer);
@@ -152,7 +185,12 @@ export class StructureScene {
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.position.y = -1;
     this.ground.receiveShadow = true;
-    this.scene.add(this.ground);
+    this.ground.renderOrder = -2;
+    this.floor.rotation.x = -Math.PI / 2;
+    this.floor.renderOrder = -3;
+    this.contact.rotation.x = -Math.PI / 2;
+    this.contact.renderOrder = -1;
+    this.scene.add(this.floor, this.ground, this.contact);
 
     this.human = buildHuman();
     this.human.visible = !plain;
@@ -199,7 +237,10 @@ export class StructureScene {
     this.centre.set((box.min[0] + box.max[0]) / 2, box.max[1] / 2, (box.min[2] + box.max[2]) / 2);
     this.radius = Math.max(600, size.length() / 2);
     this.half.copy(size).multiplyScalar(0.5);
+    this.extent = structure.joints.flatMap((j) => [new Vector3(...j.a).sub(this.centre), new Vector3(...j.b).sub(this.centre)]);
     this.placeStage(box.min[0], box.max[2]);
+    this.contact.position.set(this.centre.x, -0.5, this.centre.z);
+    this.contact.scale.set(Math.max(size.x * 1.5, 900), Math.max(size.z * 1.5, 900), 1);
     this.renderer.shadowMap.needsUpdate = true;
     const moved = this.centre.distanceTo(this.fitted.centre) > this.fitted.radius * 0.12;
     const resized = Math.abs(this.radius - this.fitted.radius) > this.fitted.radius * 0.08;
@@ -213,6 +254,8 @@ export class StructureScene {
     const r = this.radius;
     this.ground.scale.setScalar(r * 14);
     this.ground.position.set(this.centre.x, -1, this.centre.z);
+    this.floor.scale.setScalar(r * 4.5);
+    this.floor.position.set(this.centre.x, -3, this.centre.z);
     const fog = this.scene.fog as Fog;
     fog.near = r * 7;
     fog.far = r * 15;
@@ -224,11 +267,11 @@ export class StructureScene {
         (this.grid.material as Material).dispose();
         this.grid.removeFromParent();
       }
-      this.grid = new GridHelper(metres * 1000, metres, 0xb4bcbc, 0xd3d8d7);
+      this.grid = new GridHelper(metres * 1000, metres, 0x9aa7b2, 0xb4bec8);
       this.grid.userData['metres'] = metres;
       this.grid.position.y = 1;
       (this.grid.material as Material).transparent = true;
-      (this.grid.material as Material).opacity = 0.7;
+      (this.grid.material as Material).opacity = 0.32;
       this.scene.add(this.grid);
     }
     this.sun.position.set(this.centre.x - r * 1.1, r * 2.6, this.centre.z + r * 1.5);
@@ -263,37 +306,69 @@ export class StructureScene {
     this.fit();
   }
 
+  /**
+   * What the panels and toolbars cover. The structure is fitted to, and
+   * centred in, the part of the view that is left; `refit` does so now.
+   */
+  setInsets(insets: ViewInsets, refit: boolean): void {
+    const same = (Object.keys(insets) as (keyof ViewInsets)[]).every((k) => insets[k] === this.insets[k]);
+    this.insets = { ...insets };
+    if (refit && !same && this.structure) this.fit(true);
+  }
+
   /** The whole structure in view, from the direction the camera looks now. */
   fit(keepDirection = false): void {
     if (keepDirection) this.direction.copy(this.camera.position).sub(this.controls.target).normalize();
     const el = this.renderer.domElement;
-    this.frameCamera(el.width / Math.max(1, el.height));
+    this.frameCamera(el.width / Math.max(1, el.height), true);
     this.controls.update();
     this.requestRender();
   }
 
-  private frameCamera(aspect: number): void {
-    const tanV = Math.tan((FOV_DEG * Math.PI) / 360);
-    const tanH = tanV * aspect;
+  /** The free part of the view as a share of the whole, and how far its middle is from the middle, CSS px. */
+  private freeView(): { w: number; h: number; dx: number; dy: number; width: number; height: number } {
+    const el = this.renderer.domElement;
+    const width = Math.max(1, el.clientWidth || el.width);
+    const height = Math.max(1, el.clientHeight || el.height);
+    const i = this.insets;
+    const w = 1 - (i.left + i.right) / width;
+    const h = 1 - (i.top + i.bottom) / height;
+    // Panels that leave almost nothing free (a phone with a sheet open) are not fitted round.
+    if (this.plain || w < 0.3 || h < 0.3) return { w: 1, h: 1, dx: 0, dy: 0, width, height };
+    return { w, h, dx: (i.left - i.right) / 2, dy: (i.top - i.bottom) / 2, width, height };
+  }
+
+  /** Slide the picture so the orbit centre sits in the middle of the free part of the view. */
+  private applyViewOffset(): void {
+    const free = this.freeView();
+    if (free.dx || free.dy) this.camera.setViewOffset(free.width, free.height, -free.dx, -free.dy, free.width, free.height);
+    else if (this.camera.view) this.camera.clearViewOffset();
+  }
+
+  private frameCamera(aspect: number, inView = false): void {
+    const free = inView ? this.freeView() : { w: 1, h: 1 };
+    const tanV = Math.tan((FOV_DEG * Math.PI) / 360) * free.h * FIT_FILL;
+    const tanH = Math.tan((FOV_DEG * Math.PI) / 360) * aspect * free.w * FIT_FILL;
     // Far enough for every corner of the structure's box to be in view, plus room for handles and labels.
     const right = new Vector3().crossVectors(WORLD_UP, this.direction).normalize();
     const upward = new Vector3().crossVectors(this.direction, right);
-    const rel = new Vector3();
     let distance = 0;
-    for (const sx of [-1, 1]) {
-      for (const sy of [-1, 1]) {
-        for (const sz of [-1, 1]) {
-          rel.set(sx * this.half.x, sy * this.half.y, sz * this.half.z);
-          distance = Math.max(distance, rel.dot(this.direction) + Math.max(Math.abs(rel.dot(upward)) / tanV, Math.abs(rel.dot(right)) / tanH));
-        }
-      }
+    const keep = (rel: Vector3): void => {
+      distance = Math.max(distance, rel.dot(this.direction) + Math.max(Math.abs(rel.dot(upward)) / tanV, Math.abs(rel.dot(right)) / tanH));
+    };
+    if (this.extent.length) this.extent.forEach(keep);
+    else {
+      const rel = new Vector3();
+      for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) keep(rel.set(sx * this.half.x, sy * this.half.y, sz * this.half.z));
     }
-    distance = Math.max(distance * 1.16, this.radius * 1.1);
+    distance = Math.max(distance, this.radius * 0.9);
     this.camera.aspect = aspect;
     this.camera.near = Math.max(20, distance / 200);
     this.camera.far = distance * 30;
     this.camera.position.copy(this.centre).addScaledVector(this.direction, distance);
     this.camera.lookAt(this.centre);
+    if (inView) this.applyViewOffset();
+    else if (this.camera.view) this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(this.centre);
     this.fitted = { centre: this.centre.clone(), radius: this.radius };
@@ -305,6 +380,7 @@ export class StructureScene {
     if (widthPx < 2 || heightPx < 2) return;
     this.renderer.setSize(widthPx, heightPx, false);
     this.camera.aspect = widthPx / heightPx;
+    this.applyViewOffset();
     this.camera.updateProjectionMatrix();
     this.requestRender();
   }
@@ -419,8 +495,9 @@ export class StructureScene {
     this.gizmos.root.visible = false;
     if (this.highlight) this.highlight.visible = false;
     if (this.grid) this.grid.visible = false;
-    this.scene.background = new Color('#ffffff');
-    (this.scene.fog as Fog).color.set('#ffffff');
+    this.floor.visible = false;
+    this.scene.background = new Color(PAPER);
+    (this.scene.fog as Fog).color.set(PAPER);
     // Framed again for the shape of the picture: from the standing view, or from where the user looks.
     if (standing) this.direction.copy(VIEW['3d']);
     else this.direction.copy(this.camera.position).sub(this.controls.target).normalize();
@@ -432,8 +509,9 @@ export class StructureScene {
     // Read in the same task as the draw: no preserveDrawingBuffer needed.
     const png = el.toDataURL('image/png');
 
-    this.scene.background = new Color(BACKGROUND);
-    (this.scene.fog as Fog).color.set(BACKGROUND);
+    this.scene.background = this.backdrop;
+    (this.scene.fog as Fog).color.set(HORIZON);
+    this.floor.visible = true;
     if (this.grid) this.grid.visible = true;
     if (this.highlight) this.highlight.visible = before.highlight;
     this.gizmos.root.visible = before.gizmos;
@@ -445,6 +523,7 @@ export class StructureScene {
     this.camera.aspect = before.aspect;
     this.camera.near = before.near;
     this.camera.far = before.far;
+    this.applyViewOffset();
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(before.target);
     this.controls.update();
@@ -508,10 +587,13 @@ export class StructureScene {
     if (this.highlight) disposeHighlight(this.highlight);
     this.gizmos.dispose();
     disposeMaterials(this.materials);
-    for (const mesh of [this.ground, this.human]) {
+    for (const mesh of [this.ground, this.human, this.floor, this.contact]) {
       mesh.geometry.dispose();
+      (mesh.material as MeshBasicMaterial).map?.dispose();
       (mesh.material as Material).dispose();
     }
+    this.scene.background = null;
+    this.backdrop.dispose();
     if (this.grid) {
       this.grid.geometry.dispose();
       (this.grid.material as Material).dispose();
@@ -522,6 +604,39 @@ export class StructureScene {
     // Give the GPU context back now; a browser allows only a few at a time.
     this.renderer.forceContextLoss();
   }
+}
+
+/** The gradient behind the structure: sky, horizon, floor. No image file. */
+function backdropTexture(): CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, BACKDROP.top);
+  g.addColorStop(0.55, BACKDROP.middle);
+  g.addColorStop(1, BACKDROP.bottom);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 2, 256);
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+/** A round blob of one colour that fades out: alpha at the middle, half way and the rim. */
+function radialTexture(rgb: string, alpha: [number, number, number]): CanvasTexture {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  [0, 0.5, 1].forEach((stop, i) => g.addColorStop(stop, `rgba(${rgb},${alpha[i]})`));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
 }
 
 /** A flat 1.7 m figure that always faces the camera: it gives the structure its scale. */
@@ -538,7 +653,7 @@ function buildHuman(): Mesh {
   s.closePath();
   const mesh = new Mesh(
     new ShapeGeometry(s, 10),
-    new MeshBasicMaterial({ color: '#9aa5ab', side: DoubleSide, fog: false })
+    new MeshBasicMaterial({ color: '#a9b3ba', side: DoubleSide, fog: false })
   );
   return mesh;
 }

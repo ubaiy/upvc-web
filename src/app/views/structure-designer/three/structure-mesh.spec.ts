@@ -1,7 +1,7 @@
 import { BufferGeometry, Mesh, PerspectiveCamera, Raycaster, Vector2, Vector3 } from 'three';
-import { createStructure, DOME, defaultParams, setFaceFill } from '../../../shared/structure-model';
+import { createStructure, DOME, defaultParams, setFaceFill, setFaceGlassTint } from '../../../shared/structure-model';
 import { Gizmos } from './gizmos';
-import { buildHighlight, buildStructure, createMaterials, disposeHighlight, disposeMaterials, disposeStructure, insetOutline, PickTarget } from './structure-mesh';
+import { BAR_TRIANGLES, buildHighlight, buildStructure, createMaterials, disposeHighlight, disposeMaterials, disposeStructure, insetOutline, PickTarget } from './structure-mesh';
 
 // Geometry only: none of this needs a WebGL context.
 describe('structure-designer mesh', () => {
@@ -17,8 +17,8 @@ describe('structure-designer mesh', () => {
     expect(object.pickables.length).toBe(3); // bars, gaskets, glass
     for (const mesh of object.pickables) expect(owners(mesh).length).toBe(triangles(mesh));
     const bars = object.pickables.find((m) => m.material === materials.profile)!;
-    // 72 bars of 12 triangles, 37 hubs of 8.
-    expect(triangles(bars)).toBe(72 * 12 + 37 * 8);
+    // 72 chamfered bars, 37 hubs of 8 triangles.
+    expect(triangles(bars)).toBe(72 * BAR_TRIANGLES + 37 * 8);
     expect(new Set(owners(bars).filter((o) => o.kind === 'bar').map((o) => o.id)).size).toBe(72);
     const glass = object.pickables.find((m) => m.material === materials.glass)!;
     expect(new Set(owners(glass).map((o) => o.id)).size).toBe(36);
@@ -39,13 +39,47 @@ describe('structure-designer mesh', () => {
     cabin = setFaceFill(cabin, ['front-3'], 'open');
     const mixed = buildStructure(cabin, materials);
     // A casement adds a sash of four bars; a panel and an opening lose their frame of four.
-    expect(count(mixed, materials.profile)).toBe(fixedProfile + 4 * 12 - 2 * 4 * 12);
+    expect(count(mixed, materials.profile)).toBe(fixedProfile + 4 * BAR_TRIANGLES - 2 * 4 * BAR_TRIANGLES);
     expect(count(mixed, materials.panel)).toBe(2);
     expect(count(mixed, materials.hidden)).toBe(2);
     expect(owners(mixed.pickables.find((m) => m.material === materials.hidden)!)[0]).toEqual({ kind: 'face', id: 'front-3' });
     expect(mixed.root.children.some((o) => o.type === 'LineSegments')).toBeTrue(); // the opening sign
     disposeStructure(fixed);
     disposeStructure(mixed);
+  });
+
+  it('a sliding panel is two lapped leaves; a door has a metal handle and three hinges', () => {
+    let cabin = createStructure('cabin', { shape: 'straight', width: 3600, module: 900, doorWidth: 0 });
+    const count = (object: ReturnType<typeof buildStructure>, material: unknown): number => {
+      const mesh = object.pickables.find((m) => m.material === material);
+      return mesh ? triangles(mesh) : 0;
+    };
+    const fixed = buildStructure(cabin, materials);
+    cabin = setFaceFill(cabin, ['front-1'], 'sliding');
+    const sliding = buildStructure(cabin, materials);
+    // Two leaves of four bars each, two panes for one, and a pull on each leaf.
+    expect(count(sliding, materials.profile)).toBe(count(fixed, materials.profile) + 8 * BAR_TRIANGLES);
+    expect(count(sliding, materials.glass)).toBe(count(fixed, materials.glass) + 2);
+    expect(count(sliding, materials.metal)).toBe(2 * 12);
+    cabin = setFaceFill(cabin, ['front-2'], 'door');
+    const door = buildStructure(cabin, materials);
+    // Backplate, lever and three hinges.
+    expect(count(door, materials.metal)).toBe(2 * 12 + 5 * 12);
+    [fixed, sliding, door].forEach(disposeStructure);
+  });
+
+  it('glass carries the tint of its own face as vertex colour', () => {
+    let cabin = createStructure('cabin', { shape: 'straight', width: 3600, module: 900, doorWidth: 0 });
+    cabin = setFaceGlassTint(cabin, ['front-2'], '#b89f7a');
+    const object = buildStructure(cabin, materials);
+    const glass = object.pickables.find((m) => m.material === materials.glass)!;
+    const colour = (glass.geometry as BufferGeometry).getAttribute('color');
+    expect(colour.count).toBe(triangles(glass) * 3);
+    const redOf = (id: string): number => colour.getX(owners(glass).findIndex((o) => o.id === id) * 3);
+    expect(redOf('front-2')).toBeGreaterThan(redOf('front-1')); // bronze is redder than light blue
+    expect(redOf('front-3')).toBeCloseTo(redOf('front-1'), 6);
+    expect(setFaceGlassTint(cabin, ['front-2'], null).faces.find((f) => f.id === 'front-2')!.glassTint).toBeUndefined();
+    disposeStructure(object);
   });
 
   it('a ray through a glass panel finds that panel', () => {
