@@ -3,6 +3,8 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { finalize } from 'rxjs/operators';
 import { saveAs } from 'file-saver';
 
+import { WorkspaceService } from 'src/app/containers/shell/workspace.service';
+import { formatInr } from 'src/app/shared/pipes/inr.pipe';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { QuotationService } from '../../quotation.service';
 import { errorText } from '../../quotation-list.model';
@@ -12,6 +14,8 @@ export type SendChannel = 'whatsapp' | 'email' | 'download';
 
 /** A4 at 96 dpi: the width the document is laid out for. */
 const PAGE_WIDTH = 794;
+/** The widest scroll bar a desktop browser draws. */
+const SCROLLBAR = 18;
 
 /**
  * "Send quotation" (flow gap G13): the document as the customer will receive
@@ -47,6 +51,10 @@ export class SendQuotationDialogComponent implements OnChanges {
 
   phone = '';
   email = '';
+  /** The WhatsApp text, shown before it is sent. The API adds the link to the PDF under it. */
+  message = '';
+  /** The subject of the email, shown before it is sent. */
+  subject = '';
   /** The channel in flight. */
   sending: SendChannel | '' = '';
   /** The error of the last try, shown under the button that was pressed. */
@@ -55,13 +63,19 @@ export class SendQuotationDialogComponent implements OnChanges {
   constructor(
     private _dataService: QuotationService,
     private _sanitizer: DomSanitizer,
-    private _toast: ToastService
+    private _toast: ToastService,
+    private _workspace: WorkspaceService
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['visible'] && this.visible && this.quotation) {
       this.phone = this.quotation.customer.phone;
       this.email = this.quotation.customer.email;
+      // The same words the API would write, here to be read and changed first.
+      const company = this._workspace.workspace$.value?.name?.trim();
+      const from = company ? ` from ${company}` : '';
+      this.message = `Hello ${this.quotation.customer.name}, here is quotation ${this.quotation.number}${from} for ${formatInr(this.quotation.total)}.`;
+      this.subject = `Quotation ${this.quotation.number}${from}`;
       this.error = null;
       this.loadPreview();
     }
@@ -117,8 +131,14 @@ export class SendQuotationDialogComponent implements OnChanges {
     const body: any = { channel };
     if (channel === 'whatsapp') {
       body.phone = this.phone.trim();
+      if (this.message.trim()) {
+        body.message = this.message.trim();
+      }
     } else if (channel === 'email') {
       body.to = this.email.trim();
+      if (this.subject.trim()) {
+        body.subject = this.subject.trim();
+      }
     }
     // A tab opened after the answer arrives is blocked as a pop-up; open it now and point it at the chat later.
     const chat = channel === 'whatsapp' ? window.open('', '_blank') : null;
@@ -171,8 +191,9 @@ export class SendQuotationDialogComponent implements OnChanges {
    */
   private _frame(html: string): SafeHtml {
     const width = this.pane?.nativeElement.clientWidth || PAGE_WIDTH;
-    const zoom = Math.min(1, Math.max(0.4, width / PAGE_WIDTH));
-    const style = `<style>html{zoom:${zoom.toFixed(3)};background:#fff}body{box-sizing:border-box;width:${PAGE_WIDTH}px;padding:13mm 14mm;margin:0}</style>`;
+    // Room is left for the frame's own scroll bar, so the page never needs a sideways one.
+    const zoom = Math.min(1, Math.max(0.3, (width - SCROLLBAR) / PAGE_WIDTH));
+    const style = `<style>html{zoom:${zoom.toFixed(3)};background:#fff;overflow-x:hidden}body{box-sizing:border-box;width:${PAGE_WIDTH}px;padding:13mm 14mm;margin:0}</style>`;
     const framed = html.includes('</head>') ? html.replace('</head>', style + '</head>') : style + html;
     return this._sanitizer.bypassSecurityTrustHtml(framed);
   }

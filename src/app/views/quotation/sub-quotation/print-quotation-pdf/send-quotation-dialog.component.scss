@@ -42,6 +42,15 @@
   gap: var(--s-2);
 }
 
+// The WhatsApp text: tall enough to read whole, and it grows by hand only downwards.
+.send-message {
+  height: auto;
+  min-height: 84px;
+  padding-block: var(--s-2);
+  line-height: 1.4;
+  resize: vertical;
+}
+
 // Tablet and below: the buttons first, then the preview.
 @media (max-width: 900px) {
   .send {

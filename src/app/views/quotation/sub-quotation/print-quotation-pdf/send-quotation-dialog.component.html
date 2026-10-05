@@ -56,6 +56,15 @@
           [(ngModel)]="phone"
         />
         <span class="error" id="send-phone-error" role="alert" *ngIf="errorFor('whatsapp') as text">{{ text }}</span>
+        <label class="label" for="send-message">Message</label>
+        <textarea
+          class="input send-message"
+          id="send-message"
+          rows="3"
+          maxlength="2000"
+          aria-describedby="send-message-hint"
+          [(ngModel)]="message"
+        ></textarea>
         <button
           type="button"
           class="btn btn-primary btn-block"
@@ -65,7 +74,7 @@
         >
           <app-icon [name]="sending === 'whatsapp' ? 'loader' : 'send'"></app-icon>Send on WhatsApp
         </button>
-        <span class="hint">Opens WhatsApp with a short message and a link to the PDF.</span>
+        <span class="hint" id="send-message-hint">Opens WhatsApp with this message. The link to the PDF is added under it.</span>
       </div>
 
       <div class="channel">
@@ -81,6 +90,8 @@
           [(ngModel)]="email"
         />
         <span class="error" id="send-email-error" role="alert" *ngIf="errorFor('email') as text">{{ text }}</span>
+        <label class="label" for="send-subject">Subject</label>
+        <input class="input" id="send-subject" type="text" maxlength="150" autocomplete="off" [(ngModel)]="subject" />
         <button
           type="button"
           class="btn btn-secondary btn-block"

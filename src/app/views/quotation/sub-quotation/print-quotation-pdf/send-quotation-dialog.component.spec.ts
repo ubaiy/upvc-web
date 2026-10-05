@@ -2,8 +2,9 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { DialogModule } from 'primeng/dialog';
-import { of, throwError } from 'rxjs';
+import { BehaviorSubject, of, throwError } from 'rxjs';
 
+import { WorkspaceService } from '../../../../containers/shell/workspace.service';
 import { SharedComponentsModule } from '../../../../shared/components/shared-components.module';
 import { ToastService } from '../../../../shared/services/toast.service';
 import { QuotationService } from '../../quotation.service';
@@ -43,6 +44,7 @@ describe('SendQuotationDialogComponent', () => {
       providers: [
         { provide: QuotationService, useValue: service },
         { provide: ToastService, useValue: toast },
+        { provide: WorkspaceService, useValue: { workspace$: new BehaviorSubject({ name: 'Hakimi Enterprise' }) } },
       ],
     });
     fixture = TestBed.createComponent(SendQuotationDialogComponent);
@@ -77,7 +79,11 @@ describe('SendQuotationDialogComponent', () => {
     const sent = jasmine.createSpy('sent');
     component.sent.subscribe(sent);
     button('Send on WhatsApp').click();
-    expect(service.sendQuotation).toHaveBeenCalledWith(14, { channel: 'whatsapp', phone: '9812345670' });
+    expect(service.sendQuotation).toHaveBeenCalledWith(14, {
+      channel: 'whatsapp',
+      phone: '9812345670',
+      message: 'Hello Ahmed Al-Rashid, here is quotation Q-0003 from Hakimi Enterprise for ₹20,730.00.',
+    });
     expect(chat.location.href).toBe('https://wa.me/919812345670?text=Hello');
     expect(sent).toHaveBeenCalledWith('whatsapp');
   });
@@ -91,6 +97,38 @@ describe('SendQuotationDialogComponent', () => {
     expect(body().querySelector('#send-phone-error')?.textContent).toContain('10-digit mobile number');
   });
 
+  it('shows the WhatsApp message and the email subject before sending, and sends them as changed (m9)', () => {
+    open();
+    const message = body().querySelector('#send-message') as HTMLTextAreaElement;
+    const subject = body().querySelector('#send-subject') as HTMLInputElement;
+    expect(body().querySelector('label[for="send-message"]')).not.toBeNull();
+    expect(body().querySelector('label[for="send-subject"]')).not.toBeNull();
+    expect(component.message).toContain('here is quotation Q-0003');
+    expect(component.subject).toBe('Quotation Q-0003 from Hakimi Enterprise');
+    expect(message && subject).toBeTruthy();
+
+    component.message = 'Namaste Ahmedbhai, the revised quotation is here.';
+    service.sendQuotation.and.returnValue(ok({ whatsapp_url: 'https://wa.me/919812345670?text=x' }));
+    button('Send on WhatsApp').click();
+    expect(service.sendQuotation.calls.mostRecent().args[1].message).toBe('Namaste Ahmedbhai, the revised quotation is here.');
+
+    component.subject = 'Windows for the villa';
+    component.email = 'ahmed@example.com';
+    service.sendQuotation.and.returnValue(ok({ emailed_to: 'ahmed@example.com' }));
+    button('Send by email').click();
+    expect(service.sendQuotation.calls.mostRecent().args[1].subject).toBe('Windows for the villa');
+  });
+
+  it('leaves room for the scroll bar, so the preview has no sideways one', () => {
+    open();
+    const html = String((component.preview as any)?.changingThisBreaksApplicationSecurity || '');
+    expect(html).toContain('overflow-x:hidden');
+    const zoom = Number(/zoom:([0-9.]+)/.exec(html)?.[1]);
+    // Never the full width of the pane: 18 px stay free for the scroll bar.
+    expect(zoom).toBeGreaterThan(0);
+    expect(zoom * 794).toBeLessThanOrEqual(794 - 18);
+  });
+
   it('emails the quotation to the address typed', () => {
     open({ customer: { id: 2, name: 'Ahmed Al-Rashid', phone: '9812345670', email: '' } });
     button('Send by email').click();
@@ -100,7 +138,11 @@ describe('SendQuotationDialogComponent', () => {
     component.email = 'ahmed@example.com';
     service.sendQuotation.and.returnValue(ok({ emailed_to: 'ahmed@example.com' }));
     button('Send by email').click();
-    expect(service.sendQuotation).toHaveBeenCalledWith(14, { channel: 'email', to: 'ahmed@example.com' });
+    expect(service.sendQuotation).toHaveBeenCalledWith(14, {
+      channel: 'email',
+      to: 'ahmed@example.com',
+      subject: 'Quotation Q-0003 from Hakimi Enterprise',
+    });
     expect(toast.showSuccess).toHaveBeenCalledWith('Emailed to ahmed@example.com. The quotation is marked as sent.');
   });
 
