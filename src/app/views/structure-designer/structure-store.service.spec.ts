@@ -13,7 +13,7 @@ describe('StructureStore (saved in the browser)', () => {
   beforeEach(() => {
     kept = localStorage.getItem(STRUCTURE_STORE_KEY);
     localStorage.removeItem(STRUCTURE_STORE_KEY);
-    store = TestBed.inject(StructureStore);
+    store = TestBed.inject(BrowserStructureStore);
   });
 
   afterEach(() => {
@@ -21,7 +21,7 @@ describe('StructureStore (saved in the browser)', () => {
     else localStorage.setItem(STRUCTURE_STORE_KEY, kept);
   });
 
-  it('is the browser store until the api has structures', () => {
+  it('is still there to read what was saved on this device before structures lived in quotations', () => {
     expect(store instanceof BrowserStructureStore).toBeTrue();
   });
 

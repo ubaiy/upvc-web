@@ -3,8 +3,10 @@
  * conservatory in 3D (card T100). The document is "upvc.structure/1"
  * (shared/structure-model); this screen only shows it and sends operations.
  *
- * Sizes shown are geometric centre-line sizes. Workshop cut sizes, prices and
- * the quotation line come on the next cards; nothing here calls the api.
+ * It is opened from a quotation (card T123): the structure is a line of that
+ * quotation. The api prices it on every change (the price bar) and keeps the
+ * document, the picture and the price when it is saved. Sizes shown are
+ * geometric centre-line sizes; every amount is the api's.
  */
 
 import { CommonModule } from '@angular/common';
@@ -21,6 +23,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { of, Subject, Subscription } from 'rxjs';
+import { catchError, debounceTime, map, switchMap } from 'rxjs/operators';
 import {
   barSection,
   createStructure,
@@ -57,12 +61,32 @@ import {
 } from '../../shared/structure-model';
 import { environment } from '../../../environments/environment';
 import { WorkspaceService } from '../../containers/shell/workspace.service';
+import { InrPipe } from '../../shared/pipes/inr.pipe';
 import { customerSheet, sheetFacts } from './customer-sheet';
-import { StructureStore } from './structure-store.service';
+import { missingRate, neededRates, plainRefusal, rateName, StructureApiError, StructureLineService, StructurePrice, StructurePriceRequest } from './structure-line.service';
+import { BrowserStructureStore, StructureStore, StructureSummary } from './structure-store.service';
 import { PickTarget } from './three/structure-mesh';
 import { LabelPosition, OrbitBenchmark, StructureScene, ViewInsets, ViewPreset, webglAvailable } from './three/structure-scene';
 
 type Sheet = 'shape' | 'panel' | 'parts';
+
+/**
+ * What the price bar shows. `refused`: the api answered and said no (a rate
+ * is not set); `failed`: no answer. Neither ever shows an amount.
+ */
+export interface PriceView {
+  state: 'idle' | 'loading' | 'ready' | 'refused' | 'failed';
+  /** The last answer; kept (dimmed) while the next one is on its way. */
+  data: StructurePrice | null;
+  message: string;
+  /** The rate the refusal names ("bar_rate_m.rafter"), for the link to Settings. */
+  missing: string;
+}
+
+/** A change is priced once it has rested this long. */
+export const PRICE_DEBOUNCE_MS = 350;
+/** The picture of the quotation line: the api takes 2 MB at most. */
+const LINE_PICTURE_MAX = 1_900_000;
 
 /** From this width the panels lie over the 3D view; under it they are one bottom sheet. */
 const OVERLAY_FROM_PX = 1100;
@@ -90,7 +114,7 @@ const GLASS_TINTS = [
 @Component({
   selector: 'app-structure-designer',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, InrPipe],
   templateUrl: './structure-designer.component.html',
   styleUrls: ['./structure-designer.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -133,6 +157,25 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   message = '';
   showDims = true;
 
+  /** The quotation this structure is a line of; null only outside a quotation (no price, no save). */
+  readonly quotationId: number | null;
+  /** How many of this structure the line carries. */
+  quantity = 1;
+  /** A typed price for one structure; null = the api's computed price. */
+  manualPrice: number | null = null;
+  manualDraft = '';
+  manualOpen = false;
+  price: PriceView = { state: 'idle', data: null, message: '', missing: '' };
+  detailsOpen = false;
+  /** Why the last save was refused; shown in the price bar until the next change. */
+  saveError = '';
+  /** Structures saved in this browser before they lived in quotations: each can be brought in. */
+  deviceStructures: StructureSummary[] = [];
+  /** The browser's copy this structure was brought in from; removed once the quotation has it. */
+  private importedFrom: string | null = null;
+
+  private readonly priceAsk = new Subject<StructurePriceRequest>();
+  private readonly subs = new Subscription();
   private scene: StructureScene | null = null;
   private canvasEl: HTMLCanvasElement | null = null;
   private observer: ResizeObserver | null = null;
@@ -160,11 +203,35 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     private readonly store: StructureStore,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
-    private readonly workspace: WorkspaceService
+    private readonly workspace: WorkspaceService,
+    private readonly lines: StructureLineService,
+    private readonly device: BrowserStructureStore
   ) {
     const query = this.route.snapshot.queryParamMap;
+    const params = this.route.snapshot.paramMap;
     const kind = query.get('kind');
-    const id = query.get('id');
+    this.quotationId = Number(params?.get('id')) || null;
+    const id = params?.get('lineId') ?? query.get('id');
+    this.subs.add(
+      this.priceAsk
+        .pipe(
+          debounceTime(PRICE_DEBOUNCE_MS),
+          switchMap((request) =>
+            this.lines.price(request).pipe(
+              map((data): PriceView => ({ state: 'ready', data, message: '', missing: '' })),
+              catchError((e: StructureApiError) =>
+                of<PriceView>({ state: e.refused ? 'refused' : 'failed', data: null, message: plainRefusal(e.message), missing: missingRate(e.message) })
+              )
+            )
+          )
+        )
+        .subscribe((view) => {
+          this.price = view;
+          if (view.state === 'refused' && view.missing) this.nameMissingRates();
+          this.cdr.markForCheck();
+        })
+    );
+    if (this.quotationId) this.device.list().subscribe((rows) => (this.deviceStructures = rows));
     if (id) this.openSaved(id);
     else if (kind && TEMPLATES.some((t) => t.kind === kind)) this.start(kind);
     // For the end-to-end script and the frame-rate measurement of the review log; not in a production build.
@@ -205,6 +272,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.subs.unsubscribe();
     this.dropScene();
     window.clearTimeout(this.messageTimer);
     const w = window as unknown as Record<string, unknown>;
@@ -253,10 +321,12 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.refresh(true);
   }
 
-  /** A saved structure, opened from the list (?id=). */
+  /** A structure line of the quotation, opened with "Edit" (…/structure/:lineId). */
   private openSaved(id: string): void {
     this.store.get(id).subscribe({
       next: (saved) => {
+        this.quantity = saved.quantity ?? 1;
+        this.manualPrice = saved.manualPrice ?? null;
         this.open(saved.document, saved.id);
         this.cdr.markForCheck();
       },
@@ -264,9 +334,25 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     });
   }
 
-  /** Back: a saved structure goes back to the list it was opened from, a new one to the shapes. */
+  /** A structure saved in this browser, brought in as a new line of this quotation. It stays on the device until the line is saved. */
+  importDevice(row: StructureSummary): void {
+    this.device.get(row.id).subscribe({
+      next: (saved) => {
+        this.open(saved.document, null);
+        this.importedFrom = saved.id;
+        this.cdr.markForCheck();
+      },
+      error: (e: Error) => this.say(e.message),
+    });
+  }
+
+  get quotationLink(): unknown[] {
+    return ['/quotation/detail', this.quotationId];
+  }
+
+  /** Back: a saved line goes back to its quotation, a new one to the shapes. */
   back(): void {
-    if (this.savedId) void this.router.navigate(['/structures']);
+    if (this.savedId && this.quotationId) void this.router.navigate(this.quotationLink);
     else this.close();
   }
 
@@ -277,6 +363,11 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.summary = null;
     this.dims = [];
     this.savedId = null;
+    this.importedFrom = null;
+    this.quantity = 1;
+    this.manualPrice = null;
+    this.detailsOpen = this.manualOpen = false;
+    this.price = { state: 'idle', data: null, message: '', missing: '' };
     this.cdr.markForCheck();
     if (this.webgl) setTimeout(() => this.drawThumbnails(), 30);
   }
@@ -296,7 +387,17 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     scene.onDimDrag = (id, value, phase) => this.zone.run(() => this.dragDim(id, value, phase));
     scene.onLabels = (labels) => this.placeLabels(labels);
     const host = el.parentElement as HTMLElement;
-    const size = (): void => scene.resize(host.clientWidth, host.clientHeight);
+    // The view changes size when the price bar above it gains or loses a line, when the window is
+    // resized and once the page has laid itself out: the structure is fitted again to what is free.
+    let fittedFor: { w: number; h: number } | null = null;
+    const size = (): void => {
+      const [w, h] = [host.clientWidth, host.clientHeight];
+      scene.resize(w, h);
+      // Not before the structure is in the scene: the first fit is the one that sets the direction of view.
+      if (!fittedFor || !this.structure || (Math.abs(w - fittedFor.w) < 12 && Math.abs(h - fittedFor.h) < 12)) return;
+      fittedFor = { w, h };
+      scene.fit(true);
+    };
     size();
     this.observer = new ResizeObserver(size);
     this.observer.observe(host);
@@ -306,6 +407,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
       scene.setSelection(this.selectedFaces, this.selectedBar);
       scene.setGizmosVisible(this.showDims);
     }
+    fittedFor = { w: host.clientWidth, h: host.clientHeight };
   }
 
   private dropScene(): void {
@@ -351,7 +453,86 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
       this.scene?.setStructure(s, this.dims, refit);
       this.scene?.setSelection(this.selectedFaces, this.selectedBar);
     });
+    this.askPrice();
     this.cdr.markForCheck();
+  }
+
+  // --- the price (the api's; nothing is worked out here) ---
+
+  /** Ask the api what this structure costs now. Debounced; an older answer is dropped. */
+  private askPrice(): void {
+    const s = this.structure;
+    const summary = this.summary;
+    if (!this.quotationId || !s || !summary) return;
+    this.saveError = '';
+    this.price = { ...this.price, state: 'loading' };
+    this.priceAsk.next({
+      quatation_id: this.quotationId,
+      structure_type: s.template?.kind ?? 'free',
+      quantity: this.quantity,
+      unit_price: this.manualPrice,
+      summary,
+    });
+  }
+
+  /**
+   * The api's refusal names the first rate it lacked. The fabricator is told every rate this
+   * structure needs that is not set: "3 rates are not set: glass rate per sq m, …".
+   */
+  private nameMissingRates(): void {
+    const summary = this.summary;
+    if (!summary) return;
+    this.lines.rates().subscribe({
+      next: (answer) => {
+        if (this.price.state !== 'refused') return;
+        const needed = neededRates(summary);
+        const unset = new Set(answer.missing ?? []);
+        const names = [...new Set([this.price.missing, ...needed.filter((path) => unset.has(path))])].map(rateName);
+        if (names.length > 1) {
+          const first = names.slice(0, 3);
+          const rest = names.length - first.length;
+          const named = rest > 0 ? `${first.join(', ')} and ${rest} more` : `${first.slice(0, -1).join(', ')} and ${first[first.length - 1]}`;
+          this.price = { ...this.price, message: `${names.length} rates are not set (${named}).` };
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => undefined,
+    });
+  }
+
+  setQuantity(raw: string | number): void {
+    const n = Math.round(Number(raw));
+    this.quantity = Number.isFinite(n) ? Math.min(999, Math.max(1, n)) : 1;
+    this.askPrice();
+  }
+
+  openManual(): void {
+    const shown = this.price.data;
+    this.manualDraft = this.manualPrice !== null ? String(this.manualPrice) : shown ? String(shown.unit_price) : '';
+    this.manualOpen = true;
+  }
+
+  /** A typed price for one structure. The api keeps it until "Use the computed price". */
+  applyManual(): void {
+    const value = Number(this.manualDraft);
+    if (String(this.manualDraft).trim() === '' || !Number.isFinite(value) || value < 0) {
+      return this.say('Type the price of one structure in rupees.');
+    }
+    this.manualPrice = value;
+    this.manualOpen = false;
+    this.askPrice();
+  }
+
+  useComputedPrice(): void {
+    this.manualPrice = null;
+    this.manualOpen = false;
+    this.askPrice();
+  }
+
+  /** "Glass", "Frame", "Crown", "Door": what a cost row is, in the api's words where it gives them. */
+  rowName(row: StructurePrice['rows'][number]): string {
+    const what = row.name || row.role || row.fill || row.kind;
+    return what.charAt(0).toUpperCase() + what.slice(1).replace(/_/g, ' ');
   }
 
   // --- changing the shape ---
@@ -644,23 +825,30 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.sheet = sheet;
   }
 
-  /** Save with a small picture for the list, then back to the list. */
+  /** "Save to quotation": the document, its summary and the picture become the line (or replace it), then back to the quotation. */
   save(): void {
     const s = this.structure;
     if (!s || this.saving) return;
+    if (!this.quotationId) return this.say('Open a quotation and choose "Add 3D structure": a structure is saved as a line of a quotation.');
     this.saving = true;
-    void listPicture(this.scene).then((thumbnail) => {
-      this.store.save({ id: this.savedId, document: s, thumbnail }).subscribe({
-        next: (row) => {
-          this.savedId = row.id;
-          this.saving = false;
-          void this.router.navigate(['/structures']);
-        },
-        error: (e: Error) => {
-          this.saving = false;
-          this.say(e.message);
-        },
-      });
+    this.saveError = '';
+    void linePicture(this.scene).then((thumbnail) => {
+      this.store
+        .save({ id: this.savedId, document: s, thumbnail, quotationId: this.quotationId ?? undefined, quantity: this.quantity, unitPrice: this.manualPrice })
+        .subscribe({
+          next: (row) => {
+            this.savedId = row.id;
+            this.saving = false;
+            // The quotation has it now: the copy on this device is not needed any more.
+            if (this.importedFrom) this.device.delete(this.importedFrom).subscribe({ error: () => undefined });
+            void this.router.navigate(this.quotationLink);
+          },
+          error: (e: Error) => {
+            this.saving = false;
+            this.saveError = plainRefusal(e.message);
+            this.cdr.markForCheck();
+          },
+        });
     });
   }
 
@@ -748,9 +936,22 @@ export function canSlide(face: Face): boolean {
   return panelSize(face).shape === 'rectangle';
 }
 
-/** The picture of a row of the list: 480 x 360 JPEG, some 15 kB, so fifty fit the browser's storage with room to spare. */
-function listPicture(scene: StructureScene | null): Promise<string | null> {
+/**
+ * The picture of the quotation line, the PDF and the bill: a 960 x 720 PNG of
+ * the 3D view. One that would pass the api's 2 MB goes as a small JPEG instead.
+ */
+function linePicture(scene: StructureScene | null): Promise<string | null> {
   if (!scene) return Promise.resolve(null);
+  try {
+    const png = scene.snapshot(960, 720);
+    if (png.length <= LINE_PICTURE_MAX) return Promise.resolve(png);
+  } catch {
+    return Promise.resolve(null);
+  }
+  return jpegPicture(scene);
+}
+
+function jpegPicture(scene: StructureScene): Promise<string | null> {
   return new Promise((done) => {
     try {
       const img = new Image();

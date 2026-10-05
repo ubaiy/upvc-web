@@ -1,8 +1,9 @@
 <!-- Start screen: choose what to build. -->
 <div class="sd sd--start" *ngIf="!structure">
   <header class="sd-hero">
-    <h1>Design a structure in 3D</h1>
-    <p>Choose a shape. It appears at a usual size; then stretch it, set the counts and change any panel.</p>
+    <a class="sd-btn sd-back" *ngIf="quotationId" [routerLink]="quotationLink" data-action="to-quotation">‹ Back to the quotation</a>
+    <h1>{{ quotationId ? 'Add a 3D structure to this quotation' : 'Design a structure in 3D' }}</h1>
+    <p>Choose a shape. It appears at a usual size; then stretch it, set the counts and change any panel.<ng-container *ngIf="quotationId"> The price shows while you design, and Save puts it in the quotation as a line.</ng-container></p>
   </header>
   <div class="sd-cards">
     <button type="button" class="sd-card" *ngFor="let t of templates" (click)="start(t.kind)" [attr.data-kind]="t.kind">
@@ -14,8 +15,21 @@
     </button>
   </div>
   <section class="sd-saved">
+    <!-- Structures saved in this browser before they lived in quotations: nothing is lost. -->
+    <ng-container *ngIf="deviceStructures.length">
+      <h2>Import a structure saved on this device</h2>
+      <p class="sd-muted sd-small">Saved here before structures became part of a quotation. Open one, check its price, and save it to this quotation.</p>
+      <ul class="sd-saved__list" data-list="device">
+        <li *ngFor="let d of deviceStructures">
+          <button type="button" class="sd-saved__row" (click)="importDevice(d)">
+            <strong>{{ d.name }}</strong>
+            <span>{{ d.kind }} · {{ d.overall.widthMm | number }} × {{ d.overall.depthMm | number }} × {{ d.overall.heightMm | number }} mm</span>
+          </button>
+        </li>
+      </ul>
+    </ng-container>
     <div class="sd-saved__head">
-      <a class="sd-btn" routerLink="/structures">‹ Saved structures</a>
+      <span></span>
       <button type="button" class="sd-btn" (click)="chooseFile()">Open a JSON file</button>
     </div>
   </section>
@@ -25,7 +39,7 @@
 <!-- The designer. -->
 <div class="sd sd--design" *ngIf="structure as s" [attr.data-sheet]="sheet" [class.is-sheet-open]="sheetOpen">
   <div class="sd-top">
-    <button type="button" class="sd-btn" (click)="back()" [title]="savedId ? 'Back to the saved structures' : 'Back to the shapes'" [attr.aria-label]="savedId ? 'Back to the saved structures' : 'Back to the shapes'" data-action="back">‹<span class="sd-w"> {{ savedId ? 'Structures' : 'Shapes' }}</span></button>
+    <button type="button" class="sd-btn" (click)="back()" [title]="savedId ? 'Back to the quotation without saving' : 'Back to the shapes'" [attr.aria-label]="savedId ? 'Back to the quotation without saving' : 'Back to the shapes'" data-action="back">‹<span class="sd-w"> {{ savedId ? 'Quotation' : 'Shapes' }}</span></button>
     <input class="sd-name" [value]="s.name" (change)="rename($any($event.target).value)" aria-label="Name of the structure" maxlength="80" />
     <span class="sd-group">
       <button type="button" class="sd-btn" (click)="undo()" [disabled]="!history?.canUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><span class="sd-w">Undo</span><span class="sd-n" aria-hidden="true">↶</span></button>
@@ -34,7 +48,7 @@
     </span>
     <span class="sd-spacer"></span>
     <span class="sd-group">
-      <button type="button" class="sd-btn sd-btn--primary" (click)="save()" [disabled]="saving" title="Save and go back to the list" data-action="save">Save</button>
+      <button type="button" class="sd-btn sd-btn--primary" (click)="save()" [disabled]="saving" title="Save this structure as a line of the quotation and go back to it" data-action="save">{{ saving ? 'Saving…' : 'Save' }}<span class="sd-w"> to quotation</span></button>
       <span class="sd-menu">
         <button type="button" class="sd-btn" (click)="openList = !openList" [attr.aria-expanded]="openList" aria-label="Share, export and more"><span class="sd-w">More</span><span class="sd-n" aria-hidden="true">⋯</span></button>
         <div class="sd-menu__list" *ngIf="openList">
@@ -52,6 +66,84 @@
       </span>
       <button type="button" class="sd-btn sd-w" (click)="sharePicture()" title="One picture for the customer: the 3D view, the size and the parts summary. No prices." data-action="share">Share picture</button>
     </span>
+  </div>
+
+  <!-- The price of this structure, from the api, on every change. A refusal is a sentence, never a zero. -->
+  <div class="sd-price" *ngIf="quotationId" [attr.data-price]="price.state" aria-live="polite">
+    <div class="sd-price__figure" *ngIf="price.data as p; else noPrice" [class.is-stale]="price.state === 'loading'">
+      <strong class="sd-price__amount" data-price="amount">{{ p.amount | inr }}</strong>
+      <span class="sd-price__sub">
+        <ng-container *ngIf="p.rate_per_sq_ft !== null">{{ p.rate_per_sq_ft | inr }} / sq ft · </ng-container>{{ p.area_sq_ft | number : '1.1-2' }} sq ft<ng-container *ngIf="p.price_is_manual"> · your price</ng-container>
+      </span>
+    </div>
+    <ng-template #noPrice>
+      <div class="sd-price__figure" [ngSwitch]="price.state">
+        <p class="sd-price__refusal" *ngSwitchCase="'refused'" data-price="refusal">
+          <strong>No price yet:</strong> {{ price.message }}
+          <a routerLink="/profile" [queryParams]="{ tab: 'structure-rates', missing: price.missing || null }">Set structure rates</a>
+        </p>
+        <p class="sd-price__refusal" *ngSwitchCase="'failed'" data-price="failed">
+          <strong>Price not available.</strong> {{ price.message }}
+          <button type="button" class="sd-link" (click)="setQuantity(quantity)">Try again</button>
+        </p>
+        <span class="sd-muted" *ngSwitchDefault>Working out the price…</span>
+      </div>
+    </ng-template>
+    <span class="sd-spacer"></span>
+    <label class="sd-price__qty">
+      <span>Qty</span>
+      <span class="sd-number">
+        <button type="button" (click)="setQuantity(quantity - 1)" [disabled]="quantity <= 1" aria-label="One less">−</button>
+        <input type="number" inputmode="numeric" min="1" max="999" [value]="quantity" (change)="setQuantity($any($event.target).value)" aria-label="Quantity" data-price="quantity" />
+        <button type="button" (click)="setQuantity(quantity + 1)" aria-label="One more">+</button>
+      </span>
+    </label>
+    <button type="button" class="sd-btn" (click)="manualOpen ? (manualOpen = false) : openManual()" [class.is-on]="manualPrice !== null" [attr.aria-expanded]="manualOpen" data-action="manual">{{ manualPrice !== null ? 'Your price' : 'Set my price' }}</button>
+    <button type="button" class="sd-btn" (click)="detailsOpen = !detailsOpen" [disabled]="!price.data" [attr.aria-expanded]="detailsOpen" data-action="details">Price details</button>
+    <p class="sd-price__refusal sd-price__wide" *ngIf="saveError" data-price="save-error" role="alert">
+      <strong>Not saved.</strong> {{ saveError }}
+    </p>
+
+    <!-- A typed price for one structure, and the way back to the computed one. -->
+    <form class="sd-pop sd-pop--manual" *ngIf="manualOpen" (ngSubmit)="applyManual()" data-pop="manual">
+      <label for="sd-manual">Your price for one structure, before margin and GST</label>
+      <div class="sd-number sd-number--money">
+        <span class="sd-unit">₹</span>
+        <input id="sd-manual" name="manual" type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="manualDraft" />
+      </div>
+      <small *ngIf="price.data as p">The rates give {{ p.computed_unit_price | inr }} for one.</small>
+      <div class="sd-row">
+        <button type="submit" class="sd-btn sd-btn--primary">Use this price</button>
+        <button type="button" class="sd-btn" (click)="useComputedPrice()" [disabled]="manualPrice === null" data-action="computed">Use the computed price</button>
+      </div>
+    </form>
+
+    <!-- The cost rows, as the api returns them. -->
+    <section class="sd-pop sd-pop--details" *ngIf="detailsOpen && price.data as p" data-pop="details" aria-label="Price details">
+      <header>
+        <h2>Price details</h2>
+        <button type="button" class="sd-btn" (click)="detailsOpen = false" aria-label="Close price details">Close</button>
+      </header>
+      <table class="sd-table">
+        <thead><tr><th>What</th><th class="num">Quantity</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let r of p.rows">
+            <td><strong>{{ rowName(r) }}</strong><span class="sd-lengths" *ngIf="r.basis">{{ r.basis }}</span></td>
+            <td class="num">{{ r.qty | number : '1.0-2' }} {{ r.unit === 'percent' ? '%' : r.unit }}</td>
+            <td class="num">{{ r.rate === null || r.rate === undefined ? '' : (r.rate | inr) }}</td>
+            <td class="num">{{ r.amount | inr }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <dl class="sd-facts sd-facts--money">
+        <div><dt>Cost of one, from the rates</dt><dd>{{ p.computed_unit_price | inr }}</dd></div>
+        <div *ngIf="p.price_is_manual"><dt>Your price for one</dt><dd>{{ p.unit_price | inr }}</dd></div>
+        <div><dt>{{ p.quantity }} × {{ p.unit_price | inr }}</dt><dd>{{ p.total | inr }}</dd></div>
+        <div *ngIf="p.margin_percent"><dt>With the quotation's margin, {{ p.margin_percent | number : '1.0-2' }}%</dt><dd>{{ p.amount | inr }}</dd></div>
+        <div class="is-total"><dt>On the quotation line</dt><dd>{{ p.amount | inr }}</dd></div>
+      </dl>
+      <p class="sd-muted sd-small">Discount, charges and GST are added on the quotation, as for a window. <a routerLink="/profile" [queryParams]="{ tab: 'structure-rates' }">Structure rates</a></p>
+    </section>
   </div>
 
   <!-- The 3D view is the page; the two panels lie over it and fold away. -->
@@ -180,7 +272,7 @@
 
       <section class="sd-sec sd-sec--parts" *ngIf="summary as m">
         <h2>Parts summary</h2>
-        <p class="sd-note">Sizes are geometric centre-line sizes; workshop cut sizes and prices come in the next step.</p>
+        <p class="sd-note">Sizes are geometric centre-line sizes, and the price is worked out from them; workshop cut sizes come in a later step.</p>
         <dl class="sd-facts sd-facts--tiles">
           <div><dt>Overall</dt><dd>{{ m.overall.widthMm | number }} × {{ m.overall.depthMm | number }} × {{ m.overall.heightMm | number }} mm</dd></div>
           <div><dt>Glass</dt><dd>{{ m.glassAreaSqM | number : '1.2-2' }} m²</dd></div>

@@ -1,6 +1,8 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Observable, defer, of, throwError } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { parseStructure, Structure, summarize } from '../../shared/structure-model';
+import { StructureLine, StructureLineService } from './structure-line.service';
 
 /** One row of the list of saved structures: everything but the document. */
 export interface StructureSummary {
@@ -13,6 +15,9 @@ export interface StructureSummary {
   savedAt: string;
   /** A small picture of the 3D view as a data URL, or null when the device could not draw one. */
   thumbnail: string | null;
+  /** Of a quotation line: how many, and the typed price for one (null = the api's computed price). */
+  quantity?: number;
+  manualPrice?: number | null;
 }
 
 export interface SavedStructure extends StructureSummary {
@@ -24,15 +29,21 @@ export interface StructureSave {
   id: string | null;
   document: Structure;
   thumbnail: string | null;
+  /** The quotation the structure is a line of; the api store needs it for a new line. */
+  quotationId?: number;
+  quantity?: number;
+  /** A typed price for one; null = the api's computed price. */
+  unitPrice?: number | null;
 }
 
 /**
- * Where saved structures live. The screens know only these four calls, which
- * are the four the api will offer (phase-40 log §9): the next card provides
- * this class with an http implementation and nothing else changes. Rename and
- * duplicate are `get` followed by `save`.
+ * Where saved structures live. The screens know only these four calls. Since
+ * card T123 a structure is a line of a quotation: the id is the id of that
+ * line and the api keeps the document (`ApiStructureStore`). What was saved
+ * in the browser before (`BrowserStructureStore`) is only read, to bring it
+ * into a quotation.
  */
-@Injectable({ providedIn: 'root', useFactory: () => new BrowserStructureStore() })
+@Injectable({ providedIn: 'root', useFactory: () => new ApiStructureStore(inject(StructureLineService)) })
 export abstract class StructureStore {
   /** Newest first. */
   abstract list(): Observable<StructureSummary[]>;
@@ -43,6 +54,65 @@ export abstract class StructureStore {
   abstract delete(id: string): Observable<void>;
 }
 
+/**
+ * The structures of quotations, at the api: the id is the id of the quotation
+ * line (`quatation/structure/*`). The api prices the line on every save.
+ */
+export class ApiStructureStore extends StructureStore {
+  constructor(private readonly lines: StructureLineService) {
+    super();
+  }
+
+  /** The api lists a quotation's structures with its other lines (`quatation/show`); there is no list of their own. */
+  list(): Observable<StructureSummary[]> {
+    return of([]);
+  }
+
+  get(id: string): Observable<SavedStructure> {
+    return this.lines.get(Number(id)).pipe(
+      map((line) => {
+        if (!line.document) throw new Error('This structure has no drawing saved with it.');
+        // The stored document is checked again on the way in.
+        return { ...summaryOfLine(line), document: parseStructure(JSON.stringify(line.document)) };
+      })
+    );
+  }
+
+  save(input: StructureSave): Observable<StructureSummary> {
+    const doc = input.document;
+    const body = {
+      name: doc.name,
+      structure_type: doc.template?.kind ?? 'free',
+      quantity: input.quantity ?? 1,
+      unit_price: input.unitPrice ?? null,
+      image: input.thumbnail,
+      document: doc,
+      summary: summarize(doc),
+    };
+    if (input.id) return this.lines.update(Number(input.id), body).pipe(map(summaryOfLine));
+    if (!input.quotationId) return throwError(() => new Error('A structure is saved as a line of a quotation: open it from a quotation.'));
+    return this.lines.add({ ...body, quatation_id: input.quotationId }).pipe(map(summaryOfLine));
+  }
+
+  delete(id: string): Observable<void> {
+    return this.lines.remove(Number(id)).pipe(map(() => undefined));
+  }
+}
+
+function summaryOfLine(line: StructureLine): StructureSummary {
+  const s = line.structure;
+  return {
+    id: String(line.id),
+    name: s?.name || line.label || 'Structure',
+    kind: s?.type || 'free',
+    overall: s?.overall ?? { widthMm: Number(line.width) || 0, depthMm: 0, heightMm: Number(line.height) || 0 },
+    savedAt: '',
+    thumbnail: line.image ?? null,
+    quantity: Number(line.quantity) || 1,
+    manualPrice: s?.costing?.price_is_manual ? Number(s.costing.unit_price) : null,
+  };
+}
+
 export const STRUCTURE_STORE_KEY = 'upvc.structures.v1';
 const KEEP = 50;
 
@@ -50,10 +120,11 @@ const KEEP = 50;
 type Row = Pick<SavedStructure, 'id' | 'name' | 'kind' | 'savedAt' | 'document'> & Partial<Pick<SavedStructure, 'overall' | 'thumbnail'>>;
 
 /**
- * Saved structures of this browser. The api has no structure table yet
- * (architecture.md §9, quatation_structures): until it has, the document
- * lives here and leaves the browser only through Export.
+ * Structures saved in this browser before card T123, when the designer stood
+ * apart from the quotation. Nothing new is saved here: the designer reads
+ * them so each can be brought into a quotation.
  */
+@Injectable({ providedIn: 'root' })
 export class BrowserStructureStore extends StructureStore {
   list(): Observable<StructureSummary[]> {
     return defer(() => of(this.rows().map(summaryOf)));

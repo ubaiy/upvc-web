@@ -1,10 +1,17 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
 import { BehaviorSubject, firstValueFrom } from 'rxjs';
 import { WorkspaceService } from '../../containers/shell/workspace.service';
-import { fillKey, serializeStructure } from '../../shared/structure-model';
-import { canSlide, StructureDesignerComponent } from './structure-designer.component';
-import { STRUCTURE_STORE_KEY as STORE_KEY, StructureStore } from './structure-store.service';
+import { createStructure, fillKey, serializeStructure } from '../../shared/structure-model';
+import { environment } from '../../../environments/environment';
+import { canSlide, PRICE_DEBOUNCE_MS, StructureDesignerComponent } from './structure-designer.component';
+import { SAMPLE_PRICE } from './structure-line.service.spec';
+import { BrowserStructureStore, STRUCTURE_STORE_KEY as STORE_KEY } from './structure-store.service';
+
+const API = environment.API_URL;
+const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 // The 3D view is driven through its callbacks here (pick, dragDim), so the
 // specs hold with or without WebGL in the test browser. The pictures and the
@@ -17,12 +24,15 @@ describe('StructureDesignerComponent', () => {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const inner = (): any => c;
 
-  async function make(query: Record<string, string> = {}): Promise<void> {
+  /** `params`: the route of a quotation, { id } for a new structure and { id, lineId } for "Edit". */
+  async function make(query: Record<string, string> = {}, params: Record<string, string> = {}): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [StructureDesignerComponent],
       providers: [
         provideRouter([]),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query), paramMap: convertToParamMap(params) } } },
         { provide: WorkspaceService, useValue: { workspace$: new BehaviorSubject({ name: 'Hakimi Enterprise' }) } },
       ],
     }).compileComponents();
@@ -244,45 +254,184 @@ describe('StructureDesignerComponent', () => {
     expect(c.num('width')).toBe(4800);
   });
 
-  it('saves, lists and loads a structure in the browser', async () => {
-    await make({ kind: 'lean-to' });
-    c.rename('Verandah for Mr Shah');
-    c.commit({ projection: 3000 });
-    inner().pick({ kind: 'face', id: 'front-2' }, false);
-    c.setFill('door');
-    const saved = serializeStructure(c.structure!);
-    const store = TestBed.inject(StructureStore);
-    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
-    const waitFor = async (done: () => boolean): Promise<void> => {
-      for (let i = 0; i < 200 && !done(); i++) await new Promise((r) => setTimeout(r, 20));
-    };
-    c.save();
-    await waitFor(() => navigate.calls.count() === 1);
-    // Save goes back to the list of saved structures.
-    expect(navigate).toHaveBeenCalledWith(['/structures']);
-    c.save(); // a second save goes over the first
-    await waitFor(() => navigate.calls.count() === 2);
-    const rows = await firstValueFrom(store.list());
-    expect(rows.length).toBe(1);
-    expect(rows[0].name).toBe('Verandah for Mr Shah');
-    expect(rows[0].kind).toBe('lean-to');
-    expect(rows[0].overall.depthMm).toBe(3000);
-    expect(c.savedId).toBe(rows[0].id);
+  // --- inside a quotation (card T123) ---
 
-    // The list opens it again by id.
-    fixture.destroy();
-    TestBed.resetTestingModule();
-    await make({ id: rows[0].id });
-    expect(serializeStructure(c.structure!)).toBe(saved);
-    expect(c.num('projection')).toBe(3000);
-    expect(el.querySelector('[data-action="back"]')?.textContent).toContain('Structures');
+  const http = (): HttpTestingController => TestBed.inject(HttpTestingController);
+  const priceCalls = () => http().match(`${API}/quatation/structure/price`);
+  const bar = (): string => (el.querySelector('.sd-price')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  /** Wait for the debounce, answer the one price request that went out, and draw. */
+  async function answerPrice(body: unknown, status = 200): Promise<any> {
+    await sleep(PRICE_DEBOUNCE_MS + 80);
+    const calls = priceCalls();
+    expect(calls.length).withContext('one request after the changes have rested').toBe(1);
+    calls[0].flush(body as object, { status, statusText: status === 200 ? 'OK' : 'No' });
+    fixture.detectChanges();
+    return calls[0].request.body;
+  }
+
+  it('in a quotation every change is priced by the api, once it has rested; the bar shows the amount, per sq ft and the area', async () => {
+    await make({ kind: 'cabin' }, { id: '12' });
+    expect(bar()).toContain('Working out the price');
+    const first = await answerPrice({ success: true, data: SAMPLE_PRICE });
+    expect(first).toEqual(jasmine.objectContaining({ quatation_id: 12, structure_type: 'cabin', quantity: 1, unit_price: null }));
+    expect(first.summary).toEqual(c.summary);
+    expect(el.querySelector('.sd-price')?.getAttribute('data-price')).toBe('ready');
+    expect(bar()).toContain('₹73,481.40');
+    expect(bar()).toContain('₹550.55 / sq ft');
+    expect(bar()).toContain('133.47 sq ft');
+
+    // Three quick changes are one request, with the last shape; the old price is dimmed meanwhile, not zero.
+    c.commit({ width: 4000 });
+    c.commit({ width: 4400 });
+    c.setQuantity(3);
+    fixture.detectChanges();
+    expect(el.querySelector('.sd-price__figure')?.classList.contains('is-stale')).toBeTrue();
+    const second = await answerPrice({ success: true, data: { ...SAMPLE_PRICE, quantity: 3, amount: 250000 } });
+    expect(second.quantity).toBe(3);
+    expect(second.summary.overall.widthMm).toBe(4400);
+    expect(bar()).toContain('₹2,50,000.00');
+
+    // Price details: the cost rows as the api returns them.
+    (el.querySelector('[data-action="details"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const rows = Array.from(el.querySelectorAll('[data-pop="details"] tbody tr')).map((r) => (r.textContent ?? '').replace(/\s+/g, ' ').trim());
+    expect(rows.length).toBe(SAMPLE_PRICE.rows.length);
+    expect(rows[0]).toContain('Glass');
+    expect(rows[0]).toContain('₹22,320.00');
+    expect(rows[2]).withContext('a row without a name is called by its role').toContain('Crown');
   });
 
-  it('says so when the saved structure of the address is gone', async () => {
-    await make({ id: 'nothing-here' });
-    expect(c.structure).toBeNull();
-    expect(c.message).toContain('no longer saved on this device');
-    expect(el.querySelectorAll('.sd-card').length).toBe(6);
+  it('a refusal is a plain sentence with a link to the rates, never a zero price', async () => {
+    await make({ kind: 'gable' }, { id: '12' });
+    await answerPrice({ success: false, data: null, message: "structure_rates_v1 cannot price this structure: the structure rate 'bar_rate_m.rafter' is not set." });
+    expect(el.querySelector('.sd-price')?.getAttribute('data-price')).toBe('refused');
+    expect(bar()).toContain('No price yet: The rafter rate per metre is not set.');
+    expect(bar()).not.toContain('₹');
+    expect(bar()).not.toContain('structure_rates_v1');
+    const link = el.querySelector('[data-price="refusal"] a') as HTMLAnchorElement;
+    expect(link.textContent).toContain('Set structure rates');
+    expect(link.getAttribute('href')).toBe('/profile?tab=structure-rates&missing=bar_rate_m.rafter');
+    expect((el.querySelector('[data-action="details"]') as HTMLButtonElement).disabled).toBeTrue();
+
+    // Every rate this structure needs and the company has not set is named: the count and the first three.
+    http().expectOne(`${API}/structure-rates`).flush({ success: true, data: { rates: {}, bar_roles: [], openings: [], missing: ['bar_rate_m.rafter', 'bar_rate_m.ridge', 'glass_rate_sq_m.default', 'overhead_pct', 'bar_rate_m.rib'] } });
+    fixture.detectChanges();
+    expect(bar()).toMatch(/No price yet: [34] rates are not set \(rafter rate per metre, glass rate per sq m/);
+
+    // No answer at all is said as such, with a way to ask again.
+    c.setQuantity(1);
+    await sleep(PRICE_DEBOUNCE_MS + 80);
+    priceCalls()[0].error(new ProgressEvent('error'));
+    fixture.detectChanges();
+    expect(bar()).toContain('Price not available');
+    expect(bar()).not.toContain('₹');
+  });
+
+  it('a price can be typed, and the computed one comes back', async () => {
+    await make({ kind: 'dome' }, { id: '12' });
+    await answerPrice({ success: true, data: SAMPLE_PRICE });
+    (el.querySelector('[data-action="manual"]') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(c.manualDraft).withContext('starts from the computed price of one').toBe('61234.5');
+    c.manualDraft = '95000';
+    c.applyManual();
+    const typed = await answerPrice({ success: true, data: { ...SAMPLE_PRICE, unit_price: 95000, total: 95000, amount: 114000, price_is_manual: true } });
+    expect(typed.unit_price).toBe(95000);
+    expect(bar()).toContain('₹1,14,000.00');
+    expect(bar()).toContain('your price');
+    expect(el.querySelector('[data-action="manual"]')?.textContent).toContain('Your price');
+
+    c.useComputedPrice();
+    const back = await answerPrice({ success: true, data: SAMPLE_PRICE });
+    expect(back.unit_price).toBeNull();
+    expect(bar()).toContain('₹73,481.40');
+    expect(bar()).not.toContain('your price');
+  });
+
+  it('"Save to quotation" adds the line and goes back; "Edit" opens the stored document and saves over it', async () => {
+    await make({ kind: 'lean-to' }, { id: '12' });
+    c.rename('Verandah for Mr Shah');
+    c.commit({ projection: 3000 });
+    c.setQuantity(2);
+    await answerPrice({ success: true, data: SAMPLE_PRICE });
+    expect(el.querySelector('[data-action="save"]')?.textContent).toContain('Save to quotation');
+    const saved = serializeStructure(c.structure!);
+    const summary = c.summary;
+    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const waitFor = async (done: () => boolean): Promise<void> => {
+      for (let i = 0; i < 200 && !done(); i++) await sleep(20);
+    };
+    let add: any[] = [];
+    c.save();
+    await waitFor(() => (add = [...add, ...http().match(`${API}/quatation/structure/add`)]).length > 0);
+    expect(add[0].request.body).toEqual(
+      jasmine.objectContaining({ quatation_id: 12, name: 'Verandah for Mr Shah', structure_type: 'lean-to', quantity: 2, unit_price: null, summary })
+    );
+    expect(serializeStructure(add[0].request.body.document)).toBe(saved);
+    const line = {
+      id: 77,
+      kind: 'structure',
+      quatation_id: 12,
+      quantity: 2,
+      label: 'Verandah for Mr Shah',
+      image: null,
+      structure: { type: 'lean-to', name: 'Verandah for Mr Shah', overall: summary!.overall, costing: { price_is_manual: true, unit_price: 95000 } },
+      document: JSON.parse(saved),
+    };
+    add[0].flush({ success: true, data: line });
+    expect(navigate).toHaveBeenCalledWith(['/quotation/detail', 12]);
+
+    // Edit: the designer opens with the document the api keeps for that line.
+    fixture.destroy();
+    TestBed.resetTestingModule();
+    await make({}, { id: '12', lineId: '77' });
+    http().expectOne(`${API}/quatation/structure/77`).flush({ success: true, data: line });
+    fixture.detectChanges();
+    expect(serializeStructure(c.structure!)).toBe(saved);
+    expect(c.num('projection')).toBe(3000);
+    expect(c.quantity).toBe(2);
+    expect(c.manualPrice).withContext('the typed price is kept').toBe(95000);
+    expect(el.querySelector('[data-action="back"]')?.textContent).toContain('Quotation');
+    const asked = await answerPrice({ success: true, data: SAMPLE_PRICE });
+    expect(asked.unit_price).toBe(95000);
+
+    const again = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    let update: any[] = [];
+    c.save();
+    await waitFor(() => (update = [...update, ...http().match(`${API}/quatation/structure/update/77`)]).length > 0);
+    expect(update[0].request.body).toEqual(jasmine.objectContaining({ name: 'Verandah for Mr Shah', quantity: 2, unit_price: 95000 }));
+    expect(update[0].request.body.quatation_id).toBeUndefined();
+
+    // A refused save stays on the page and says why.
+    update[0].flush({ success: false, message: "structure_rates_v1 cannot price this structure: the structure rate 'bar_rate_m.wall_plate' is not set." });
+    fixture.detectChanges();
+    expect(again).not.toHaveBeenCalled();
+    expect(el.querySelector('[data-price="save-error"]')?.textContent).toContain('Not saved. The wall plate rate per metre is not set.');
+  });
+
+  it('offers what was saved on this device before, to bring into the quotation', async () => {
+    const device = new BrowserStructureStore();
+    await firstValueFrom(device.save({ id: null, document: { ...createStructure('bay'), name: 'Old bay' }, thumbnail: null }));
+    await make({}, { id: '12' });
+    const rows = el.querySelectorAll('[data-list="device"] button');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('Old bay');
+    (rows[0] as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(c.structure?.name).toBe('Old bay');
+    expect(c.savedId).withContext('a new line of this quotation, not a saved one').toBeNull();
+    await sleep(PRICE_DEBOUNCE_MS + 80);
+    expect(priceCalls().length).toBe(1);
+  });
+
+  it('outside a quotation there is no price bar and nothing is saved', async () => {
+    await make({ kind: 'dome' });
+    await sleep(PRICE_DEBOUNCE_MS + 80);
+    expect(priceCalls().length).toBe(0);
+    expect(el.querySelector('.sd-price')).toBeNull();
+    c.save();
+    expect(c.message).toContain('Open a quotation');
+    http().expectNone(`${API}/quatation/structure/add`);
   });
 
   it('does not offer Sliding for a panel that is not a rectangle, and says why', async () => {

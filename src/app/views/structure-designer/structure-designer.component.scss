@@ -1048,3 +1048,219 @@ button.sd-dim:hover {
 .sd-why {
   margin: -4px 0 10px;
 }
+
+// --- the price bar (card T123): one row under the top bar; it wraps on a phone ---
+
+.sd-back {
+  display: inline-flex;
+  align-items: center;
+  margin-bottom: 12px;
+  text-decoration: none;
+}
+
+.sd-saved h2 + p {
+  margin: 4px 0 10px;
+}
+
+.sd-price {
+  position: relative;
+  z-index: 7;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--sd-border);
+  background: var(--sd-surface);
+  user-select: text;
+
+  .sd-number {
+    width: 112px;
+  }
+}
+
+.sd-price__figure {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  min-width: 0;
+  transition: opacity 120ms;
+
+  &.is-stale {
+    opacity: 0.5;
+  }
+}
+
+.sd-price__amount {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-price__sub {
+  color: var(--sd-text-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sd-price__refusal {
+  max-width: 720px;
+  padding: 6px 10px;
+  border: 1px solid var(--c-warning-border, #e6c98a);
+  border-radius: 6px;
+  background: var(--c-warning-soft, #fdf5e2);
+  color: var(--sd-text);
+  font-size: 13px;
+
+  a,
+  .sd-link {
+    margin-left: 6px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+.sd-price__wide {
+  flex-basis: 100%;
+  max-width: none;
+}
+
+.sd-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-accent-text, var(--sd-accent));
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sd-price__qty {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sd-text-2);
+  font-size: 13px;
+}
+
+.sd-pop {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + 6px);
+  right: 10px;
+  width: min(600px, calc(100vw - 20px));
+  max-height: min(78vh, 640px);
+  overflow: auto;
+  padding: 14px;
+  border: 1px solid var(--sd-border);
+  border-radius: 10px;
+  background: var(--sd-surface);
+  box-shadow: 0 12px 32px rgba(20, 24, 28, 0.18);
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  label,
+  small {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--sd-text-2);
+    font-size: 13px;
+  }
+
+  .sd-row {
+    margin-top: 10px;
+  }
+
+  td.num,
+  th.num {
+    padding-left: 14px;
+    white-space: nowrap;
+  }
+}
+
+.sd-pop--manual {
+  width: min(360px, calc(100vw - 20px));
+}
+
+.sd-number--money {
+  width: 100%;
+
+  input {
+    text-align: left;
+  }
+}
+
+.sd-facts--money {
+  margin-top: 10px;
+
+  > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 4px 0;
+  }
+
+  dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .is-total {
+    margin-top: 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--sd-border);
+    font-weight: 700;
+  }
+}
+
+@media (max-width: 640px) {
+  .sd-price {
+    padding: 6px 8px;
+  }
+
+  .sd-price__amount {
+    font-size: 18px;
+  }
+
+  .sd-price__figure {
+    flex-basis: 100%;
+  }
+
+  // Quantity, "Set my price" and "Price details" share one row of a phone.
+  .sd-price__qty > span:first-child {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .sd-price .sd-number {
+    width: 104px;
+  }
+
+  .sd-price .sd-btn {
+    padding: 0 9px;
+  }
+
+  .sd-price > .sd-spacer {
+    display: none;
+  }
+
+  .sd-pop {
+    right: 8px;
+    left: 8px;
+    width: auto;
+  }
+}

@@ -65,7 +65,7 @@ const BACKDROP = { top: '#e3eaf1', middle: '#c6d1db', bottom: '#9ba8b5' };
 const HORIZON = '#bcc8d2';
 const PAPER = '#ffffff';
 /** How much of the free view a fitted structure fills. */
-const FIT_FILL = 0.8;
+const FIT_FILL = 0.88;
 /** The person for scale (buildHuman), mm. */
 const HUMAN_HEIGHT = 1700;
 const HUMAN_HALF_WIDTH = 215;
@@ -360,25 +360,32 @@ export class StructureScene {
     // Far enough for every corner of the structure's box to be in view, plus room for handles and labels.
     const right = new Vector3().crossVectors(WORLD_UP, this.direction).normalize();
     const upward = new Vector3().crossVectors(this.direction, right);
+    const points = this.extent.length ? this.extent : [-1, 1].flatMap((sx) => [-1, 1].flatMap((sy) => [-1, 1].map((sz) => new Vector3(sx * this.half.x, sy * this.half.y, sz * this.half.z))));
+    // The camera looks at the middle of what is drawn, as seen from here. The person for scale stands to one
+    // side: looking at the structure's own centre would leave the same empty width on the other side.
+    let [r0, r1, u0, u1] = [Infinity, -Infinity, Infinity, -Infinity];
+    for (const rel of points) {
+      const [r, u] = [rel.dot(right), rel.dot(upward)];
+      [r0, r1, u0, u1] = [Math.min(r0, r), Math.max(r1, r), Math.min(u0, u), Math.max(u1, u)];
+    }
+    const mid = inView ? right.clone().multiplyScalar((r0 + r1) / 2).addScaledVector(upward, (u0 + u1) / 2) : new Vector3();
+    const focus = this.centre.clone().add(mid);
     let distance = 0;
-    const keep = (rel: Vector3): void => {
+    const rel = new Vector3();
+    for (const point of points) {
+      rel.copy(point).sub(mid);
       distance = Math.max(distance, rel.dot(this.direction) + Math.max(Math.abs(rel.dot(upward)) / tanV, Math.abs(rel.dot(right)) / tanH));
-    };
-    if (this.extent.length) this.extent.forEach(keep);
-    else {
-      const rel = new Vector3();
-      for (const sx of [-1, 1]) for (const sy of [-1, 1]) for (const sz of [-1, 1]) keep(rel.set(sx * this.half.x, sy * this.half.y, sz * this.half.z));
     }
     distance = Math.max(distance, this.radius * 0.9);
     this.camera.aspect = aspect;
     this.camera.near = Math.max(20, distance / 200);
     this.camera.far = distance * 30;
-    this.camera.position.copy(this.centre).addScaledVector(this.direction, distance);
-    this.camera.lookAt(this.centre);
+    this.camera.position.copy(focus).addScaledVector(this.direction, distance);
+    this.camera.lookAt(focus);
     if (inView) this.applyViewOffset();
     else if (this.camera.view) this.camera.clearViewOffset();
     this.camera.updateProjectionMatrix();
-    this.controls.target.copy(this.centre);
+    this.controls.target.copy(focus);
     this.fitted = { centre: this.centre.clone(), radius: this.radius };
     this.controls.minDistance = this.radius * 0.4;
     this.controls.maxDistance = distance * 5;
