@@ -9,6 +9,7 @@ import { saveAs } from 'file-saver';
 
 import { Crumb } from 'src/app/shared/components/page-header/page-header.component';
 import { formatInr } from 'src/app/shared/pipes/inr.pipe';
+import { AccessService } from 'src/app/shared/access/access.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { QuotationService } from '../quotation.service';
 import { errorText, QuotationRow, toQuotationRow } from '../quotation-list.model';
@@ -77,7 +78,8 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     private _route: ActivatedRoute,
     private _router: Router,
     private _dataService: QuotationService,
-    private _toast: ToastService
+    private _toast: ToastService,
+    private _access: AccessService
   ) {}
 
   ngOnInit(): void {
@@ -111,6 +113,12 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
 
   get primary(): PrimaryAction {
     return this.view ? primaryAction(this.view) : null;
+  }
+
+  /** What the status button needs: a bill is the accounts' work, the rest changes the quotation; the bill's PDF only reads. */
+  get primaryAbility(): string | null {
+    const primary = this.primary;
+    return primary === 'bill' ? 'bills.write' : primary && primary !== 'bill-pdf' ? 'quotations.write' : null;
   }
 
   get primaryLabel(): string {
@@ -556,7 +564,10 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
 
   private _openMenu(event: Event, items: MenuItem[]): void {
     event.stopPropagation();
-    this.menuItems = items;
+    // "Edit" opens the window to look at, "Production" is a page of its own: the rest changes the quotation.
+    this.menuItems = this._access
+      .menu(items, (item) => (item.label === 'Edit' || item.label === 'Production' ? null : 'quotations.write'))
+      .filter((item) => item.label !== 'Production' || this._access.can('production.view'));
     this.menu?.toggle(event);
   }
 
@@ -564,7 +575,9 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
 
   private _show(raw: any): void {
     this._raw = raw;
-    this.view = toQuotationView(raw);
+    const view = toQuotationView(raw);
+    // A role that may not change quotations (accounts) reads the page: no rename, no reorder, no add rows.
+    this.view = this._access.can('quotations.write') ? view : { ...view, editable: false, revisable: false };
     if (this._afterLoad === 'summary' && this.view.editable) {
       this.summaryOpen = true;
     }

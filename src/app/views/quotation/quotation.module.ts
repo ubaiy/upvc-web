@@ -41,6 +41,7 @@ import { DropdownModule } from 'primeng/dropdown';
 import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-design/sub-quotation-design.component';
 import { ButtonModule } from '@coreui/angular';
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 import { SiteAddressComponent } from './site-address/site-address.component';
 import { SiteAddressDialogComponent } from './site-address/site-address-dialog.component';
@@ -60,6 +61,8 @@ import { SiteAddressDialogComponent } from './site-address/site-address-dialog.c
     // The windows of a quotation are put in order by dragging (card T82, M8).
     DragDropModule,
     SharedComponentsModule,
+    // Write buttons by ability and by plan, and the 3D lock (card T136).
+    ...ACCESS_PARTS,
     ConfirmDialogComponent,
     // The site address of a quotation: PIN code first (card T90).
     SiteAddressComponent,

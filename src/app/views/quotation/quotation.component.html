@@ -1,6 +1,6 @@
 <app-page-header title="Quotations">
   <!-- One primary button on the page: with no quotation yet it moves into the empty state. -->
-  <button actions type="button" class="btn btn-primary" *ngIf="!empty || loading || loadFailed" (click)="openNew()">
+  <button actions type="button" class="btn btn-primary" appWrite="quotations.write" *ngIf="!empty || loading || loadFailed" (click)="openNew()">
     <app-icon name="plus"></app-icon>New quotation
   </button>
 </app-page-header>
@@ -29,7 +29,7 @@
     title="No quotations yet"
     text="Choose a customer, draw the first window and send a priced quotation in a few minutes."
   >
-    <button type="button" class="btn btn-primary" (click)="openNew()">
+    <button type="button" class="btn btn-primary" appWrite="quotations.write" (click)="openNew()">
       <app-icon name="plus"></app-icon>New quotation
     </button>
   </app-empty-state>

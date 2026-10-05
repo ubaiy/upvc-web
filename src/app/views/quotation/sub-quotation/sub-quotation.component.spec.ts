@@ -1,4 +1,5 @@
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
@@ -137,7 +138,7 @@ describe('SubQuotationComponent (quotation page)', () => {
         DuplicateStubComponent,
         EditStubComponent,
       ],
-      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, SharedComponentsModule, DialogModule, MenuModule, ButtonModule, ConfirmDialogComponent, DragDropModule],
+      imports: [...ACCESS_PARTS, RouterTestingModule, NoopAnimationsModule, FormsModule, SharedComponentsModule, DialogModule, MenuModule, ButtonModule, ConfirmDialogComponent, DragDropModule],
       providers: [
         { provide: QuotationService, useValue: service },
         { provide: ToastService, useValue: toast },

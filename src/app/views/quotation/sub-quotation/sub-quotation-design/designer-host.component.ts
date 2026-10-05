@@ -55,6 +55,7 @@ import {
 } from 'src/app/shared/design-model';
 import { quiet } from 'src/app/shared/interceptors/request-options';
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { DesignTemplateStore } from '../../../design-lab/design-template-store.service';
 import { QuotationService } from '../../quotation.service';
 import {
@@ -110,6 +111,7 @@ interface SavedCard {
     CommonModule,
     FormsModule,
     SharedComponentsModule,
+    ...ACCESS_PARTS,
     DesignCanvasComponent,
     DesignInspectorComponent,
   ],

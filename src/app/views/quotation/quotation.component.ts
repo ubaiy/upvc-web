@@ -6,6 +6,7 @@ import { Subject, Subscription, of, timer } from 'rxjs';
 import { catchError, finalize, map, switchMap } from 'rxjs/operators';
 
 import { ToastService } from 'src/app/shared/services/toast.service';
+import { AccessService } from 'src/app/shared/access/access.service';
 import { DuplicatedQuotation } from './add/duplicate-quotation-dialog.component';
 import { QuotationService } from './quotation.service';
 import { QuotationListService, QuotationPage } from './quotation-list.service';
@@ -88,7 +89,8 @@ export class QuotationComponent implements OnInit, OnDestroy {
     private _router: Router,
     private _dataService: QuotationService,
     private _list: QuotationListService,
-    private _toastService: ToastService
+    private _toastService: ToastService,
+    private _access: AccessService
   ) {}
 
   ngOnInit(): void {
@@ -217,7 +219,7 @@ export class QuotationComponent implements OnInit, OnDestroy {
 
   openMenu(event: Event, row: QuotationRow): void {
     const billed = row.status === 'billed';
-    this.menuItems = [
+    const items: MenuItem[] = [
       { label: 'Open', icon: 'pi pi-arrow-right', command: () => this.open(row) },
       {
         label: 'Edit details',
@@ -235,6 +237,8 @@ export class QuotationComponent implements OnInit, OnDestroy {
         command: () => (this.deleteRow = row),
       },
     ];
+    // "Open" only reads; the rest changes a quotation.
+    this.menuItems = this._access.menu(items, (item) => (item.label === 'Open' ? null : 'quotations.write'));
     this.rowMenu?.toggle(event);
   }
 
