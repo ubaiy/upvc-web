@@ -94,6 +94,7 @@ export function extraRatesFrom(fields: ExtraRateField[]): ExtraRates {
   styleUrls: ['../settings-tab.scss', './structure-rates-tab.component.scss'],
   styles: [
     `
+      .input-group .unit { white-space: nowrap; }
       .pivot { margin: 0; padding: 0; list-style: none; }
       .pivot li { display: flex; justify-content: space-between; gap: var(--s-4); padding-block: var(--s-1); }
       .pivot-head { font-size: var(--fs-14); font-weight: var(--fw-semibold); }
