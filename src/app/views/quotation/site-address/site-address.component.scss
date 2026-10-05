@@ -15,7 +15,7 @@
   background: var(--c-surface); cursor: pointer;
 }
 .site-option:hover { background: var(--c-surface-2); }
-.site-option.is-on { border-color: var(--c-accent-text); background: var(--c-accent-soft); }
+.site-option.is-on { border-color: var(--c-accent); background: var(--c-accent-soft); }
 .site-option:focus-within { box-shadow: var(--focus-ring); }
 .site-option input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--c-accent); }
 .site-lines, .site-place { display: block; }

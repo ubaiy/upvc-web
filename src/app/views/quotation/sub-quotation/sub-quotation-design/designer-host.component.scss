@@ -63,7 +63,7 @@
 
   &:focus {
     outline: none;
-    border-color: var(--c-accent-text);
+    border-color: var(--c-accent);
     background: var(--c-surface);
     box-shadow: var(--focus-ring);
   }
@@ -279,7 +279,7 @@
 
   .k-mark {
     fill: none;
-    stroke: var(--c-accent-text);
+    stroke: var(--c-accent);
     stroke-width: 1.25;
   }
 
@@ -298,7 +298,7 @@
   }
 
   .k-letter {
-    fill: var(--c-accent-text);
+    fill: var(--c-accent);
     font-size: 11px;
     font-weight: 700;
   }
@@ -402,7 +402,7 @@
   }
 
   &:hover {
-    border-color: var(--c-accent-text);
+    border-color: var(--c-accent);
     color: var(--c-text);
   }
 
@@ -443,7 +443,7 @@
 
 .t-mark {
   fill: none;
-  stroke: var(--c-accent-text);
+  stroke: var(--c-accent);
   stroke-width: 1.5;
 }
 
@@ -614,7 +614,7 @@
 
     &:focus-visible {
       outline: none;
-      border-color: var(--c-focus);
+      border-color: var(--c-accent);
       box-shadow: var(--focus-ring);
     }
   }
@@ -957,7 +957,3 @@
     min-width: 0;
   }
 }
-
-// The canvas reads --c-accent for its selection and opening symbols (render-common.ts).
-// Saffron is a fill, too faint as a thin line on glass: the drawing gets the accent's line tone.
-app-design-canvas { --c-accent: var(--c-accent-text); }
