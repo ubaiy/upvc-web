@@ -53,7 +53,6 @@ export class TeamTabComponent implements OnInit, OnDestroy {
 
   /** The company is locked or suspended: every change is refused by the api, so the buttons say why. */
   lockedReason = '';
-  private companyName = '';
   private sub?: Subscription;
 
   constructor(private service: TeamService, private access: AccessService) {}
@@ -61,7 +60,6 @@ export class TeamTabComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.sub = this.access.state$.subscribe((state) => {
       this.lockedReason = state.subscription?.read_only ? readOnlyReason(state.subscription) : '';
-      this.companyName = state.me?.company?.name ?? state.subscription?.company?.name ?? '';
     });
     this.load();
   }
@@ -260,15 +258,14 @@ export class TeamTabComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * The api's link is the set-password page with token, e-mail and invite=1. The company's name is added
-   * so that page can say "Set your password to join <company>" (the visitor has no session to ask with).
+   * The api's link is the set-password page with token, e-mail, invite=1 and the company's name
+   * (phase-56 G4). It is shown as it is: nothing is added to it here.
    */
   private showLink(name: string, email: string, invite?: Invite): void {
     if (!invite?.link) {
       return;
     }
-    const company = this.companyName && !invite.link.includes('company=') ? `&company=${encodeURIComponent(this.companyName)}` : '';
-    this.invited = { name, email, link: invite.link + company, expires: invite.expires_at };
+    this.invited = { name, email, link: invite.link, expires: invite.expires_at };
     this.copied = false;
   }
 

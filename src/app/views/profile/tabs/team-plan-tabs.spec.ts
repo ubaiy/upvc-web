@@ -140,9 +140,9 @@ describe('TeamTabComponent', () => {
     expect(el.textContent).not.toContain('undefined');
   });
 
-  it('invites with name, e-mail and role, and shows the link to copy with the company named in it', async () => {
+  it('invites with name, e-mail and role, and shows the link of the api as it is', async () => {
     service.invite.and.returnValue(
-      of({ user: RAVI, invite: { link: 'http://localhost:4200/#/auth/reset-password?token=abc&email=asha%40example.com&invite=1', expires_at: '2026-10-08T10:00:00+00:00' } })
+      of({ user: RAVI, invite: { link: 'http://localhost:4200/#/auth/reset-password?token=abc&email=asha%40example.com&invite=1&company=Hakimi+Enterprise', expires_at: '2026-10-08T10:00:00+00:00', company: 'Hakimi Enterprise' } })
     );
     click(el.querySelector('button.invite'));
     await fixture.whenStable();
@@ -155,7 +155,7 @@ describe('TeamTabComponent', () => {
 
     expect(service.invite).toHaveBeenCalledOnceWith({ name: 'Asha', email: 'asha@example.com', role: 'sales' });
     const link = el.querySelector('.invite-link input') as HTMLInputElement;
-    expect(link.value).toBe('http://localhost:4200/#/auth/reset-password?token=abc&email=asha%40example.com&invite=1&company=Hakimi%20Enterprise');
+    expect(link.value).withContext('nothing added: company is in it once').toBe('http://localhost:4200/#/auth/reset-password?token=abc&email=asha%40example.com&invite=1&company=Hakimi+Enterprise');
     expect(text('.invite-link .card-head')[0]).toContain('We do not send e-mails yet');
     expect(service.team).withContext('the list is read again').toHaveBeenCalledTimes(2);
     expect(access.refreshSubscription).toHaveBeenCalled();

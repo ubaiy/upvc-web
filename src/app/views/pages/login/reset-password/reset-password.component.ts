@@ -4,7 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { finalize } from 'rxjs';
 
-import { PasswordResetService, resetFailure } from '../password-reset.service';
+import { PasswordResetService, ResetFailure, resetFailure } from '../password-reset.service';
 
 function samePassword(group: AbstractControl): ValidationErrors | null {
   const { password, confirm_password } = group.value;
@@ -32,9 +32,10 @@ export class ResetPasswordComponent implements OnInit {
   submitted = false;
   busy = false;
   show = false;
-  error: { text: string; retry: boolean } | null = null;
+  error: ResetFailure | null = null;
 
   @ViewChild('passwordInput') passwordInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('confirmInput') confirmInput?: ElementRef<HTMLInputElement>;
 
   constructor(
     fb: FormBuilder,
@@ -76,7 +77,8 @@ export class ResetPasswordComponent implements OnInit {
   get passwordError(): string {
     const control = this.form.controls['password'];
     if (!(control.invalid && (this.submitted || (control.touched && !!control.value)))) {
-      return '';
+      // what the api refused, until the field is typed in again
+      return (!control.dirty && this.error?.fields?.password) || '';
     }
     return control.errors?.['required'] ? (this.invite ? 'Enter a password' : 'Enter a new password') : 'Password must be at least 8 characters';
   }
@@ -89,7 +91,7 @@ export class ResetPasswordComponent implements OnInit {
     if (control.errors?.['required']) {
       return 'Enter the password again';
     }
-    return this.form.errors?.['mismatch'] ? 'The two passwords do not match' : '';
+    return this.form.errors?.['mismatch'] ? 'The two passwords do not match' : (!control.dirty && this.error?.fields?.confirm_password) || '';
   }
 
   submit(): void {
@@ -113,6 +115,11 @@ export class ResetPasswordComponent implements OnInit {
           // The shared interceptor also raises a toast; the reason is on the page already.
           this.messages.clear();
           this.error = resetFailure(err, this.invite ? 'Something went wrong on our side. Your password was not set.' : 'Something went wrong on our side. Your password was not changed.');
+          if (this.error.fields) {
+            // said under the field; typing there again takes the line away
+            this.form.markAsPristine();
+            (this.error.fields.password ? this.passwordInput : this.confirmInput)?.nativeElement.focus();
+          }
         },
       });
   }

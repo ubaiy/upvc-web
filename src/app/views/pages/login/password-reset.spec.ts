@@ -151,5 +151,67 @@ describe('Password reset pages', () => {
       expect(alert.textContent).toContain(refusal);
       expect(alert.querySelector('a')!.getAttribute('href')).toBe('/auth/forgot-password');
     });
+
+    // T146: the api answers a refusal with 422 and a code (phase-56 G4); it arrives through the error path.
+    const refused = (body: object) => reset.setPassword.and.returnValue(throwError(() => new HttpErrorResponse({ status: 422, error: { success: false, status: 0, ...body } })));
+    const filled = () => {
+      const view = page(ResetPasswordComponent);
+      view.component.form.setValue({ password: 'New-Pass-2026!', confirm_password: 'New-Pass-2026!' });
+      view.submit();
+      return view;
+    };
+
+    it('422 reset_link_invalid: "This link is no longer valid. Ask for a new one." with the way to do that', () => {
+      refused({ code: 'reset_link_invalid', message: 'This reset link is not valid or has expired. Ask for a new one.' });
+      const { el } = filled();
+      const alert = el.querySelector('[role="alert"]')!;
+      expect(alert.textContent).toContain('This link is no longer valid. Ask for a new one.');
+      expect(alert.querySelector('a')!.textContent).toContain('Ask for a new link');
+      expect(alert.querySelector('a')!.getAttribute('href')).toBe('/auth/forgot-password');
+      expect(alert.querySelector('button')).withContext('trying the same link again cannot help').toBeNull();
+      expect(messages.clear).toHaveBeenCalled();
+    });
+
+    it('422 reset_link_invalid on an invitation: the owner makes the new link', () => {
+      query = { token: 'tok-123', email: 'ravi@example.com', invite: '1', company: 'Shree Windows' };
+      refused({ code: 'reset_link_invalid', message: 'This reset link is not valid or has expired. Ask for a new one.' });
+      const { el } = filled();
+      const alert = el.querySelector('[role="alert"]')!;
+      expect(alert.textContent).toContain('This link is no longer valid. Ask for a new one.');
+      expect(alert.textContent).toContain('The owner of the account makes one on the Team page.');
+      expect(alert.querySelector('a')).toBeNull();
+    });
+
+    it('422 validation_failed is said under its field, and the link is not called invalid', () => {
+      refused({ code: 'validation_failed', message: 'confirm_password field is required' });
+      let view = filled();
+      expect(view.el.querySelector('[role="alert"]')).toBeNull();
+      expect(view.el.querySelector('#resetConfirmError')!.textContent).toContain('Enter the password again');
+      expect(view.el.textContent).not.toContain('confirm_password');
+      expect(view.el.textContent).not.toContain('Ask for a new link');
+
+      refused({ code: 'validation_failed', message: 'The password must be at least 8 characters.' });
+      view = filled();
+      expect(view.el.querySelector('#resetPasswordHint')!.textContent).toContain('The password must be at least 8 characters.');
+      expect(view.el.querySelector('#resetConfirmError')).toBeNull();
+      // typing in the field again takes the line away
+      view.component.form.controls['password'].setValue('Another-Pass-1!');
+      view.component.form.controls['password'].markAsDirty();
+      view.fixture.detectChanges();
+      expect(view.el.querySelector('#resetPasswordHint')!.textContent).toContain('At least 8 characters.');
+
+      refused({ code: 'validation_failed', message: 'x', errors: { confirm_password: ['The two passwords are not the same.'] } });
+      view = filled();
+      expect(view.el.querySelector('#resetConfirmError')!.textContent).toContain('The two passwords are not the same.');
+    });
+
+    it('a fault on our side keeps "Try again" and offers no new link', () => {
+      reset.setPassword.and.returnValue(throwError(() => new HttpErrorResponse({ status: 500 })));
+      const { el } = filled();
+      const alert = el.querySelector('[role="alert"]')!;
+      expect(alert.textContent).toContain('Your password was not changed.');
+      expect(alert.querySelector('button')!.textContent).toContain('Try again');
+      expect(alert.querySelector('a')).toBeNull();
+    });
   });
 });
