@@ -29,6 +29,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subject, Subscription, firstValueFrom, of } from 'rxjs';
 import { catchError, debounceTime, switchMap } from 'rxjs/operators';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
+import { designPicture } from 'src/app/shared/design-canvas/canvas-export';
 import { CanvasSelection, CanvasTool } from 'src/app/shared/design-canvas/canvas-view';
 import { GlassTints } from 'src/app/shared/design-canvas/canvas-renderer';
 import { DesignCanvasComponent } from 'src/app/shared/design-canvas/design-canvas.component';
@@ -642,8 +643,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       this.templateMessage = 'Give the template a name first.';
       return;
     }
-    const stage = this.canvas?.getStage();
-    const thumb = stage ? stage.toDataURL({ pixelRatio: 0.25, mimeType: 'image/png' }) : '';
+    const thumb = this.picture(0.25) ?? '';
     try {
       const template = createTemplate(this.effective, name, {
         thumbnail: thumb ? { kind: 'dataUrl', value: thumb } : { kind: 'none' },
@@ -773,17 +773,22 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  /** PNG of the drawing with nothing selected, small enough for the api. */
-  private picture(): string | null {
-    const canvas = this.canvas;
-    const stage = canvas?.getStage();
-    if (!canvas || !stage) return null;
-    canvas.armTool(null);
-    canvas.setSelection(null);
-    canvas.fitToScreen();
-    let png = stage.toDataURL({ pixelRatio: 1, mimeType: 'image/png' });
-    if (png.length > 320_000) png = stage.toDataURL({ pixelRatio: 0.5, mimeType: 'image/png' });
-    return png;
+  /**
+   * PNG of the window for the quotation PDF and the lists. It is drawn off
+   * screen at a fixed size, without selection, handles, tools or zoom, so a
+   * window saved on a phone gets the same picture as one saved on a desktop.
+   * Halved when it would be too large for the api.
+   */
+  private picture(pixelRatio = 1): string | null {
+    const opts = { frameFaceMm: FRAME_FACE_MM, glassTints: this.glassTints };
+    try {
+      let png = designPicture(this.effective, { ...opts, pixelRatio });
+      if (png.length > 320_000) png = designPicture(this.effective, { ...opts, pixelRatio: pixelRatio / 2 });
+      return png;
+    } catch {
+      // A browser that cannot draw the picture still saves the window; the lists draw it from the design.
+      return null;
+    }
   }
 
   /** "Save and add another": the next window starts as a copy of this one. */

@@ -15,6 +15,8 @@ import { DesignTemplateStore } from '../../../design-lab/design-template-store.s
 import { QuotationService } from '../../quotation.service';
 import { DesignerCatalogService } from './designer-catalog.service';
 import { DesignerHostComponent } from './designer-host.component';
+import { PICTURE_HEIGHT_PX, PICTURE_WIDTH_PX, designPicture } from 'src/app/shared/design-canvas/canvas-export';
+import { pngSize } from 'src/app/shared/design-canvas/canvas-export.spec';
 import { demoCatalog } from './testing/demo-catalog';
 
 describe('DesignerHostComponent (the window designer screen)', () => {
@@ -119,6 +121,26 @@ describe('DesignerHostComponent (the window designer screen)', () => {
     expect(saves().length).toBe(1);
     expect(Number(saves()[0].height)).toBe(1500);
     expect(router.navigate).toHaveBeenCalledWith(['/quotation/detail', '36']);
+  }));
+
+  it('saves the same picture from a phone as from a desktop: drawn off screen at a fixed size, with no edit marks (N1)', fakeAsync(() => {
+    open();
+    // A phone: a narrow drawing area, zoomed in, with the frame selected and the Split tool armed.
+    (el().querySelector('app-design-canvas') as HTMLElement).style.width = '340px';
+    component.canvas!.zoomIn();
+    component.canvas!.setSelection({ type: 'frame' });
+    component.canvas!.armTool('split-x');
+    fixture.detectChanges();
+    const onScreen = spyOn(component.canvas!.getStage()!, 'toDataURL').and.callThrough();
+
+    saveButton().click();
+    tick(400);
+    flushMicrotasks();
+
+    const image: string = saves()[0].image;
+    expect(onScreen).withContext('the canvas on the screen is not what gets saved').not.toHaveBeenCalled();
+    expect(pngSize(image)).toEqual({ width: PICTURE_WIDTH_PX, height: PICTURE_HEIGHT_PX });
+    expect(image).toBe(designPicture(component.effective, { frameFaceMm: 60, glassTints: component.glassTints }));
   }));
 
   it('works out the price while a size is typed, after a short pause', fakeAsync(() => {

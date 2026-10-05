@@ -5,6 +5,7 @@
 
 export * from './canvas-view';
 export * from './canvas-renderer';
+export * from './canvas-export';
 export * from './canvas-host';
 export * from './design-edit-ops';
 export * from './design-canvas.component';
