@@ -135,6 +135,10 @@
         <div>
           <h2>{{ doc.title }}</h2>
           <p class="muted small">{{ doc.text }}</p>
+          <!-- The api draws the 3D structure on the production sheets only (card T143): said here, so nobody orders from a list that leaves it out. -->
+          <p class="muted small" *ngIf="structures.length && doc.type !== 'sheet'" data-q="doc-no-structure">
+            Windows only. The 3D {{ structures.length === 1 ? 'structure is' : 'structures are' }} not on this document: see the production sheets.
+          </p>
         </div>
       </div>
       <div class="doc-actions">

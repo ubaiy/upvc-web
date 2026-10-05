@@ -75,6 +75,23 @@ describe('ProductionComponent', () => {
     }
   });
 
+  it('a job with a 3D structure: the three lists say they are windows only, the sheets do not (T143)', () => {
+    create(job({ structures: [{ line_id: 161, code: 'S2', name: 'Balcony cabin', type: 'cabin', quantity: 1, overall: { widthMm: 3600, depthMm: 2400, heightMm: 2700 } }] } as any));
+    const notes = Array.from(el().querySelectorAll('.doc')).map((doc) => [doc.querySelector('h2')!.textContent!.trim(), !!doc.querySelector('[data-q="doc-no-structure"]')]);
+    expect(notes).toEqual([
+      ['Cutting list', true],
+      ['Glass order', true],
+      ['Hardware order', true],
+      ['Production sheets', false],
+    ]);
+    expect(el().querySelector('[data-q="doc-no-structure"]')!.textContent).toContain('Windows only. The 3D structure is not on this document: see the production sheets.');
+  });
+
+  it('a job of windows only says nothing of structures on its documents (T143)', () => {
+    create(job());
+    expect(el().querySelector('[data-q="doc-no-structure"]')).toBeNull();
+  });
+
   it('has exactly one primary button: Download production pack', () => {
     create(job());
     const primary = el().querySelectorAll('.btn-primary');
