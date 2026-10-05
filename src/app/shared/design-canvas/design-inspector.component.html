@@ -121,9 +121,15 @@
       <label class="di-row">
         <span>Type</span>
         <select data-di="pane-kind" [ngModel]="paneKind" (ngModelChange)="onPaneKind($event)">
-          <option *ngFor="let k of paneKinds" [value]="k.kind">{{ k.label }}</option>
+          <option *ngFor="let k of paneKinds" [value]="k.kind" [disabled]="!kindOffered(k.kind)">
+            {{ k.label }}{{ kindOffered(k.kind) ? '' : ' (rectangular panes only)' }}
+          </option>
         </select>
       </label>
+      <p class="di-note" *ngIf="shapedPane" data-di="shaped-note">
+        This pane follows the frame shape. It opens as a shaped sash: straight where it meets a mullion or transom,
+        bent to the curve where it meets the frame. {{ slidingHint }}
+      </p>
 
       <label class="di-row" *ngIf="glassOptions.length">
         <span data-di="pane-glass-label">{{ paneGlass.mixed ? 'Glass: mixed' : 'Glass' }}</span>
@@ -146,12 +152,24 @@
         <span>Opens</span>
         <select
           data-di="direction"
-          [ngModel]="l.opening?.direction || 'Left'"
+          [ngModel]="openingKind"
           (ngModelChange)="onDirection($event)"
         >
-          <option *ngFor="let d of directions" [value]="d">{{ d }}</option>
+          <option
+            *ngFor="let c of openingChoices; trackBy: trackChoice"
+            [value]="c.kind"
+            [disabled]="!c.allowed"
+            [attr.title]="c.hint || null"
+          >
+            {{ c.label }}{{ c.allowed ? '' : ' (not for this outline)' }}
+          </option>
         </select>
       </label>
+      <ng-container *ngIf="paneKind === 'openable' && shapedPane">
+        <ng-container *ngFor="let c of openingChoices; trackBy: trackChoice">
+          <p class="di-note" *ngIf="!c.allowed" data-di="opening-hint">{{ c.label }}: {{ c.hint }}</p>
+        </ng-container>
+      </ng-container>
 
       <ng-container *ngIf="paneKind === 'openable'">
         <label class="di-row" *ngIf="handleOptions.length">

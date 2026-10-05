@@ -25,9 +25,10 @@ import {
   WindowDesign,
   clipPanesToShape,
   clipPolygonToRect,
+  describeOutline,
+  effectiveOpeningKind,
   findNode,
   isSplit,
-  leafOpens,
   shapeOutline,
   walkLeaves,
 } from '../design-model';
@@ -58,6 +59,7 @@ import {
   drawShapedPaneEdges,
   drawShapedPaneLabel,
 } from './render/render-shaped';
+import { drawShapedSash } from './render/render-shaped-sash';
 import {
   RenderGhost,
   RenderReadout,
@@ -177,24 +179,38 @@ export function renderDesign(
   const showLabels = isSplit(design.root);
   /** Labels of cut panes go on last, over the bars. */
   const shapedLabels: Array<() => void> = [];
+  /** A door leaf whose foot is not a straight sill (a round frame): the frame is its threshold. */
+  let doorOnCurve = false;
   for (const l of lay.leaves) {
     const r = ctx.rect(l.rect);
     const clip = clips?.get(l.leaf.id);
     if (clips && (!clip || clip.polygonMm.length < 3 || clip.areaMm2 < 1)) continue;
     if (clip?.clipped) {
-      // A pane the shape cuts is fixed glass with its edge and bead along
-      // the cut. Nothing of it is drawn as a rectangle, so nothing can
-      // stand outside the frame or be cut in half by it.
-      const parent = clipGroup(ctx, clip.polygonMm, 'pane-clip');
-      layer.add(parent);
-      drawLeaf(parent, asShapedGlass(l.leaf), r, ctx);
-      // The bead of a rectangle is replaced by one along the cut edge.
-      parent.find('.bead-line').forEach((n) => n.destroy());
-      drawShapedPaneEdges(layer, l.leaf, clip.polygonMm, ctx);
+      // A pane the shape cuts is drawn to its real outline, never as a
+      // rectangle, so nothing can stand outside the frame or be cut in
+      // half by it: an opening pane as a shaped sash, a fixed one as glass
+      // with its edge and bead along the cut.
+      const isDoor = doorLeafIds.has(l.leaf.id);
+      const outlineOf = describeOutline(l.leaf.id, clip.polygonMm, l.rect, lay.daylight, shape, true);
+      if (isDoor && !fullWidth(outlineOf.sides.bottom?.lengthMm, l.rect.wMm)) doorOnCurve = true;
+      const opens = l.leaf.category === 'Casement' && l.leaf.casementType === 'Openable';
+      const kind = opens ? effectiveOpeningKind(l.leaf, outlineOf) : null;
+      let glassMm = kind ? drawShapedSash(layer, l.leaf, outlineOf, kind, ctx, isDoor) : null;
+      if (!glassMm) {
+        const parent = clipGroup(ctx, clip.polygonMm, 'pane-clip');
+        layer.add(parent);
+        drawLeaf(parent, asShapedGlass(l.leaf), r, ctx);
+        // The bead of a rectangle is replaced by one along the cut edge.
+        parent.find('.bead-line').forEach((n) => n.destroy());
+        drawShapedPaneEdges(layer, l.leaf, clip.polygonMm, ctx);
+        glassMm = clip.polygonMm;
+      }
+      const labelOn = glassMm;
       shapedLabels.push(() =>
         drawShapedPaneLabel(layer, l.leaf, clip.polygonMm, ctx, {
           size: showLabels,
-          blocked: leafOpens(l.leaf),
+          blocked: l.leaf.category === 'Slidding',
+          glassMm: labelOn,
         })
       );
       continue;
@@ -238,9 +254,9 @@ export function renderDesign(
     // frame's outer line.
     const sill: Parent = outline ? clipGroup(ctx, outline, 'outline-clip') : layer;
     if (sill !== layer) layer.add(sill);
-    // A door the shape cuts is drawn as glass (render-shaped): no sill of its own.
-    const doorCut = [...doorLeafIds].some((id) => clips?.get(id)?.clipped);
-    if (doorNode && !doorCut) drawDoorThreshold(sill, doorNode.rect, ctx);
+    // A leaf that stands on the curve of a round frame has no sill strip:
+    // the frame itself runs under it.
+    if (doorNode && !doorOnCurve) drawDoorThreshold(sill, doorNode.rect, ctx);
   }
   shapedLabels.forEach((draw) => draw());
 
@@ -257,6 +273,11 @@ export function renderDesign(
   if (ui.focused) drawFocusRing(layer, ctx);
 
   layer.batchDraw();
+}
+
+/** True when a straight run covers (nearly) the whole width of its pane. */
+function fullWidth(runMm: number | undefined, widthMm: number): boolean {
+  return runMm !== undefined && runMm >= widthMm * 0.98;
 }
 
 /** Ids of the leaf / leaves that ARE the door (empty for windows). */

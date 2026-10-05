@@ -11,15 +11,21 @@ import {
   FrameShape,
   FrameShapeKind,
   LeafNode,
+  NO_OPENING_FOR_OUTLINE,
   OpOptions,
-  SHAPED_OPENING_PROBLEM,
+  OpeningKind,
+  PaneOutline,
+  SLIDING_NEEDS_STRAIGHT_TRACK,
   WindowDesign,
   clipPanesToShape,
+  defaultOpeningKind,
   equalPanels,
   findNode,
   isLeaf,
   layout,
-  panesCutByShape,
+  openingChoices,
+  openingSpecFor,
+  paneOutlines,
   resizeFrame,
   setFrameShape,
   setLeafSpec,
@@ -138,7 +144,24 @@ export function paneKindOf(leaf: LeafNode): PaneKind {
   return leaf.casementType === 'Openable' ? 'openable' : 'fixed';
 }
 
-/** Switch a pane between fixed glass, an openable casement and a slider. */
+/** The real outline of a pane (null when the shape leaves it no glass). */
+export function outlineOfPane(
+  design: WindowDesign,
+  paneId: string,
+  opts?: OpOptions
+): PaneOutline | null {
+  try {
+    return paneOutlines(design, opts).get(paneId) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Switch a pane between fixed glass, an openable casement and a slider. A
+ * pane the frame shape cuts opens as a shaped sash, hung the way its outline
+ * allows (design-model shaped-opening.ts); it cannot slide.
+ */
 export function setPaneKind(
   design: WindowDesign,
   paneId: string,
@@ -147,9 +170,9 @@ export function setPaneKind(
 ): WindowDesign {
   const leaf = leafOf(design, paneId);
   if (paneKindOf(leaf) === kind) return design;
-  if (kind !== 'fixed' && panesCutByShape(design, opts).has(paneId)) {
-    throw new DesignError(SHAPED_OPENING_PROBLEM);
-  }
+  const outline = outlineOfPane(design, paneId, opts);
+  const cut = !!outline?.cut;
+  if (kind === 'sliding' && cut) throw new DesignError(SLIDING_NEEDS_STRAIGHT_TRACK);
   if (design.door && kind !== 'openable') {
     const doorNode = findNode(design.root, design.door.doorNodeId);
     const inDoor = doorNode && findNode(doorNode, paneId);
@@ -162,16 +185,25 @@ export function setPaneKind(
         mesh: false,
         panels: equalPanels(2, leafWidthMm(design, paneId, opts), 0, '2 Track'),
       });
-    case 'openable':
+    case 'openable': {
+      let how: { direction: string; pivot?: 'horizontal' | 'vertical' } = {
+        direction: leaf.opening?.direction ?? 'Left',
+      };
+      if (outline && cut) {
+        const first = defaultOpeningKind(outline);
+        if (!first) throw new DesignError(NO_OPENING_FOR_OUTLINE);
+        how = openingSpecFor(first, leaf);
+      }
       return setLeafSpec(design, paneId, {
         category: 'Casement',
         casementType: 'Openable',
         opening: {
-          direction: leaf.opening?.direction ?? 'Left',
+          ...how,
           handleId: leaf.opening?.handleId ?? null,
           hingesType: leaf.opening?.hingesType ?? null,
         },
       });
+    }
     default:
       return setLeafSpec(design, paneId, {
         category: 'Casement',
@@ -180,16 +212,26 @@ export function setPaneKind(
   }
 }
 
-/** Opening direction of an openable casement (hardware ids are kept). */
+/**
+ * How an openable casement opens (hardware ids are kept): a hinge side, tilt
+ * and turn, or a centre pivot. A way the pane's outline cannot carry is
+ * refused with what that way of opening needs.
+ */
 export function setOpeningDirection(
   design: WindowDesign,
   paneId: string,
-  direction: string
+  direction: string,
+  opts?: OpOptions
 ): WindowDesign {
   const leaf = leafOf(design, paneId);
+  const outline = outlineOfPane(design, paneId, opts);
+  const choice = outline?.cut ? openingChoices(outline).find((c) => c.kind === direction) : null;
+  if (outline?.cut && !choice) throw new DesignError(`'${direction}' is not a way a shaped pane opens`);
+  if (choice && !choice.allowed) throw new DesignError(choice.hint);
+  const how = choice ? openingSpecFor(direction as OpeningKind, leaf) : { direction };
   return setLeafSpec(design, paneId, {
     opening: {
-      direction,
+      ...how,
       handleId: leaf.opening?.handleId ?? null,
       hingesType: leaf.opening?.hingesType ?? null,
     },

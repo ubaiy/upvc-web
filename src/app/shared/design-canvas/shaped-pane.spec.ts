@@ -1,23 +1,22 @@
-// Shaped frames (card T130): a pane the frame shape cuts is fixed glass
-// that follows the cut; bars end on the frame's inner line; nothing is
-// drawn outside the frame; a sash is refused there.
+// Shaped frames (cards T130, T131): a pane the frame shape cuts follows the
+// cut: fixed glass, or an opening sash made to that outline; bars end on the
+// frame's inner line; nothing is drawn outside the frame.
 import 'zone.js/testing';
 
 import Konva from 'konva';
 import {
   LeafNode,
   PaneNode,
-  SHAPED_OPENING_PROBLEM,
+  SLIDING_NEEDS_STRAIGHT_TRACK,
   SplitNode,
   WindowDesign,
   layout,
   panesCutByShape,
-  shapedOpeningPanes,
 } from '../design-model';
 import { singleFixed } from '../design-model/testing/fixtures';
 import { renderDesign } from './canvas-renderer';
 import { ViewTransform, computeView, mmFromPx } from './canvas-view';
-import { setPaneKind } from './design-edit-ops';
+import { setOpeningDirection, setPaneKind } from './design-edit-ops';
 
 const FACE = 60;
 
@@ -81,7 +80,7 @@ function archWithSash(): WindowDesign {
   };
 }
 
-describe('design-canvas — shaped frames (T130)', () => {
+describe('design-canvas — shaped frames (T130, T131)', () => {
   let stage: Konva.Stage;
   let layer: Konva.Layer;
   let view: ViewTransform;
@@ -117,38 +116,85 @@ describe('design-canvas — shaped frames (T130)', () => {
 
   afterEach(() => stage?.destroy());
 
-  it('the rule: only panes the shape cuts are refused a sash', () => {
+  it('the round door of the owner: a sash made to the outline, hung on the mullion, all inside the frame', () => {
+    draw(roundDoor());
+    const inner = 750 - FACE;
+    const edges = find<Konva.Line>('sash-outline-edge');
+    expect(edges.length).toBe(1);
+    expect(edges[0].getAttr('shaped')).toBeTrue();
+    expect(edges[0].getAttr('opening')).toBe('Left');
+    expect(find('sash-gap').length).toBe(1);
+    // The sash, its joints, the opening triangle and the swing never pass the frame's inner line.
+    for (const name of ['sash-outline-edge', 'sash-joint', 'opening-symbol', 'door-swing']) {
+      expect(find(name).length).withContext(name).toBeGreaterThan(0);
+    }
+    for (const name of ['sash-outline-edge', 'sash-joint', 'opening-symbol']) {
+      expect(Math.max(...radii(name))).withContext(name).toBeLessThanOrEqual(inner + 0.5);
+    }
+    // Two joints: where the straight stile meets the bent profile, top and bottom.
+    expect(find('sash-joint').length).toBe(2);
+    // Three hinges, all on the straight side (the mullion), none on the curve.
+    const pane = layout(roundDoor(), { frameFaceMm: FACE }).leaves.find((l) => l.leaf.id === 'p6')!.rect;
+    const hinges = find<Konva.Rect>('hinge-mark');
+    expect(hinges.length).toBe(3);
+    for (const h of hinges) {
+      const c = mmFromPx(view, h.x() + h.width() / 2, h.y() + h.height() / 2);
+      expect(Math.abs(c.xMm - pane.xMm)).toBeLessThan(8);
+      expect(Math.hypot(c.xMm - 750, c.yMm - 750)).toBeLessThan(inner - 20);
+    }
+    // The lever is on the sash profile, inside the frame: not floating, not cut.
+    const handle = find<Konva.Rect>('handle-glyph');
+    expect(handle.length).toBe(1);
+    const at = mmFromPx(view, handle[0].x(), handle[0].y());
+    const r = Math.hypot(at.xMm - 750, at.yMm - 750);
+    expect(r).toBeLessThan(inner - 10);
+    expect(r).toBeGreaterThan(inner - 100);
+    // The leaf stands on the curve of the frame: no sill strip of its own.
+    expect(find('door-threshold').length).toBe(0);
+    expect(find('shape-warning').length).toBe(0);
+    expect(find('glass-pane').length).toBe(4);
+  });
+
+  it('a full round pivots on its centre; a tilting one has bearings and stays, never a hinge on the curve', () => {
+    const base = singleFixed();
+    const roundFrame = { ...base.frame, shape: { kind: 'circle' as const }, widthMm: 1200, heightMm: 1200 };
+    let d = setPaneKind({ ...base, frame: roundFrame, root: leaf('p1') }, 'p1', 'openable', { frameFaceMm: FACE });
+    expect((d.root as LeafNode).opening?.pivot).toBe('horizontal');
+    draw(d);
+    expect(find('pivot-mark').length).toBe(2);
+    expect(find('pivot-axis').length).toBe(1);
+    expect(find('hinge-mark').length).toBe(0);
+    expect(find('handle-glyph').length).toBe(1);
+    expect(find('opening-symbol').length).toBe(4);
+    stage.destroy();
+    d = setOpeningDirection(d, 'p1', 'Bottom', { frameFaceMm: FACE });
+    expect((d.root as LeafNode).opening?.pivot).toBeUndefined();
+    draw(d);
+    expect(find('tilt-bearing').length).toBe(2);
+    expect(find('tilt-stay').length).toBe(2);
+    expect(find('hinge-mark').length).toBe(0);
+    expect(find('pivot-mark').length).toBe(0);
+    // Side-hung has no straight side to hang on: said as what it needs.
+    expect(() => setOpeningDirection(d, 'p1', 'Left', { frameFaceMm: FACE })).toThrowError(/straight upright side/);
+  });
+
+  it('the rule: a cut pane opens the way its outline allows; it cannot slide', () => {
     const round = roundDoor();
     expect([...panesCutByShape(round, { frameFaceMm: FACE })].sort()).toEqual(['p3', 'p4', 'p5', 'p6']);
-    expect(shapedOpeningPanes(round, { frameFaceMm: FACE })).toEqual(['p6']);
     const arch = archWithSash();
-    // Under the spring line the opening is a rectangle: the sash stays.
     expect([...panesCutByShape(arch, { frameFaceMm: FACE })]).toEqual(['p2']);
-    expect(shapedOpeningPanes(arch, { frameFaceMm: FACE })).toEqual([]);
-    expect(shapedOpeningPanes(singleFixed())).toEqual([]);
-  });
-
-  it('openable and sliding are refused, in plain words, for a cut pane', () => {
-    const arch = archWithSash();
-    expect(() => setPaneKind(arch, 'p2', 'openable', { frameFaceMm: FACE })).toThrowError(SHAPED_OPENING_PROBLEM);
-    expect(() => setPaneKind(arch, 'p2', 'sliding', { frameFaceMm: FACE })).toThrowError(SHAPED_OPENING_PROBLEM);
-    expect(() => setPaneKind(arch, 'p5', 'openable', { frameFaceMm: FACE })).not.toThrow();
-    expect(SHAPED_OPENING_PROBLEM).toContain('mullion');
-  });
-
-  it('a saved round door opens: glass with a warning, no sash, nothing outside the frame', () => {
-    draw(roundDoor());
-    for (const name of [
-      'sash-outline-edge', 'sash-gap', 'handle-glyph', 'door-lever', 'hinge-mark',
-      'opening-symbol', 'door-swing', 'door-swing-label', 'door-threshold',
-    ]) {
-      expect(find(name).length).withContext(name).toBe(0);
-    }
-    const warning = find<Konva.Text>('shape-warning');
-    expect(warning.length).toBe(1);
-    expect(warning[0].getAttr('paneId')).toBe('p6');
-    expect(warning[0].text()).toContain('Cannot open');
-    expect(find('glass-pane').length).toBe(4);
+    // The half-round light over the transom: bottom-hung on its chord.
+    const opened = setPaneKind(arch, 'p2', 'openable', { frameFaceMm: FACE });
+    const top = (opened.root as SplitNode).children[0] as LeafNode;
+    expect(top.casementType).toBe('Openable');
+    expect(top.opening?.direction).toBe('Bottom');
+    expect(() => setPaneKind(arch, 'p2', 'sliding', { frameFaceMm: FACE })).toThrowError(SLIDING_NEEDS_STRAIGHT_TRACK);
+    expect(SLIDING_NEEDS_STRAIGHT_TRACK).toContain('straight, level track');
+    // A pane the shape does not cut is as before.
+    expect(() => setPaneKind(arch, 'p5', 'sliding', { frameFaceMm: FACE })).not.toThrow();
+    draw(opened);
+    expect(find<Konva.Line>('sash-outline-edge').filter((e) => e.getAttr('shaped')).length).toBe(1);
+    expect(find<Konva.Rect>('hinge-mark').filter((h) => h.getAttr('side') === 'bottom').length).toBe(2);
   });
 
   it('bars end on the inner frame line and the bead follows the curve', () => {

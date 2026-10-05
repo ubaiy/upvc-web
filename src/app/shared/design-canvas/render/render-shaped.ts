@@ -3,12 +3,11 @@
  * a pane whose glass is not a rectangle, and a mullion or transom that ends
  * on the curve.
  *
- * Such a pane is fixed glass: its edge and its glazing bead follow the
- * frame's inner line, its size is the overall (bounding) size of the cut
- * glass, and a sash is never drawn in it. A sash is a rectangle of four
- * straight members, so a saved design that has one there is drawn as the
- * glass it can be, with a warning on it (design-model shape.ts holds the
- * rule the designer enforces).
+ * A fixed pane is glass whose edge and glazing bead follow the frame's
+ * inner line; its size is the overall (bounding) size of the cut glass. An
+ * opening pane is a shaped sash (render-shaped-sash.ts). Sliding needs a
+ * straight track, so a saved design that has a slider in a cut pane is drawn
+ * as the glass it can be, with a note on it.
  */
 
 import Konva from 'konva';
@@ -21,7 +20,7 @@ const BEAD_MM = 18;
 const WARN_INK = '#9a3412';
 const WARN_FILL = '#ffedd5';
 
-/** The leaf as it is drawn in a cut pane: plain fixed glass, no sash band. */
+/** A cut pane drawn as plain fixed glass, no sash band. */
 export function asShapedGlass(leaf: LeafNode): LeafNode {
   const glass: LeafNode = { ...leaf, category: 'Casement', casementType: 'Fixed' };
   delete glass.slide;
@@ -228,21 +227,23 @@ function placeTag(
 
 /**
  * Size of a cut pane: the overall (bounding) width × height of its glass,
- * said to be overall, placed on the glass. With `blocked`, the warning that
- * the pane was saved as a sash and cannot be one.
+ * said to be overall, placed on the glass. With `blocked`, the note that
+ * the pane was saved as a slider and cannot be one (no straight track).
  */
 export function drawShapedPaneLabel(
   parent: Parent,
   leaf: LeafNode,
   polygonMm: PointMm[],
   ctx: RenderCtx,
-  o: { size: boolean; blocked: boolean }
+  o: { size: boolean; blocked: boolean; glassMm?: PointMm[] }
 ): void {
   if (ctx.detail === 'tiny') return;
-  const pts = flatPx(ctx, polygonMm);
-  const box = boxOf(pts);
+  // The size is the pane's (the opening a sash is made to); the tag is
+  // placed on the glass, which is smaller when the pane holds a sash.
+  const box = boxOf(flatPx(ctx, polygonMm));
   const wMm = Math.round(box.w / ctx.view.pxPerMm);
   const hMm = Math.round(box.h / ctx.view.pxPerMm);
+  const pts = flatPx(ctx, o.glassMm ?? polygonMm);
   const compact = ctx.detail === 'compact';
   const c = centroidOf(pts);
   let y = c.y - (o.blocked ? 14 : 7);
@@ -270,7 +271,7 @@ export function drawShapedPaneLabel(
     pts,
     c.x,
     y,
-    ['Cannot open: not a rectangle', 'Cannot open:\nnot a rectangle', 'Cannot open', 'Cannot\nopen', '!'],
+    ['Sliding needs a straight track', 'Sliding needs a\nstraight track', 'Cannot slide', 'Cannot\nslide', '!'],
     {
       name: 'shape-warning',
       fontSize: compact ? 9 : 11,

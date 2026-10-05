@@ -27,6 +27,9 @@ import {
   Id,
   LeafNode,
   MESH_TRACKS,
+  OpeningChoice,
+  PaneOutline,
+  SLIDING_NEEDS_STRAIGHT_TRACK,
   ThresholdType,
   TrackType,
   TriangleShape,
@@ -36,9 +39,12 @@ import {
   allowedPanelCounts,
   checkInvariants,
   findNode,
+  effectiveOpeningKind,
   glassOfPanes,
-  SHAPED_OPENING_PROBLEM,
   hasOwnGlass,
+  layout,
+  openingChoices,
+  reachesFloor,
   isLeaf,
   makeDoor,
   setDoorSpec,
@@ -53,13 +59,13 @@ import {
   setSlidePanelWidthMm,
   setSlideTracks,
   setWindowGlass,
-  shapedOpeningPanes,
   walkLeaves,
 } from '../design-model';
 import { CanvasSelection, selectedPaneIds } from './canvas-view';
 import {
   PaneKind,
   leafWidthMm,
+  outlineOfPane,
   paneKindOf,
   setArchRise,
   setOpeningDirection,
@@ -123,14 +129,47 @@ export class DesignInspectorComponent {
     { kind: 'openable', label: 'Openable casement' },
     { kind: 'sliding', label: 'Sliding' },
   ];
-  readonly directions = [
-    'Left',
-    'Right',
-    'Top',
-    'Bottom',
-    'Tilt & Turn Left',
-    'Tilt & Turn Right',
-  ];
+  /** The selected pane's real outline (a rectangle unless the frame shape cuts it). */
+  get outline(): PaneOutline | null {
+    const leaf = this.leaf;
+    return leaf ? outlineOfPane(this.design, leaf.id, this.opts) : null;
+  }
+
+  /** True when the frame shape cuts the selected pane (it opens as a shaped sash). */
+  get shapedPane(): boolean {
+    return !!this.outline?.cut;
+  }
+
+  /** The ways the selected pane can open, by the rule for its outline (design-model). */
+  get openingChoices(): OpeningChoice[] {
+    const o = this.outline;
+    if (o) return openingChoices(o);
+    return ['Left', 'Right', 'Top', 'Bottom', 'Tilt & Turn Left', 'Tilt & Turn Right'].map(
+      (kind) => ({ kind, label: kind, allowed: true, hint: '' }) as OpeningChoice
+    );
+  }
+
+  /** The way the selected pane opens, as it is drawn. */
+  get openingKind(): string {
+    const leaf = this.leaf;
+    const o = this.outline;
+    if (!leaf) return 'Left';
+    if (o?.cut) return effectiveOpeningKind(leaf, o) ?? leaf.opening?.direction ?? 'Left';
+    return leaf.opening?.direction || 'Left';
+  }
+
+  /** Why sliding is not in the list for this pane ('' when it is). */
+  get slidingHint(): string {
+    return this.shapedPane ? SLIDING_NEEDS_STRAIGHT_TRACK : '';
+  }
+
+  kindOffered(kind: PaneKind): boolean {
+    return kind !== 'sliding' || !this.shapedPane || this.paneKind === 'sliding';
+  }
+
+  trackChoice(_: number, c: OpeningChoice): string {
+    return c.kind;
+  }
   /** The offered tracks, plus the pane's own if the catalogue no longer lists it. */
   get trackTypes(): TrackType[] {
     const own = this.leaf?.slide?.tracks;
@@ -216,13 +255,6 @@ export class DesignInspectorComponent {
         this.problem = problems[0];
         return;
       }
-      // A change of shape or size must not leave a sash in a pane the
-      // shape now cuts (one that was already there is only warned about).
-      const before = new Set(shapedOpeningPanes(this.design, this.opts));
-      if (shapedOpeningPanes(next, this.opts).some((id) => !before.has(id))) {
-        this.problem = SHAPED_OPENING_PROBLEM;
-        return;
-      }
       this.problem = '';
       if (next !== this.design) this.designChange.emit(next);
     } catch (err) {
@@ -290,7 +322,7 @@ export class DesignInspectorComponent {
 
   onDirection(direction: string): void {
     const id = this.leaf?.id;
-    if (id) this.run((d) => setOpeningDirection(d, id, direction));
+    if (id) this.run((d) => setOpeningDirection(d, id, direction, this.opts));
   }
 
   onHandle(raw: string): void {
@@ -361,6 +393,11 @@ export class DesignInspectorComponent {
     const id = this.leaf?.id;
     if (!id) {
       this.problem = 'Select the pane that becomes the door first.';
+      return;
+    }
+    const o = this.outline;
+    if (o?.cut && !reachesFloor(o, layout(this.design, this.opts).daylight)) {
+      this.problem = 'A door leaf stands on the floor: pick a pane that reaches the bottom of the frame.';
       return;
     }
     this.run((d) =>
