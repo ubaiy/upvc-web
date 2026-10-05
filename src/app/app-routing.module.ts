@@ -46,6 +46,8 @@ const routes: Routes = [
     redirectTo: 'dashboard',
     pathMatch: 'full',
   },
+  // Sign-up (card T140) is one of the signed-out pages; this is the short address given out on WhatsApp.
+  { path: 'signup', redirectTo: 'auth/signup', pathMatch: 'full' },
   {
     path: '',
     component: ShellComponent,
@@ -67,6 +69,12 @@ const routes: Routes = [
           import('./views/dashboard/dashboard.module').then(
             (m) => m.DashboardModule
           ),
+      },
+      // The first steps of a new company (card T140): where sign-up lands, and reachable later.
+      {
+        path: 'welcome',
+        title: 'Welcome',
+        loadComponent: () => import('./views/welcome/welcome.component').then((m) => m.WelcomeComponent),
       },
       // A page the role does not have: one plain line (card T117).
       { path: 'no-access', component: NoAccessComponent, title: 'Not for your role' },
@@ -204,7 +212,10 @@ const routes: Routes = [
     RouterModule.forRoot(routes, {
       scrollPositionRestoration: 'top',
       anchorScrolling: 'enabled',
-      initialNavigation: 'enabledBlocking',
+      // Not blocking: the app is drawn at once and shows the outline of the shell while the guards of the
+      // first address ask GET me / GET subscription (RouteLoadingService, card T138). 'enabledBlocking' held
+      // the whole app back until then: an empty page.
+      initialNavigation: 'enabledNonBlocking',
       // relativeLinkResolution: 'legacy'
     }),
   ],
