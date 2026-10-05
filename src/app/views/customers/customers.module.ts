@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -9,7 +10,7 @@ import { CustomersComponent } from './customers.component';
 import { DetailsComponent } from './details/details.component';
 
 @NgModule({
-  imports: [
+  imports: [...ACCESS_PARTS, 
     CommonModule,
     CustomersRoutingModule,
     SharedComponentsModule,

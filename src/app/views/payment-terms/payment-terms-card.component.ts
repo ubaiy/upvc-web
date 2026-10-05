@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 
@@ -24,7 +25,7 @@ export type PaymentTerm = IPaymentTypeDto & {
 @Component({
   selector: 'app-payment-terms-card',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, ConfirmDialogComponent],
+  imports: [WriteDirective, CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, ConfirmDialogComponent],
   templateUrl: './payment-terms-card.component.html',
   styleUrls: ['../profile/settings-tab.scss'],
   styles: [

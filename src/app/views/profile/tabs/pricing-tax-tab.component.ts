@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
@@ -17,7 +18,7 @@ export const SAMPLE_PRICE = 10000;
 @Component({
   selector: 'app-settings-pricing-tax',
   standalone: true,
-  imports: [
+  imports: [WriteDirective, 
     CommonModule,
     ReactiveFormsModule,
     RouterModule,

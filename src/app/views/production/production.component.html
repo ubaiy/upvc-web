@@ -49,7 +49,7 @@
     title="No production job yet"
     text="Freeze this quotation's windows to make the cutting list, glass order, hardware order and production sheets. The documents keep these sizes even if the quotation changes later."
   >
-    <button type="button" class="btn btn-primary btn-lg" [disabled]="freezing" (click)="freeze()">
+    <button type="button" class="btn btn-primary btn-lg" [disabled]="freezing" appWrite="production.write" (click)="freeze()">
       {{ freezing ? 'Preparing…' : 'Prepare production documents' }}
     </button>
   </app-empty-state>

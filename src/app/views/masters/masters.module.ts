@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
@@ -15,7 +16,7 @@ import { RateCellComponent } from './rate-cell.component';
 /** The Catalogue page (card U5): one page, four tabs, under `/masters`. */
 @NgModule({
   declarations: [CatalogueComponent],
-  imports: [
+  imports: [...ACCESS_PARTS, 
     CommonModule,
     MastersRoutingModule,
     SharedComponentsModule,

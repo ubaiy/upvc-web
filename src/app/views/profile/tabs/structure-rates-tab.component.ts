@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 
@@ -133,7 +134,7 @@ export function ratesFrom(groups: RateGroup[]): StructureRates {
 @Component({
   selector: 'app-settings-structure-rates',
   standalone: true,
-  imports: [CommonModule, FormsModule, SharedComponentsModule],
+  imports: [WriteDirective, CommonModule, FormsModule, SharedComponentsModule],
   templateUrl: './structure-rates-tab.component.html',
   styleUrls: ['../settings-tab.scss', './structure-rates-tab.component.scss'],
 })

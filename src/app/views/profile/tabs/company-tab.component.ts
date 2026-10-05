@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subscription, forkJoin } from 'rxjs';
 
@@ -24,7 +25,7 @@ import {
 @Component({
   selector: 'app-settings-company',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, ConfirmDialogComponent, AddressFieldsComponent],
+  imports: [WriteDirective, CommonModule, ReactiveFormsModule, SharedComponentsModule, ConfirmDialogComponent, AddressFieldsComponent],
   templateUrl: './company-tab.component.html',
   styleUrls: ['../settings-tab.scss', './company-tab.component.scss'],
 })

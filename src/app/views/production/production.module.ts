@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
@@ -9,6 +10,6 @@ import { ProductionComponent } from './production.component';
 /** Workshop documents of a quotation (roadmap card P5), at /production/:quotationId. */
 @NgModule({
   declarations: [ProductionComponent],
-  imports: [CommonModule, ProductionRoutingModule, SharedComponentsModule, ConfirmDialogComponent],
+  imports: [...ACCESS_PARTS, CommonModule, ProductionRoutingModule, SharedComponentsModule, ConfirmDialogComponent],
 })
 export class ProductionModule {}

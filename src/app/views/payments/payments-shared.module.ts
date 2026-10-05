@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -20,7 +21,7 @@ const COMPONENTS = [AccountPaymentsComponent, DocumentPreviewComponent, ReasonDi
  */
 @NgModule({
   declarations: COMPONENTS,
-  imports: [CommonModule, FormsModule, RouterModule, MenuModule, SharedComponentsModule],
+  imports: [...ACCESS_PARTS, CommonModule, FormsModule, RouterModule, MenuModule, SharedComponentsModule],
   exports: COMPONENTS,
 })
 export class PaymentsSharedModule {}

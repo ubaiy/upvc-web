@@ -12,7 +12,7 @@
   <button actions type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
   <button
     actions
-    type="submit"
+    appWrite="quotations.write" type="submit"
     form="customer-form"
     class="btn btn-primary"
     [disabled]="state !== 'ready' || saving"
@@ -166,7 +166,7 @@
             *ngIf="canMakeDefault(i)"
             [disabled]="defaultBusy !== null"
             [attr.aria-label]="'Make address ' + (i + 1) + ' the default'"
-            (click)="makeDefault(i)"
+            appWrite="quotations.write" (click)="makeDefault(i)"
           >
             {{ defaultBusy === i ? 'Saving…' : 'Make default' }}
           </button>
@@ -175,7 +175,7 @@
             class="btn btn-ghost btn-sm"
             *ngIf="i > 0"
             [attr.aria-label]="'Remove address ' + (i + 1)"
-            (click)="removeAddress(i)"
+            appWrite="quotations.write" (click)="removeAddress(i)"
           >
             <app-icon name="trash"></app-icon>Remove
           </button>
@@ -216,7 +216,7 @@
       </div>
 
       <div class="card-pad address-add">
-        <button type="button" class="btn btn-secondary btn-sm" (click)="addAddress()">
+        <button type="button" class="btn btn-secondary btn-sm" appWrite="quotations.write" (click)="addAddress()">
           <app-icon name="plus"></app-icon>Add another address
         </button>
       </div>

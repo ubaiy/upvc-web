@@ -1,6 +1,6 @@
 <app-page-header title="Customers">
   <!-- One primary button on the page: with no customers yet it moves into the empty state. -->
-  <a actions class="btn btn-primary" routerLink="/customers/add" *ngIf="state !== 'ready' || customers.length">
+  <a actions class="btn btn-primary" appWrite="quotations.write" routerLink="/customers/add" *ngIf="state !== 'ready' || customers.length">
     <app-icon name="plus"></app-icon>New customer
   </a>
 </app-page-header>
@@ -27,7 +27,7 @@
     title="No customers yet"
     text="Add a customer with a name and a phone number. You can also add one while writing a quotation."
   >
-    <a class="btn btn-primary" routerLink="/customers/add"><app-icon name="plus"></app-icon>New customer</a>
+    <a class="btn btn-primary" appWrite="quotations.write" routerLink="/customers/add"><app-icon name="plus"></app-icon>New customer</a>
   </app-empty-state>
 
   <ng-container *ngIf="state === 'ready' && customers.length">

@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
@@ -7,7 +8,7 @@ import { DashboardComponent } from './dashboard.component';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 
 @NgModule({
-  imports: [CommonModule, DashboardRoutingModule, SharedComponentsModule],
+  imports: [...ACCESS_PARTS, CommonModule, DashboardRoutingModule, SharedComponentsModule],
   declarations: [DashboardComponent],
 })
 export class DashboardModule {}

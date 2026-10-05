@@ -120,7 +120,7 @@
       </div>
       <div class="u-row apply-actions">
         <button type="button" class="btn btn-secondary" [disabled]="!!busy" (click)="reset()">Discard</button>
-        <button type="button" class="btn btn-primary" [disabled]="!canApply || !!busy" (click)="apply()">
+        <button type="button" class="btn btn-primary" [disabled]="!canApply || !!busy" appWrite="catalogue.write" (click)="apply()">
           {{ busy === 'apply' ? 'Saving…' : 'Apply ' + p.summary.ratesChanged + (p.summary.ratesChanged === 1 ? ' rate' : ' rates') }}
         </button>
       </div>

@@ -1,10 +1,10 @@
 <app-page-header title="Catalogue" subtitle="The materials and rates every quotation is priced from.">
   <ng-container ngProjectAs="[actions]">
-    <a class="btn btn-secondary" routerLink="/bulk-price-update">Price file</a>
-    <button type="button" class="btn btn-secondary" *ngIf="tab === 'profile'" [disabled]="status !== 'ready' || !profiles.length" (click)="ratesOpen = true">
+    <a class="btn btn-secondary" appWrite="catalogue.write" routerLink="/bulk-price-update">Price file</a>
+    <button type="button" class="btn btn-secondary" *ngIf="tab === 'profile'" appWrite="catalogue.write" [disabled]="status !== 'ready' || !profiles.length" (click)="ratesOpen = true">
       Update rates
     </button>
-    <button type="button" class="btn btn-primary" [disabled]="status !== 'ready'" (click)="add()">
+    <button type="button" class="btn btn-primary" [disabled]="status !== 'ready'" appWrite="catalogue.write" (click)="add()">
       <app-icon name="plus"></app-icon>Add {{ def.noun }}
     </button>
   </ng-container>
@@ -79,7 +79,7 @@
         [title]="'No ' + def.plural + ' yet'"
         [text]="tab === 'profile' ? 'Quotations are priced from your profiles. Add the first one to start.' : 'Add the first one to use it in a quotation.'"
       >
-        <button type="button" class="btn btn-secondary" (click)="add()"><app-icon name="plus"></app-icon>Add {{ def.noun }}</button>
+        <button type="button" class="btn btn-secondary" appWrite="catalogue.write" (click)="add()"><app-icon name="plus"></app-icon>Add {{ def.noun }}</button>
       </app-empty-state>
       <app-empty-state *ngIf="!rows.length && filtered" icon="search" [title]="'No ' + def.plural + ' match'" text="Try a shorter search, or clear the filter.">
         <button type="button" class="btn btn-secondary" (click)="clearFilters()">Clear search</button>
@@ -131,10 +131,10 @@
                 ></app-rate-cell>
               </td>
               <td class="row-actions">
-                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + p.profile_name" (click)="edit(p)">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + p.profile_name" appWrite="catalogue.write" (click)="edit(p)">
                   <app-icon name="pencil"></app-icon>
                 </button>
-                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + p.profile_name" (click)="askDelete(p)">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + p.profile_name" appWrite="catalogue.write" (click)="askDelete(p)">
                   <app-icon name="trash"></app-icon>
                 </button>
               </td>
@@ -161,10 +161,10 @@
               <td class="muted num">{{ c.color_code }}</td>
               <td class="row-actions">
                 <ng-container *ngIf="c.is_default !== 1; else locked">
-                  <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + c.color_name" (click)="edit(c)">
+                  <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + c.color_name" appWrite="catalogue.write" (click)="edit(c)">
                     <app-icon name="pencil"></app-icon>
                   </button>
-                  <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + c.color_name" (click)="askDelete(c)">
+                  <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + c.color_name" appWrite="catalogue.write" (click)="askDelete(c)">
                     <app-icon name="trash"></app-icon>
                   </button>
                 </ng-container>
@@ -200,10 +200,10 @@
                 ></app-rate-cell>
               </td>
               <td class="row-actions">
-                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + g.name" (click)="edit(g)">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + g.name" appWrite="catalogue.write" (click)="edit(g)">
                   <app-icon name="pencil"></app-icon>
                 </button>
-                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + g.name" (click)="askDelete(g)">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + g.name" appWrite="catalogue.write" (click)="askDelete(g)">
                   <app-icon name="trash"></app-icon>
                 </button>
               </td>
@@ -243,10 +243,10 @@
                 ></app-rate-cell>
               </td>
               <td class="row-actions">
-                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + h.name" (click)="edit(h)">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + h.name" appWrite="catalogue.write" (click)="edit(h)">
                   <app-icon name="pencil"></app-icon>
                 </button>
-                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + h.name" (click)="askDelete(h)">
+                <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + h.name" appWrite="catalogue.write" (click)="askDelete(h)">
                   <app-icon name="trash"></app-icon>
                 </button>
               </td>

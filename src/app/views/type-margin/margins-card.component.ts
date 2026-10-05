@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DialogModule } from 'primeng/dialog';
 
@@ -17,7 +18,7 @@ import { TypeMarginService } from './type-margin.service';
 @Component({
   selector: 'app-margins-card',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, ConfirmDialogComponent],
+  imports: [WriteDirective, CommonModule, ReactiveFormsModule, SharedComponentsModule, DialogModule, ConfirmDialogComponent],
   templateUrl: './margins-card.component.html',
   styleUrls: ['../profile/settings-tab.scss'],
 })

@@ -1,4 +1,5 @@
-import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild, inject } from '@angular/core';
+import { AccessService } from 'src/app/shared/access/access.service';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 import { Subscription } from 'rxjs';
@@ -60,6 +61,7 @@ export class AccountPaymentsComponent implements OnChanges, OnDestroy {
   actionError: { message: string; retry: () => void } | null = null;
   preview: { payment: Payment; html: string } | null = null;
   menuItems: MenuItem[] = [];
+  private readonly _access = inject(AccessService);
 
   readonly placeholders = [0, 1, 2];
   private openedOnce = false;
@@ -225,7 +227,7 @@ export class AccountPaymentsComponent implements OnChanges, OnDestroy {
         { label: 'Cancel this entry', styleClass: 'danger', command: () => (this.cancelling = { payment, busy: false, error: '' }) }
       );
     }
-    this.menuItems = items;
+    this.menuItems = this._access.menu(items, (item) => (item.label === 'Cancel this entry' ? 'payments.write' : null));
     this.rowMenu?.toggle(event);
   }
 

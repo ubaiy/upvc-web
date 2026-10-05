@@ -3,14 +3,14 @@
     <h2 id="pay-panel-title">{{ heading }}</h2>
     <div class="u-row head-actions" *ngIf="state === 'ready' && isJob">
       <span class="badge badge-success" *ngIf="account && account.status === 'paid' && !account.overpaid">Paid in full</span>
-      <button type="button" class="btn btn-secondary" *ngIf="canRefund" (click)="record('refund')">Refund</button>
+      <button type="button" class="btn btn-secondary" *ngIf="canRefund" appWrite="payments.write" (click)="record('refund')">Refund</button>
       <button
         type="button"
         class="btn"
         [class.btn-primary]="primaryAction"
         [class.btn-secondary]="!primaryAction"
         *ngIf="canRecord"
-        (click)="record('receipt')"
+        appWrite="payments.write" (click)="record('receipt')"
       >
         <app-icon name="plus"></app-icon>Record payment
       </button>
@@ -90,7 +90,7 @@
       title="No payment yet"
       text="Take the advance when the order is confirmed. Each payment gets a numbered receipt you can print or send on WhatsApp."
     >
-      <button type="button" class="btn btn-secondary" *ngIf="canRecord && !primaryAction" (click)="record('receipt')">
+      <button type="button" class="btn btn-secondary" *ngIf="canRecord && !primaryAction" appWrite="payments.write" (click)="record('receipt')">
         Record the first payment
       </button>
     </app-empty-state>

@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from './shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import {
   HashLocationStrategy,
@@ -59,6 +60,8 @@ const APP_CONTAINERS = [ShellComponent, CommandPaletteComponent];
 @NgModule({
   declarations: [AppComponent, ...APP_CONTAINERS, ProfileComponent, BulkPriceUploadComponent],
   imports: [
+    // Write buttons by ability and by plan (card T136): the bulk price upload is declared here.
+    ...ACCESS_PARTS,
     BrowserModule,
     BrowserAnimationsModule,
     AppRoutingModule,

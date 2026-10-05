@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -11,6 +12,6 @@ import { PaymentsSharedModule } from './payments-shared.module';
 
 @NgModule({
   declarations: [OutstandingComponent, BillPaymentsComponent, PaymentsRegisterComponent],
-  imports: [CommonModule, FormsModule, PaymentsRoutingModule, SharedComponentsModule, PaymentsSharedModule],
+  imports: [...ACCESS_PARTS, CommonModule, FormsModule, PaymentsRoutingModule, SharedComponentsModule, PaymentsSharedModule],
 })
 export class PaymentsModule {}

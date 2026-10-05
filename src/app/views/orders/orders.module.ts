@@ -1,3 +1,5 @@
+import { CanDirective } from 'src/app/shared/access/can.directive';
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -13,6 +15,6 @@ import { OrderPageComponent } from './page/order-page.component';
 
 @NgModule({
   declarations: [OrdersListComponent, OrderPageComponent, OrderCreateComponent],
-  imports: [CommonModule, FormsModule, MenuModule, OrdersRoutingModule, SharedComponentsModule, PaymentsSharedModule, ConfirmDialogComponent],
+  imports: [...ACCESS_PARTS, CanDirective, CommonModule, FormsModule, MenuModule, OrdersRoutingModule, SharedComponentsModule, PaymentsSharedModule, ConfirmDialogComponent],
 })
 export class OrdersModule {}

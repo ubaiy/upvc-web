@@ -1,6 +1,6 @@
 <app-page-header [title]="title" [subtitle]="dateLine">
   <!-- One primary button on the page: when there is no quotation yet it moves into the empty state. -->
-  <a actions class="btn btn-primary" routerLink="/quotation/add" *ngIf="!view?.empty">
+  <a actions class="btn btn-primary" appWrite="quotations.write" routerLink="/quotation/add" *ngIf="!view?.empty">
     <app-icon name="plus"></app-icon>New quotation
   </a>
 </app-page-header>
@@ -50,7 +50,7 @@
         title="No quotations yet"
         text="Draw your first window and send a priced quotation in a few minutes."
       >
-        <a class="btn btn-primary" routerLink="/quotation/add"><app-icon name="plus"></app-icon>New quotation</a>
+        <a class="btn btn-primary" appWrite="quotations.write" routerLink="/quotation/add"><app-icon name="plus"></app-icon>New quotation</a>
       </app-empty-state>
     </section>
 

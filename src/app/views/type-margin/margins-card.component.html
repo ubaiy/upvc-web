@@ -4,7 +4,7 @@
       <h2 id="h-margins">Margins</h2>
       <p>The mark-up added to cost. You pick one on each quotation.</p>
     </div>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="open()" *ngIf="state === 'ready' && margins.length">
+    <button type="button" class="btn btn-secondary btn-sm" appWrite="catalogue.write" (click)="open()" *ngIf="state === 'ready' && margins.length">
       <app-icon name="plus"></app-icon>Add margin
     </button>
   </div>
@@ -28,7 +28,7 @@
       title="No margins yet"
       text="Add one for each kind of customer, such as Retail 20% and Dealer 10%."
     >
-      <button type="button" class="btn btn-secondary" (click)="open()"><app-icon name="plus"></app-icon>Add margin</button>
+      <button type="button" class="btn btn-secondary" appWrite="catalogue.write" (click)="open()"><app-icon name="plus"></app-icon>Add margin</button>
     </app-empty-state>
 
     <table class="table" *ngIf="margins.length">
@@ -44,10 +44,10 @@
           <td class="title">{{ margin.name }}</td>
           <td class="right num">{{ margin.mark_up }}%</td>
           <td class="row-actions">
-            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + margin.name" (click)="open(margin)">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + margin.name" appWrite="catalogue.write" (click)="open(margin)">
               <app-icon name="pencil"></app-icon>
             </button>
-            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + margin.name" (click)="remove(margin)">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + margin.name" appWrite="catalogue.write" (click)="remove(margin)">
               <app-icon name="trash"></app-icon>
             </button>
           </td>
@@ -86,7 +86,7 @@
   </form>
   <ng-template pTemplate="footer">
     <button type="button" class="btn btn-secondary" (click)="dialogOpen = false">Cancel</button>
-    <button type="submit" form="margin-form" class="btn btn-primary" [disabled]="saving">
+    <button appWrite="catalogue.write" type="submit" form="margin-form" class="btn btn-primary" [disabled]="saving">
       {{ saving ? 'Saving…' : editing ? 'Save margin' : 'Add margin' }}
     </button>
   </ng-template>

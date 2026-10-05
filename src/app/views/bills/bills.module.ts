@@ -1,3 +1,4 @@
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -10,6 +11,6 @@ import { ListComponent } from './list/list.component';
 
 @NgModule({
   declarations: [ListComponent],
-  imports: [CommonModule, BillsRoutingModule, SharedComponentsModule, FormsModule, MenuModule, DialogModule, ButtonModule],
+  imports: [...ACCESS_PARTS, CommonModule, BillsRoutingModule, SharedComponentsModule, FormsModule, MenuModule, DialogModule, ButtonModule],
 })
 export class BillsModule {}

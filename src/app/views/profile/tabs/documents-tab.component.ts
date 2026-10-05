@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
@@ -32,7 +33,7 @@ export const MAX_SERIES_NUMBER = 9999999;
 @Component({
   selector: 'app-settings-documents',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule, SharedComponentsModule],
+  imports: [WriteDirective, CommonModule, ReactiveFormsModule, RouterModule, SharedComponentsModule],
   templateUrl: './documents-tab.component.html',
   styleUrls: ['../settings-tab.scss', './documents-tab.component.scss'],
 })

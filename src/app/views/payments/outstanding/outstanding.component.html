@@ -168,7 +168,7 @@
                 <td class="right num hide-tablet">{{ job.received | inr }}</td>
                 <td class="right num">{{ job.balance | inr }}</td>
                 <td class="row-actions">
-                  <button type="button" class="btn btn-secondary btn-sm" (click)="pay(customer, job)">
+                  <button type="button" class="btn btn-secondary btn-sm" appWrite="payments.write" (click)="pay(customer, job)">
                     Record payment
                   </button>
                 </td>

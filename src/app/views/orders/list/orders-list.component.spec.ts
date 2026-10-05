@@ -1,4 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { CanDirective } from 'src/app/shared/access/can.directive';
+import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -58,7 +60,7 @@ describe('OrdersListComponent', () => {
     undo = jasmine.createSpyObj('UndoService', ['offer']);
     TestBed.configureTestingModule({
       declarations: [OrdersListComponent],
-      imports: [RouterTestingModule, FormsModule, SharedComponentsModule, ConfirmDialogComponent],
+      imports: [RouterTestingModule, FormsModule, SharedComponentsModule, ConfirmDialogComponent, CanDirective, ...ACCESS_PARTS],
       providers: [
         { provide: OrdersService, useValue: service },
         { provide: UndoService, useValue: undo },

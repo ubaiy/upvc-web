@@ -28,7 +28,8 @@
     title="No orders yet"
     text="An order starts from a quotation the customer has accepted. Open the quotation and press Create order; the job then moves here from Confirmed to Closed, one tap a stage."
   >
-    <a class="btn btn-primary" routerLink="/quotation">Go to quotations</a>
+    <!-- A workshop user has no quotations page: the words above are enough. -->
+    <a class="btn btn-primary" *appCan="'quotations.view'" routerLink="/quotation">Go to quotations</a>
   </app-empty-state>
 </section>
 
@@ -178,7 +179,7 @@
             *ngIf="order.nextStage as next"
             [disabled]="moving !== null"
             [attr.aria-label]="next.action + ': ' + order.number"
-            (click)="advance(order)"
+            appWrite="production.write" (click)="advance(order)"
           >
             {{ moving === order.id ? 'Moving…' : next.action }}<app-icon name="arrow-right" [mirror]="true"></app-icon>
           </button>

@@ -4,7 +4,7 @@
       <h2 id="h-terms">Payment terms</h2>
       <p>Printed on the quotation. You pick one on each quotation.</p>
     </div>
-    <button type="button" class="btn btn-secondary btn-sm" (click)="open()" *ngIf="state === 'ready' && terms.length">
+    <button type="button" class="btn btn-secondary btn-sm" appWrite="catalogue.write" (click)="open()" *ngIf="state === 'ready' && terms.length">
       <app-icon name="plus"></app-icon>Add payment term
     </button>
   </div>
@@ -28,7 +28,7 @@
       title="No payment terms yet"
       text="Add the terms you offer, such as 50% advance and 50% before dispatch."
     >
-      <button type="button" class="btn btn-secondary" (click)="open()"><app-icon name="plus"></app-icon>Add payment term</button>
+      <button type="button" class="btn btn-secondary" appWrite="catalogue.write" (click)="open()"><app-icon name="plus"></app-icon>Add payment term</button>
     </app-empty-state>
 
     <table class="table" *ngIf="terms.length">
@@ -49,10 +49,10 @@
           </td>
           <td class="muted">{{ term.description }}</td>
           <td class="row-actions">
-            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + term.name" (click)="open(term)">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + term.name" appWrite="catalogue.write" (click)="open(term)">
               <app-icon name="pencil"></app-icon>
             </button>
-            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + term.name" (click)="remove(term)">
+            <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Delete ' + term.name" appWrite="catalogue.write" (click)="remove(term)">
               <app-icon name="trash"></app-icon>
             </button>
           </td>
@@ -103,7 +103,7 @@
   </form>
   <ng-template pTemplate="footer">
     <button type="button" class="btn btn-secondary" (click)="dialogOpen = false">Cancel</button>
-    <button type="submit" form="term-form" class="btn btn-primary" [disabled]="saving">
+    <button appWrite="catalogue.write" type="submit" form="term-form" class="btn btn-primary" [disabled]="saving">
       {{ saving ? 'Saving…' : editing ? 'Save payment term' : 'Add payment term' }}
     </button>
   </ng-template>

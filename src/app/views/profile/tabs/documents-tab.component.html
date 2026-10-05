@@ -164,7 +164,7 @@
     <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
 
     <div class="form-foot">
-      <button type="submit" class="btn btn-primary" [disabled]="saving || !stored">
+      <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving || !stored">
         {{ saving ? 'Saving…' : 'Save changes' }}
       </button>
       <span class="hint" *ngIf="stored && form.dirty && !saving">You have unsaved changes.</span>

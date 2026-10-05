@@ -1,4 +1,5 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
+import { AccessService } from 'src/app/shared/access/access.service';
 import { Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
@@ -24,6 +25,7 @@ export class ListComponent implements OnInit {
   search = '';
   page = 0;
   menuItems: MenuItem[] = [];
+  private readonly _access = inject(AccessService);
   /** The bill the "Cancel bill" dialog is asking about, with the reason typed. */
   cancelling: BillRow | null = null;
   cancelReason = '';
@@ -115,7 +117,10 @@ export class ListComponent implements OnInit {
     if (!bill.cancelled) {
       items.push({ separator: true }, { label: 'Cancel bill', styleClass: 'danger', command: () => this.cancel(bill) });
     }
-    this.menuItems = items;
+    // Entering a payment is payments.write, cancelling a bill is bills.write; the rest only reads.
+    this.menuItems = this._access.menu(items, (item) =>
+      item.label === 'Record payment' ? 'payments.write' : item.label === 'Cancel bill' ? 'bills.write' : null
+    );
     this.rowMenu?.toggle(event);
   }
 

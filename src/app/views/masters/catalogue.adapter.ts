@@ -1,11 +1,12 @@
 import { Injectable } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
 import { map } from 'rxjs/operators';
 
 import { API_END_POINT } from '../../shared/configs/api.config';
 import { quiet } from '../../shared/interceptors/request-options';
 import { ApiHttpService } from '../../shared/services/api-http.service';
+import { AccessService } from 'src/app/shared/access/access.service';
 import {
   ColourRow,
   GLASS_COSTHEAD,
@@ -23,7 +24,7 @@ import {
  */
 @Injectable({ providedIn: 'root' })
 export class CatalogueAdapter {
-  constructor(private api: ApiHttpService) {}
+  constructor(private api: ApiHttpService, private access: AccessService) {}
 
   profiles(): Observable<ProfileRow[]> {
     return this.read<ProfileRow[]>(API_END_POINT.product.productList).pipe(
@@ -44,6 +45,10 @@ export class CatalogueAdapter {
 
   /** null until the fabricator has set rates per kg. */
   factors(): Observable<PriceFactors | null> {
+    // The rates per kg are cost: a role without it (sales) is not asked a route it would be refused.
+    if (!this.access.can('prices.view_cost')) {
+      return of(null);
+    }
     return this.read<Partial<PriceFactors> | null>(API_END_POINT.bulkPriceUpdate.get).pipe(
       map((data) =>
         data && data.per_kg != null

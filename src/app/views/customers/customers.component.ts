@@ -1,4 +1,5 @@
-import { Component, OnInit, ViewChild } from '@angular/core';
+import { Component, OnInit, ViewChild, inject } from '@angular/core';
+import { AccessService } from 'src/app/shared/access/access.service';
 import { Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
@@ -23,6 +24,7 @@ export class CustomersComponent implements OnInit {
   search = '';
   page = 0;
   menuItems: MenuItem[] = [];
+  private readonly _access = inject(AccessService);
   readonly placeholders = [0, 1, 2, 3, 4, 5];
 
   constructor(
@@ -101,7 +103,7 @@ export class CustomersComponent implements OnInit {
   }
 
   openMenu(event: Event, customer: CustomerRow): void {
-    this.menuItems = [
+    const items: MenuItem[] = [
       { label: 'Edit', command: () => this._router.navigate(['/customers/edit', customer.id]) },
       // The next step of the job: the New quotation dialog opens with this customer chosen.
       {
@@ -111,6 +113,8 @@ export class CustomersComponent implements OnInit {
       { separator: true },
       { label: 'Delete', styleClass: 'danger', command: () => this.deleteCustomer(customer) },
     ];
+    // "Edit" opens the customer to read; a new quotation and a delete change something.
+    this.menuItems = this._access.menu(items, (item) => (item.label === 'Edit' ? null : 'quotations.write'));
     this.rowMenu?.toggle(event);
   }
 
