@@ -7,7 +7,8 @@ import { WorkspaceService } from 'src/app/containers/shell/workspace.service';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { imageProblem } from '../image-rules';
-import { SettingsAdapter, errorText } from '../settings.adapter';
+import { ConfirmDialogComponent } from '../../bills/confirm-dialog.component';
+import { SettingsAdapter, SettingsRefusal, errorText } from '../settings.adapter';
 import {
   CompanySettings,
   GSTIN_PATTERN,
@@ -21,7 +22,7 @@ import {
 @Component({
   selector: 'app-settings-company',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule],
+  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, ConfirmDialogComponent],
   templateUrl: './company-tab.component.html',
   styleUrls: ['../settings-tab.scss', './company-tab.component.scss'],
 })
@@ -37,8 +38,17 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
   logoUrl: string | null = null;
   logoFile: File | null = null;
   logoError = '';
+  /** The api's sentence for the GSTIN field, when it refuses one. */
+  gstinError = '';
+  /**
+   * The GSTIN typed belongs to another state than the company's: the state is
+   * changed only when the user says so. Holds both states while the question is open.
+   */
+  stateQuestion: { from: string; to: string; toCode: string; message: string } | null = null;
 
   private subs = new Subscription();
+  /** A state this form filled in from the GSTIN because none was chosen. */
+  private filledState = '';
 
   constructor(
     private fb: FormBuilder,
@@ -56,7 +66,12 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
       gstin: ['', [gstinValidator]],
       stateCode: [''],
     });
-    this.subs.add(this.form.controls['gstin'].valueChanges.subscribe(() => this.syncState()));
+    this.subs.add(
+      this.form.controls['gstin'].valueChanges.subscribe(() => {
+        this.gstinError = '';
+        this.syncState();
+      })
+    );
     this.subs.add(this.form.controls['registrationType'].valueChanges.subscribe(() => this.syncState()));
   }
 
@@ -72,9 +87,26 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
     return this.registrationTypes.find((t) => t.value === this.f['registrationType'].value)?.hint ?? '';
   }
 
-  /** The state is read from a well-formed GSTIN, so the two cannot disagree. */
+  /** The state shown is the one this form took from the GSTIN, because none was chosen before. */
   get stateFromGstin(): boolean {
-    return this.registered && !!stateCodeFromGstin(this.f['gstin'].value);
+    return this.registered && !!this.filledState && this.f['stateCode'].value === this.filledState;
+  }
+
+  /** A Regular GST registration cannot be saved without its GSTIN: the bill is a tax invoice. */
+  get gstinMissing(): boolean {
+    return this.f['registrationType'].value === 'regular' && !normaliseGstin(this.f['gstin'].value);
+  }
+
+  /** The state the GSTIN names when it is another one than the state chosen, else null. */
+  get otherState(): { code: string; name: string } | null {
+    const code = this.registered ? stateCodeFromGstin(this.f['gstin'].value) : null;
+    const chosen = this.f['stateCode'].value;
+    return code && chosen && code !== chosen ? { code, name: this.stateName(code) } : null;
+  }
+
+  stateName(code: string): string {
+    const state = this.states.find((s) => s.code === code);
+    return state ? `${state.name} (${state.code})` : code;
   }
 
   ngOnInit(): void {
@@ -120,10 +152,17 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
     this.form.markAsDirty();
   }
 
-  save(): void {
+  save(confirmStateChange = false): void {
     this.submitted = true;
     this.saveError = '';
-    if (this.form.invalid || this.saving) {
+    this.gstinError = '';
+    if (this.form.invalid || this.saving || this.gstinMissing) {
+      return;
+    }
+    const other = this.otherState;
+    if (other && !confirmStateChange) {
+      // Nothing is sent yet: the state changes only when the user says so.
+      this.askStateChange(this.stateName(this.f['stateCode'].value), other.name, other.code, '');
       return;
     }
     const value = this.form.getRawValue();
@@ -140,23 +179,60 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
       registrationType: value.registrationType,
     };
     this.saving = true;
-    this.adapter.saveCompany(company, this.logoFile).subscribe({
+    this.adapter.saveCompany(company, this.logoFile, confirmStateChange).subscribe({
       next: (snapshot) => {
         this.saving = false;
         this.submitted = false;
         this.logoFile = null;
+        this.stateQuestion = null;
         this.patch(snapshot.company);
         this.workspace.workspace$.next({ name: snapshot.company.name });
         this.toast.showSuccess('Company details saved');
       },
       error: (err) => {
         this.saving = false;
+        this.stateQuestion = null;
+        if (err instanceof SettingsRefusal) {
+          const data = err.data;
+          if (data?.needs_confirmation === 'state_change' && data.gstin_state?.code) {
+            // The api saw a change of state this form did not: ask, with its own sentence.
+            const label = (s: any) => (s?.name ? `${s.name} (${s.code})` : this.stateName(String(s?.code ?? '')));
+            this.askStateChange(label(data.current_state), label(data.gstin_state), String(data.gstin_state.code), err.message);
+            return;
+          }
+          this.gstinError = err.fieldError('gstin');
+          if (this.gstinError) {
+            return;
+          }
+        }
         this.saveError = errorText(err);
       },
     });
   }
 
+  /** "Change the state to Maharashtra" in the question. */
+  confirmStateChange(): void {
+    const question = this.stateQuestion;
+    if (!question || this.saving) {
+      return;
+    }
+    this.f['stateCode'].setValue(question.toCode, { emitEvent: false });
+    this.save(true);
+  }
+
+  private askStateChange(from: string, to: string, toCode: string, message: string): void {
+    this.stateQuestion = {
+      from,
+      to,
+      toCode,
+      message:
+        message ||
+        `The GSTIN belongs to ${to} and the company state is ${from}. Bills to a customer in ${to} would then carry CGST and SGST, and bills to ${from} would carry IGST.`,
+    };
+  }
+
   private patch(company: CompanySettings): void {
+    this.filledState = '';
     this.logoUrl = company.logoUrl;
     this.form.reset(
       {
@@ -177,11 +253,14 @@ export class CompanyTabComponent implements OnInit, OnDestroy {
   private syncState(): void {
     const state = this.f['stateCode'];
     const fromGstin = this.registered ? stateCodeFromGstin(this.f['gstin'].value) : null;
-    if (fromGstin) {
+    if (fromGstin && (!state.value || state.value === this.filledState)) {
+      // No state was chosen: the GSTIN's is filled in. A state already chosen is never changed here.
+      this.filledState = fromGstin;
       state.setValue(fromGstin, { emitEvent: false });
-      state.disable({ emitEvent: false });
-    } else {
-      state.enable({ emitEvent: false });
+    } else if (!fromGstin && this.filledState && state.value === this.filledState) {
+      // The GSTIN it came from was cleared: the state goes with it.
+      this.filledState = '';
+      state.setValue('', { emitEvent: false });
     }
     // The tax rule compares this state with the customer's; a registered seller must have one.
     state.setValidators(this.registered ? [Validators.required] : []);

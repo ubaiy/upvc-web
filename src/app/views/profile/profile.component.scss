@@ -1,3 +1,16 @@
 :host {
   display: block;
 }
+
+// Five tabs do not fit a phone: the strip scrolls, and a shadow on the cut edge says so.
+.tabs {
+  background:
+    linear-gradient(to right, var(--c-bg), var(--c-bg)) left / 24px 100% no-repeat local,
+    linear-gradient(to left, var(--c-bg), var(--c-bg)) right / 24px 100% no-repeat local,
+    linear-gradient(to right, rgba(20, 24, 28, 0.18), transparent) left / 14px 100% no-repeat scroll,
+    linear-gradient(to left, rgba(20, 24, 28, 0.18), transparent) right / 14px 100% no-repeat scroll;
+}
+
+@media (max-width: 640px) {
+  .tabs { gap: var(--s-4); }
+}

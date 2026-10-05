@@ -71,8 +71,16 @@
           <label class="label" for="co-gstin">GSTIN</label>
           <input class="input gstin" id="co-gstin" type="text" formControlName="gstin" maxlength="15"
             autocomplete="off" spellcheck="false" placeholder="24ABCDE1234F1Z5"
-            [class.is-invalid]="invalid('gstin')" [attr.aria-invalid]="invalid('gstin')" aria-describedby="co-gstin-err" />
-          <span class="error" id="co-gstin-err" *ngIf="invalid('gstin')">A GSTIN has 15 characters, like 24ABCDE1234F1Z5.</span>
+            [class.is-invalid]="invalid('gstin') || (submitted && gstinMissing) || !!gstinError"
+            [attr.aria-invalid]="invalid('gstin') || (submitted && gstinMissing) || !!gstinError" aria-describedby="co-gstin-err" />
+          <span id="co-gstin-err">
+            <span class="error" *ngIf="invalid('gstin')">A GSTIN has 15 characters, like 24ABCDE1234F1Z5.</span>
+            <span class="error" role="alert" *ngIf="!invalid('gstin') && submitted && gstinMissing">
+              A Regular GST registration needs its GSTIN. Enter it, or choose Composition or Not registered.
+            </span>
+            <span class="error" role="alert" *ngIf="!invalid('gstin') && !(submitted && gstinMissing) && gstinError">{{ gstinError }}</span>
+            <span class="hint" *ngIf="!invalid('gstin') && !submitted && gstinMissing">Needed for a Regular registration: it is printed on every tax invoice.</span>
+          </span>
         </div>
         <div class="field" [class.span-2]="!registered">
           <label class="label" for="co-state">State <span class="req" aria-hidden="true" *ngIf="registered">*</span></label>
@@ -83,11 +91,16 @@
           </select>
           <span class="error" *ngIf="invalid('stateCode'); else stateHint" id="co-state-hint">Choose your state.</span>
           <ng-template #stateHint>
-            <span class="hint" id="co-state-hint">{{
-              stateFromGstin
-                ? 'Taken from your GSTIN.'
-                : 'A customer in the same state gets CGST and SGST; any other state gets IGST.'
-            }}</span>
+            <span class="hint state-other" id="co-state-hint" *ngIf="otherState as other; else plainStateHint">
+              This GSTIN belongs to {{ other.name }}. The state changes only if you confirm it when you save.
+            </span>
+            <ng-template #plainStateHint>
+              <span class="hint" id="co-state-hint">{{
+                stateFromGstin
+                  ? 'Taken from your GSTIN.'
+                  : 'A customer in the same state gets CGST and SGST; any other state gets IGST.'
+              }}</span>
+            </ng-template>
           </ng-template>
         </div>
       </div>
@@ -126,3 +139,17 @@
     </div>
   </form>
 </div>
+
+<!-- The company state decides CGST and SGST or IGST on every bill: it is changed only on a yes (T84, M7). -->
+<app-confirm-dialog
+  *ngIf="stateQuestion as q"
+  [title]="'Change the company state to ' + q.to + '?'"
+  [text]="q.message"
+  [confirmLabel]="'Change the state to ' + q.to"
+  [keepLabel]="'Keep ' + q.from"
+  [busy]="saving"
+  (confirmed)="confirmStateChange()"
+  (closed)="stateQuestion = null"
+>
+  <p class="muted small">Nothing is saved until you choose. To keep {{ q.from }}, enter a GSTIN of that state.</p>
+</app-confirm-dialog>

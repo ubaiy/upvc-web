@@ -8,6 +8,10 @@ import {
   DocumentSettings,
   GstRegistrationType,
   GstState,
+  NumberSeries,
+  SERIES_KEYS,
+  SeriesChange,
+  SeriesKey,
   SettingsSnapshot,
   TaxSettings,
   normaliseGstin,
@@ -65,7 +69,7 @@ export class SettingsAdapter {
    * Company tab: name, address, contact and logo go to the old branding
    * endpoint, the GST identity to `company/settings`. Returns the fresh state.
    */
-  saveCompany(company: CompanySettings, logo?: File | null): Observable<SettingsSnapshot> {
+  saveCompany(company: CompanySettings, logo?: File | null, confirmStateChange = false): Observable<SettingsSnapshot> {
     const form = new FormData();
     form.append('name', company.name.trim());
     form.append('address', company.address.trim());
@@ -79,11 +83,15 @@ export class SettingsAdapter {
       form.append('main_logo', logo);
     }
     const registered = company.registrationType !== 'unregistered';
-    const gst = {
-      gst_registration_type: company.registrationType,
-      gstin: registered ? normaliseGstin(company.gstin) : null,
-      state_code: company.stateCode || null,
-    };
+    // The user said yes to "change the state to the GSTIN's": the api then takes the
+    // state from the GSTIN, and must not be sent the old one beside it (phase 30 log, section 5).
+    const gst: Record<string, unknown> = confirmStateChange
+      ? { gst_registration_type: company.registrationType, gstin: normaliseGstin(company.gstin), confirm_state_change: true }
+      : {
+          gst_registration_type: company.registrationType,
+          gstin: registered ? normaliseGstin(company.gstin) : null,
+          state_code: company.stateCode || null,
+        };
     return this.api.post(SETTINGS_API.identity, form).pipe(
       map(unwrap),
       switchMap(() => this.api.post(SETTINGS_API.settings, gst)),
@@ -105,7 +113,11 @@ export class SettingsAdapter {
    * Documents tab. Refuses when the API has no place for these fields (one
    * older than card A4): it would answer "updated" and keep nothing.
    */
-  saveDocuments(documents: DocumentSettings, stored: boolean): Observable<SettingsSnapshot> {
+  saveDocuments(
+    documents: DocumentSettings,
+    stored: boolean,
+    series: Partial<Record<SeriesKey, SeriesChange>> = {}
+  ): Observable<SettingsSnapshot> {
     if (!stored) {
       return throwError(() => new Error('Document details cannot be saved yet.'));
     }
@@ -114,14 +126,31 @@ export class SettingsAdapter {
       const value = documents[key];
       body[DOCUMENT_FIELDS[key]] = typeof value === 'string' ? value.trim() : value;
     });
+    // Only the series the user changed: the api keeps the rest as they are.
+    if (Object.keys(series).length) {
+      body['number_series'] = series;
+    }
     return this.api.post(SETTINGS_API.settings, body).pipe(map((res) => toSnapshot(unwrap(res))));
+  }
+}
+
+/** A refusal of the api, with what it sent beside the message (`data.errors`, `data.needs_confirmation`). */
+export class SettingsRefusal extends Error {
+  constructor(message: string, readonly data: any = null) {
+    super(message);
+  }
+
+  /** The sentence for one form field, when the api names one. */
+  fieldError(field: string): string {
+    const text = this.data?.errors?.[field];
+    return typeof text === 'string' && text ? readableMessage(text) : '';
   }
 }
 
 /** The API reports a refusal as HTTP 200 with `{ status: 0, message }`. */
 export function unwrap(res: any): any {
   if (!res || res.success !== true) {
-    throw new Error(readableMessage(res?.message));
+    throw new SettingsRefusal(readableMessage(res?.message), res?.data ?? null);
   }
   return res.data;
 }
@@ -192,7 +221,29 @@ export function toSnapshot(data: any): SettingsSnapshot {
         signatory: text(d[DOCUMENT_FIELDS.signatory]),
       }
     : { ...DOCUMENT_DEFAULTS };
-  return { company, tax, documents, documentsStored };
+  return { company, tax, documents, documentsStored, numberSeries: toNumberSeries(d.number_series) };
+}
+
+function toNumberSeries(raw: any): NumberSeries[] {
+  if (!raw || typeof raw !== 'object') {
+    return [];
+  }
+  return SERIES_KEYS.filter((key) => raw[key] && typeof raw[key] === 'object').map((key) => {
+    const s = raw[key];
+    const next = Number(s.next);
+    const min = Number(s.min_next);
+    return {
+      key,
+      label: text(s.label) || key,
+      prefix: text(s.prefix),
+      next: Number.isFinite(next) ? next : 1,
+      lastUsed: Number(s.last_used) || 0,
+      minNext: Number.isFinite(min) && min > 0 ? min : 1,
+      example: text(s.example),
+      yearly: !!s.yearly,
+      financialYear: text(s.financial_year),
+    };
+  });
 }
 
 function text(value: unknown): string {

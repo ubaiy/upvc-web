@@ -8,7 +8,7 @@ import { ToastService } from 'src/app/shared/services/toast.service';
 import { PaymentTermsService } from '../../payment-terms/payment-terms.service';
 import { TypeMarginService } from '../../type-margin/type-margin.service';
 import { ProfileService } from '../profile.service';
-import { SettingsAdapter, toSnapshot } from '../settings.adapter';
+import { SettingsAdapter, SettingsRefusal, toSnapshot } from '../settings.adapter';
 import { CompanyTabComponent } from './company-tab.component';
 import { DocumentsTabComponent } from './documents-tab.component';
 import { PricingTaxTabComponent } from './pricing-tax-tab.component';
@@ -80,19 +80,96 @@ describe('CompanyTabComponent', () => {
     expect(primaryButtons(el)).toBe(1);
   });
 
-  it('reads the state from a well-formed GSTIN and locks it', () => {
+  it('fills an empty state from a well-formed GSTIN, and takes it back when the GSTIN is cleared', () => {
     const { fixture } = setUp(CompanyTabComponent);
     const c = fixture.componentInstance;
     c.f['gstin'].setValue('27abcde1234f1z5');
     expect(c.f['stateCode'].value).toBe('27');
-    expect(c.f['stateCode'].disabled).toBeTrue();
-    c.f['gstin'].setValue('27ABC');
     expect(c.f['stateCode'].enabled).toBeTrue();
+    expect(c.stateFromGstin).toBeTrue();
+    c.f['gstin'].setValue('27ABC');
     expect(c.f['gstin'].errors).toEqual({ gstin: true });
+    // m18: the state that came from the GSTIN goes when the GSTIN does.
+    expect(c.f['stateCode'].value).toBe('');
+    c.f['gstin'].setValue('');
+    expect(c.f['stateCode'].value).toBe('');
+  });
+
+  it('never changes a chosen state by itself: it says whose state the GSTIN is and asks on save', () => {
+    const { fixture, adapter, el } = setUp(CompanyTabComponent, { ...ROW, gstin: '24ABCDE1234F1Z5', state_code: '24' });
+    const c = fixture.componentInstance;
+    c.f['gstin'].setValue('27ABCDE1234F1Z5');
+    fixture.detectChanges();
+    expect(c.f['stateCode'].value).toBe('24');
+    expect(el.querySelector('#co-state-hint')?.textContent).toContain('This GSTIN belongs to Maharashtra (27)');
+
+    c.save();
+    fixture.detectChanges();
+    expect(adapter.saveCompany).not.toHaveBeenCalled();
+    const dialog = el.querySelector('app-confirm-dialog')!;
+    expect(dialog.textContent).toContain('Change the company state to Maharashtra (27)?');
+    const buttons = Array.from(dialog.querySelectorAll('button')).map((b) => b.textContent!.trim());
+    expect(buttons).toEqual(['Keep Gujarat (24)', 'Change the state to Maharashtra (27)']);
+
+    (dialog.querySelector('.btn-secondary') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(el.querySelector('app-confirm-dialog')).toBeNull();
+    expect(adapter.saveCompany).not.toHaveBeenCalled();
+    expect(c.f['stateCode'].value).toBe('24');
+
+    c.save();
+    fixture.detectChanges();
+    (el.querySelector('app-confirm-dialog .btn-primary') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    const args = adapter.saveCompany.calls.mostRecent().args;
+    expect(args[0].gstin).toBe('27ABCDE1234F1Z5');
+    expect(args[2]).toBeTrue();
+    expect(el.querySelector('app-confirm-dialog')).toBeNull();
+  });
+
+  it("asks with the api's own sentence when the api reports the change of state", () => {
+    const { fixture, adapter, el } = setUp(CompanyTabComponent, { ...ROW, gstin: '24ABCDE1234F1Z5', state_code: '24' });
+    const c = fixture.componentInstance;
+    adapter.saveCompany.and.returnValue(
+      throwError(
+        () =>
+          new SettingsRefusal('The GSTIN belongs to Maharashtra (27) and the company state is Gujarat (24). Confirm to change the state to Maharashtra.', {
+            needs_confirmation: 'state_change',
+            gstin_state: { code: '27', name: 'Maharashtra' },
+            current_state: { code: '24', name: 'Gujarat' },
+          })
+      )
+    );
+    c.f['name'].setValue('Hakimi Windows');
+    c.save();
+    fixture.detectChanges();
+    expect(el.querySelector('app-confirm-dialog')?.textContent).toContain('Confirm to change the state to Maharashtra.');
+    expect(el.querySelector('app-callout .danger')).toBeNull();
+  });
+
+  it('does not save a Regular registration without a GSTIN, and says what to do', () => {
+    const { fixture, adapter, el } = setUp(CompanyTabComponent, { ...ROW, state_code: '24' });
+    fixture.componentInstance.save();
+    fixture.detectChanges();
+    expect(adapter.saveCompany).not.toHaveBeenCalled();
+    expect(el.querySelector('#co-gstin-err')?.textContent).toContain('A Regular GST registration needs its GSTIN.');
+    fixture.componentInstance.f['registrationType'].setValue('composition');
+    fixture.componentInstance.save();
+    expect(adapter.saveCompany).toHaveBeenCalled();
+  });
+
+  it("shows the api's refusal of a GSTIN under the GSTIN field", () => {
+    const { fixture, adapter, el } = setUp(CompanyTabComponent, { ...ROW, gstin: '24ABCDE1234F1Z5', state_code: '24' });
+    adapter.saveCompany.and.returnValue(
+      throwError(() => new SettingsRefusal('Gstin is not a valid GSTIN', { errors: { gstin: 'gstin is not a valid GSTIN: 15 characters, for example 24ABCDE1234F1Z5' } }))
+    );
+    fixture.componentInstance.save();
+    fixture.detectChanges();
+    expect(el.querySelector('#co-gstin-err')?.textContent).toContain('GSTIN is not a valid GSTIN: 15 characters');
   });
 
   it('asks a registered company for its state and does not save without it', () => {
-    const { fixture, adapter, el } = setUp(CompanyTabComponent);
+    const { fixture, adapter, el } = setUp(CompanyTabComponent, { ...ROW, gst_registration_type: 'composition' });
     fixture.componentInstance.save();
     fixture.detectChanges();
     expect(adapter.saveCompany).not.toHaveBeenCalled();
@@ -123,6 +200,7 @@ describe('CompanyTabComponent', () => {
   it('keeps the form and shows the reason when the save is refused', () => {
     const { fixture, adapter, el } = setUp(CompanyTabComponent);
     adapter.saveCompany.and.returnValue(throwError(() => new Error('State does not match the state in the GSTIN')));
+    fixture.componentInstance.f['gstin'].setValue('24ABCDE1234F1Z5');
     fixture.componentInstance.f['stateCode'].setValue('24');
     fixture.componentInstance.save();
     fixture.detectChanges();
@@ -224,6 +302,82 @@ describe('DocumentsTabComponent', () => {
     c.save();
     expect(c.f['bankIfsc'].invalid && c.f['upiId'].invalid && c.f['numberPrefix'].invalid).toBeTrue();
     expect(adapter.saveDocuments).not.toHaveBeenCalled();
+  });
+
+  const SERIES = {
+    quotation: { label: 'Quotation', prefix: 'Q-', next: 17, last_used: 16, min_next: 17, example: 'Q-0017', yearly: false, financial_year: null },
+    invoice: { label: 'Invoice', prefix: 'INV', next: 4, last_used: 3, min_next: 4, example: 'INV/26-27/0004', yearly: true, financial_year: '26-27' },
+    order: { label: 'Order', prefix: 'ORD', next: 6, last_used: 5, min_next: 6, example: 'ORD/26-27/0006', yearly: true, financial_year: '26-27' },
+    challan: { label: 'Delivery challan', prefix: 'DC', next: 6, last_used: 5, min_next: 6, example: 'DC/26-27/0006', yearly: true, financial_year: '26-27' },
+    receipt: { label: 'Receipt', prefix: 'RCT', next: 13, last_used: 12, min_next: 13, example: 'RCT/26-27/0013', yearly: true, financial_year: '26-27' },
+  };
+  const WITH_SERIES = { ...ROW, number_series: SERIES };
+
+  it('lists the five number series with prefix, next number and how the next one prints', () => {
+    const { el } = setUp(DocumentsTabComponent, WITH_SERIES);
+    const rows = Array.from(el.querySelectorAll('.series-row'));
+    expect(rows.map((r) => r.querySelector('.series-name')!.textContent!.trim())).toEqual(['Quotation', 'Invoice', 'Order', 'Delivery challan', 'Receipt']);
+    expect(rows[1].querySelector('.series-example')!.textContent).toContain('INV/26-27/0004');
+    expect((rows[1].querySelector('input[aria-label="Invoice next number"]') as HTMLInputElement).value).toBe('4');
+    expect(rows[1].textContent).toContain('Last used: 3 in 26-27.');
+    // The old single prefix box is not shown beside the series.
+    expect(el.querySelector('#doc-prefix')).toBeNull();
+  });
+
+  it('shows the new number as it is typed and sends only the series that changed', () => {
+    const { fixture, adapter, el } = setUp(DocumentsTabComponent, WITH_SERIES);
+    const c = fixture.componentInstance;
+    c.seriesGroup('invoice').patchValue({ prefix: 'HK', next: '251' });
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.series-row')[1].querySelector('.series-example')!.textContent).toContain('HK/26-27/0251');
+    c.save();
+    const [sent, , series] = adapter.saveDocuments.calls.mostRecent().args;
+    expect(series).toEqual({ invoice: { prefix: 'HK', next: 251 } });
+    expect(sent.numberPrefix).toBe('Q-');
+  });
+
+  it('refuses a next number that is already used, in plain words, before the api is asked', () => {
+    const { fixture, adapter, el } = setUp(DocumentsTabComponent, WITH_SERIES);
+    const c = fixture.componentInstance;
+    c.seriesGroup('order').patchValue({ next: '2' });
+    c.seriesGroup('order').markAsDirty();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.series-row')[2].textContent).toContain('Use 6 or more: numbers up to 5 are already used this year.');
+    c.save();
+    expect(adapter.saveDocuments).not.toHaveBeenCalled();
+  });
+
+  it('puts a refusal of one series by the api under that series', () => {
+    const { fixture, adapter, el } = setUp(DocumentsTabComponent, WITH_SERIES);
+    const c = fixture.componentInstance;
+    adapter.saveDocuments.and.returnValue(
+      throwError(
+        () =>
+          new SettingsRefusal('Prefix INV is used by two series', {
+            errors: { 'number_series.receipt.prefix': 'Receipt and Invoice cannot share the prefix INV' },
+          })
+      )
+    );
+    c.seriesGroup('receipt').patchValue({ prefix: 'INV' });
+    c.save();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.series-row')[4].querySelector('[role="alert"]')?.textContent).toContain('cannot share the prefix INV');
+    expect(el.querySelector('app-callout .danger')).toBeNull();
+  });
+
+  it('takes digits only for a bank account number', () => {
+    const { fixture, adapter } = setUp(DocumentsTabComponent);
+    const c = fixture.componentInstance;
+    for (const bad of ['12ab', '1234', '1234567890123456789']) {
+      c.form.patchValue({ bankAccount: bad });
+      expect(c.f['bankAccount'].invalid).withContext(bad).toBeTrue();
+    }
+    c.save();
+    expect(adapter.saveDocuments).not.toHaveBeenCalled();
+    for (const good of ['', '123456789', '1234 5678 9012', '50100-1234-5678']) {
+      c.form.patchValue({ bankAccount: good });
+      expect(c.f['bankAccount'].valid).withContext(good).toBeTrue();
+    }
   });
 
   it('turns saving off, and says so, when the API cannot keep the fields', () => {

@@ -19,11 +19,63 @@
       <div class="card-head">
         <div>
           <h2 id="h-numbering">Numbering and validity</h2>
-          <p>How quotations are numbered and how long a price holds.</p>
+          <p>How your documents are numbered and how long a quoted price holds.</p>
         </div>
       </div>
+      <div class="card-pad series" formGroupName="series" *ngIf="series.length" role="group" aria-label="Document numbers">
+        <div class="series-head" aria-hidden="true">
+          <span>Document</span><span>Prefix</span><span>Next number</span><span>The next one prints as</span>
+        </div>
+        <div class="series-row" *ngFor="let s of series" [formGroupName]="s.key">
+          <span class="series-name" [id]="'series-' + s.key">{{ s.label }}</span>
+          <label class="series-field">
+            <span class="series-label" aria-hidden="true">Prefix</span>
+            <input
+              class="input"
+              type="text"
+              maxlength="10"
+              autocomplete="off"
+              spellcheck="false"
+              formControlName="prefix"
+              [attr.aria-label]="s.label + ' prefix'"
+              [attr.aria-describedby]="'series-' + s.key + '-note'"
+              [class.is-invalid]="!!seriesProblem(s) && seriesGroup(s.key).get('prefix')?.invalid"
+            />
+          </label>
+          <label class="series-field">
+            <span class="series-label" aria-hidden="true">Next number</span>
+            <input
+              class="input num"
+              type="text"
+              inputmode="numeric"
+              maxlength="7"
+              autocomplete="off"
+              formControlName="next"
+              [attr.aria-label]="s.label + ' next number'"
+              [attr.aria-describedby]="'series-' + s.key + '-note'"
+              [class.is-invalid]="!!seriesProblem(s) && !seriesGroup(s.key).get('prefix')?.invalid"
+              [attr.aria-invalid]="!!seriesProblem(s)"
+            />
+          </label>
+          <span class="series-example num"><bdi>{{ exampleOf(s) }}</bdi></span>
+          <span class="series-note" [id]="'series-' + s.key + '-note'">
+            <span class="error" role="alert" *ngIf="seriesProblem(s) as problem; else seriesHint">{{ problem }}</span>
+            <ng-template #seriesHint>
+              <span class="hint" *ngIf="s.lastUsed"
+                >Last used: {{ s.lastUsed }}{{ s.yearly ? ' in ' + s.financialYear : '' }}.</span
+              >
+              <span class="hint" *ngIf="!s.lastUsed">None made yet{{ s.yearly ? ' in ' + s.financialYear : '' }}.</span>
+            </ng-template>
+          </span>
+        </div>
+        <p class="hint series-foot">
+          Moving from another system mid-year? Set "Next number" to continue your series. A number already used is never
+          given again, and documents already made keep their numbers. Bills, orders, challans and receipts start again at 1
+          each April.
+        </p>
+      </div>
       <div class="card-pad form-grid">
-        <div class="field">
+        <div class="field" *ngIf="!series.length">
           <label class="label" for="doc-prefix">Number prefix</label>
           <input class="input" id="doc-prefix" type="text" formControlName="numberPrefix" maxlength="10"
             [class.is-invalid]="invalid('numberPrefix')" [attr.aria-invalid]="invalid('numberPrefix')" aria-describedby="doc-prefix-hint" />
@@ -67,7 +119,7 @@
           <label class="label" for="doc-account">Account number</label>
           <input class="input" id="doc-account" type="text" formControlName="bankAccount" maxlength="40" autocomplete="off"
             [class.is-invalid]="invalid('bankAccount')" [attr.aria-invalid]="invalid('bankAccount')" aria-describedby="doc-account-err" />
-          <span class="error" id="doc-account-err" *ngIf="invalid('bankAccount')">Use letters, digits, spaces and hyphens only.</span>
+          <span class="error" id="doc-account-err" *ngIf="invalid('bankAccount')">An account number has 9 to 18 digits, with no letters.</span>
         </div>
         <div class="field">
           <label class="label" for="doc-ifsc">IFSC</label>
@@ -143,7 +195,7 @@
           <p class="sheet-title">QUOTATION</p>
           <dl>
             <dt>Number</dt>
-            <dd>{{ doc.numberPrefix }}0014</dd>
+            <dd>{{ quotationExample }}</dd>
             <dt>Date</dt>
             <dd>{{ today | date : 'd MMM y' }}</dd>
             <dt>Valid until</dt>

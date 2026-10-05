@@ -86,6 +86,13 @@ export const PROFILE_ROLES: { value: string; label: string }[] = [
   { value: 'bead', label: 'Bead' },
   { value: 'interlock', label: 'Interlock' },
   { value: 'coupler', label: 'Coupler' },
+  // The roles the production engine reads besides the ones above (phase 30 log, section 2).
+  { value: 'reinforcement', label: 'Steel reinforcement' },
+  { value: 'false_mullion', label: 'False mullion' },
+  { value: 'track', label: 'Aluminium rail (track)' },
+  { value: 'threshold', label: 'Threshold' },
+  { value: 'door_sash_in', label: 'Door sash, opening in' },
+  { value: 'door_sash_out', label: 'Door sash, opening out' },
 ];
 
 const SPELLING: [RegExp, string][] = [
@@ -250,6 +257,12 @@ const SUB_CATEGORY_OF: Record<string, string> = {
   bead: 'Beading',
   interlock: 'Accessories',
   coupler: 'Accessories',
+  reinforcement: 'Accessories',
+  false_mullion: 'Mullion',
+  track: 'Accessories',
+  threshold: 'Accessories',
+  door_sash_in: 'Sash',
+  door_sash_out: 'Sash',
 };
 
 /**

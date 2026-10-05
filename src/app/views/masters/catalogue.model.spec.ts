@@ -1,4 +1,5 @@
 import {
+  PROFILE_ROLES,
   PriceFactors,
   ProfileRow,
   deriveRates,
@@ -103,5 +104,14 @@ describe('catalogue rules', () => {
     expect(parseAmount(' 72 ')).toBe(72);
     expect(parseAmount('')).toBeNaN();
     expect(parseAmount('abc')).toBeNaN();
+  });
+
+  it('offers every role the production engine reads, steel reinforcement among them', () => {
+    const values = PROFILE_ROLES.map((role) => role.value);
+    for (const role of ['frame', 'sash', 'shutter', 'mullion', 'transom', 'bead', 'reinforcement', 'false_mullion', 'interlock', 'track', 'threshold']) {
+      expect(values).toContain(role);
+    }
+    expect(PROFILE_ROLES.find((role) => role.value === 'reinforcement')?.label).toBe('Steel reinforcement');
+    expect(subCategoryFor({ role: 'reinforcement', sub_category: '' })).toBe('Accessories');
   });
 });

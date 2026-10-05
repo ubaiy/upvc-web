@@ -1,6 +1,7 @@
 import { of } from 'rxjs';
 
-import { DOCUMENT_FIELDS, SETTINGS_API, SettingsAdapter, errorText, readableMessage, toSnapshot, unwrap } from './settings.adapter';
+import { DOCUMENT_FIELDS, SETTINGS_API, SettingsAdapter, SettingsRefusal, errorText, readableMessage, toSnapshot, unwrap } from './settings.adapter';
+import { seriesExample } from './settings.model';
 import { CompanySettings, normaliseGstin, stateCodeFromGstin } from './settings.model';
 
 const API_ROW = {
@@ -153,5 +154,30 @@ describe('GSTIN helpers', () => {
     expect(normaliseGstin('')).toBeNull();
     expect(stateCodeFromGstin('27ABCDE1234F1Z5')).toBe('27');
     expect(stateCodeFromGstin('27ABC')).toBeNull();
+  });
+
+  it('reads the number series in a fixed order and builds the next number as the api prints it', () => {
+    const snapshot = toSnapshot({
+      number_series: {
+        receipt: { label: 'Receipt', prefix: 'RCT', next: 13, last_used: 12, min_next: 13, example: 'RCT/26-27/0013', yearly: true, financial_year: '26-27' },
+        quotation: { label: 'Quotation', prefix: 'Q-', next: 17, last_used: 16, min_next: 17, example: 'Q-0017', yearly: false, financial_year: null },
+      },
+    });
+    expect(snapshot.numberSeries.map((series) => series.key)).toEqual(['quotation', 'receipt']);
+    expect(snapshot.numberSeries[1].minNext).toBe(13);
+    expect(seriesExample(snapshot.numberSeries[1], 'RC', 251)).toBe('RC/26-27/0251');
+    expect(seriesExample(snapshot.numberSeries[0], 'Q-', 17)).toBe('Q-0017');
+    expect(toSnapshot({}).numberSeries).toEqual([]);
+  });
+
+  it('keeps what the api sent beside a refusal, for the field it belongs to', () => {
+    try {
+      unwrap({ status: 0, message: 'gstin is required', data: { errors: { gstin: 'gstin is required for a Regular GST registration.' } } });
+      fail('unwrap should throw');
+    } catch (err) {
+      expect(err instanceof SettingsRefusal).toBeTrue();
+      expect((err as SettingsRefusal).fieldError('gstin')).toBe('GSTIN is required for a Regular GST registration.');
+      expect((err as SettingsRefusal).fieldError('state_code')).toBe('');
+    }
   });
 });

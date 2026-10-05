@@ -71,4 +71,6 @@
       <span class="hint" *ngIf="form.dirty && !saving">You have unsaved changes.</span>
     </div>
   </form>
+
+  <app-change-password-card *ngIf="state === 'ready'"></app-change-password-card>
 </div>

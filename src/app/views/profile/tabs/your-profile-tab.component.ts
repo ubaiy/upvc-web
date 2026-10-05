@@ -9,12 +9,13 @@ import { LocalStoreService } from 'src/app/shared/services/local-storage.service
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { imageProblem } from '../image-rules';
 import { ProfileService } from '../profile.service';
+import { ChangePasswordCardComponent } from './change-password-card.component';
 
-/** Settings → Your profile: the signed-in person's own name, phone and photo. */
+/** Settings → Your profile: the signed-in person's own name, phone and photo, and their password. */
 @Component({
   selector: 'app-settings-your-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule],
+  imports: [CommonModule, ReactiveFormsModule, SharedComponentsModule, ChangePasswordCardComponent],
   templateUrl: './your-profile-tab.component.html',
   styleUrls: ['../settings-tab.scss', './your-profile-tab.component.scss'],
 })

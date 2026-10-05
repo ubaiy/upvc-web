@@ -18,7 +18,9 @@ interface QuotationSummary {
   status: string;
   total: number;
   windows: number;
-  advance: { percent: number; amount: number } | null;
+  /** `amount` is null when only the percentage is known here: the api works the amount out with the order. */
+  advance: { percent: number; amount: number | null } | null;
+  termId: number | null;
 }
 
 /**
@@ -104,6 +106,7 @@ export class OrderCreateComponent implements OnInit, OnDestroy {
         }
         this.quotation = this.summary(quotation.data, id);
         this.state = 'ready';
+        this.followTerm(this.quotation);
       },
       error: (error) => this.fail(httpMessage(error, 'We could not load the quotation.')),
     });
@@ -140,6 +143,28 @@ export class OrderCreateComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * The advance of the order is the percentage of its payment term. When the
+   * term's percentage is not the one the quotation's figures were made with,
+   * the page shows the term's percentage and leaves the amount to the api,
+   * which works it out as the order is made. Nothing is multiplied here.
+   */
+  private followTerm(quotation: QuotationSummary): void {
+    if (!quotation.termId) {
+      return;
+    }
+    this.service.termAdvancePercent(quotation.termId).subscribe({
+      next: (percent) => {
+        if (this.quotation !== quotation || percent === null || percent === quotation.advance?.percent) {
+          return;
+        }
+        this.quotation = { ...quotation, advance: percent > 0 ? { percent, amount: null } : null };
+      },
+      // The quotation's own figure stays.
+      error: () => {},
+    });
+  }
+
   private summary(raw: any, id: number): QuotationSummary {
     const totals = raw?.totals || {};
     const advance = totals.advance;
@@ -152,6 +177,7 @@ export class OrderCreateComponent implements OnInit, OnDestroy {
       total: num(totals.total ?? raw?.total),
       windows: num(totals.total_quantity ?? totals.item_count),
       advance: advance && typeof advance === 'object' ? { percent: num(advance.percent), amount: num(advance.amount) } : null,
+      termId: idOrNull(totals.payment_term?.id ?? raw?.payment_terms?.id ?? raw?.payment_term_id),
     };
   }
 

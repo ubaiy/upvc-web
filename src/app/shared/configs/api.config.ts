@@ -4,6 +4,8 @@ export const API_END_POINT = {
     logout: 'logout',
     forgotPassword: 'forgot-password',
     resetPassword: 'reset-password',
+    // While signed in: current_password, password, confirm_password. Signs out the other devices.
+    changePassword: 'change-password',
   },
   home: 'dashboard',
   user: {

@@ -35,6 +35,7 @@
       <thead>
         <tr>
           <th scope="col">Name</th>
+          <th scope="col" class="right">Advance</th>
           <th scope="col">Printed on the quotation</th>
           <th scope="col" class="actions-col"><span class="sr-only">Actions</span></th>
         </tr>
@@ -42,6 +43,10 @@
       <tbody>
         <tr *ngFor="let term of terms">
           <td class="title">{{ term.name }}</td>
+          <td class="right num advance">
+            {{ advanceLabel(term) }}
+            <span class="faint tiny from-wording" *ngIf="fromWording(term)">read from the wording</span>
+          </td>
           <td class="muted">{{ term.description }}</td>
           <td class="row-actions">
             <button type="button" class="btn btn-ghost btn-icon btn-sm" [attr.aria-label]="'Edit ' + term.name" (click)="open(term)">
@@ -79,6 +84,20 @@
         placeholder="50% advance with the order, 50% before dispatch"
         [class.is-invalid]="invalid('description')" [attr.aria-invalid]="invalid('description')" aria-describedby="term-text-err"></textarea>
       <span class="error" id="term-text-err" *ngIf="invalid('description')">Write the sentence the customer will read.</span>
+    </div>
+    <div class="field">
+      <label class="label" for="term-advance">Advance to take with the order</label>
+      <div class="input-group advance-box" [class.is-invalid]="invalid('advance_percent')">
+        <input id="term-advance" type="text" inputmode="decimal" autocomplete="off" formControlName="advance_percent" placeholder="50"
+          [attr.aria-invalid]="invalid('advance_percent')" aria-describedby="term-advance-help" />
+        <span class="unit">%</span>
+      </div>
+      <span id="term-advance-help">
+        <span class="error" *ngIf="invalid('advance_percent')">Enter a percentage from 0 to 100.</span>
+        <span class="hint" *ngIf="!invalid('advance_percent')">
+          A new order suggests this share of its total as the advance. Enter 0 for no advance.
+        </span>
+      </span>
     </div>
     <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
   </form>

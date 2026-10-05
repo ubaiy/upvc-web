@@ -60,7 +60,7 @@ describe('PaymentTermsCardComponent', () => {
   it('adds a term', () => {
     create();
     component.open();
-    component.form.setValue({ name: '30 days credit', description: ' Payment within 30 days of delivery ' });
+    component.form.patchValue({ name: '30 days credit', description: ' Payment within 30 days of delivery ' });
     component.save();
     expect(service.addPaymentType).toHaveBeenCalledWith(
       jasmine.objectContaining({ name: '30 days credit', description: 'Payment within 30 days of delivery' })
@@ -94,5 +94,50 @@ describe('PaymentTermsCardComponent', () => {
     fixture.detectChanges();
     expect(service.deletePaymentTerms).toHaveBeenCalledWith(2);
     expect(toast.showSuccess).toHaveBeenCalledWith('Payment term deleted');
+  });
+
+  it('shows the advance of each term, and says when it is only read from the wording', () => {
+    create({ success: true, data: [
+      { id: 1, name: '50% Advance', description: 'Half with the order', advance_percent: null, advance_percent_in_use: 50 },
+      { id: 2, name: 'Thirty', description: 'Thirty with the order', advance_percent: 30, advance_percent_in_use: 30 },
+      { id: 3, name: 'On delivery', description: 'All on delivery', advance_percent: 0, advance_percent_in_use: 0 },
+      { id: 4, name: 'As agreed', description: 'As agreed', advance_percent: null, advance_percent_in_use: null },
+    ] });
+    const cells = Array.from(el.querySelectorAll('td.advance')).map((td) => td.textContent!.replace(/\s+/g, ' ').trim());
+    expect(cells).toEqual(['50% read from the wording', '30%', 'No advance', 'Not set']);
+  });
+
+  it('sends the advance percent of a new term, null when left empty and 0 for no advance', () => {
+    create();
+    component.open();
+    component.form.patchValue({ name: '30% Advance', description: '30% with the order', advance_percent: '30' });
+    component.save();
+    expect(service.addPaymentType.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ name: '30% Advance', advance_percent: 30 }));
+    component.open();
+    component.form.patchValue({ name: 'As agreed', description: 'As agreed', advance_percent: '' });
+    component.save();
+    expect((service.addPaymentType.calls.mostRecent().args[0] as any).advance_percent).toBeNull();
+    component.open();
+    component.form.patchValue({ name: 'On delivery', description: 'All on delivery', advance_percent: '0' });
+    component.save();
+    expect((service.addPaymentType.calls.mostRecent().args[0] as any).advance_percent).toBe(0);
+  });
+
+  it('refuses an advance above 100 or that is not a number', () => {
+    create();
+    component.open();
+    for (const bad of ['150', 'half', '-5']) {
+      component.form.patchValue({ name: 'X', description: 'Y', advance_percent: bad });
+      component.save();
+    }
+    expect(service.addPaymentType).not.toHaveBeenCalled();
+  });
+
+  it('opens a term with the percentage in use, so saving it sets the field', () => {
+    create({ success: true, data: [{ id: 1, name: '50% Advance', description: 'Half', advance_percent: null, advance_percent_in_use: 50 }] });
+    component.open(component.terms[0]);
+    expect(component.form.value.advance_percent).toBe('50');
+    component.save();
+    expect((service.editPaymentType.calls.mostRecent().args[0] as any).advance_percent).toBe(50);
   });
 });

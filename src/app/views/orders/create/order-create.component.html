@@ -31,8 +31,14 @@
         <app-stat label="Windows" [value]="q.windows"></app-stat>
         <app-stat
           label="Advance"
-          [value]="q.advance ? (q.advance.amount | inr) : 'None'"
-          [detail]="q.advance ? q.advance.percent + '% by the payment terms' : 'The payment terms name no advance'"
+          [value]="!q.advance ? 'None' : q.advance.amount === null ? q.advance.percent + '%' : (q.advance.amount | inr)"
+          [detail]="
+            !q.advance
+              ? 'The payment terms name no advance'
+              : q.advance.amount === null
+              ? 'of the order total, by the payment terms. The amount is on the order once it is made.'
+              : q.advance.percent + '% by the payment terms'
+          "
         ></app-stat>
       </div>
     </section>
