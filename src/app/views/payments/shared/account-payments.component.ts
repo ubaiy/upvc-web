@@ -1,6 +1,7 @@
-import { Component, ElementRef, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges, ViewChild } from '@angular/core';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
+import { Subscription } from 'rxjs';
 
 import { ToastService } from '../../../shared/services/toast.service';
 import { httpMessage } from '../api-result';
@@ -21,7 +22,7 @@ type State = 'loading' | 'error' | 'ready';
   templateUrl: './account-payments.component.html',
   styleUrls: ['./account-payments.component.scss'],
 })
-export class AccountPaymentsComponent implements OnChanges {
+export class AccountPaymentsComponent implements OnChanges, OnDestroy {
   @Input() orderId: number | null = null;
   @Input() billId: number | null = null;
   @Input() customerId: number | null = null;
@@ -62,13 +63,36 @@ export class AccountPaymentsComponent implements OnChanges {
 
   readonly placeholders = [0, 1, 2];
   private openedOnce = false;
+  private fetching?: Subscription;
 
   constructor(private service: PaymentsService, private toast: ToastService, private host: ElementRef<HTMLElement>) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['orderId'] || changes['billId'] || changes['customerId'] || changes['from'] || changes['to'] || changes['mode']) {
+    const job = [changes['orderId'], changes['billId'], changes['customerId']].filter((change) => !!change);
+    if (job.some((change) => !change.firstChange)) {
+      // Another bill, order or customer in the same panel (one bill's page straight to another's): nothing of the last one is kept.
+      this.account = null;
+      this.payments = [];
+      this.dialog = null;
+      this.lastSaved = null;
+      this.cancelling = null;
+      this.busy = null;
+      this.actionError = null;
+      this.preview = null;
+      this.openedOnce = false;
+    }
+    if (job.length || changes['from'] || changes['to'] || changes['mode']) {
       this.load();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.fetching?.unsubscribe();
+  }
+
+  /** The job or customer on screen. An answer that comes back for another one is not put on the panel. */
+  private get shown(): string {
+    return [this.orderId, this.billId, this.customerId].join('|');
   }
 
   get scope(): PaymentScope {
@@ -135,15 +159,18 @@ export class AccountPaymentsComponent implements OnChanges {
     if (this.busy) {
       return;
     }
-    this.start(payment, 'preview');
+    const shown = this.start(payment, 'preview');
     this.service.receipt(payment.id, 'html').subscribe({
       next: (file) => {
         file.blob.text().then((html) => {
+          if (shown !== this.shown) {
+            return;
+          }
           this.busy = null;
           this.preview = { payment, html };
         });
       },
-      error: (error) => this.failed(error, `${this.docTitle(payment)} could not be opened.`, () => this.openPreview(payment)),
+      error: (error) => this.failed(shown, error, `${this.docTitle(payment)} could not be opened.`, () => this.openPreview(payment)),
     });
   }
 
@@ -151,13 +178,16 @@ export class AccountPaymentsComponent implements OnChanges {
     if (this.busy) {
       return;
     }
-    this.start(payment, 'download');
+    const shown = this.start(payment, 'download');
     this.service.receipt(payment.id, 'pdf', true).subscribe({
       next: (file) => {
-        this.busy = null;
+        // The file that was asked for is still handed over; the buttons belong to what is now on screen.
+        if (shown === this.shown) {
+          this.busy = null;
+        }
         saveBlob(file.blob, file.fileName || this.fileName(payment));
       },
-      error: (error) => this.failed(error, `${this.docTitle(payment)} could not be downloaded.`, () => this.download(payment)),
+      error: (error) => this.failed(shown, error, `${this.docTitle(payment)} could not be downloaded.`, () => this.download(payment)),
     });
   }
 
@@ -166,9 +196,12 @@ export class AccountPaymentsComponent implements OnChanges {
     if (this.busy) {
       return;
     }
-    this.start(payment, 'share');
+    const shown = this.start(payment, 'share');
     this.service.receipt(payment.id, 'pdf', true).subscribe({
       next: (file) => {
+        if (shown !== this.shown) {
+          return;
+        }
         this.busy = null;
         const name = file.fileName || this.fileName(payment);
         shareOrSave(new File([file.blob], name, { type: 'application/pdf' }), this.docTitle(payment)).then((outcome) => {
@@ -177,7 +210,7 @@ export class AccountPaymentsComponent implements OnChanges {
           }
         });
       },
-      error: (error) => this.failed(error, `${this.docTitle(payment)} could not be shared.`, () => this.share(payment)),
+      error: (error) => this.failed(shown, error, `${this.docTitle(payment)} could not be shared.`, () => this.share(payment)),
     });
   }
 
@@ -203,8 +236,12 @@ export class AccountPaymentsComponent implements OnChanges {
     }
     cancelling.busy = true;
     cancelling.error = '';
+    const shown = this.shown;
     this.service.cancel(cancelling.payment.id, reason).subscribe({
       next: (result) => {
+        if (shown !== this.shown) {
+          return;
+        }
         if (!result.ok) {
           cancelling.busy = false;
           cancelling.error = result.message;
@@ -230,7 +267,8 @@ export class AccountPaymentsComponent implements OnChanges {
 
   /** `silent` keeps the list on screen while it refreshes after a change. */
   private fetch(silent: boolean): void {
-    this.service.list(this.scope).subscribe({
+    this.fetching?.unsubscribe();
+    this.fetching = this.service.list(this.scope).subscribe({
       next: (result) => {
         if (!result.ok) {
           this.fail(result.message, silent);
@@ -266,12 +304,17 @@ export class AccountPaymentsComponent implements OnChanges {
     return documentName(payment.kind === 'refund' ? 'Refund-voucher' : 'Receipt', payment.number);
   }
 
-  private start(payment: Payment, action: string): void {
+  /** Marks the button as working and returns what was on screen then. */
+  private start(payment: Payment, action: string): string {
     this.busy = `${payment.id}:${action}`;
     this.actionError = null;
+    return this.shown;
   }
 
-  private failed(error: any, what: string, retry: () => void): void {
+  private failed(shown: string, error: any, what: string, retry: () => void): void {
+    if (shown !== this.shown) {
+      return;
+    }
     this.busy = null;
     this.actionError = { message: documentError(error, what), retry };
   }

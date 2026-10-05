@@ -264,6 +264,61 @@ describe('AccountPaymentsComponent (payments of a job)', () => {
     expect(text()).toContain('Received ₹16,228.00');
   });
 
+  describe('another job in the same panel: one bill’s page straight to another’s (T91)', () => {
+    const goTo = (orderId: number, list: any): void => {
+      service.list.and.returnValue(list);
+      host.orderId = orderId;
+      fixture.detectChanges();
+    };
+
+    it('lists the second job and keeps nothing open from the first', () => {
+      create(of(listOf(rawPaymentList())));
+      panel().record('receipt');
+      panel().lastSaved = panel().payments[0];
+      goTo(2, of(listOf(rawPaymentList({ payments: [] }))));
+      expect(service.list.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ orderId: 2 }));
+      expect(el().querySelectorAll('tbody tr').length).toBe(0);
+      expect(panel().dialog).toBeNull();
+      expect(panel().lastSaved).toBeNull();
+      expect(host.loaded).toBe(2);
+    });
+
+    it('a first list that answers late is not shown over the second', () => {
+      const slow = new Subject<any>();
+      create(slow);
+      goTo(2, of(listOf(rawPaymentList({ payments: [] }))));
+      expect(slow.observed).withContext('the first list is cancelled').toBeFalse();
+      slow.next(listOf(rawPaymentList()));
+      fixture.detectChanges();
+      expect(el().querySelectorAll('tbody tr').length).toBe(0);
+      expect(host.loaded).toBe(1);
+    });
+
+    it('a cancel or a receipt of the first job answered late changes nothing on the second', () => {
+      create(of(listOf(rawPaymentList())));
+      const [cancelled, receipt] = [new Subject<any>(), new Subject<any>()];
+      service.cancel.and.returnValue(cancelled);
+      service.receipt.and.returnValue(receipt);
+      panel().cancelling = { payment: panel().payments[0], busy: false, error: '' };
+      panel().cancelEntry('wrong amount');
+      goTo(2, of(listOf(rawPaymentList({ payments: [] }))));
+      expect(panel().cancelling).toBeNull();
+      const lists = service.list.calls.count();
+      cancelled.next({ ok: true, data: { account: null }, message: '' });
+      expect(service.list.calls.count()).withContext('no refresh for the job that was left').toBe(lists);
+      expect(host.changed).toBe(0);
+      expect(toast.showSuccess).not.toHaveBeenCalled();
+    });
+
+    it('opens "Record payment" again for a second job that is opened with ?record=1', () => {
+      create(of(listOf(rawPaymentList())), (h) => (h.openRecord = true));
+      expect(panel().dialog).toBe('receipt');
+      panel().dialog = null;
+      goTo(2, of(listOf(rawPaymentList())));
+      expect(panel().dialog).toBe('receipt');
+    });
+  });
+
   it('gives every button an accessible name', () => {
     create(of(listOf(rawPaymentList())));
     for (const control of Array.from(el().querySelectorAll('button'))) {
