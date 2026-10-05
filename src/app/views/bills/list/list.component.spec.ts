@@ -185,6 +185,9 @@ describe('ListComponent (bills)', () => {
     fixture.detectChanges();
     expect(service.cancelBill).not.toHaveBeenCalled();
     expect((document.querySelector('.p-dialog')?.textContent || '').replace(/\s+/g, ' ')).toContain('Cancel Bill 2?');
+    // Opened from a menu, the dialog takes the cursor: the reason can be typed at once (T86, selling m7).
+    fixture.componentInstance.focusReason();
+    expect(document.activeElement?.id).toBe('bill-cancel-reason');
     fixture.componentInstance.cancelReason = 'Wrong customer';
     fixture.componentInstance.confirmCancel();
     expect(service.cancelBill).toHaveBeenCalledOnceWith(2, 'Wrong customer');

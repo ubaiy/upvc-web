@@ -155,6 +155,11 @@ export class ListComponent implements OnInit {
     this.cancelReason = '';
   }
 
+  /** The dialog opens from a menu: the cursor goes to the reason, so typing and Enter work at once. */
+  focusReason(): void {
+    document.getElementById('bill-cancel-reason')?.focus();
+  }
+
   confirmCancel(): void {
     const bill = this.cancelling;
     if (!bill || this.cancelBusy) {

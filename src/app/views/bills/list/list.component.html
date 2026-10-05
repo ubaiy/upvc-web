@@ -120,6 +120,7 @@
   [header]="'Cancel ' + (cancelling?.number || 'this bill') + '?'"
   [visible]="!!cancelling"
   (visibleChange)="$event ? null : (cancelling = null)"
+  (onShow)="focusReason()"
   [modal]="true"
   closeAriaLabel="Close"
   [draggable]="false"
