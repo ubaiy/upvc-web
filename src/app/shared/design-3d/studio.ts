@@ -24,11 +24,14 @@ import {
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
-const BACKDROP = { top: '#f3f5f8', bottom: '#c9d0d9' };
+// Light and warm, so the view sits on the app's paper and a white profile still stands off it.
+const BACKDROP = { top: '#fbfaf6', bottom: '#dfe1dc' };
 const PAPER = new Color('#ffffff');
-const EXPOSURE = 0.82;
-const KEY_INTENSITY = 1.35;
-const SHADOW_OPACITY = 0.34;
+const EXPOSURE = 1.06;
+const KEY_INTENSITY = 1.7;
+/** Lifts the side the key light does not reach, so an open sash is white and not grey. */
+const FILL_INTENSITY = 0.7;
+const SHADOW_OPACITY = 0.3;
 
 function gradientTexture(): CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -89,6 +92,9 @@ export class Studio {
     const key = new DirectionalLight(0xffffff, KEY_INTENSITY);
     key.position.set(-0.7, 1.1, 1.3);
     scene.add(key);
+    const side = new DirectionalLight(0xffffff, FILL_INTENSITY);
+    side.position.set(1.2, 0.35, 0.9);
+    scene.add(side);
 
     this.shadow.rotation.x = -Math.PI / 2;
     this.shadow.renderOrder = -1;

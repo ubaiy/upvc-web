@@ -145,15 +145,26 @@ describe('design-3d window-parts', () => {
     expect(group(parts, 2).pivot[1]).toBeGreaterThan(group(parts, 3).pivot[1]);
   });
 
-  it('a 3-track slider with mesh: one shutter per track, a mesh track behind, a deeper frame', () => {
+  it('a 3-track slider with mesh: one shutter per track, the mesh on its own track in front, a deeper frame', () => {
     const { parts } = build('sliding-3-track-mesh');
     expect(parts.depthMm).toBe(slidingFrameDepthMm(4));
     expect(count(parts, 'mesh')).toBe(1);
     expect(count(parts, 'glass')).toBe(3);
     expect(count(parts, 'sash')).toBe(16); // three shutters and the mesh shutter
-    expect(parts.groups.map((g) => g.kind)).toEqual(['slide', 'slide', 'slide']);
+    expect(parts.groups.map((g) => g.kind)).toEqual(['slide', 'slide', 'slide', 'slide']);
     // No shutter is sent out of the frame: the end ones slide inwards.
-    expect(parts.groups.map((g) => Math.sign(g.travel))).toEqual([1, -1, -1]);
+    expect(parts.groups.slice(0, 3).map((g) => Math.sign(g.travel))).toEqual([1, -1, -1]);
+    // The fly mesh is a shutter too: it slides (T124), and stays inside the frame when it does.
+    const meshGroup = parts.groups[3];
+    expect(meshGroup.id).toBe('slide-p1-mesh');
+    const meshParts = parts.parts.filter((p) => p.groupId === meshGroup.id);
+    expect(meshParts.map((p) => p.role).sort()).toEqual(['mesh', 'sash', 'sash', 'sash', 'sash']);
+    const meshBox = boundsOf(meshParts);
+    expect(meshBox.min[0] + Math.min(0, meshGroup.travel)).toBeGreaterThanOrEqual(-1e-6);
+    expect(meshBox.max[0] + Math.max(0, meshGroup.travel)).toBeLessThanOrEqual(parts.widthMm + 1e-6);
+    // It runs in front of every glass shutter (nearer the outside face), as the 2D drawing shows it.
+    const glassFront = boundsOf(parts.parts.filter((p) => /^p1-panel-\d+-sash/.test(p.id))).max[2];
+    expect(meshBox.min[2]).toBeGreaterThan(glassFront);
     // Each shutter runs on its own track: three different depths.
     const depths = [0, 1, 2].map((i) => boundsOf(parts.parts.filter((p) => p.id.startsWith(`p1-panel-${i}-sash`))).max[2]);
     expect(new Set(depths.map((d) => d.toFixed(3))).size).toBe(3);
@@ -179,7 +190,7 @@ describe('design-3d window-parts', () => {
     expect(leaf.min[1]).toBeLessThan(SECTION_DATA.lowThresholdHeightMm + 10);
     expect(design.door?.threshold).toBe('Low');
     // A handle on each face.
-    expect(count(parts, 'handle')).toBe(4);
+    expect(count(parts, 'handle')).toBe(6); // a plate, a neck and a lever on each face
   });
 
   it('a double door that swings out opens both leaves outwards', () => {

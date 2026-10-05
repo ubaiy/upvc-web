@@ -23,12 +23,23 @@ import {
   ViewChild,
 } from '@angular/core';
 import { WindowDesign } from '../design-model';
-import { DesignScene, OrbitBenchmark, SceneInfo, webglAvailable } from './scene';
+import { DesignScene, OrbitBenchmark, PaneHit, SceneInfo, webglAvailable } from './scene';
 import { SNAPSHOT_HEIGHT_PX, SNAPSHOT_WIDTH_PX, lookOf, scenePicture } from './snapshot';
 import { buildWindowParts } from './window-parts';
 
 // A host asks this before it shows the view; it comes with the same lazy chunk.
 export { webglAvailable } from './scene';
+
+/** A tap in the view: the pane it hit (null = empty space); `add` = shift was held, the pane joins the selection. */
+export interface Design3dPick {
+  paneId: string | null;
+  panelIndex?: number;
+  add: boolean;
+}
+
+/** The product's first look: from outside, a little from the left and above, every sash showing its glass. */
+const PRODUCT_VIEW: [number, number, number] = [-0.46, 0.3, 1];
+const PRODUCT_OPEN_DEG = { hinged: 25, sliding: 30 };
 
 export interface Design3dTimings {
   /** From `startedAt` (the tap that asked for 3D) to the first drawn frame. */
@@ -47,7 +58,7 @@ export interface Design3dTimings {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="d3-stage" #stage>
-      <canvas #canvas class="d3-canvas" role="img" aria-label="3D view of the window. Drag to turn it, pinch or scroll to zoom."></canvas>
+      <canvas #canvas class="d3-canvas" role="img" [attr.aria-label]="product ? '3D view of the window. Tap a pane to select it, drag to turn the window, pinch or scroll to zoom.' : '3D view of the window. Drag to turn it, pinch or scroll to zoom.'"></canvas>
       <p class="d3-notice" *ngIf="unavailable" role="status">3D is not available on this device.</p>
     </div>
     <div class="d3-bar" *ngIf="!unavailable">
@@ -70,7 +81,7 @@ export interface Design3dTimings {
         <button type="button" data-d3="picture" (click)="takePicture()">Picture</button>
         <a *ngIf="picture" [href]="picture" download="window-3d.png" data-d3="download">Download PNG</a>
       </ng-container>
-      <span class="d3-readonly" *ngIf="product" data-d3="readonly">View only. Switch to 2D to edit.</span>
+      <span class="d3-hint" *ngIf="product" data-d3="hint">Tap a pane to select it; shift-tap adds one. Split and Transom are in 2D.</span>
     </div>
     <p class="d3-stats" *ngIf="timings && !product" data-d3="stats">
       {{ timings.triangles }} triangles, {{ timings.drawCalls }} draw calls, built in {{ timings.buildMs | number: '1.0-1' }} ms<ng-container
@@ -109,7 +120,7 @@ export interface Design3dTimings {
         background: #fff;
         color: #1f2933;
       }
-      .d3-readonly {
+      .d3-hint {
         color: #52606d;
         font-size: 12px;
       }
@@ -217,7 +228,11 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() startedAt: number | null = null;
   /** Outer frame face width, the value the 2D canvas is given. */
   @Input() frameFaceMm: number | undefined;
+  /** Ids of the panes shown as selected (the host's selection; the view keeps none of its own). */
+  @Input() selectedIds: readonly string[] | null | undefined = null;
   @Output() readonly ready = new EventEmitter<Design3dTimings>();
+  /** A tap on a pane or on empty space. The host decides what is selected and gives it back in `selectedIds`. */
+  @Output() readonly picked = new EventEmitter<Design3dPick>();
 
   unavailable = false;
   openDeg = 0;
@@ -232,6 +247,8 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
   private observer: ResizeObserver | null = null;
   private firstFrameMs: number | null = null;
   private drawn = false;
+  /** The product opens the window a little once, so the first frame shows every sash; after that the slider is the user's. */
+  private openedOnce = false;
 
   constructor(
     private readonly zone: NgZone,
@@ -240,6 +257,7 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['cornerDemo']) this.scene?.setCornerDemo(this.cornerDemo === true);
+    if (changes['selectedIds']) this.scene?.setSelected(this.selectedIds ?? []);
     // One rebuild for a change of document, glass tint and face together.
     if (changes['design'] || changes['glassTint'] || changes['glassTints'] || changes['frameFaceMm']) this.rebuild();
   }
@@ -258,6 +276,9 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
         const scene = new DesignScene(canvas);
         this.scene = scene;
         scene.setCornerDemo(this.cornerDemo === true);
+        if (this.product) scene.setView(...PRODUCT_VIEW);
+        scene.setSelected(this.selectedIds ?? []);
+        scene.onPick = (hit, add) => this.zone.run(() => this.onPick(hit, add));
         scene.resize(stage.clientWidth, stage.clientHeight);
         this.observer = new ResizeObserver(() => scene.resize(stage.clientWidth, stage.clientHeight));
         this.observer.observe(stage);
@@ -272,6 +293,20 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
     this.rebuild();
     // The view was already checked once: check it again with what the build found.
     this.cdr.detectChanges();
+  }
+
+  private onPick(hit: PaneHit | null, add: boolean): void {
+    this.picked.emit(hit ? { paneId: hit.leafId, panelIndex: hit.panelIndex, add } : { paneId: null, add });
+  }
+
+  /** Tap the page at this point as a finger would (for hosts and tests). */
+  tapAt(clientX: number, clientY: number, add = false): void {
+    if (this.scene) this.onPick(this.scene.pickAt(clientX, clientY), add);
+  }
+
+  /** Where a pane is on the page, in client pixels (for hosts and tests). */
+  pointOf(paneId: string, panelIndex?: number): { x: number; y: number } | null {
+    return this.scene?.pointOf(paneId, panelIndex) ?? null;
   }
 
   private fail(): void {
@@ -309,6 +344,11 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
     if (!this.canOpen && this.openDeg) {
       this.openDeg = 0;
       scene.setOpen(0);
+    }
+    if (this.product && this.canOpen && !this.openedOnce) {
+      this.openedOnce = true;
+      this.openDeg = scene.hingedMovers > 0 ? PRODUCT_OPEN_DEG.hinged : PRODUCT_OPEN_DEG.sliding;
+      scene.setOpen(this.openDeg / 90);
     }
     this.picture = '';
     this.updateOpenLabel();

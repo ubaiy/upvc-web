@@ -8,7 +8,7 @@
  * browser and three.js uploads the buffers again.
  */
 
-import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
+import { PerspectiveCamera, Raycaster, Scene, Vector2, Vector3, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CornerDemo, buildCornerDemo } from './corner-demo';
 import { Studio } from './studio';
@@ -23,7 +23,9 @@ import {
   createMaterials,
   disposeMaterials,
   disposeWindow,
+  pickPane,
   setOpen,
+  setSelected,
 } from './window-mesh';
 
 export const MAX_PIXEL_RATIO = 2;
@@ -31,7 +33,16 @@ const FOV_DEG = 30;
 /** The standing view: from outside, a little to the right and above. */
 const VIEW_DIRECTION = new Vector3(0.5, 0.28, 1).normalize();
 const WORLD_UP = new Vector3(0, 1, 0);
-const FIT_MARGIN = 1.22;
+const FIT_MARGIN = 1.12;
+/** A press that moves less than this and ends sooner than this is a tap, not a turn of the window. */
+const TAP_MOVE_PX = 6;
+const TAP_MS = 600;
+
+/** The pane a tap hit (and which shutter of a sliding pane). */
+export interface PaneHit {
+  leafId: string;
+  panelIndex?: number;
+}
 
 export interface SceneInfo {
   triangles: number;
@@ -102,6 +113,12 @@ export class DesignScene {
   private frame = 0;
   private disposed = false;
   private furnished = false;
+  private view = VIEW_DIRECTION.clone();
+  private selected: readonly string[] = [];
+  private press: { x: number; y: number; at: number } | null = null;
+  private readonly ray = new Raycaster();
+  /** A tap on the view: the pane it hit, or null for empty space; `add` = shift was held. */
+  onPick: ((hit: PaneHit | null, add: boolean) => void) | null = null;
   /** Called after each drawn frame (the host uses the first one for its timing). */
   onFrame: (() => void) | null = null;
 
@@ -118,6 +135,62 @@ export class DesignScene {
     this.controls.addEventListener('change', this.requestRender);
     canvas.addEventListener('webglcontextlost', this.onContextLost);
     canvas.addEventListener('webglcontextrestored', this.requestRender);
+    canvas.addEventListener('pointerdown', this.onPress);
+    canvas.addEventListener('pointerup', this.onRelease);
+  }
+
+  private readonly onPress = (e: PointerEvent): void => {
+    this.press = e.isPrimary && e.button === 0 ? { x: e.clientX, y: e.clientY, at: performance.now() } : null;
+  };
+
+  private readonly onRelease = (e: PointerEvent): void => {
+    const press = this.press;
+    this.press = null;
+    if (!press || !this.onPick) return;
+    if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_MOVE_PX || performance.now() - press.at > TAP_MS) return;
+    this.onPick(this.pickAt(e.clientX, e.clientY), e.shiftKey);
+  };
+
+  /** The pane under a point of the page (client pixels); the nearest one when several lie behind each other. */
+  pickAt(clientX: number, clientY: number): PaneHit | null {
+    const obj = this.window;
+    if (!obj || !obj.picks.length) return null;
+    const box = this.canvas.getBoundingClientRect();
+    if (box.width < 1 || box.height < 1) return null;
+    const point = new Vector2(((clientX - box.left) / box.width) * 2 - 1, 1 - ((clientY - box.top) / box.height) * 2);
+    this.camera.updateMatrixWorld();
+    this.ray.setFromCamera(point, this.camera);
+    const target = pickPane(obj, this.ray);
+    if (!target) return null;
+    return target.panelIndex === undefined ? { leafId: target.leafId } : { leafId: target.leafId, panelIndex: target.panelIndex };
+  }
+
+  /** Where a pane is on the page (client pixels): the middle of its tap volume as it stands. For hosts and tests. */
+  pointOf(leafId: string, panelIndex?: number): { x: number; y: number } | null {
+    const obj = this.window;
+    const target = obj?.picks.find((p) => p.leafId === leafId && (panelIndex === undefined || p.panelIndex === panelIndex));
+    if (!obj || !target) return null;
+    this.camera.updateMatrixWorld();
+    obj.root.updateMatrixWorld(true);
+    target.volume.geometry.computeBoundingBox();
+    const bounds = target.volume.geometry.boundingBox;
+    if (!bounds) return null;
+    const p = bounds.getCenter(new Vector3()).applyMatrix4(target.volume.matrixWorld).project(this.camera);
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: rect.left + ((p.x + 1) / 2) * rect.width, y: rect.top + ((1 - p.y) / 2) * rect.height };
+  }
+
+  /** The panes shown as selected; kept across a rebuild of the window. */
+  setSelected(leafIds: readonly string[]): void {
+    this.selected = leafIds;
+    if (this.window) setSelected(this.window, leafIds);
+    this.requestRender();
+  }
+
+  /** The direction the standing view looks from (window to camera). Fit goes back to it. */
+  setView(x: number, y: number, z: number): void {
+    this.view.set(x, y, z).normalize();
+    this.fit();
   }
 
   private readonly onContextLost = (e: Event): void => e.preventDefault();
@@ -132,6 +205,7 @@ export class DesignScene {
     this.window = buildWindowGroup(parts, this.materials, look);
     this.parts = parts;
     setOpen(this.window, this.open);
+    setSelected(this.window, this.selected);
     this.scene.add(this.window.root);
     this.size = { w: parts.widthMm, h: parts.heightMm, d: parts.depthMm };
     this.boxMin.set(0, 0, -parts.depthMm);
@@ -186,19 +260,19 @@ export class DesignScene {
   }
 
   /** Camera at the standing view, far enough for the whole window at this aspect. */
-  private standingCamera(aspect: number): void {
+  private standingCamera(aspect: number, view: Vector3 = this.view): void {
     const centre = this.centre();
     const tanV = Math.tan((FOV_DEG * Math.PI) / 360);
     const tanH = tanV * aspect;
     // Far enough for every corner of the frame box to be inside the view, plus a margin.
-    const right = new Vector3().crossVectors(WORLD_UP, VIEW_DIRECTION).normalize();
-    const upward = new Vector3().crossVectors(VIEW_DIRECTION, right);
+    const right = new Vector3().crossVectors(WORLD_UP, view).normalize();
+    const upward = new Vector3().crossVectors(view, right);
     let distance = 0;
     for (const sx of [-0.5, 0.5]) {
       for (const sy of [-0.5, 0.5]) {
         for (const sz of [-0.5, 0.5]) {
           const rel = new Vector3().subVectors(this.boxMax, this.boxMin).multiply(new Vector3(sx, sy, sz));
-          const need = rel.dot(VIEW_DIRECTION) + Math.max(Math.abs(rel.dot(upward)) / tanV, Math.abs(rel.dot(right)) / tanH);
+          const need = rel.dot(view) + Math.max(Math.abs(rel.dot(upward)) / tanV, Math.abs(rel.dot(right)) / tanH);
           distance = Math.max(distance, need);
         }
       }
@@ -207,7 +281,7 @@ export class DesignScene {
     this.camera.aspect = aspect;
     this.camera.near = Math.max(10, distance / 100);
     this.camera.far = distance * 10;
-    this.camera.position.copy(centre).addScaledVector(VIEW_DIRECTION, distance);
+    this.camera.position.copy(centre).addScaledVector(view, distance);
     this.camera.lookAt(centre);
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(centre);
@@ -287,7 +361,7 @@ export class DesignScene {
     this.studio.furnish();
     this.furnished = true;
     this.studio.paper(true);
-    this.standingCamera(widthPx / heightPx);
+    this.standingCamera(widthPx / heightPx, VIEW_DIRECTION);
     this.renderer.render(this.scene, this.camera);
     // Read in the same task as the draw: no preserveDrawingBuffer needed.
     const png = el.toDataURL('image/png');
@@ -351,6 +425,9 @@ export class DesignScene {
     if (this.frame) cancelAnimationFrame(this.frame);
     this.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.canvas.removeEventListener('webglcontextrestored', this.requestRender);
+    this.canvas.removeEventListener('pointerdown', this.onPress);
+    this.canvas.removeEventListener('pointerup', this.onRelease);
+    this.onPick = null;
     this.controls.removeEventListener('change', this.requestRender);
     this.controls.dispose();
     this.releaseControls();

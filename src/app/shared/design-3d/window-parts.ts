@@ -52,7 +52,8 @@ export type PartRole =
   | 'glazing-bar'
   | 'rail'
   | 'threshold'
-  | 'handle';
+  | 'handle'
+  | 'hinge';
 
 export type PartMaterial = 'profile' | 'glass' | 'gasket' | 'mesh' | 'hardware';
 
@@ -77,12 +78,27 @@ export interface MovingGroup {
   travel: number;
 }
 
+/**
+ * What a tap can hit: one per pane (one per shutter of a sliding pane). It is
+ * never drawn as it is: `slab` is the volume a tap is tested against, `ring`
+ * the band shown round the pane while it is selected. Both move with `groupId`.
+ */
+export interface PickPart {
+  leafId: string;
+  /** Sliding pane only: which of its shutters. */
+  panelIndex?: number;
+  groupId: string | null;
+  slab: Geo;
+  ring: Geo;
+}
+
 export interface WindowParts {
   widthMm: number;
   heightMm: number;
   depthMm: number;
   parts: MeshPart[];
   groups: MovingGroup[];
+  picks: PickPart[];
 }
 
 export interface PartsOptions {
@@ -93,6 +109,14 @@ export interface PartsOptions {
 }
 
 const CORNER_TURN_RAD = (20 * Math.PI) / 180;
+/** The band round a selected pane: its face width and how far it stands proud of the pane. */
+const RING_FACE_MM = 9;
+const RING_PROUD_MM = 2;
+/** From the back plate of a handle to the lever. */
+const HANDLE_NECK_MM = 26;
+const HINGE = { widthMm: 18, lengthMm: 96 } as const;
+/** The pull of a sliding shutter. */
+const PULL = { widthMm: 12, lengthMm: 170, proudMm: 5 } as const;
 
 interface Ctx {
   design: WindowDesign;
@@ -100,6 +124,7 @@ interface Ctx {
   f: number;
   parts: MeshPart[];
   groups: MovingGroup[];
+  picks: PickPart[];
   /** Own glass of the pane being built; undefined = the window's glass. */
   ownGlass?: string;
 }
@@ -111,6 +136,49 @@ function add(ctx: Ctx, id: string, role: PartRole, material: PartMaterial, group
   const part: MeshPart = { id, role, material, groupId, ...geo };
   if (material === 'glass' && ctx.ownGlass) part.glassId = ctx.ownGlass;
   ctx.parts.push(part);
+}
+
+function joinGeo(geos: Geo[]): Geo {
+  return { positions: geos.flatMap((g) => g.positions), normals: geos.flatMap((g) => g.normals) };
+}
+
+/** The tap volume and the selection band of one pane (or one shutter), from zFront back to zBack. */
+function addPick(
+  ctx: Ctx,
+  leafId: string,
+  groupId: string | null,
+  poly: PointMm[],
+  zFront: number,
+  zBack: number,
+  panelIndex?: number
+): void {
+  if (poly.length < 3) return;
+  const pts = poly.map((p) => up(ctx, p));
+  const band = boxSection(RING_FACE_MM, zFront - zBack + 2 * RING_PROUD_MM);
+  const ring = joinGeo(sweepSection(pts, band, { closed: true, zOutside: zFront + RING_PROUD_MM, breaks: cornerBreaks(pts) }));
+  const pick: PickPart = { leafId, groupId, slab: extrudePolygon(pts, zFront, zBack), ring };
+  if (panelIndex !== undefined) pick.panelIndex = panelIndex;
+  ctx.picks.push(pick);
+}
+
+/** A rectangle with fully rounded ends (a circle when w = h), anticlockwise. */
+function stadium(cx: number, cy: number, w: number, h: number, steps = 5): P2[] {
+  const r = Math.min(w, h) / 2;
+  const dx = w / 2 - r;
+  const dy = h / 2 - r;
+  const out: P2[] = [];
+  [
+    [dx, dy],
+    [-dx, dy],
+    [-dx, -dy],
+    [dx, -dy],
+  ].forEach(([ox, oy], q) => {
+    for (let i = 0; i <= steps; i++) {
+      const a = ((q + i / steps) * Math.PI) / 2;
+      out.push({ x: cx + ox + r * Math.cos(a), y: cy + oy + r * Math.sin(a) });
+    }
+  });
+  return out;
 }
 
 function rectPoly(r: RectMm): PointMm[] {
@@ -279,6 +347,7 @@ function buildCasementLeaf(ctx: Ctx, leaf: LeafNode, pane: PointMm[], isDoor: bo
   const zMid = -S.casementFrameDepthMm / 2;
   if (!opens && !leaf.sashFramed) {
     glassSlab(ctx, `${leaf.id}-glass`, null, pane, zMid);
+    addPick(ctx, leaf.id, null, pane, zMid + S.glassThicknessMm, zMid - S.glassThicknessMm);
     return;
   }
   let poly = pane;
@@ -294,6 +363,7 @@ function buildCasementLeaf(ctx: Ctx, leaf: LeafNode, pane: PointMm[], isDoor: bo
   const zOutside = -(S.casementFrameDepthMm - size.depthMm) / 2;
   const groupId = opens ? `open-${leaf.id}` : null;
   sashWithGlass(ctx, leaf.id, groupId, poly, section, zOutside);
+  addPick(ctx, leaf.id, groupId, poly, zOutside, zOutside - section.depthMm);
   if (!opens || !groupId) return;
 
   const box = boxOf(poly);
@@ -319,25 +389,41 @@ function buildCasementLeaf(ctx: Ctx, leaf: LeafNode, pane: PointMm[], isDoor: bo
     travel: ((out ? outSign : -outSign) * limit * Math.PI) / 180,
   });
 
-  // Handle on the room side of the bar opposite the hinges (a door has one on each face).
+  // Lever handle on the room side of the bar opposite the hinges (a door has one on each face):
+  // a rounded back plate, a round neck, and the lever hanging down as it does when the sash is shut.
   const hd = S.handle;
   const cx = side === 'left' ? x1 - size.faceMm / 2 : side === 'right' ? x0 + size.faceMm / 2 : (x0 + x1) / 2;
   const cy = sideways ? (yTop + yBottom) / 2 : side === 'top' ? yBottom + size.faceMm / 2 : yTop - size.faceMm / 2;
-  const reach = side === 'left' ? -hd.leverLMm : hd.leverLMm;
   const faces: [number, number][] = [[zOutside - section.depthMm, -1]];
   if (isDoor) faces.push([zOutside, 1]);
+  const hardware = (id: string, poly: P2[], za: number, zb: number): void =>
+    add(ctx, id, 'handle', 'hardware', groupId, extrudePolygon(poly, Math.max(za, zb), Math.min(za, zb)));
   faces.forEach(([z, s], i) => {
-    const plate = boxGeo(cx - hd.plateWMm / 2, cy - hd.plateHMm / 2, cx + hd.plateWMm / 2, cy + hd.plateHMm / 2, z, z + s * hd.plateDMm);
-    const lever = boxGeo(
-      Math.min(cx, cx + reach),
-      cy - hd.leverWMm / 2,
-      Math.max(cx, cx + reach),
-      cy + hd.leverWMm / 2,
-      z + s * hd.plateDMm,
-      z + s * (hd.plateDMm + hd.leverDMm)
+    const neck = z + s * (hd.plateDMm + HANDLE_NECK_MM);
+    const spindleY = cy + hd.plateHMm / 5;
+    hardware(`${leaf.id}-handle-${i}`, stadium(cx, cy, hd.plateWMm, hd.plateHMm), z, z + s * hd.plateDMm);
+    hardware(`${leaf.id}-neck-${i}`, stadium(cx, spindleY, hd.leverWMm, hd.leverWMm), z + s * hd.plateDMm, neck);
+    hardware(
+      `${leaf.id}-lever-${i}`,
+      stadium(cx, spindleY + hd.leverWMm / 2 - hd.leverLMm / 2, hd.leverWMm, hd.leverLMm),
+      neck - s * hd.leverDMm,
+      neck
     );
-    add(ctx, `${leaf.id}-handle-${i}`, 'handle', 'hardware', groupId, plate);
-    add(ctx, `${leaf.id}-lever-${i}`, 'handle', 'hardware', groupId, lever);
+  });
+
+  // Hinges on the hung edge, on the face the sash turns towards: two on a window, three on a door.
+  const zHinge = out ? zOutside : zOutside - section.depthMm;
+  // The knuckle stands as far as the frame's own face, so a shut window stays inside its frame.
+  const zKnuckle = out ? 0 : -S.casementFrameDepthMm;
+  const zA = Math.max(zHinge, zKnuckle);
+  const zB = Math.min(zHinge, zKnuckle);
+  const hw = HINGE.widthMm / 2;
+  const hl = HINGE.lengthMm / 2;
+  (isDoor ? [0.12, 0.5, 0.88] : [0.16, 0.84]).forEach((k, i) => {
+    const hx = sideways ? (side === 'right' ? x1 : x0) : x0 + (x1 - x0) * k;
+    const hy = sideways ? yBottom + (yTop - yBottom) * k : side === 'top' ? yTop : yBottom;
+    const geo = sideways ? boxGeo(hx - hw, hy - hl, hx + hw, hy + hl, zA, zB) : boxGeo(hx - hl, hy - hw, hx + hl, hy + hw, zA, zB);
+    add(ctx, `${leaf.id}-hinge-${i}`, 'hinge', 'hardware', groupId, geo);
   });
 }
 
@@ -346,8 +432,11 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
   const sl = slideLayout(leaf.slide, rect.wMm);
   const used = sl.panels.reduce((m, p) => Math.max(m, p.track + 1), 0);
   const sash = boxSection(S.slidingSash.faceMm, S.slidingSash.depthMm, S.chamferMm);
+  // The fly mesh runs on the outermost track, in front of the glass shutter it covers.
+  const first = sl.mesh ? 1 : 0;
+  const yMid = ctx.h - (rect.yMm + rect.hMm / 2);
   sl.panels.forEach((p, i) => {
-    const zc = -trackCentreMm(p.track);
+    const zc = -trackCentreMm(p.track + first);
     const r: RectMm = { xMm: rect.xMm + p.xMm, yMm: rect.yMm, wMm: p.widthMm, hMm: rect.hMm };
     // A shutter slides the way it is set to, or the other way when that side has no room.
     const roomLeft = p.xMm;
@@ -356,7 +445,16 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
     const reach = Math.min(goLeft ? roomLeft : roomRight, p.widthMm - sl.overlapMm);
     const groupId = !p.fixed && reach > 1 ? `slide-${leaf.id}-${i}` : null;
     sashWithGlass(ctx, `${leaf.id}-panel-${i}`, groupId, rectPoly(r), sash, zc + sash.depthMm / 2);
+    addPick(ctx, leaf.id, groupId, rectPoly(r), zc + sash.depthMm / 2, zc - sash.depthMm / 2, i);
     if (groupId) {
+      // A pull on the stile the shutter closes against, on both faces.
+      const px = goLeft ? r.xMm + r.wMm - sash.faceMm / 2 : r.xMm + sash.faceMm / 2;
+      [1, -1].forEach((s, k) => {
+        const z = zc + (s * sash.depthMm) / 2;
+        const zp = z + s * PULL.proudMm;
+        const pull = boxGeo(px - PULL.widthMm / 2, yMid - PULL.lengthMm / 2, px + PULL.widthMm / 2, yMid + PULL.lengthMm / 2, Math.max(z, zp), Math.min(z, zp));
+        add(ctx, `${leaf.id}-panel-${i}-pull-${k}`, 'handle', 'hardware', groupId, pull);
+      });
       ctx.groups.push({
         id: groupId,
         leafId: leaf.id,
@@ -368,19 +466,28 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
     }
   });
   if (sl.mesh) {
-    const zc = -trackCentreMm(used);
+    const zc = -trackCentreMm(0);
     const section = boxSection(S.meshSash.faceMm, S.meshSash.depthMm, S.chamferMm);
     const poly = rectPoly({ xMm: rect.xMm + sl.mesh.xMm, yMm: rect.yMm, wMm: sl.mesh.widthMm, hMm: rect.hMm });
     const pts = poly.map((q) => up(ctx, q));
+    // It slides to the side that has room for it, as far as its own width.
+    const roomLeft = sl.mesh.xMm;
+    const roomRight = rect.wMm - (sl.mesh.xMm + sl.mesh.widthMm);
+    const goLeft = roomLeft > roomRight;
+    const reach = Math.min(goLeft ? roomLeft : roomRight, sl.mesh.widthMm);
+    const groupId = reach > 1 ? `slide-${leaf.id}-mesh` : null;
     sweepSection(pts, section, { closed: true, zOutside: zc + section.depthMm / 2 }).forEach((geo, i) =>
-      add(ctx, `${leaf.id}-mesh-sash-${i}`, 'sash', 'profile', null, geo)
+      add(ctx, `${leaf.id}-mesh-sash-${i}`, 'sash', 'profile', groupId, geo)
     );
     const net = inset(poly, section.faceMm - S.glassBiteMm).map((q) => up(ctx, q));
     const t = S.meshThicknessMm / 2;
-    add(ctx, `${leaf.id}-mesh`, 'mesh', 'mesh', null, extrudePolygon(net, zc + t, zc - t));
+    add(ctx, `${leaf.id}-mesh`, 'mesh', 'mesh', groupId, extrudePolygon(net, zc + t, zc - t));
+    if (groupId) {
+      ctx.groups.push({ id: groupId, leafId: leaf.id, kind: 'slide', pivot: [0, 0, 0], axis: [1, 0, 0], travel: goLeft ? -reach : reach });
+    }
   }
   // One rail per track along the sill and the head.
-  const tracks = used + (sl.mesh ? 1 : 0);
+  const tracks = used + first;
   const rail = S.track;
   const yBottom = ctx.h - (rect.yMm + rect.hMm);
   const yTop = ctx.h - rect.yMm;
@@ -407,7 +514,7 @@ function tracksOf(leaf: LeafNode): number {
 export function buildWindowParts(design: WindowDesign, opts?: PartsOptions): WindowParts {
   const f = opts?.frameFaceMm ?? DEFAULT_FRAME_FACE_MM;
   const arcSegments = opts?.arcSegments ?? 96;
-  const ctx: Ctx = { design, h: design.frame.heightMm, f, parts: [], groups: [] };
+  const ctx: Ctx = { design, h: design.frame.heightMm, f, parts: [], groups: [], picks: [] };
   const lay = layout(design, { frameFaceMm: f });
   const tracks = Math.max(0, ...lay.leaves.map((l) => tracksOf(l.leaf)));
   const depthMm = tracks ? slidingFrameDepthMm(tracks) : S.casementFrameDepthMm;
@@ -442,7 +549,7 @@ export function buildWindowParts(design: WindowDesign, opts?: PartsOptions): Win
     );
   });
 
-  return { widthMm, heightMm, depthMm, parts: ctx.parts, groups: ctx.groups };
+  return { widthMm, heightMm, depthMm, parts: ctx.parts, groups: ctx.groups, picks: ctx.picks };
 }
 
 export function partsOfRole(parts: WindowParts, role: PartRole): MeshPart[] {

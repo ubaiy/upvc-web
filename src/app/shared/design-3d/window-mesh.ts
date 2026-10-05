@@ -15,7 +15,9 @@ import {
   LineBasicMaterial,
   LineSegments,
   Mesh,
+  MeshBasicMaterial,
   MeshStandardMaterial,
+  Raycaster,
 } from 'three';
 import { MovingGroup, PartMaterial, WindowParts } from './window-parts';
 
@@ -28,12 +30,18 @@ export interface WindowLook {
   glassTints?: Record<string, string>;
 }
 
-export const DEFAULT_LOOK: WindowLook = { profileColor: '#ffffff', glassTint: '#c4e4f1' };
+export const DEFAULT_LOOK: WindowLook = { profileColor: '#ffffff', glassTint: '#b4dcec' };
 
 export type WindowMaterials = Record<PartMaterial, MeshStandardMaterial> & {
   /** Thin line on every hard edge of a profile, so a white bar reads on a white sheet. */
   edge: LineBasicMaterial;
+  /** The band round a selected pane: the app's accent, drawn over everything. */
+  ring: MeshBasicMaterial;
+  /** Tap volumes: tested by the ray, never drawn. */
+  pick: MeshBasicMaterial;
 };
+
+export const SELECTION_COLOR = 0x0f766e;
 
 /** Faces that meet at less than this are one surface (the facets of a curved bar). */
 const EDGE_ANGLE_DEG = 60;
@@ -41,16 +49,16 @@ const EDGE_ANGLE_DEG = 60;
 export function createMaterials(): WindowMaterials {
   return {
     // uPVC: a little gloss, so the eased edges and the lights of the room show on it.
-    profile: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.34, metalness: 0, envMapIntensity: 0.7 }),
+    profile: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.2, metalness: 0, envMapIntensity: 1 }),
     // Cheap glass: no transmission pass, so a phone pays for one blended layer only.
     // It is see-through by opacity and reads as glass by the room it reflects.
     glass: new MeshStandardMaterial({
-      color: 0xc4e4f1,
+      color: 0xb4dcec,
       roughness: 0.03,
       metalness: 0.1,
       envMapIntensity: 2.2,
       transparent: true,
-      opacity: 0.36,
+      opacity: 0.44,
       depthWrite: false,
       side: DoubleSide,
     }),
@@ -65,8 +73,10 @@ export function createMaterials(): WindowMaterials {
       side: DoubleSide,
     }),
     // Brushed metal: handle and threshold.
-    hardware: new MeshStandardMaterial({ color: 0xc5c9ce, roughness: 0.3, metalness: 0.92, envMapIntensity: 1.1 }),
-    edge: new LineBasicMaterial({ color: 0x55606b, transparent: true, opacity: 0.55 }),
+    hardware: new MeshStandardMaterial({ color: 0xe2e4e7, roughness: 0.32, metalness: 0.78, envMapIntensity: 1.4 }),
+    edge: new LineBasicMaterial({ color: 0x55606b, transparent: true, opacity: 0.32 }),
+    ring: new MeshBasicMaterial({ color: SELECTION_COLOR, depthTest: false, depthWrite: false, toneMapped: false, side: DoubleSide }),
+    pick: new MeshBasicMaterial({ visible: false, side: DoubleSide }),
   };
 }
 
@@ -78,7 +88,7 @@ export function applyLook(materials: WindowMaterials, look: WindowLook): void {
   materials.profile.color.copy(safeColor(look.profileColor, DEFAULT_LOOK.profileColor));
   materials.glass.color.copy(safeColor(look.glassTint, DEFAULT_LOOK.glassTint));
   // The edge line is the profile colour, darkened: grey on white, near black on a dark foil.
-  materials.edge.color.copy(materials.profile.color).multiplyScalar(0.42);
+  materials.edge.color.copy(materials.profile.color).multiplyScalar(0.5);
 }
 
 export function disposeMaterials(materials: WindowMaterials): void {
@@ -93,8 +103,17 @@ export interface Mover {
 /** A pane in its own glass with no known tint still has to read as another glass. */
 const OWN_GLASS_TINTS = ['#8fa9bd', '#c9a27a', '#9fd3b4'];
 
+/** The tap volume of one pane (or one shutter of a sliding pane) and the band shown while it is selected. */
+export interface PickTarget {
+  leafId: string;
+  panelIndex?: number;
+  volume: Mesh;
+  ring: Mesh;
+}
+
 export interface WindowObject {
   root: Group;
+  picks: PickTarget[];
   /** Glass materials of panes in their own glass; they live and die with the window. */
   ownMaterials: MeshStandardMaterial[];
   movers: Mover[];
@@ -164,7 +183,42 @@ export function buildWindowGroup(parts: WindowParts, materials: WindowMaterials,
       root.add(mesh);
     }
   });
-  return { root, movers: [...movers.values()], geometries, triangles, ownMaterials: [...ownGlass.values()] };
+  // Tap volumes and selection bands: outside the merge, one pair per pane, moving with its sash.
+  const picks: PickTarget[] = (parts.picks ?? []).map((pick) => {
+    const mover = pick.groupId ? movers.get(pick.groupId) : undefined;
+    const make = (geo: { positions: number[]; normals: number[] }, material: MeshBasicMaterial): Mesh => {
+      const geometry = new BufferGeometry();
+      geometry.setAttribute('position', new Float32BufferAttribute(geo.positions, 3));
+      geometry.setAttribute('normal', new Float32BufferAttribute(geo.normals, 3));
+      geometries.push(geometry);
+      const mesh = new Mesh(geometry, material);
+      if (mover) mesh.position.set(-mover.def.pivot[0], -mover.def.pivot[1], -mover.def.pivot[2]);
+      (mover ? mover.group : root).add(mesh);
+      return mesh;
+    };
+    const volume = make(pick.slab, materials.pick);
+    const ring = make(pick.ring, materials.ring);
+    ring.visible = false;
+    ring.renderOrder = 10;
+    return { leafId: pick.leafId, panelIndex: pick.panelIndex, volume, ring };
+  });
+  return { root, picks, movers: [...movers.values()], geometries, triangles, ownMaterials: [...ownGlass.values()] };
+}
+
+/** The pane a ray hits first, as the window stands (open or shut); null when it hits none. */
+export function pickPane(obj: WindowObject, ray: Raycaster): PickTarget | null {
+  if (!obj.picks.length) return null;
+  obj.root.updateMatrixWorld(true);
+  const hit = ray.intersectObjects(
+    obj.picks.map((p) => p.volume),
+    false
+  )[0];
+  return (hit && obj.picks.find((p) => p.volume === hit.object)) || null;
+}
+
+/** Show the band round every pane in `leafIds`, and round no other. */
+export function setSelected(obj: WindowObject, leafIds: readonly string[]): void {
+  for (const pick of obj.picks) pick.ring.visible = leafIds.includes(pick.leafId);
 }
 
 /** t = 0 closed … 1 fully open. */
