@@ -25,6 +25,10 @@ export class ResetPasswordComponent implements OnInit {
   form: FormGroup;
   email = '';
   token = '';
+  /** The link is an invitation to a team (`invite=1`, card T117): the same form, other words. */
+  invite = false;
+  /** The company the invitation is to, when the link names it. */
+  company = '';
   submitted = false;
   busy = false;
   show = false;
@@ -53,6 +57,8 @@ export class ResetPasswordComponent implements OnInit {
     const query = this.route.snapshot.queryParamMap;
     this.token = query.get('token') ?? '';
     this.email = query.get('email') ?? '';
+    this.invite = query.get('invite') === '1';
+    this.company = (query.get('company') ?? '').trim().slice(0, 80);
   }
 
   /** False when the address was opened without the two values the email carries. */
@@ -60,12 +66,19 @@ export class ResetPasswordComponent implements OnInit {
     return !!this.token && !!this.email;
   }
 
+  get heading(): string {
+    if (!this.invite) {
+      return 'Set a new password';
+    }
+    return this.company ? `Set your password to join ${this.company}` : 'Set your password to join the team';
+  }
+
   get passwordError(): string {
     const control = this.form.controls['password'];
     if (!(control.invalid && (this.submitted || (control.touched && !!control.value)))) {
       return '';
     }
-    return control.errors?.['required'] ? 'Enter a new password' : 'Password must be at least 8 characters';
+    return control.errors?.['required'] ? (this.invite ? 'Enter a password' : 'Enter a new password') : 'Password must be at least 8 characters';
   }
 
   get confirmError(): string {
@@ -95,11 +108,11 @@ export class ResetPasswordComponent implements OnInit {
       .setPassword({ email: this.email, token: this.token, password, confirm_password })
       .pipe(finalize(() => (this.busy = false)))
       .subscribe({
-        next: () => this.router.navigate(['/auth/login'], { queryParams: { reset: 1, email: this.email } }),
+        next: () => this.router.navigate(['/auth/login'], { queryParams: this.invite ? { reset: 1, invite: 1, email: this.email } : { reset: 1, email: this.email } }),
         error: (err) => {
           // The shared interceptor also raises a toast; the reason is on the page already.
           this.messages.clear();
-          this.error = resetFailure(err, 'Something went wrong on our side. Your password was not changed.');
+          this.error = resetFailure(err, this.invite ? 'Something went wrong on our side. Your password was not set.' : 'Something went wrong on our side. Your password was not changed.');
         },
       });
   }
