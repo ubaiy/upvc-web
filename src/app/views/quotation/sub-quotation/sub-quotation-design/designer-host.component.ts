@@ -811,6 +811,8 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     this.effective = next;
     this.selection = null;
     this.tab = 'window';
+    // Price details lies over the size boxes: the next window starts with them in view.
+    this.detailsOpen = false;
     this.location.replaceState(`/quotation/detail/${this.quotationId}/add/${n}`);
     this.requestPrice();
   }

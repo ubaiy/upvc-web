@@ -143,6 +143,25 @@ describe('DesignerHostComponent (the window designer screen)', () => {
     expect(image).toBe(designPicture(component.effective, { frameFaceMm: 60, glassTints: component.glassTints }));
   }));
 
+  it('closes Price details when the next window starts, so its size boxes are in view (T88)', fakeAsync(() => {
+    open();
+    // As after a press on "Price details" (the button needs a price with parts, which this api double does not send).
+    component.detailsOpen = true;
+
+    const another = Array.from(el().querySelectorAll('button')).find((b) => (b.textContent || '').includes('Save and add another'))!;
+    another.click();
+    tick(400);
+    flushMicrotasks();
+    fixture.detectChanges();
+
+    expect(saves().length).toBe(1);
+    expect(component.detailsOpen).toBeFalse();
+    expect(el().querySelector('[data-dz="details-panel"]')).toBeNull();
+    expect(el().querySelector('#dz-w')).not.toBeNull();
+    tick(400);
+    flushMicrotasks();
+  }));
+
   it('works out the price while a size is typed, after a short pause', fakeAsync(() => {
     open();
     const before = quotations.quotationManageProduct.calls.count();
