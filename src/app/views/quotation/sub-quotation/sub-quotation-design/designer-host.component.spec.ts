@@ -18,6 +18,7 @@ import { DesignerCatalogService } from './designer-catalog.service';
 import { DesignerHostComponent } from './designer-host.component';
 import { PICTURE_HEIGHT_PX, PICTURE_WIDTH_PX, designPicture } from 'src/app/shared/design-canvas/canvas-export';
 import { pngSize } from 'src/app/shared/design-canvas/canvas-export.spec';
+import { walkLeaves } from 'src/app/shared/design-model';
 import { demoCatalog } from './testing/demo-catalog';
 
 describe('DesignerHostComponent (the window designer screen)', () => {
@@ -223,6 +224,31 @@ describe('DesignerHostComponent (the window designer screen)', () => {
       expect(pressed('3d')).toBe('false');
       expect(el().querySelector('[data-dz="view-note"]')).toBeNull();
       expect(el().querySelector('app-design-canvas')).not.toBeNull();
+    }));
+
+    it('a tap on a pane in 3D selects it as a tap on the drawing does: the panel turns to "Selected pane" (T124)', fakeAsync(() => {
+      open();
+      const paneId = walkLeaves(component.effective.root)[0].id;
+      const tabPane = (): string | null => el().querySelector('[data-dz="tab-pane"]')?.getAttribute('aria-pressed') ?? null;
+      expect(tabPane()).toBe('false');
+      const priced = quotations.quotationManageProduct.calls.count();
+
+      component.onPick3d({ paneId, add: false });
+      fixture.detectChanges();
+      expect(component.selection).toEqual({ type: 'pane', paneId });
+      expect(component.canvas?.selection).toEqual({ type: 'pane', paneId });
+      expect(tabPane()).toBe('true');
+      expect(component.selectedLeaf?.id).toBe(paneId);
+
+      // Shift-tap on a selected pane takes it out again; a tap on empty space clears.
+      component.onPick3d({ paneId, add: true });
+      expect(component.selection).toBeNull();
+      component.onPick3d({ paneId, add: true });
+      expect(component.selection).toEqual({ type: 'pane', paneId });
+      component.onPick3d({ paneId: null, add: false });
+      expect(component.selection).toBeNull();
+      // Selecting changes nothing in the document: no price is asked for.
+      expect(quotations.quotationManageProduct.calls.count()).toBe(priced);
     }));
 
     it('a 3D chunk that cannot be fetched: the reason is said, the drawing stays, price and Save are untouched', fakeAsync(() => {

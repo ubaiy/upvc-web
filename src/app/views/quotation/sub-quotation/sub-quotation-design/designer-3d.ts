@@ -3,13 +3,15 @@
  *
  * design-3d and three.js are one lazy chunk: it is fetched the first time
  * "3D" is pressed, never with the designer. The view only reads the
- * document; editing stays in the 2D drawing. When the chunk cannot be
+ * document: a tap on a pane is told to the designer (`onPick`), which
+ * selects it as a tap on the 2D drawing does, and every change made in the
+ * properties panel comes back through `sync`. When the chunk cannot be
  * fetched or the device has no WebGL, the designer stays on 2D and `note`
  * says why: the drawing area is never left empty.
  */
 
 import { ComponentRef, Type, ViewContainerRef } from '@angular/core';
-import type { Design3dComponent } from 'src/app/shared/design-3d/design-3d.component';
+import type { Design3dComponent, Design3dPick } from 'src/app/shared/design-3d/design-3d.component';
 import { WindowDesign } from 'src/app/shared/design-model';
 
 export interface View3dInputs {
@@ -19,7 +21,11 @@ export interface View3dInputs {
   /** Tints by glass id, for panes in their own glass. */
   glassTints: Record<string, string>;
   frameFaceMm: number;
+  /** The panes selected in the designer: 3D shows a band round each. */
+  selectedIds?: string[];
 }
+
+export type View3dPick = Design3dPick;
 
 export interface View3dChunk {
   Design3dComponent: Type<Design3dComponent>;
@@ -42,7 +48,7 @@ export class Designer3dView {
 
   constructor(private readonly load: () => Promise<View3dChunk> = loadChunk) {}
 
-  async open(host: ViewContainerRef | undefined, inputs: () => View3dInputs): Promise<void> {
+  async open(host: ViewContainerRef | undefined, inputs: () => View3dInputs, onPick?: (pick: View3dPick) => void): Promise<void> {
     if (this.on || this.loading || !host) return;
     this.loading = true;
     this.note = '';
@@ -55,6 +61,8 @@ export class Designer3dView {
       const ref = host.createComponent(chunk.Design3dComponent);
       this.ref = ref;
       ref.setInput('product', true);
+      // The subscription ends with the component (close() destroys it).
+      if (onPick) ref.instance.picked.subscribe(onPick);
       this.on = true;
       this.sync(inputs());
       ref.changeDetectorRef.detectChanges();
@@ -79,6 +87,7 @@ export class Designer3dView {
     ref.setInput('glassTint', inputs.glassTint);
     ref.setInput('glassTints', inputs.glassTints);
     ref.setInput('frameFaceMm', inputs.frameFaceMm);
+    ref.setInput('selectedIds', inputs.selectedIds ?? []);
   }
 
   close(): void {

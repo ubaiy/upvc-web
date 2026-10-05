@@ -31,7 +31,7 @@ import { Subject, Subscription, firstValueFrom, of } from 'rxjs';
 import { catchError, debounceTime, switchMap } from 'rxjs/operators';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { designPicture } from 'src/app/shared/design-canvas/canvas-export';
-import { CanvasSelection, CanvasTool } from 'src/app/shared/design-canvas/canvas-view';
+import { CanvasSelection, CanvasTool, selectedPaneIds, togglePaneInSelection } from 'src/app/shared/design-canvas/canvas-view';
 import { GlassTints, SashFaces } from 'src/app/shared/design-canvas/canvas-renderer';
 import { KeyItem, drawingKey } from 'src/app/shared/design-canvas/drawing-key';
 import { DesignCanvasComponent } from 'src/app/shared/design-canvas/design-canvas.component';
@@ -64,7 +64,7 @@ import {
   sashFacesOf,
   systemKeyOf,
 } from './designer-catalog';
-import { Designer3dView, View3dInputs } from './designer-3d';
+import { Designer3dView, View3dInputs, View3dPick } from './designer-3d';
 import { DesignerCatalogService } from './designer-catalog.service';
 import {
   PriceLine,
@@ -372,6 +372,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   onSelectionChange(sel: CanvasSelection | null): void {
     this.selection = sel;
     if (sel?.type === 'pane') this.tab = 'pane';
+    this.view3d.sync(this.inputs3d());
     void this.ensureForSelection();
   }
 
@@ -426,13 +427,31 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       glassTint: (glass !== null && glass !== undefined && this.glassTints[String(glass)]) || null,
       glassTints: this.glassTints,
       frameFaceMm: FRAME_FACE_MM,
+      selectedIds: selectedPaneIds(this.selection),
     };
   }
 
-  /** 3D shows the window as it stands and follows every change; it never edits it. */
+  /**
+   * A tap in 3D selects as a tap on the drawing does: the drawing keeps the
+   * selection, so the properties panel, undo and the price follow as in 2D.
+   */
+  onPick3d(pick: View3dPick): void {
+    const canvas = this.canvas;
+    if (!canvas) return;
+    if (!pick.paneId) canvas.selectPane(null);
+    else if (pick.add) canvas.selectPanes(selectedPaneIds(togglePaneInSelection(this.selection, pick.paneId)));
+    else canvas.selectPane(pick.paneId);
+    this.cdr.markForCheck();
+  }
+
+  /** 3D shows the window as it stands and follows every change; a tap on a pane selects it. */
   async show3d(): Promise<void> {
     this.canvas?.armTool(null);
-    const opening = this.view3d.open(this.view3dHost, () => this.inputs3d());
+    const opening = this.view3d.open(
+      this.view3dHost,
+      () => this.inputs3d(),
+      (pick) => this.onPick3d(pick)
+    );
     this.cdr.markForCheck();
     await opening;
     this.cdr.markForCheck();

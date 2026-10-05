@@ -247,7 +247,7 @@
         <div class="seg view-switch" role="group" aria-label="2D drawing or 3D view">
           <button type="button" data-dz="view-2d" [attr.aria-pressed]="!view3d.on" (click)="show2d()">2D</button>
           <button type="button" data-dz="view-3d" [attr.aria-pressed]="view3d.on" [disabled]="view3d.loading"
-            title="See this window in 3D: turn it, open it. Editing stays in 2D." (click)="show3d()">
+            title="See this window in 3D: turn it, open it, tap a pane to change it." (click)="show3d()">
             {{ view3d.loading ? 'Loading…' : '3D' }}
           </button>
         </div>

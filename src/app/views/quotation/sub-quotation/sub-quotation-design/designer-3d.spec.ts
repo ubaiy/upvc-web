@@ -5,10 +5,10 @@
  */
 import 'zone.js/testing';
 
-import { Component, Input, ViewChild, ViewContainerRef } from '@angular/core';
+import { Component, EventEmitter, Input, Output, ViewChild, ViewContainerRef } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { WindowDesign, createDesign } from 'src/app/shared/design-model';
-import { Designer3dView, NO_CHUNK_NOTE, NO_WEBGL_NOTE, View3dChunk, View3dInputs } from './designer-3d';
+import { Designer3dView, NO_CHUNK_NOTE, NO_WEBGL_NOTE, View3dChunk, View3dInputs, View3dPick } from './designer-3d';
 
 /** Stands in for Design3dComponent: the same inputs, no three.js. */
 @Component({ selector: 'app-fake-3d', standalone: true, template: '<i data-fake="3d"></i>' })
@@ -19,6 +19,8 @@ class Fake3dComponent {
   @Input() glassTints: Record<string, string> | null = null;
   @Input() frameFaceMm: number | undefined;
   @Input() product = false;
+  @Input() selectedIds: string[] = [];
+  @Output() readonly picked = new EventEmitter<View3dPick>();
   unavailable = Fake3dComponent.refuses;
 }
 
@@ -49,6 +51,28 @@ describe('Designer3dView (the 2D | 3D switch of the window designer)', () => {
     TestBed.configureTestingModule({ imports: [SlotComponent] });
     fixture = TestBed.createComponent(SlotComponent);
     fixture.detectChanges();
+  });
+
+  it('a tap in 3D is told to the designer, and the designer\'s selection is shown in 3D (T124)', async () => {
+    const view = new Designer3dView(() => Promise.resolve(chunk(true)));
+    const taps: View3dPick[] = [];
+    await view.open(fixture.componentInstance.slot, inputs, (pick) => taps.push(pick));
+    const fake = shown() as Fake3dComponent;
+    expect(fake.selectedIds).toEqual([]);
+
+    fake.picked.emit({ paneId: 'p1', add: false });
+    fake.picked.emit({ paneId: 'p2', add: true });
+    fake.picked.emit({ paneId: null, add: false });
+    expect(taps).toEqual([
+      { paneId: 'p1', add: false },
+      { paneId: 'p2', add: true },
+      { paneId: null, add: false },
+    ]);
+
+    view.sync({ ...inputs(), selectedIds: ['p1', 'p2'] });
+    expect(fake.selectedIds).toEqual(['p1', 'p2']);
+    view.sync(inputs());
+    expect(fake.selectedIds).toEqual([]);
   });
 
   it('starts on 2D with nothing to say', () => {
