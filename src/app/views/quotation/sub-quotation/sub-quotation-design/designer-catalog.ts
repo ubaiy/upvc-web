@@ -165,6 +165,8 @@ function completeLeaf(
   const handles = handlesFor(catalog, 'Casement', productType);
   const hinge = leaf.opening?.hingesType;
   next.opening = {
+    // Keep what the catalogue does not decide (a centre pivot's axis).
+    ...leaf.opening,
     direction: leaf.opening?.direction ?? 'Left',
     handleId: catalog.handles['Casement']
       ? keepOrFirst(handles, leaf.opening?.handleId)
