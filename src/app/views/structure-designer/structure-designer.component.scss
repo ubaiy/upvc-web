@@ -1038,3 +1038,13 @@ button.sd-dim:hover {
     transition: none;
   }
 }
+
+// A type the selected panel cannot have (Sliding on a raked panel): shown, greyed, with the reason under the buttons.
+.sd-fills button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sd-why {
+  margin: -4px 0 10px;
+}
