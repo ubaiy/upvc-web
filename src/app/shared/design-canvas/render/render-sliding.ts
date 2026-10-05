@@ -2,8 +2,11 @@
  * design-canvas renderer — a sliding leaf the way the trade draws it, from
  * the model's slideLayout():
  *
- *  - every shutter is its own framed sash (stiles and rails at the sash
- *    profile's face width) with its glass inside;
+ *  - every shutter is its own framed sash: two stiles and two rails at the
+ *    sash profile's face width, each outlined and mitred at the corners, a
+ *    shade off the outer frame, with its glass inside; a dark reveal of the
+ *    track pocket separates it from the outer frame at the head, the sill
+ *    and the jamb it stands against;
  *  - shutters on different tracks overlap by one stile at the interlock, the
  *    one on the track nearer the viewer drawn over the other with a shadow
  *    edge; a circled number on each shutter is its track (1 = outside);
@@ -34,7 +37,7 @@ import {
   sashFacePx,
   shadeColor,
 } from './render-common';
-import { drawGlass, drawSashFrame } from './render-sash';
+import { drawGlass, drawShutterSash } from './render-sash';
 
 /** One shutter as drawn. */
 interface ShutterPx {
@@ -49,8 +52,16 @@ interface ShutterPx {
 interface SlidePx {
   layout: SlideLayout;
   facePx: number;
+  /** The gap of the track pocket shown between a shutter and the outer frame. */
+  revealPx: number;
   shutters: ShutterPx[];
   mesh: PxRect | null;
+}
+
+/** Pocket reveal round the shutters: enough to read as a gap, never a band. */
+function revealFor(facePx: number, ctx: RenderCtx): number {
+  if (ctx.detail === 'tiny') return 1;
+  return Math.max(1.5, Math.min(3, facePx * 0.12));
 }
 
 function slidePx(
@@ -72,13 +83,14 @@ function slidePx(
   // Shutters on different tracks pass each other: they are drawn lapping
   // by at least one stile, half taken from each side of the joint.
   const lapPx = Math.max(0, facePx - sl.overlapMm * ppm) / 2;
+  const revealPx = revealFor(facePx, ctx);
   const shutters = sl.panels.map((p): ShutterPx => {
     const lapsBefore = p.index > 0 && sl.panels[p.index - 1].track !== p.track;
     const lapsAfter = p.index < n - 1 && sl.panels[p.index + 1].track !== p.track;
     const x0 = p.xMm * ppm - (lapsBefore ? lapPx : 0);
     const x1 = (p.xMm + p.widthMm) * ppm + (lapsAfter ? lapPx : 0);
-    const left = Math.max(0, x0);
-    const right = Math.min(r.w, x1);
+    const left = Math.max(revealPx, x0);
+    const right = Math.min(r.w - revealPx, x1);
     return {
       index: p.index,
       track: p.track,
@@ -86,9 +98,9 @@ function slidePx(
       slidesRight: (p.direction === 'Right') !== ctx.flip,
       rect: {
         x: r.x + (ctx.flip ? r.w - right : left),
-        y: r.y,
+        y: r.y + revealPx,
         w: Math.max(4, right - left),
-        h: r.h,
+        h: Math.max(4, r.h - 2 * revealPx),
       },
     };
   });
@@ -98,7 +110,7 @@ function slidePx(
     const mw = sl.mesh.widthMm * ppm;
     mesh = { x: r.x + (ctx.flip ? r.w - mx - mw : mx), y: r.y, w: mw, h: r.h };
   }
-  return { layout: sl, facePx, shutters, mesh };
+  return { layout: sl, facePx, revealPx, shutters, mesh };
 }
 
 /** Screen rect of panel `index` of a sliding leaf drawn in `r`. */
@@ -135,7 +147,7 @@ export function drawSlidingLeaf(
     y: r.y,
     width: r.w,
     height: r.h,
-    fill: shadeColor(ctx.color, -0.22),
+    fill: shadeColor(ctx.color, ctx.color === '#ffffff' ? -0.5 : -0.35),
     stroke: COL.stroke,
     strokeWidth: 1,
     listening: false,
@@ -146,9 +158,10 @@ export function drawSlidingLeaf(
   drawTracks(parent, slide, r, ctx, trackCount);
 
   for (const sh of backToFront(s.shutters, ctx.flip)) {
-    const glass = drawSashFrame(parent, sh.rect, s.facePx, ctx.color, {
+    const glass = drawShutterSash(parent, sh.rect, s.facePx, ctx.color, {
       name: 'slide-sash',
       shadow: !tiny,
+      thin: tiny,
       attrs: { panelIndex: sh.index, track: sh.track, fixed: sh.fixed },
     });
     // The spec-facing node of a shutter (one per panel).
@@ -173,7 +186,7 @@ export function drawSlidingLeaf(
     drawInterlock(parent, a, b, s.facePx);
   }
 
-  if (s.mesh) drawFlyMesh(parent, s.mesh, s.facePx, ctx, slide, trackCount);
+  if (s.mesh) drawFlyMesh(parent, s.mesh, s.facePx + s.revealPx, ctx, slide, trackCount);
 
   for (const sh of s.shutters) {
     const glass = insetPx(sh.rect, s.facePx);
@@ -218,8 +231,8 @@ function drawTracks(
 
 /**
  * The joint of two neighbouring shutters: where they lap (different
- * tracks) a darker interlock stile on the front one, where they meet on
- * one track a meeting line.
+ * tracks) the front one's stile covers the stile behind it and is marked
+ * with a faint shade, where they meet on one track a meeting line.
  */
 function drawInterlock(parent: Parent, a: ShutterPx, b: ShutterPx, facePx: number): void {
   const left = Math.max(a.rect.x, b.rect.x);
@@ -232,7 +245,7 @@ function drawInterlock(parent: Parent, a: ShutterPx, b: ShutterPx, facePx: numbe
     y: a.rect.y + 1,
     width: Math.max(1.5, w),
     height: Math.max(2, a.rect.h - 2),
-    fill: lapped ? 'rgba(30, 34, 40, 0.1)' : 'rgba(30, 34, 40, 0.7)',
+    fill: lapped ? 'rgba(30, 34, 40, 0.06)' : 'rgba(30, 34, 40, 0.7)',
     listening: false,
     name: 'slide-interlock',
   });

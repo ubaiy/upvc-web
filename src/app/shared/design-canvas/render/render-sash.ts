@@ -78,6 +78,74 @@ export function sashColor(profile: string): string {
   return shadeColor(hex, luma < 90 ? 0.14 : -0.09);
 }
 
+export type SashMember = 'top' | 'bottom' | 'left' | 'right';
+
+/** The colour of a sliding shutter: a clear shade off the outer frame it runs in. */
+export function shutterColor(profile: string): string {
+  const hex = shadeColor(profile, 0);
+  const n = parseInt(hex.slice(1), 16);
+  const luma = (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
+  return shadeColor(hex, luma < 90 ? 0.22 : -0.17);
+}
+
+/**
+ * A sliding shutter: two stiles and two rails of `facePx`, each a piece of
+ * its own with its outline, so the mitre at every corner and both edges of
+ * every member are drawn. All four are one tone (a faint bevel only), so no
+ * member is lost against the outer frame. Returns the rect the glass sits in.
+ */
+export function drawShutterSash(
+  parent: Parent,
+  r: PxRect,
+  facePx: number,
+  color: string,
+  o: SashOpts & { thin?: boolean }
+): PxRect {
+  const base = shutterColor(color);
+  const f = Math.max(1, Math.min(facePx, r.w / 2, r.h / 2));
+  const edge = new Konva.Rect({
+    x: r.x,
+    y: r.y,
+    width: r.w,
+    height: r.h,
+    fill: base,
+    stroke: COL.stroke,
+    strokeWidth: 1.5,
+    listening: false,
+    name: `${o.name}-edge`,
+    ...(o.shadow
+      ? { shadowColor: '#000000', shadowBlur: 7, shadowOpacity: 0.38, shadowOffset: { x: 0, y: 1 } }
+      : {}),
+  });
+  if (o.attrs) edge.setAttrs(o.attrs);
+  parent.add(edge);
+  const x0 = r.x;
+  const x1 = r.x + r.w;
+  const y0 = r.y;
+  const y1 = r.y + r.h;
+  const members: [SashMember, number[], number][] = [
+    ['top', [x0, y0, x1, y0, x1 - f, y0 + f, x0 + f, y0 + f], 0.06],
+    ['bottom', [x0, y1, x1, y1, x1 - f, y1 - f, x0 + f, y1 - f], -0.06],
+    ['left', [x0, y0, x0 + f, y0 + f, x0 + f, y1 - f, x0, y1], 0.03],
+    ['right', [x1, y0, x1 - f, y0 + f, x1 - f, y1 - f, x1, y1], -0.03],
+  ];
+  for (const [member, points, shade] of members) {
+    const piece = new Konva.Line({
+      points,
+      closed: true,
+      fill: shadeColor(base, shade),
+      stroke: COL.stroke,
+      strokeWidth: o.thin ? 0.5 : 1,
+      lineJoin: 'round',
+      listening: false,
+      name: `${o.name}-member`,
+    });
+    piece.setAttrs({ ...(o.attrs ?? {}), member, facePx: f });
+    parent.add(piece);
+  }
+  return insetPx(r, f);
+}
+
 export interface GlassOpts {
   name?: string;
   /** Tag a pane that has its own glass (once per pane). */

@@ -125,8 +125,8 @@ describe('drawing clarity: sliding windows', () => {
       const layer = draw(d);
       const edges = all(layer, 'slide-sash-edge');
       expect(edges.length).toBe(s.panels);
-      // One sash = an outline and four bands plus the reveal.
-      expect(all(layer, 'slide-sash').length).toBe(s.panels * 5);
+      // One sash = an outline and four members (slider-sash.spec.ts looks at them).
+      expect(all(layer, 'slide-sash-member').length).toBe(s.panels * 4);
       const byIndex = [...edges].sort((a, b) => a.getAttr('panelIndex') - b.getAttr('panelIndex'));
       expect(byIndex.map((e) => e.getAttr('track'))).toEqual(s.trackOrder);
       // A real face width: the band is far wider than a line.
