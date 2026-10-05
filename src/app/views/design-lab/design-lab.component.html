@@ -125,6 +125,10 @@
 
     <section class="lab-3d" [hidden]="!show3d" aria-label="3D view" data-lab="view-3d">
       <p class="lab-3d-note" *ngIf="loading3d" role="status">Loading 3D…</p>
+      <label class="lab-toggle" *ngIf="!loading3d">
+        <input type="checkbox" data-lab="corner-3d" [ngModel]="corner3d" (ngModelChange)="setCorner3d($event)" />
+        corner demo: the same window on two faces at 90° with a post
+      </label>
       <ng-container #view3d></ng-container>
     </section>
     <p class="lab-3d-note" *ngIf="view3dNote" role="status">{{ view3dNote }}</p>

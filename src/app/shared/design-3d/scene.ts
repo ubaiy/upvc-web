@@ -8,16 +8,10 @@
  * browser and three.js uploads the buffers again.
  */
 
-import {
-  Color,
-  DirectionalLight,
-  HemisphereLight,
-  PerspectiveCamera,
-  Scene,
-  Vector3,
-  WebGLRenderer,
-} from 'three';
+import { PerspectiveCamera, Scene, Vector3, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { CornerDemo, buildCornerDemo } from './corner-demo';
+import { Studio } from './studio';
 import { WindowParts } from './window-parts';
 import {
   DEFAULT_LOOK,
@@ -38,7 +32,6 @@ const FOV_DEG = 30;
 const VIEW_DIRECTION = new Vector3(0.5, 0.28, 1).normalize();
 const WORLD_UP = new Vector3(0, 1, 0);
 const FIT_MARGIN = 1.22;
-const SCREEN_BACKGROUND = '#dfe4ea';
 
 export interface SceneInfo {
   triangles: number;
@@ -65,17 +58,50 @@ export function webglAvailable(): boolean {
   }
 }
 
+type DocumentListener = [string, EventListenerOrEventListenerObject, boolean | AddEventListenerOptions | undefined];
+
+/**
+ * OrbitControls of three r160 puts a keydown listener on the document and its
+ * dispose() does not take it off again, which keeps the controls, the canvas
+ * and the GL context of every closed view alive. Until three is upgraded, the
+ * listeners it adds to the document while it is constructed are noted here
+ * and removed by release().
+ */
+function createControls(camera: PerspectiveCamera, canvas: HTMLCanvasElement): { controls: OrbitControls; release: () => void } {
+  const added: DocumentListener[] = [];
+  const add = document.addEventListener;
+  document.addEventListener = ((type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions) => {
+    added.push([type, listener, options]);
+    add.call(document, type, listener, options);
+  }) as typeof document.addEventListener;
+  try {
+    const controls = new OrbitControls(camera, canvas);
+    return { controls, release: () => added.forEach(([type, listener, options]) => document.removeEventListener(type, listener, options)) };
+  } finally {
+    document.addEventListener = add;
+  }
+}
+
 export class DesignScene {
   readonly renderer: WebGLRenderer;
   readonly scene = new Scene();
   readonly camera = new PerspectiveCamera(FOV_DEG, 1, 10, 100000);
   readonly controls: OrbitControls;
+  private readonly releaseControls: () => void;
+  private readonly studio: Studio;
   private readonly materials: WindowMaterials = createMaterials();
   private window: WindowObject | null = null;
+  private parts: WindowParts | null = null;
+  private corner: CornerDemo | null = null;
+  private cornerOn = false;
   private size = { w: 0, h: 0, d: 0 };
+  /** What the camera has to show: the frame box, or the pair of the corner demo. */
+  private boxMin = new Vector3();
+  private boxMax = new Vector3();
   private open = 0;
   private frame = 0;
   private disposed = false;
+  private furnished = false;
   /** Called after each drawn frame (the host uses the first one for its timing). */
   onFrame: (() => void) | null = null;
 
@@ -83,16 +109,11 @@ export class DesignScene {
     // Throws when the device has no WebGL: the host shows its own notice.
     this.renderer = new WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'default' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO));
-    this.scene.background = new Color(SCREEN_BACKGROUND);
+    this.studio = new Studio(this.renderer, this.scene);
 
-    this.scene.add(new HemisphereLight(0xffffff, 0x8e99a6, 1.15));
-    const sun = new DirectionalLight(0xffffff, 1.7);
-    sun.position.set(-0.6, 1, 1.2);
-    const room = new DirectionalLight(0xffffff, 0.9);
-    room.position.set(0.7, 0.4, -1);
-    this.scene.add(sun, room);
-
-    this.controls = new OrbitControls(this.camera, canvas);
+    const made = createControls(this.camera, canvas);
+    this.controls = made.controls;
+    this.releaseControls = made.release;
     this.controls.enableDamping = false;
     this.controls.addEventListener('change', this.requestRender);
     canvas.addEventListener('webglcontextlost', this.onContextLost);
@@ -109,17 +130,46 @@ export class DesignScene {
     if (this.window) disposeWindow(this.window);
     applyLook(this.materials, look);
     this.window = buildWindowGroup(parts, this.materials);
+    this.parts = parts;
     setOpen(this.window, this.open);
     this.scene.add(this.window.root);
     this.size = { w: parts.widthMm, h: parts.heightMm, d: parts.depthMm };
+    this.boxMin.set(0, 0, -parts.depthMm);
+    this.boxMax.set(parts.widthMm, parts.heightMm, 0);
+    this.buildCorner();
+    this.studio.place(this.boxMin, this.boxMax);
     if (first || resized) this.fit();
     else this.requestRender();
+  }
+
+  /** Lab only: the same window on a second face at 90°, with a post (see corner-demo.ts). */
+  setCornerDemo(on: boolean): void {
+    if (on === this.cornerOn) return;
+    this.cornerOn = on;
+    if (!this.parts) return;
+    this.boxMin.set(0, 0, -this.size.d);
+    this.boxMax.set(this.size.w, this.size.h, 0);
+    this.buildCorner();
+    this.studio.place(this.boxMin, this.boxMax);
+    this.fit();
+  }
+
+  private buildCorner(): void {
+    this.corner?.dispose();
+    this.corner = null;
+    if (!this.cornerOn || !this.parts) return;
+    this.corner = buildCornerDemo(this.parts, this.materials);
+    setOpen(this.corner.face, this.open);
+    this.scene.add(this.corner.root);
+    this.boxMin.copy(this.corner.min);
+    this.boxMax.copy(this.corner.max);
   }
 
   /** 0 = closed, 1 = fully open. */
   setOpen(t: number): void {
     this.open = t;
     if (this.window) setOpen(this.window, t);
+    if (this.corner) setOpen(this.corner.face, t);
     this.requestRender();
   }
 
@@ -132,7 +182,7 @@ export class DesignScene {
   }
 
   private centre(): Vector3 {
-    return new Vector3(this.size.w / 2, this.size.h / 2, -this.size.d / 2);
+    return new Vector3().addVectors(this.boxMin, this.boxMax).multiplyScalar(0.5);
   }
 
   /** Camera at the standing view, far enough for the whole window at this aspect. */
@@ -147,7 +197,7 @@ export class DesignScene {
     for (const sx of [-0.5, 0.5]) {
       for (const sy of [-0.5, 0.5]) {
         for (const sz of [-0.5, 0.5]) {
-          const rel = new Vector3(sx * this.size.w, sy * this.size.h, sz * this.size.d);
+          const rel = new Vector3().subVectors(this.boxMax, this.boxMin).multiply(new Vector3(sx, sy, sz));
           const need = rel.dot(VIEW_DIRECTION) + Math.max(Math.abs(rel.dot(upward)) / tanV, Math.abs(rel.dot(right)) / tanH);
           distance = Math.max(distance, need);
         }
@@ -193,6 +243,15 @@ export class DesignScene {
     if (this.disposed) return;
     this.renderer.render(this.scene, this.camera);
     this.onFrame?.();
+    if (!this.furnished) {
+      // The first frame is out; now the room for the reflections, and one more frame with it.
+      this.furnished = true;
+      setTimeout(() => {
+        if (this.disposed) return;
+        this.studio.furnish();
+        this.requestRender();
+      }, 0);
+    }
   }
 
   info(): SceneInfo {
@@ -222,17 +281,18 @@ export class DesignScene {
       near: this.camera.near,
       far: this.camera.far,
       target: this.controls.target.clone(),
-      background: this.scene.background,
     };
     this.renderer.setPixelRatio(1);
     this.renderer.setSize(widthPx, heightPx, false);
-    this.scene.background = new Color('#ffffff');
+    this.studio.furnish();
+    this.furnished = true;
+    this.studio.paper(true);
     this.standingCamera(widthPx / heightPx);
     this.renderer.render(this.scene, this.camera);
     // Read in the same task as the draw: no preserveDrawingBuffer needed.
     const png = el.toDataURL('image/png');
 
-    this.scene.background = before.background;
+    this.studio.paper(false);
     this.renderer.setPixelRatio(before.ratio);
     this.renderer.setSize(before.w / before.ratio, before.h / before.ratio, false);
     this.camera.position.copy(before.position);
@@ -293,9 +353,13 @@ export class DesignScene {
     this.canvas.removeEventListener('webglcontextrestored', this.requestRender);
     this.controls.removeEventListener('change', this.requestRender);
     this.controls.dispose();
+    this.releaseControls();
     if (this.window) disposeWindow(this.window);
     this.window = null;
+    this.corner?.dispose();
+    this.corner = null;
     disposeMaterials(this.materials);
+    this.studio.dispose();
     this.renderer.dispose();
     // Give the GPU context back now; a browser allows only a few at a time.
     this.renderer.forceContextLoss();

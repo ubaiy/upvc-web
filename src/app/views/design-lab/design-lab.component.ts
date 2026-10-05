@@ -72,6 +72,8 @@ export class DesignLabComponent implements OnInit, OnDestroy {
   show3d = false;
   loading3d = false;
   view3dNote = '';
+  /** Throwaway corner demo of the prototype (roadmap P0, item 5). */
+  corner3d = false;
   private view3d: ComponentRef<Design3dComponent> | null = null;
 
   readonly groups = PRESET_GROUPS;
@@ -141,6 +143,7 @@ export class DesignLabComponent implements OnInit, OnDestroy {
       if (this.show3d && this.view3dHost && !this.view3d) {
         const ref = this.view3dHost.createComponent(Design3dComponent);
         ref.setInput('startedAt', startedAt);
+        ref.setInput('cornerDemo', this.corner3d);
         this.view3d = ref;
         this.sync3d(this.current);
         // Handle for the measuring script of the prototype log (dev lab only).
@@ -152,6 +155,11 @@ export class DesignLabComponent implements OnInit, OnDestroy {
     }
     this.loading3d = false;
     this.cdr.markForCheck();
+  }
+
+  setCorner3d(on: boolean): void {
+    this.corner3d = on;
+    this.view3d?.setInput('cornerDemo', on);
   }
 
   private close3d(): void {

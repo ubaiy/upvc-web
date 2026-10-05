@@ -15,8 +15,10 @@ import {
   EventEmitter,
   Input,
   NgZone,
+  OnChanges,
   OnDestroy,
   Output,
+  SimpleChanges,
   ViewChild,
 } from '@angular/core';
 import { WindowDesign } from '../design-model';
@@ -41,7 +43,7 @@ export interface Design3dTimings {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="d3-stage" #stage>
-      <canvas #canvas class="d3-canvas" aria-label="3D view of the window. Drag to turn it, pinch or scroll to zoom."></canvas>
+      <canvas #canvas class="d3-canvas" role="img" aria-label="3D view of the window. Drag to turn it, pinch or scroll to zoom."></canvas>
       <p class="d3-notice" *ngIf="unavailable" role="status">3D is not available on this device.</p>
     </div>
     <div class="d3-bar" *ngIf="!unavailable">
@@ -168,10 +170,16 @@ export interface Design3dTimings {
     `,
   ],
 })
-export class Design3dComponent implements AfterViewInit, OnDestroy {
+export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
   @ViewChild('canvas') private canvasRef?: ElementRef<HTMLCanvasElement>;
   @ViewChild('stage') private stageRef?: ElementRef<HTMLElement>;
 
+  /** The document to show. The view never changes it. */
+  @Input() design: WindowDesign | null = null;
+  /** Tint (hex) of the design's glass; the host knows its glass list. */
+  @Input() glassTint: string | null | undefined = null;
+  /** Lab only: show the window twice, round a 90° corner with a post (thrown away after P0). */
+  @Input() cornerDemo = false;
   /** performance.now() of the tap that asked for 3D; null = not timed. */
   @Input() startedAt: number | null = null;
   /** Outer frame face width, the value the 2D canvas is given. */
@@ -189,8 +197,6 @@ export class Design3dComponent implements AfterViewInit, OnDestroy {
 
   private scene: DesignScene | null = null;
   private observer: ResizeObserver | null = null;
-  private current: WindowDesign | null = null;
-  private tint: string | null = null;
   private firstFrameMs: number | null = null;
   private drawn = false;
 
@@ -199,15 +205,10 @@ export class Design3dComponent implements AfterViewInit, OnDestroy {
     private readonly cdr: ChangeDetectorRef
   ) {}
 
-  @Input() set design(value: WindowDesign | null) {
-    this.current = value;
-    this.rebuild();
-  }
-
-  /** Tint (hex) of the design's glass; the host knows its glass list. */
-  @Input() set glassTint(value: string | null | undefined) {
-    this.tint = value ?? null;
-    this.rebuild();
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['cornerDemo']) this.scene?.setCornerDemo(this.cornerDemo === true);
+    // One rebuild for a change of document, glass tint and face together.
+    if (changes['design'] || changes['glassTint'] || changes['frameFaceMm']) this.rebuild();
   }
 
   ngAfterViewInit(): void {
@@ -223,6 +224,7 @@ export class Design3dComponent implements AfterViewInit, OnDestroy {
       try {
         const scene = new DesignScene(canvas);
         this.scene = scene;
+        scene.setCornerDemo(this.cornerDemo === true);
         scene.resize(stage.clientWidth, stage.clientHeight);
         this.observer = new ResizeObserver(() => scene.resize(stage.clientWidth, stage.clientHeight));
         this.observer.observe(stage);
@@ -235,6 +237,8 @@ export class Design3dComponent implements AfterViewInit, OnDestroy {
       return;
     }
     this.rebuild();
+    // The view was already checked once: check it again with what the build found.
+    this.cdr.detectChanges();
   }
 
   private fail(): void {
@@ -261,14 +265,18 @@ export class Design3dComponent implements AfterViewInit, OnDestroy {
 
   private rebuild(): void {
     const scene = this.scene;
-    if (!scene || !this.current) return;
+    const design = this.design;
+    if (!scene || !design) return;
     const t0 = performance.now();
-    const parts = buildWindowParts(this.current, { frameFaceMm: this.frameFaceMm });
-    this.zone.runOutsideAngular(() => scene.setParts(parts, lookOf(this.current as WindowDesign, this.tint)));
+    const parts = buildWindowParts(design, { frameFaceMm: this.frameFaceMm });
+    this.zone.runOutsideAngular(() => scene.setParts(parts, lookOf(design, this.glassTint)));
     const buildMs = performance.now() - t0;
     scene.onFrame = () => this.afterFrame(buildMs);
     this.canOpen = scene.movers > 0;
-    if (!this.canOpen) this.openDeg = 0;
+    if (!this.canOpen && this.openDeg) {
+      this.openDeg = 0;
+      scene.setOpen(0);
+    }
     this.picture = '';
     this.updateOpenLabel();
     this.cdr.markForCheck();
