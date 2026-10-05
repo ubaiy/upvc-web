@@ -567,6 +567,14 @@
   border-block-start: 1px solid var(--c-border);
 }
 
+.dz-not-priced {
+  padding: var(--s-2) var(--s-4) 0;
+}
+
+.details-not-priced {
+  padding: var(--s-3) var(--s-4) 0;
+}
+
 .dz-details-link {
   display: flex;
   align-items: center;

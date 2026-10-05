@@ -9,6 +9,7 @@
 import { TotalsLine } from 'src/app/shared/components/totals/totals.component';
 import { addressLine } from 'src/app/shared/class/address-text';
 import { PaneType, WindowSpec } from 'src/app/shared/components/window-thumb/window-drawing';
+import { notPricedOf } from '../not-priced';
 
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'billed';
 
@@ -49,6 +50,8 @@ export interface QuotationLine {
   spec: WindowSpec;
   /** What the thumbnail shows, for screen readers. */
   thumbLabel: string;
+  /** What is drawn and not charged because its rate is not set, in the api's words (card T144). */
+  notPriced?: string[];
 }
 
 export interface QuotationCustomer {
@@ -412,6 +415,7 @@ function readLine(line: any, index: number, item: any): QuotationLine {
     image: image.startsWith('data:image/') || /^https?:\/\//.test(image) ? image : null,
     spec,
     thumbLabel: `Drawing of ${name}${category ? ', ' + category.toLowerCase() : ''}`,
+    notPriced: notPricedOf(line),
   };
 }
 

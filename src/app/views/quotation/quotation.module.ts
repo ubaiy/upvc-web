@@ -25,6 +25,7 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ToastModule } from 'primeng/toast';
 import { InputTextModule } from 'primeng/inputtext';
 import { DragDropModule } from '@angular/cdk/drag-drop';
+import { NotPricedNoteComponent } from './sub-quotation/not-priced';
 import { SubQuotationComponent } from './sub-quotation/sub-quotation.component';
 import { QuotationDialogComponent } from './add/quotation-dialog.component';
 import { DuplicateQuotationDialogComponent } from './add/duplicate-quotation-dialog.component';
@@ -63,6 +64,8 @@ import { SiteAddressDialogComponent } from './site-address/site-address-dialog.c
     // Write buttons by ability and by plan, and the 3D lock (card T136).
     ...ACCESS_PARTS,
     ConfirmDialogComponent,
+    // What a line draws and does not charge (card T144).
+    NotPricedNoteComponent,
     // The site address of a quotation: PIN code first (card T90).
     SiteAddressComponent,
     SiteAddressDialogComponent,

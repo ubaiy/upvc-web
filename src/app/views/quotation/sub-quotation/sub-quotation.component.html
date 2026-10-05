@@ -219,6 +219,7 @@
           </button>
           <span class="name" *ngIf="!q.editable && !q.revisable">{{ line.name }}</span>
           <div class="muted small">{{ line.description }}</div>
+          <app-not-priced-note class="line-not-priced" *ngIf="line.notPriced?.length" [notes]="line.notPriced ?? []"></app-not-priced-note>
         </div>
         <span class="muted small num qty">Qty {{ line.quantity }}</span>
         <div class="price">
