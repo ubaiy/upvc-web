@@ -21,6 +21,13 @@
   </button>
 </app-page-header>
 
+<!-- Asked when the page is left with typed changes: Cancel, the breadcrumb, the menu, the back button. -->
+<div class="callout warn leave-ask" role="alertdialog" aria-labelledby="leave-ask-text" data-leave="ask" *ngIf="leaveAsk as answer">
+  <span class="grow" id="leave-ask-text">This customer has changes that are not saved.</span>
+  <button type="button" class="btn btn-secondary btn-sm" data-leave="stay" (click)="answer(false)">Keep editing</button>
+  <button type="button" class="btn btn-secondary btn-sm" data-leave="go" (click)="answer(true)">Leave without saving</button>
+</div>
+
 <app-callout tone="warn" *ngIf="state === 'error'">
   We could not load this customer. Check your connection.
   <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>

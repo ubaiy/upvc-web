@@ -149,6 +149,7 @@
 ></app-duplicate-quotation-dialog>
 
 <p-dialog
+  closeAriaLabel="Close"
   header="Delete this quotation?"
   [visible]="!!deleteRow"
   (visibleChange)="$event ? null : (deleteRow = null)"

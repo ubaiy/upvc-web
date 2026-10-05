@@ -471,6 +471,25 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     this._router.navigate([], { relativeTo: this._route, queryParams: {}, replaceUrl: true });
   }
 
+  /**
+   * A dialog opened from a menu: the menu gives focus back to its button as it
+   * closes, so the dialog takes it once it is on screen. The field when there
+   * is one (Name this window), otherwise the safe button (Keep it, Cancel).
+   */
+  focusDialog(): void {
+    setTimeout(() => {
+      const dialogs = document.querySelectorAll<HTMLElement>('.p-dialog');
+      const dialog = dialogs[dialogs.length - 1];
+      const target = dialog?.querySelector<HTMLElement>(
+        '.p-dialog-content input, .p-dialog-content textarea, .p-dialog-footer button'
+      );
+      target?.focus();
+      if (target instanceof HTMLInputElement) {
+        target.select();
+      }
+    }, 60);
+  }
+
   // ----- menus ----------------------------------------------------------------
 
   openMenu(event: Event): void {

@@ -163,7 +163,7 @@ describe('SubQuotationComponent (quotation page)', () => {
     create();
     const first = el().querySelector('.item') as HTMLElement;
     expect(first.textContent).toContain('Master bedroom');
-    expect(first.textContent).toContain('Casement · 1800 × 1200 mm · 5mm plain glass');
+    expect(first.textContent).toContain('Casement window · 1800 × 1200 mm · 5mm plain glass');
     expect(first.textContent).toContain('₹8,851.86');
     expect(first.textContent).toContain('₹380.72 / sq ft');
     expect(first.querySelector('img')?.getAttribute('alt')).toContain('Master bedroom');

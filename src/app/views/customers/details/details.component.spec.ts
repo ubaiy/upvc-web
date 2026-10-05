@@ -1,4 +1,4 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -137,6 +137,43 @@ describe('DetailsComponent (customer page)', () => {
       expect(text).toContain('Enter the city.');
       expect(text).toContain('Enter a 6-digit PIN code.');
       expect(el().querySelector('#cust-name')?.getAttribute('aria-invalid')).toBe('true');
+    });
+
+    it('puts the cursor in the first field that has a message (m16)', fakeAsync(() => {
+      document.body.appendChild(el());
+      component.form.patchValue({ name: 'Amit Mehta', phone: '123' });
+      component.submit();
+      fixture.detectChanges();
+      tick();
+      expect(document.activeElement?.id).toBe('cust-phone');
+      el().remove();
+    }));
+
+    it('asks before the page is left with typed changes, whatever link is used (m15)', async () => {
+      expect(component.canLeave()).withContext('nothing typed').toBeTrue();
+      expect(el().querySelector('[data-leave="ask"]')).toBeNull();
+
+      component.form.patchValue({ name: 'Amit' });
+      component.form.markAsDirty();
+      const stay = component.canLeave() as Promise<boolean>;
+      fixture.detectChanges();
+      expect(el().querySelector('[data-leave="ask"]')?.textContent).toContain('This customer has changes that are not saved.');
+      (el().querySelector('[data-leave="stay"]') as HTMLButtonElement).click();
+      expect(await stay).withContext('"Keep editing" keeps the page').toBeFalse();
+      fixture.detectChanges();
+      expect(el().querySelector('[data-leave="ask"]')).toBeNull();
+
+      const go = component.canLeave() as Promise<boolean>;
+      fixture.detectChanges();
+      (el().querySelector('[data-leave="go"]') as HTMLButtonElement).click();
+      expect(await go).toBeTrue();
+    });
+
+    it('lets the page go without a question once the customer is saved', () => {
+      component.form.patchValue({ name: 'Amit Mehta', phone: '9812345670' });
+      component.form.markAsDirty();
+      component.submit();
+      expect(component.canLeave()).toBeTrue();
     });
 
     it('suggests the state of an empty first address from a valid GSTIN', () => {

@@ -357,6 +357,8 @@
 
   <!-- A sent quotation is never changed in place -->
   <p-dialog
+    closeAriaLabel="Close"
+    (onShow)="focusDialog()"
     [header]="'Create revision ' + q.nextRevision + '?'"
     [visible]="!!reviseIntent"
     (visibleChange)="$event ? null : (reviseIntent = null)"
@@ -378,6 +380,8 @@
   </p-dialog>
 
   <p-dialog
+    closeAriaLabel="Close"
+    (onShow)="focusDialog()"
     [header]="lineToRename?.label ? 'Rename this window' : 'Name this window'"
     [visible]="!!lineToRename"
     (visibleChange)="$event ? null : (lineToRename = null)"
@@ -408,6 +412,8 @@
   </p-dialog>
 
   <p-dialog
+    closeAriaLabel="Close"
+    (onShow)="focusDialog()"
     header="Delete this window?"
     [visible]="!!lineToDelete"
     (visibleChange)="$event ? null : (lineToDelete = null)"
@@ -431,6 +437,8 @@
   </p-dialog>
 
   <p-dialog
+    closeAriaLabel="Close"
+    (onShow)="focusDialog()"
     header="Delete this quotation?"
     [visible]="deleteOpen"
     (visibleChange)="$event ? null : (deleteOpen = false)"

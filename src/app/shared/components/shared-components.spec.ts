@@ -12,6 +12,7 @@ import { drawWindow, SAMPLE_WINDOWS } from './window-thumb/window-drawing';
       <button actions type="button">Add New</button>
     </app-page-header>
     <app-page-header id="new" title="Mehta Villa Windows" [crumbs]="[{ label: 'Quotations', link: '/quotation' }, { label: 'Q-0014' }]"></app-page-header>
+    <app-page-header id="trail" title="Customer" [crumbs]="trail"></app-page-header>
     <app-quote-status id="badge" [status]="status"></app-quote-status>
     <app-quote-status id="steps" [status]="status" variant="steps"></app-quote-status>
     <app-totals [lines]="[{ label: 'Subtotal', amount: 25039.21 }, { label: 'CGST 9%', amount: 2253.53 }]" [total]="141595.8"></app-totals>
@@ -25,6 +26,11 @@ import { drawWindow, SAMPLE_WINDOWS } from './window-thumb/window-drawing';
 class HostComponent {
   status = 'sent';
   spec = SAMPLE_WINDOWS['casement2'];
+
+  /** As the pages do it: a new array of new objects on every read. */
+  get trail(): { label: string; link?: string }[] {
+    return [{ label: 'Customers', link: '/customers' }, { label: 'Amit Mehta' }];
+  }
 }
 
 describe('shared components', () => {
@@ -51,6 +57,13 @@ describe('shared components', () => {
   it('page header draws a breadcrumb with the current page last', () => {
     expect(el('#new .crumbs a').textContent).toBe('Quotations');
     expect(el('#new .crumbs [aria-current="page"]').textContent).toBe('Q-0014');
+  });
+
+  it('page header keeps its breadcrumb links when the page is checked again, so a click on one is not lost', () => {
+    const link = el('#trail .crumbs a');
+    fixture.detectChanges();
+    fixture.detectChanges();
+    expect(el('#trail .crumbs a')).toBe(link);
   });
 
   it('quote status shows a badge or the four steps', () => {

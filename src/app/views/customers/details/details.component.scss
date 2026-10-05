@@ -11,3 +11,12 @@
 @media (max-width: 640px) {
   .form-grid { grid-template-columns: minmax(0, 1fr); }
 }
+
+// "This customer has changes that are not saved": stays in view while the form is scrolled.
+.leave-ask {
+  position: sticky;
+  inset-block-start: var(--s-2);
+  z-index: 5;
+  flex-wrap: wrap;
+  margin-block-end: var(--s-4);
+}

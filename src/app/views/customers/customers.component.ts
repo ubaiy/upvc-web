@@ -100,6 +100,11 @@ export class CustomersComponent implements OnInit {
   openMenu(event: Event, customer: CustomerRow): void {
     this.menuItems = [
       { label: 'Edit', command: () => this._router.navigate(['/customers/edit', customer.id]) },
+      // The next step of the job: the New quotation dialog opens with this customer chosen.
+      {
+        label: 'New quotation',
+        command: () => this._router.navigate(['/quotation'], { queryParams: { new: 1, customer: customer.id } }),
+      },
       { separator: true },
       { label: 'Delete', styleClass: 'danger', command: () => this.deleteCustomer(customer) },
     ];

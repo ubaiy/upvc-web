@@ -303,10 +303,33 @@ export function readSpec(line: any): WindowSpec {
   return { w, h, cols: parts.map((part, i) => ({ f: widths[i] / sum, t: paneType(part, i) })) };
 }
 
+/**
+ * What the row calls the window: "Fixed window", "Casement window",
+ * "Sliding window", "Door". The catalogue series ("Casement" for a fixed
+ * light and for a door, "Slidding") is how it is priced, not what it is.
+ * Read from the panes of the saved request; without them, the series, spelt right.
+ */
+function styleName(line: any, spec: WindowSpec): string {
+  const door = /door/i.test(text(line?.product_type));
+  if (!(storedRequest(line)?.full_window?.parts || []).length) {
+    const series = text(line?.product?.category).replace(/slid+ing/i, 'Sliding');
+    return door ? 'Door' : series;
+  }
+  const panes = spec.cols.flatMap((col) => (col.rows ? col.rows.map((row) => row.t) : [col.t ?? 'fixed']));
+  if (panes.some((pane) => pane === 'sl' || pane === 'sr')) {
+    return door ? 'Sliding door' : 'Sliding window';
+  }
+  if (door) {
+    return 'Door';
+  }
+  return panes.some((pane) => pane !== 'fixed') ? 'Casement window' : 'Fixed window';
+}
+
 function readLine(line: any, index: number, item: any): QuotationLine {
   const label = text(item?.label ?? line?.label);
   const kind = text(line?.product_type) || 'Window';
-  const category = text(line?.product?.category);
+  const spec = readSpec(line);
+  const category = styleName(line, spec);
   const width = num(line?.width);
   const height = num(line?.height);
   const description = [category, width && height ? `${width} × ${height} mm` : '', glassName(line)]
@@ -324,7 +347,7 @@ function readLine(line: any, index: number, item: any): QuotationLine {
     amount: num(item?.amount ?? line?.total),
     ratePerSqFt: item?.rate_per_sq_ft ?? line?.average_total ?? null,
     image: image.startsWith('data:image/') || /^https?:\/\//.test(image) ? image : null,
-    spec: readSpec(line),
+    spec,
     thumbLabel: `Drawing of ${name}${category ? ', ' + category.toLowerCase() : ''}`,
   };
 }

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { FormsModule } from '@angular/forms';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { MenuModule } from 'primeng/menu';
 import { of, Subject, throwError } from 'rxjs';
@@ -114,6 +115,16 @@ describe('CustomersComponent', () => {
     expect(component.rows.length).toBe(3);
     component.go(1);
     expect(component.page).toBe(2);
+  });
+
+  it('offers "New quotation" for a customer in the row menu, with the customer chosen (m17)', () => {
+    create(of({ success: true, data: CUSTOMERS }));
+    const component = fixture.componentInstance;
+    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    component.openMenu(new Event('click'), component.customers[0]);
+    expect(component.menuItems.filter((item) => !item.separator).map((item) => item.label)).toEqual(['Edit', 'New quotation', 'Delete']);
+    component.menuItems[1].command!({} as any);
+    expect(navigate).toHaveBeenCalledOnceWith(['/quotation'], { queryParams: { new: 1, customer: component.customers[0].id } });
   });
 
   it('delete takes the row away at once and sends nothing while "Undo" is offered', () => {

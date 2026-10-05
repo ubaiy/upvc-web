@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -74,7 +74,8 @@ export class DetailsComponent implements OnInit {
     private _fb: FormBuilder,
     private _dataService: CustomerService,
     private _confirm: ConfirmationDialogService,
-    private _toastService: ToastService
+    private _toastService: ToastService,
+    private _host: ElementRef<HTMLElement>
   ) {}
 
   ngOnInit(): void {
@@ -257,23 +258,41 @@ export class DetailsComponent implements OnInit {
     return !!group.errors?.[field] && (!!group.get(field)?.touched || this.submitted);
   }
 
+  /** The route asks canLeave() before the page goes, so Cancel needs no question of its own. */
   cancel(): void {
-    if (!this.form.dirty) {
-      this._router.navigate(['/customers']);
-      return;
-    }
-    this._confirm.confirm(
-      'Discard your changes?',
-      'What you typed on this page will not be saved.',
-      'pi-exclamation-triangle',
-      () => this._router.navigate(['/customers']),
-      () => {}
-    );
+    this._router.navigate(['/customers']);
   }
+
+  /**
+   * Asked by the route whenever the page is left (Cancel, the breadcrumb, the
+   * menu, the back button): typed changes are not thrown away without a question.
+   */
+  canLeave(): boolean | Promise<boolean> {
+    if (!this.form.dirty) {
+      return true;
+    }
+    // A second try while the question is up replaces the first.
+    this.leaveAsk?.(false);
+    return new Promise((resolve) => {
+      this.leaveAsk = (leave) => {
+        this.leaveAsk = null;
+        resolve(leave);
+      };
+      setTimeout(() => this._host.nativeElement.querySelector<HTMLElement>('[data-leave="stay"]')?.focus());
+    });
+  }
+
+  /** Set while the page asks whether to leave; called with the answer. The question is a line on the page, as in the designer. */
+  leaveAsk: ((leave: boolean) => void) | null = null;
 
   submit(): void {
     this.submitted = true;
-    if (this.form.invalid || this.saving) {
+    if (this.form.invalid) {
+      // The messages are beside the fields; the cursor goes to the first one.
+      setTimeout(() => this._host.nativeElement.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
+      return;
+    }
+    if (this.saving) {
       return;
     }
     const value = this.form.getRawValue() as CustomerFormValue;

@@ -141,12 +141,34 @@ describe('quotation-detail.model', () => {
     expect(first.amount).toBe(8851.86);
     expect(first.ratePerSqFt).toBe(380.72);
     expect(first.name).toBe('Master bedroom');
-    expect(first.description).toBe('Casement · 1800 × 1200 mm · 5mm plain glass');
+    expect(first.description).toBe('Casement window · 1800 × 1200 mm · 5mm plain glass');
     expect(first.image).toBe('data:image/png;base64,AAAA');
     expect(second.name).toBe('Window 2');
     expect(second.quantity).toBe(2);
     expect(second.position).toBe(2);
     expect(second.image).toBeNull();
+  });
+
+  it('calls a window what it is, not by its catalogue series (m5)', () => {
+    const line = (product_type: string, category: string, parts: any[] | null) => {
+      const raw = sampleQuotation();
+      Object.assign(raw.quatation_product[0], {
+        product_type,
+        product: { category },
+        costhead_information: { costhead: [], old_post_data: parts ? { full_window: { parts } } : null },
+      });
+      return toQuotationView(raw).lines[0].description.split(' · ')[0];
+    };
+    const fixed = { width: 900, category_type: 'Casement', casement_type: 'Fixed', opening_direction: 'Left' };
+    const opening = { width: 900, category_type: 'Casement', casement_type: 'Openable', opening_direction: 'Left' };
+    const sliding = { width: 900, category_type: 'Slidding', casement_type: '', opening_direction: 'Left' };
+    expect(line('Window', 'Casement', [fixed])).toBe('Fixed window');
+    expect(line('Window', 'Casement', [fixed, opening])).toBe('Casement window');
+    expect(line('Window', 'Slidding', [sliding, sliding])).toBe('Sliding window');
+    expect(line('Door', 'Casement', [opening])).toBe('Door');
+    expect(line('Door', 'Slidding', [sliding, sliding])).toBe('Sliding door');
+    // An old line without its panes: the series, spelt right.
+    expect(line('Window', 'Slidding', null)).toBe('Sliding');
   });
 
   it('draws a thumbnail from the stored request when there is no saved image', () => {

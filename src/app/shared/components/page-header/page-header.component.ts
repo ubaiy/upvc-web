@@ -25,7 +25,7 @@ export interface Crumb {
   selector: 'app-page-header',
   template: `
     <nav class="crumbs" aria-label="Breadcrumb" *ngIf="crumbs?.length">
-      <ng-container *ngFor="let crumb of crumbs; let last = last">
+      <ng-container *ngFor="let crumb of crumbs; let last = last; trackBy: trackCrumb">
         <a *ngIf="crumb.link && !last; else current" [routerLink]="crumb.link">{{ crumb.label }}</a>
         <ng-template #current
           ><span [attr.aria-current]="last ? 'page' : null"><bdi>{{ crumb.label }}</bdi></span></ng-template
@@ -54,6 +54,15 @@ export class PageHeaderComponent {
 
   /** Breadcrumb trail, parent first. The last entry is the current page. */
   @Input() crumbs?: Crumb[];
+
+  /**
+   * Pages build the trail in a getter, so every check hands over new objects.
+   * Without this the links are made again each time, and a click that starts
+   * on a link while a field is being left (blur runs a check) is lost.
+   */
+  trackCrumb(index: number, crumb: Crumb): string {
+    return index + '|' + crumb.label + '|' + (crumb.link ?? '');
+  }
 
   /** @deprecated Not drawn in the new design. Accepted so screens not rebuilt yet still compile. */
   @Input() eyebrow?: string;
