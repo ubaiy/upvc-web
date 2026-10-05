@@ -5,7 +5,7 @@ import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { MenuModule } from 'primeng/menu';
-import { Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
 import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
 import { ToastService } from '../../../shared/services/toast.service';
@@ -413,5 +413,87 @@ describe('OrderPageComponent', () => {
     for (const control of Array.from(el().querySelectorAll('input, textarea'))) {
       expect(el().querySelector(`label[for="${control.id}"]`)).withContext(control.id).not.toBeNull();
     }
+  });
+
+  describe('from one order straight to another: only the id in the address changes (T91)', () => {
+    let params: BehaviorSubject<any>;
+    const second = (overrides: any = {}) =>
+      rawOrderPage({ id: 2, number: 'ORD/26-27/0002', vehicle_number: 'MH 12 ZZ 9', promised_date: '2026-11-01', ...overrides });
+
+    beforeEach(() => {
+      params = new BehaviorSubject(convertToParamMap({ id: '1' }));
+      TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params } });
+    });
+
+    async function goTo(id: string, response: any): Promise<void> {
+      service.show.and.returnValue(response);
+      params.next(convertToParamMap({ id }));
+      fixture.detectChanges();
+      await fixture.whenStable();
+      fixture.detectChanges();
+    }
+
+    it('shows the second order, and nothing typed or asked on the first', async () => {
+      await create();
+      type('vehicle', 'typed for the first');
+      component.cancelling = { busy: false, error: '' };
+      component.closing = true;
+      await goTo('2', ok(second()));
+      expect(service.show.calls.mostRecent().args).toEqual(['2']);
+      expect(el().querySelector('h1')?.textContent).toContain('ORD/26-27/0002');
+      expect((el().querySelector('#vehicle') as HTMLInputElement).value).toBe('MH 12 ZZ 9');
+      expect((el().querySelector('#promised-date') as HTMLInputElement).value).toBe('2026-11-01');
+      expect(component.cancelling).toBeNull();
+      expect(component.closing).toBeFalse();
+    });
+
+    it('shows the skeleton, not the first order, while the second loads', async () => {
+      await create();
+      await goTo('2', new Subject());
+      expect(el().querySelector('[role="status"]')?.textContent).toContain('Loading the order');
+      expect(el().querySelector('h1')?.textContent).not.toContain('ORD/26-27/0001');
+    });
+
+    it('a first order that answers late is not shown over the second', async () => {
+      const slow = new Subject<any>();
+      await create(slow);
+      await goTo('2', ok(second()));
+      expect(slow.observed).withContext('the first load is cancelled').toBeFalse();
+      slow.next({ ok: true, data: toOrderPage(rawOrderPage()), message: '' });
+      fixture.detectChanges();
+      expect(el().querySelector('h1')?.textContent).toContain('ORD/26-27/0002');
+    });
+
+    it('a stage change of the first order answered late changes nothing on the second and offers no undo there', async () => {
+      await create();
+      const answer = new Subject<any>();
+      service.setStage.and.returnValue(answer);
+      component.advance();
+      expect(component.busy).toBe('stage');
+      await goTo('2', ok(second()));
+      expect(component.busy).withContext('the second order is not held up by the first').toBeNull();
+      answer.next({ ok: true, data: toOrderPage(rawOrderPage({ stage: 'in_production' })), message: '' });
+      fixture.detectChanges();
+      expect(component.order?.number).toBe('ORD/26-27/0002');
+      expect(component.order?.stage).toBe('confirmed');
+      expect(undo.offer).not.toHaveBeenCalled();
+    });
+
+    it('a save or a payment refresh of the first order answered late is not put on the second', async () => {
+      await create();
+      const [saved, refreshed] = [new Subject<any>(), new Subject<any>()];
+      service.update.and.returnValue(saved);
+      component.saveTransport();
+      service.show.and.returnValue(refreshed);
+      component.refresh();
+      await goTo('2', ok(second()));
+      saved.next({ ok: true, data: toOrderPage(rawOrderPage()), message: '' });
+      refreshed.next({ ok: true, data: toOrderPage(rawOrderPage()), message: '' });
+      saved.error({ error: { message: 'late' } });
+      fixture.detectChanges();
+      expect(component.order?.number).toBe('ORD/26-27/0002');
+      expect(component.vehicle).toBe('MH 12 ZZ 9');
+      expect(component.actionError).toBeNull();
+    });
   });
 });

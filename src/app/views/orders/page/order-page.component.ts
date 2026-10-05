@@ -65,6 +65,7 @@ export class OrderPageComponent implements OnInit, OnDestroy {
   readonly badge = paymentBadge;
 
   private params?: Subscription;
+  private loading?: Subscription;
 
   constructor(
     private route: ActivatedRoute,
@@ -75,13 +76,19 @@ export class OrderPageComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.params = this.route.paramMap.subscribe((params) => {
+      // From one order straight to another the page stays: nothing of the last order is kept.
       this.orderId = params.get('id') || '';
+      this.order = null;
+      this.busy = null;
+      this.cancelling = null;
+      this.closing = false;
       this.load();
     });
   }
 
   ngOnDestroy(): void {
     this.params?.unsubscribe();
+    this.loading?.unsubscribe();
   }
 
   get crumbs(): Crumb[] {
@@ -115,7 +122,8 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     this.state = 'loading';
     this.actionError = null;
     this.challanPreview = null;
-    this.service.show(this.orderId).subscribe({
+    this.loading?.unsubscribe();
+    this.loading = this.service.show(this.orderId).subscribe({
       next: (result) => {
         if (!result.ok) {
           this.fail(result.message);
@@ -215,8 +223,12 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     }
     cancelling.busy = true;
     cancelling.error = '';
+    const shown = this.orderId;
     this.service.cancel(order.id, reason).subscribe({
       next: (result) => {
+        if (shown !== this.orderId) {
+          return;
+        }
         if (!result.ok) {
           // The api's reason stays in the dialog: "Order has ₹2,500.00 received against it; record a refund before cancelling".
           cancelling.busy = false;
@@ -243,15 +255,18 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     if (!order || this.busy) {
       return;
     }
-    this.start('challan:preview');
+    const shown = this.start('challan:preview');
     this.service.challan(order.id, 'html').subscribe({
       next: (file) => {
         file.blob.text().then((html) => {
+          if (this.moved(shown)) {
+            return;
+          }
           this.busy = null;
           this.challanPreview = html;
         });
       },
-      error: (error) => this.failed(documentError(error, 'The challan could not be opened.'), () => this.previewChallan()),
+      error: (error) => this.failed(shown, documentError(error, 'The challan could not be opened.'), () => this.previewChallan()),
     });
   }
 
@@ -260,13 +275,16 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     if (!order || this.busy) {
       return;
     }
-    this.start('challan:download');
+    const shown = this.start('challan:download');
     this.service.challan(order.id, 'pdf', true).subscribe({
       next: (file) => {
-        this.busy = null;
+        // The file that was asked for is still handed over; the buttons belong to the order now on screen.
+        if (!this.moved(shown)) {
+          this.busy = null;
+        }
         saveBlob(file.blob, file.fileName || this.challanName(order));
       },
-      error: (error) => this.failed(documentError(error, 'The challan could not be downloaded.'), () => this.downloadChallan()),
+      error: (error) => this.failed(shown, documentError(error, 'The challan could not be downloaded.'), () => this.downloadChallan()),
     });
   }
 
@@ -276,9 +294,12 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     if (!order || this.busy) {
       return;
     }
-    this.start('challan:share');
+    const shown = this.start('challan:share');
     this.service.challan(order.id, 'pdf', true).subscribe({
       next: (file) => {
+        if (this.moved(shown)) {
+          return;
+        }
         this.busy = null;
         const name = file.fileName || this.challanName(order);
         shareOrSave(new File([file.blob], name, { type: 'application/pdf' }), `Delivery challan ${order.challanNumber}`).then(
@@ -289,15 +310,16 @@ export class OrderPageComponent implements OnInit, OnDestroy {
           }
         );
       },
-      error: (error) => this.failed(documentError(error, 'The challan could not be shared.'), () => this.shareChallan()),
+      error: (error) => this.failed(shown, documentError(error, 'The challan could not be shared.'), () => this.shareChallan()),
     });
   }
 
   /** A payment was recorded or cancelled below: the head's balance and badge follow the api. */
   refresh(): void {
-    this.service.show(this.orderId).subscribe({
+    const shown = this.orderId;
+    this.service.show(shown).subscribe({
       next: (result) => {
-        if (result.ok) {
+        if (result.ok && !this.moved(shown)) {
           this.show(result.data, true);
         }
       },
@@ -310,9 +332,12 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     if (!order || this.busy) {
       return;
     }
-    this.start('stage');
+    const shown = this.start('stage');
     this.service.setStage(order.id, stage).subscribe({
       next: (result) => {
+        if (this.moved(shown)) {
+          return;
+        }
         this.busy = null;
         if (!result.ok) {
           this.actionError = { message: `The stage was not changed. ${result.message}` };
@@ -330,7 +355,7 @@ export class OrderPageComponent implements OnInit, OnDestroy {
           this.toast.showSuccess(`${result.data.number} is now ${result.data.stageLabel}`);
         }
       },
-      error: (error) => this.failed(httpMessage(error, 'The stage was not changed.'), () => this.move(stage, back)),
+      error: (error) => this.failed(shown, httpMessage(error, 'The stage was not changed.'), () => this.move(stage, back)),
     });
   }
 
@@ -339,9 +364,12 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     if (!order || this.busy) {
       return;
     }
-    this.start(what);
+    const shown = this.start(what);
     this.service.update(order.id, changes).subscribe({
       next: (result: Result<OrderPage>) => {
+        if (this.moved(shown)) {
+          return;
+        }
         this.busy = null;
         if (!result.ok) {
           this.actionError = { message: result.message };
@@ -350,7 +378,7 @@ export class OrderPageComponent implements OnInit, OnDestroy {
         this.show(result.data);
         this.toast.showSuccess(done);
       },
-      error: (error) => this.failed(httpMessage(error, 'The change was not saved.'), () => this.save(what, changes, done)),
+      error: (error) => this.failed(shown, httpMessage(error, 'The change was not saved.'), () => this.save(what, changes, done)),
     });
   }
 
@@ -379,12 +407,22 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     return documentName('Delivery-challan', order.challanNumber || order.number);
   }
 
-  private start(action: string): void {
+  /** Marks the action as running and returns the order it was started on, for `moved`. */
+  private start(action: string): string {
     this.busy = action;
     this.actionError = null;
+    return this.orderId;
   }
 
-  private failed(message: string, retry: () => void): void {
+  /** True when the page went on to another order while an answer was awaited: that answer is not for this page. */
+  private moved(shown: string): boolean {
+    return shown !== this.orderId;
+  }
+
+  private failed(shown: string, message: string, retry: () => void): void {
+    if (this.moved(shown)) {
+      return;
+    }
     this.busy = null;
     this.actionError = { message, retry };
   }
