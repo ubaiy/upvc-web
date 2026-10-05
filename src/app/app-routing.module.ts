@@ -12,6 +12,32 @@ import { ProfileComponent } from './views/profile/profile.component';
 import { ProfileResolver } from './views/profile/profile.resolver';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
 import { BulkPriceUpdateResolver } from './views/bulk-price-upload/bulk-price-update.resolver';
+import { environment } from '../environments/environment';
+
+// Development pages. A production build does not register these addresses at all:
+// /design-lab and /ui answer with the 404 page there.
+const devRoutes: Routes = environment.production
+  ? []
+  : [
+    {
+      // Dev-only playground for the standalone design canvas (Phase 1, T36).
+      path: 'design-lab',
+      loadChildren: () =>
+        import('./views/design-lab/design-lab.module').then(
+          (m) => m.DesignLabModule
+        ),
+      title: 'Design lab',
+    },
+    {
+      // Every shared component and themed control on one page, for review (card U0).
+      path: 'ui',
+      loadChildren: () =>
+        import('./views/ui-gallery/ui-gallery.module').then(
+          (m) => m.UiGalleryModule
+        ),
+      title: 'Components',
+    },
+    ];
 
 const routes: Routes = [
   {
@@ -165,24 +191,8 @@ const routes: Routes = [
     loadChildren: () =>
       import('./views/pages/pages.module').then((m) => m.PagesModule),
   },
-  {
-    // Dev-only playground for the standalone design canvas (Phase 1, T36).
-    path: 'design-lab',
-    loadChildren: () =>
-      import('./views/design-lab/design-lab.module').then(
-        (m) => m.DesignLabModule
-      ),
-    title: 'Design lab',
-  },
-  {
-    // Every shared component and themed control on one page, for review (card U0).
-    path: 'ui',
-    loadChildren: () =>
-      import('./views/ui-gallery/ui-gallery.module').then(
-        (m) => m.UiGalleryModule
-      ),
-    title: 'Components',
-  },
+  // /design-lab and /ui exist in a development build only (see devRoutes above).
+  ...devRoutes,
   {
     path: '404',
     component: Page404Component,
