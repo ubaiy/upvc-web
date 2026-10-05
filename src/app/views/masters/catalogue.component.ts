@@ -49,6 +49,9 @@ const SOURCE_OF: Record<CatalogueTab, Source> = {
  * (card U5, mockup `profiles.html`). Rates are edited in the row; "Update
  * rates" changes all of them at once.
  */
+/** The api's cost head group of a centre pivot set (BarShapePricing::PIVOT_GROUP). */
+export const PIVOT_GROUP = 'Pivot Hardware';
+
 @Component({
   selector: 'app-catalogue',
   templateUrl: './catalogue.component.html',
@@ -248,6 +251,16 @@ export class CatalogueComponent implements OnInit, OnDestroy {
 
   get hardwareGroups(): string[] {
     return [...new Set(this.hardware.map((h) => h.costhead).filter(Boolean))];
+  }
+
+  /**
+   * The groups the add / edit dialog offers: those of the catalogue, and
+   * "Pivot Hardware", the group the api prices a centre pivot sash from
+   * (card T144), which no starter catalogue has a row in.
+   */
+  get dialogGroups(): string[] {
+    const groups = this.hardwareGroups;
+    return groups.includes(PIVOT_GROUP) ? groups : [...groups, PIVOT_GROUP];
   }
 
   get hardwareCategories(): string[] {

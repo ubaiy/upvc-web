@@ -9,12 +9,13 @@ import { ToastService } from 'src/app/shared/services/toast.service';
 import { PaymentTermsCardComponent } from '../../payment-terms/payment-terms-card.component';
 import { MarginsCardComponent } from '../../type-margin/margins-card.component';
 import { SettingsAdapter, errorText } from '../settings.adapter';
+import { PricingExtrasCardComponent } from './pricing-extras-card.component';
 import { GstRegistrationType, TaxSettings } from '../settings.model';
 
 /** The sample price behind the "prices include GST" illustration. */
 export const SAMPLE_PRICE = 10000;
 
-/** Settings → Pricing and tax: GST defaults, margins, payment terms (gap G4). */
+/** Settings → Pricing and tax: GST defaults, margins, the rates of bars, bending and shaped glass, payment terms (gap G4). */
 @Component({
   selector: 'app-settings-pricing-tax',
   standalone: true,
@@ -25,6 +26,7 @@ export const SAMPLE_PRICE = 10000;
     SharedComponentsModule,
     MarginsCardComponent,
     PaymentTermsCardComponent,
+    PricingExtrasCardComponent,
   ],
   templateUrl: './pricing-tax-tab.component.html',
   styleUrls: ['../settings-tab.scss'],

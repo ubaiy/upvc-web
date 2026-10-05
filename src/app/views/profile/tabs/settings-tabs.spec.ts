@@ -12,6 +12,7 @@ import { ProfileService } from '../profile.service';
 import { SettingsAdapter, SettingsRefusal, toSnapshot } from '../settings.adapter';
 import { CompanyTabComponent } from './company-tab.component';
 import { DocumentsTabComponent } from './documents-tab.component';
+import { PricingExtrasService } from '../pricing-extras.service';
 import { PricingTaxTabComponent } from './pricing-tax-tab.component';
 
 const ROW = {
@@ -72,6 +73,8 @@ function setUp<T>(component: new (...args: any[]) => T, row: any = ROW) {
       { provide: ConfirmationDialogService, useValue: { confirm: () => undefined } },
       { provide: TypeMarginService, useValue: { getTypeMarginList: () => of(lists) } },
       { provide: PaymentTermsService, useValue: { getPaymentTypeList: () => of(lists) } },
+      // The card of bars, bending and shaped glass has its own spec; here its api has no such route.
+      { provide: PricingExtrasService, useValue: { load: () => of(null) } },
       {
         provide: ProfileService,
         useValue: { getProfile: () => of({ success: true, data: { name: 'Demo', last_name: 'User', email: 'demo@upvc.local' } }) },

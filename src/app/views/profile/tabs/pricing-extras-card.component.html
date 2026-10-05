@@ -1,0 +1,94 @@
+<section class="card" id="bars-bending-shaped-glass" aria-labelledby="h-extras">
+  <div class="card-head">
+    <div>
+      <h2 id="h-extras">Bars, bending and shaped glass</h2>
+      <p>
+        What a bar inside a sash, a bent profile and a shaped pane add to the price of a window. Rupees, before margin and GST.
+        A rate left empty charges nothing, and the price says so.
+      </p>
+    </div>
+  </div>
+
+  <div class="card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading the rates">
+    <span class="skeleton" style="width: 30%"></span>
+    <span class="skeleton" style="width: 100%"></span>
+    <span class="skeleton" style="width: 65%"></span>
+  </div>
+
+  <div class="card-pad" *ngIf="state === 'absent'" data-extras="absent">
+    <app-callout>This setting is not available yet.</app-callout>
+  </div>
+
+  <div class="card-pad" *ngIf="state === 'error'">
+    <app-callout tone="warn">
+      We could not load these rates. {{ loadError }}
+      <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+    </app-callout>
+  </div>
+
+  <form class="card-pad stack-6" *ngIf="state === 'ready'" (ngSubmit)="save()" novalidate>
+    <app-callout tone="warn" *ngIf="missingFields.length" data-extras="missing">
+      {{ missingFields.length === 1 ? 'One rate is' : missingFields.length + ' rates are' }} not set, so
+      {{ missingFields.length === 1 ? 'it charges' : 'they charge' }} nothing:
+      <ng-container *ngFor="let f of missingFields; let last = last">
+        <a [attr.href]="'#' + inputId(f.key)" (click)="$event.preventDefault(); focusField(f.key)">{{ f.label }}</a
+        ><ng-container *ngIf="!last">, </ng-container>
+      </ng-container>
+    </app-callout>
+
+    <div class="form-grid">
+      <div class="field" *ngFor="let f of fields; trackBy: trackField" [class.is-missing]="isMissing(f)" [attr.data-rate]="f.key">
+        <label class="label" [attr.for]="inputId(f.key)">{{ f.label }}</label>
+        <div class="input-group" [class.is-invalid]="(submitted && invalid(f)) || refused[f.key]">
+          <span class="unit" *ngIf="f.money">₹</span>
+          <input
+            [id]="inputId(f.key)"
+            [name]="f.key"
+            type="number"
+            min="0"
+            [attr.max]="f.money ? null : 100"
+            step="0.01"
+            inputmode="decimal"
+            placeholder="Not set"
+            [(ngModel)]="f.value"
+            (ngModelChange)="typed(f)"
+            [attr.aria-invalid]="(submitted && invalid(f)) || !!refused[f.key]"
+            [attr.aria-describedby]="inputId(f.key) + '-note'"
+          />
+          <span class="unit">{{ f.unit }}</span>
+        </div>
+        <span [id]="inputId(f.key) + '-note'">
+          <span class="error" *ngIf="submitted && invalid(f)">
+            {{ f.money ? 'Enter an amount of 0 or more, with at most 2 decimals.' : 'Enter a percentage from 0 to 100.' }}
+          </span>
+          <span class="error" *ngIf="refused[f.key] && !(submitted && invalid(f))">{{ refused[f.key] }}</span>
+          <span class="hint">{{ f.text }}</span>
+          <span class="hint rate-missing" *ngIf="isMissing(f)"> Not set: it charges nothing.</span>
+        </span>
+      </div>
+    </div>
+
+    <div data-extras="pivot">
+      <p class="pivot-head">Centre pivot hardware</p>
+      <ng-container *ngIf="pivot.length; else noPivot">
+        <p class="hint">A centre pivot sash is charged one of these in place of its hinges. Change them in the catalogue, under <a routerLink="/masters/hardware">Hardware</a>.</p>
+        <ul class="pivot">
+          <li *ngFor="let item of pivot"><span>{{ item.name }}</span><span class="num">{{ item.rate | inr }}</span></li>
+        </ul>
+      </ng-container>
+      <ng-template #noPivot>
+        <p class="hint">
+          None yet, so a centre pivot sash is charged its hinges. To price it, add an item in the group “Pivot Hardware” in the
+          catalogue, under <a routerLink="/masters/hardware">Hardware</a>, with the price of one pivot set.
+        </p>
+      </ng-template>
+    </div>
+
+    <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+
+    <div class="form-foot">
+      <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Save rates' }}</button>
+      <span class="hint" *ngIf="dirty && !saving">You have unsaved changes.</span>
+    </div>
+  </form>
+</section>
