@@ -51,6 +51,35 @@ describe('orders adapter', () => {
     // The catalogue stores the series misspelt; the order words it as the quotation page does.
     const misspelt = toOrderPage(rawOrderPage({ order_product: [{ id: 1, label: 'Hall', product_information: [{ category: 'Slidding' }] }] }));
     expect(misspelt.lines[0].name).toBe('Hall · Sliding');
+    // A 3D structure (T123) has no product and no label: its own name, its type, width × depth × height.
+    const structure = toOrderPage(
+      rawOrderPage({
+        order_product: [
+          { id: 1, label: null, product_type: 'Window', width: '2400', height: '1500', quantity: 1, amount: 16991.5 },
+          {
+            id: 2,
+            label: null,
+            kind: 'structure',
+            product_type: 'structure',
+            product_id: null,
+            width: '3600',
+            height: '2700',
+            quantity: 1,
+            amount: 229872.31,
+            product_information: [],
+            structure: { type: 'cabin', name: 'Balcony cabin', overall: { widthMm: 3600, depthMm: 2400, heightMm: 2700 } },
+          },
+          { id: 3, label: null, kind: 'structure', product_type: 'structure', width: '3000', height: '2000', quantity: 2, amount: 5, structure: null },
+        ],
+      })
+    );
+    expect(structure.lines.map((l) => [l.name, l.size, l.quantity, l.amount])).toEqual([
+      ['Window 1 · Window', '2400 × 1500 mm', 1, 16991.5],
+      ['Balcony cabin · Cabin', '3600 × 2400 × 2700 mm', 1, 229872.31],
+      ['3D structure 3', '3000 × 2000 mm', 2, 5],
+    ]);
+    expect(structure.hasStructures).toBeTrue();
+    expect(page.hasStructures).toBeFalse();
     // Charges the order took over from the quotation (T86): its total includes them, so the page lists them.
     expect(page.charges).toEqual([]);
     const charged = toOrderPage(

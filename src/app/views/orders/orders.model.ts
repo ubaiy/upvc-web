@@ -86,6 +86,8 @@ export interface OrderPage extends Order {
   bill: { id: number; number: string; date: string; total: number } | null;
   account: Account | null;
   lines: OrderLine[];
+  /** A line is a 3D structure (card T123): the page then says "items", not "windows". */
+  hasStructures?: boolean;
   /** CGST, SGST or IGST as the api lists them; empty when it lists none. */
   taxLines: TaxLine[];
   /** The charge lines as the api froze them on the order; empty when there are none. */

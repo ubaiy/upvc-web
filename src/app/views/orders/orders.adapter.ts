@@ -1,6 +1,7 @@
 import { idOrNull, num, text } from '../payments/api-result';
 import { addressLine } from 'src/app/shared/class/address-text';
 import { toAccount } from '../payments/payments.adapter';
+import { isStructureLine, structureTypeLabel } from '../quotation/sub-quotation/detail/quotation-detail.model';
 import { ChargeLine, Order, OrderLine, OrderPage, OrderTab, StageCounts, StageKey, StageStep, TaxLine } from './orders.model';
 
 /**
@@ -112,7 +113,33 @@ function styleOf(raw: any): string {
   return style === 'Slidding' ? 'Sliding' : style;
 }
 
+/**
+ * A 3D structure on the order (card T123): its own name, its type and its
+ * overall size (width × depth × height). It has no catalogue product.
+ */
+function toStructureLine(raw: any, index: number): OrderLine {
+  const structure = raw?.structure || {};
+  const type = structureTypeLabel(structure.type);
+  const own = text(raw?.label).trim() || text(structure.name).trim();
+  const overall = structure.overall || {};
+  const size = [num(overall.widthMm) || num(raw?.width), num(overall.depthMm), num(overall.heightMm) || num(raw?.height)]
+    .filter((mm) => mm > 0)
+    .map((mm) => Math.round(mm));
+  return {
+    id: num(raw?.id),
+    // "Balcony cabin · Cabin"; one with no name is its type and its place: "Cabin 2".
+    name: own ? [own, type !== own ? type : ''].filter(Boolean).join(' · ') : `${type} ${index + 1}`,
+    size: size.length > 1 ? `${size.join(' × ')} mm` : '',
+    hsn: text(raw?.hsn_code),
+    quantity: num(raw?.quantity),
+    amount: num(raw?.amount),
+  };
+}
+
 function toLine(raw: any, index: number): OrderLine {
+  if (isStructureLine(raw)) {
+    return toStructureLine(raw, index);
+  }
   const label = text(raw?.label).trim();
   const type = styleOf(raw) || text(raw?.product_type).trim();
   const width = text(raw?.width).trim();
@@ -152,6 +179,7 @@ export function toOrderPage(raw: any): OrderPage {
       : null,
     account: toAccount(raw?.account),
     lines: Array.isArray(raw?.order_product) ? raw.order_product.map(toLine) : [],
+    hasStructures: Array.isArray(raw?.order_product) && raw.order_product.some(isStructureLine),
     taxLines,
     charges,
     paymentTerm: text(raw?.payment_terms?.name || raw?.totals?.payment_term?.name),

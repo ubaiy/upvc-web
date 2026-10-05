@@ -101,16 +101,17 @@
     <div class="main">
       <section class="card" aria-labelledby="windows-title">
         <div class="card-head">
-          <h2 id="windows-title">Windows</h2>
+          <h2 id="windows-title">{{ o.hasStructures ? 'Windows and structures' : 'Windows' }}</h2>
           <span class="muted small"
-            >{{ o.totalQuantity }} {{ o.totalQuantity === 1 ? 'window' : 'windows' }}, as quoted when the order was
-            made</span
+            >{{ o.totalQuantity }}
+            {{ o.hasStructures ? (o.totalQuantity === 1 ? 'item' : 'items') : o.totalQuantity === 1 ? 'window' : 'windows' }}, as
+            quoted when the order was made</span
           >
         </div>
         <table class="table">
           <thead>
             <tr>
-              <th scope="col">Window</th>
+              <th scope="col">{{ o.hasStructures ? 'Item' : 'Window' }}</th>
               <th scope="col" class="hide-tablet">HSN</th>
               <th scope="col" class="right">Qty</th>
               <th scope="col" class="right">Amount</th>
