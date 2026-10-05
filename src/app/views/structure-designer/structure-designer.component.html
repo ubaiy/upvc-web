@@ -127,7 +127,7 @@
           </button>
           <span class="sd-dim sd-dim--edit" *ngIf="editingDim === d.id" [attr.data-dim]="d.id">
             <small>{{ d.label }}</small>
-            <input type="number" inputmode="decimal" [(ngModel)]="dimDraft" (keydown.enter)="applyDim(d)" (keydown.escape)="editingDim = null" (blur)="applyDim(d)" [attr.aria-label]="d.label" />
+            <input type="number" inputmode="decimal" [(ngModel)]="dimDraft" (keydown.enter)="applyDim(d)" (keydown.escape)="cancelDim()" (blur)="applyDim(d)" [attr.aria-label]="d.label" />
           </span>
         </ng-container>
       </div>

@@ -16,6 +16,7 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
+  PerspectiveCamera,
   Raycaster,
   SphereGeometry,
   Vector3,
@@ -45,7 +46,8 @@ interface DragState {
   last: number;
 }
 
-const HANDLE_SCALE = 0.0078;
+/** Radius of a handle's ball on screen, CSS px. */
+const HANDLE_PX = 10;
 const UP = new Vector3(0, 1, 0);
 
 export class Gizmos {
@@ -113,10 +115,12 @@ export class Gizmos {
     }
   }
 
-  /** Keep every handle the same size on screen. */
-  face(camera: Camera): void {
+  /** Keep every handle the same size on screen, whatever the zoom and the height of the view. */
+  face(camera: Camera, viewHeightPx = 720): void {
+    const fov = (camera as PerspectiveCamera).fov ?? 32;
+    const perPx = (2 * Math.tan((fov * Math.PI) / 360)) / Math.max(120, viewHeightPx);
     for (const h of this.handles) {
-      const k = camera.position.distanceTo(h.group.position) * HANDLE_SCALE * (h.dim.id === this.hovered || h.dim.id === this.state?.id ? 1.3 : 1);
+      const k = camera.position.distanceTo(h.group.position) * perPx * HANDLE_PX * (h.dim.id === this.hovered || h.dim.id === this.state?.id ? 1.3 : 1);
       h.group.scale.setScalar(k);
     }
   }

@@ -360,7 +360,7 @@ input:focus-visible {
 .sd-body {
   flex: 1;
   display: grid;
-  grid-template-columns: 290px minmax(0, 1fr) 360px;
+  grid-template-columns: 272px minmax(0, 1fr) 340px;
   min-height: 0;
 }
 
@@ -509,6 +509,19 @@ input:focus-visible {
   min-height: 0;
   background: #eef1f1;
   overflow: hidden;
+  container-type: inline-size;
+}
+
+// A narrow view: the size labels show the number only, so they cover less of the structure.
+@container (max-width: 620px) {
+  .sd-dim small {
+    display: none;
+  }
+
+  .sd-dim {
+    min-height: 26px;
+    padding: 2px 8px;
+  }
 }
 
 .sd-canvas {
@@ -753,7 +766,9 @@ button.sd-dim:hover {
     min-height: 220px;
   }
 
+  // The sheet is under the 3D view, whichever side panel it holds.
   .sd-panel {
+    order: 1;
     display: none;
     flex: 0 0 auto;
     max-height: 44%;

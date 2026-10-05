@@ -113,6 +113,7 @@ describe('StructureDesignerComponent', () => {
     c.dimDraft = '1250';
     c.applyDim(rise);
     expect(c.num('rise')).toBe(1250);
+    c.editDim(c.dims.find((d) => d.id === 'rise')!);
     c.dimDraft = '9000';
     c.applyDim(c.dims.find((d) => d.id === 'rise')!);
     expect(c.num('rise')).toBe(1500); // never more than half the diameter
@@ -122,6 +123,7 @@ describe('StructureDesignerComponent', () => {
   it('a typed bay projection finds the angle', async () => {
     await make({ kind: 'bay' });
     const projection = c.dims.find((d) => d.id === 'projection')!;
+    c.editDim(projection);
     c.dimDraft = '450';
     c.applyDim(projection);
     expect(Math.abs((c.dims.find((d) => d.id === 'projection')?.value ?? 0) - 450)).toBeLessThan(3);

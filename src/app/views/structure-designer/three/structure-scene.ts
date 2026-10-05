@@ -199,7 +199,7 @@ export class StructureScene {
     this.centre.set((box.min[0] + box.max[0]) / 2, box.max[1] / 2, (box.min[2] + box.max[2]) / 2);
     this.radius = Math.max(600, size.length() / 2);
     this.half.copy(size).multiplyScalar(0.5);
-    this.placeStage(box.max[0], box.max[2]);
+    this.placeStage(box.min[0], box.max[2]);
     this.renderer.shadowMap.needsUpdate = true;
     const moved = this.centre.distanceTo(this.fitted.centre) > this.fitted.radius * 0.12;
     const resized = Math.abs(this.radius - this.fitted.radius) > this.fitted.radius * 0.08;
@@ -209,7 +209,7 @@ export class StructureScene {
   }
 
   /** Ground, grid, sun and the person follow the size of the structure. */
-  private placeStage(maxX: number, maxZ: number): void {
+  private placeStage(minX: number, maxZ: number): void {
     const r = this.radius;
     this.ground.scale.setScalar(r * 14);
     this.ground.position.set(this.centre.x, -1, this.centre.z);
@@ -239,7 +239,8 @@ export class StructureScene {
     cam.near = r * 0.2;
     cam.far = r * 6;
     cam.updateProjectionMatrix();
-    this.human.position.set(maxX + 900, 0, maxZ + 900);
+    // To the left of the front: clear of the structure from the usual three-quarter view.
+    this.human.position.set(minX - 900, 0, maxZ - 200);
   }
 
   setSelection(faceIds: string[], barId: string | null): void {
@@ -287,7 +288,7 @@ export class StructureScene {
         }
       }
     }
-    distance = Math.max(distance * 1.3, this.radius * 1.2);
+    distance = Math.max(distance * 1.16, this.radius * 1.1);
     this.camera.aspect = aspect;
     this.camera.near = Math.max(20, distance / 200);
     this.camera.far = distance * 30;
@@ -380,7 +381,7 @@ export class StructureScene {
   render(): void {
     if (this.disposed) return;
     this.human.rotation.y = Math.atan2(this.camera.position.x - this.human.position.x, this.camera.position.z - this.human.position.z);
-    this.gizmos.face(this.camera);
+    this.gizmos.face(this.camera, this.renderer.domElement.clientHeight);
     this.renderer.render(this.scene, this.camera);
     if (this.onLabels && this.gizmos.root.visible) {
       const el = this.renderer.domElement;
@@ -420,13 +421,12 @@ export class StructureScene {
     if (this.grid) this.grid.visible = false;
     this.scene.background = new Color('#ffffff');
     (this.scene.fog as Fog).color.set('#ffffff');
-    if (standing) {
-      this.direction.copy(VIEW['3d']);
-      this.frameCamera(widthPx / heightPx);
-    } else {
-      this.camera.aspect = widthPx / heightPx;
-      this.camera.updateProjectionMatrix();
-    }
+    // Framed again for the shape of the picture: from the standing view, or from where the user looks.
+    if (standing) this.direction.copy(VIEW['3d']);
+    else this.direction.copy(this.camera.position).sub(this.controls.target).normalize();
+    const fitted = this.fitted;
+    this.frameCamera(widthPx / heightPx);
+    this.fitted = fitted;
     this.human.rotation.y = Math.atan2(this.camera.position.x - this.human.position.x, this.camera.position.z - this.human.position.z);
     this.renderer.render(this.scene, this.camera);
     // Read in the same task as the draw: no preserveDrawingBuffer needed.
@@ -447,6 +447,7 @@ export class StructureScene {
     this.camera.far = before.far;
     this.camera.updateProjectionMatrix();
     this.controls.target.copy(before.target);
+    this.controls.update();
     this.render();
     return png;
   }
@@ -537,7 +538,7 @@ function buildHuman(): Mesh {
   s.closePath();
   const mesh = new Mesh(
     new ShapeGeometry(s, 10),
-    new MeshBasicMaterial({ color: '#7d8990', side: DoubleSide, fog: false })
+    new MeshBasicMaterial({ color: '#9aa5ab', side: DoubleSide, fog: false })
   );
   return mesh;
 }

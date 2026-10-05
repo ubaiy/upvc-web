@@ -21,7 +21,6 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { saveAs } from 'file-saver';
 import {
   barSection,
   createStructure,
@@ -125,6 +124,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   /** The document before a slider or handle gesture began; the gesture is one undo step. */
   private gestureBase: Structure | null = null;
   private messageTimer = 0;
+  /** The label element of each dimension and where it was last put. */
+  private readonly labelEls = new Map<string, { el: HTMLElement; at: string }>();
 
   @ViewChild('labels') private labelLayer?: ElementRef<HTMLElement>;
   @ViewChild('fileInput') private fileInput?: ElementRef<HTMLInputElement>;
@@ -257,10 +258,18 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     const layer = this.labelLayer?.nativeElement;
     if (!layer) return;
     for (const l of labels) {
-      const el = layer.querySelector<HTMLElement>(`[data-dim="${l.id}"]`);
-      if (!el) continue;
-      el.style.transform = `translate(-50%, -50%) translate(${Math.round(l.x)}px, ${Math.round(l.y)}px)`;
-      el.style.visibility = l.visible ? 'visible' : 'hidden';
+      let known = this.labelEls.get(l.id);
+      if (!known || !known.el.isConnected) {
+        const el = layer.querySelector<HTMLElement>(`[data-dim="${l.id}"]`);
+        if (!el) continue;
+        known = { el, at: '' };
+        this.labelEls.set(l.id, known);
+      }
+      const at = l.visible ? `translate(-50%, -50%) translate(${Math.round(l.x)}px, ${Math.round(l.y)}px)` : 'hidden';
+      if (at === known.at) continue;
+      known.at = at;
+      if (l.visible) known.el.style.transform = at;
+      known.el.style.visibility = l.visible ? 'visible' : 'hidden';
     }
   }
 
@@ -339,15 +348,34 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   }
 
   editDim(d: Dim): void {
+    const layer = this.labelLayer?.nativeElement;
+    const at = layer?.querySelector<HTMLElement>(`[data-dim="${d.id}"]`)?.style.transform ?? '';
     this.editingDim = d.id;
     this.dimDraft = String(Math.round(d.value * 10) / 10);
     this.cdr.markForCheck();
-    setTimeout(() => this.labelLayer?.nativeElement.querySelector<HTMLInputElement>('input')?.select());
+    setTimeout(() => {
+      // The box takes the place of the label it replaces at once: a hidden box cannot take the keyboard.
+      const box = layer?.querySelector<HTMLElement>(`[data-dim="${d.id}"]`);
+      if (box) {
+        box.style.transform = at;
+        box.style.visibility = 'visible';
+      }
+      const input = box?.querySelector<HTMLInputElement>('input');
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  cancelDim(): void {
+    this.editingDim = null;
+    // The label comes back as a new element: the scene places it on its next frame.
+    setTimeout(() => this.scene?.requestRender());
   }
 
   applyDim(d: Dim): void {
+    if (this.editingDim !== d.id) return; // Enter and the blur that follows it: once
     const value = Number(this.dimDraft);
-    this.editingDim = null;
+    this.cancelDim();
     if (!this.def || !Number.isFinite(value) || value === d.value) return;
     const wanted = Math.min(d.max, Math.max(d.min, value));
     if (wanted !== value) this.say(`${d.label}: ${d.min} to ${d.max}${d.unit === 'deg' ? '°' : ' mm'}`);
@@ -585,6 +613,16 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
 function fileName(name: string): string {
   return name.trim().replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'structure';
+}
+
+/** Hand a file to the browser's download. */
+function saveAs(blob: Blob, name: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function dataUrlBlob(dataUrl: string): Blob {
