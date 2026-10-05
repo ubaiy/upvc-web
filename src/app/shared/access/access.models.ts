@@ -156,3 +156,52 @@ export function readOnlyReason(sub: SubscriptionInfo | null): string {
   }
   return 'Your subscription has ended and the account is read-only. Renew the plan to continue.';
 }
+
+/** The words beside a 3D button on a plan without 3D. */
+export const PLAN_3D_LINE = 'Available on the Business plan';
+
+/** What a button that changes something does for this user (card T136). */
+export interface WriteGate {
+  /** The role has no such ability: the button is not shown. */
+  hidden: boolean;
+  /** The account is read-only: the button is shown, off, and says `reason`. */
+  locked: boolean;
+  reason: string;
+}
+
+export function writeGate(state: AccessState, ability: string | null | undefined): WriteGate {
+  if (!allows(state, ability)) {
+    return { hidden: true, locked: false, reason: '' };
+  }
+  if (isReadOnly(state)) {
+    return { hidden: false, locked: true, reason: readOnlyReason(state.subscription) };
+  }
+  return { hidden: false, locked: false, reason: '' };
+}
+
+/**
+ * The entries of a menu (the shape of a PrimeNG MenuItem) for this user: an entry that
+ * changes something is left out for a role without the ability and is off, with the
+ * reason, in a read-only account. `abilityOf` answers nothing for an entry that only reads.
+ */
+export function gateMenu<T extends { disabled?: boolean; title?: string; separator?: boolean }>(
+  state: AccessState,
+  items: T[],
+  abilityOf: (item: T) => string | null | undefined
+): T[] {
+  const kept: T[] = [];
+  for (const item of items) {
+    const ability = item.separator ? null : abilityOf(item);
+    if (!ability) {
+      kept.push(item);
+      continue;
+    }
+    const gate = writeGate(state, ability);
+    if (gate.hidden) {
+      continue;
+    }
+    kept.push(gate.locked ? { ...item, disabled: true, title: gate.reason } : item);
+  }
+  // No separator first, last or twice in a row once entries are gone.
+  return kept.filter((item, i) => !item.separator || (i > 0 && i < kept.length - 1 && !kept[i - 1].separator));
+}

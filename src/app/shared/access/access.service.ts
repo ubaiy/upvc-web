@@ -1,10 +1,10 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, forkJoin, map, of, shareReplay, tap } from 'rxjs';
 
 import { quiet } from '../interceptors/request-options';
 import { ApiHttpService } from '../services/api-http.service';
 import { AuthService } from '../services/auth.service';
-import { AccessState, EMPTY_ACCESS, SubscriptionInfo, allows, has3d, isReadOnly } from './access.models';
+import { AccessState, EMPTY_ACCESS, SubscriptionInfo, WriteGate, allows, gateMenu, has3d, isReadOnly, writeGate } from './access.models';
 
 /**
  * Who the signed-in user is (role, abilities) and what the company's plan allows.
@@ -21,7 +21,27 @@ export class AccessService {
   private loadedFor: string | null = null;
   private pending?: Observable<AccessState>;
 
-  constructor(private api: ApiHttpService, private auth: AuthService) {}
+  private _api?: ApiHttpService;
+  private _auth?: AuthService;
+
+  // A screen that only reads what is known (a button, a menu) needs no http: where there
+  // is none (a spec of such a screen) the two services are simply not there.
+  constructor(private injector: Injector) {
+    try {
+      this._api = injector.get(ApiHttpService);
+      this._auth = injector.get(AuthService);
+    } catch {
+      // asked for again when first used
+    }
+  }
+
+  private get api(): ApiHttpService {
+    return (this._api ??= this.injector.get(ApiHttpService));
+  }
+
+  private get auth(): AuthService {
+    return (this._auth ??= this.injector.get(AuthService));
+  }
 
   get state(): AccessState {
     return this.subject.value;
@@ -37,6 +57,21 @@ export class AccessService {
 
   get readOnly(): boolean {
     return isReadOnly(this.state);
+  }
+
+  /** May this user press a button that needs the ability, now? Not for a role without it, not in a read-only account. */
+  canWrite(ability: string | null | undefined): boolean {
+    const gate = this.gate(ability);
+    return !gate.hidden && !gate.locked;
+  }
+
+  gate(ability: string | null | undefined): WriteGate {
+    return writeGate(this.state, ability);
+  }
+
+  /** A menu without the entries the role may not use; in a read-only account the writing ones are off. */
+  menu<T extends { disabled?: boolean; title?: string; separator?: boolean }>(items: T[], abilityOf: (item: T) => string | null | undefined): T[] {
+    return gateMenu(this.state, items, abilityOf);
   }
 
   /** The answer for this sign-in; asked once, shared by the guards and the shell. */
