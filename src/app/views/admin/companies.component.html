@@ -1,0 +1,108 @@
+<app-page-header title="Companies" [subtitle]="subtitle"></app-page-header>
+
+<app-callout tone="warn" *ngIf="state === 'error'">
+  {{ error }}
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card" *ngIf="state !== 'error'" [attr.aria-busy]="state === 'loading'">
+  <ng-container *ngIf="state === 'loading'">
+    <span class="sr-only" role="status">Loading companies</span>
+    <div class="sk-row" aria-hidden="true" *ngFor="let i of placeholders">
+      <span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span>
+    </div>
+  </ng-container>
+
+  <app-empty-state
+    *ngIf="state === 'ready' && !companies.length"
+    icon="users"
+    title="No companies yet"
+    text="A company appears here when it is created for a customer."
+  ></app-empty-state>
+
+  <ng-container *ngIf="state === 'ready' && companies.length">
+    <div class="toolbar filters">
+      <label class="input-group">
+        <app-icon name="search"></app-icon>
+        <input
+          type="search"
+          placeholder="Search name, e-mail or city"
+          aria-label="Search companies"
+          [(ngModel)]="search"
+          (ngModelChange)="apply()"
+        />
+      </label>
+      <select class="select" aria-label="Status" [(ngModel)]="status" (ngModelChange)="apply()">
+        <option value="">Every status</option>
+        <option *ngFor="let item of statuses" [value]="item">{{ statusLabel(item) }}</option>
+      </select>
+      <select class="select" aria-label="Plan" [(ngModel)]="plan" (ngModelChange)="apply()">
+        <option value="">Every plan</option>
+        <option *ngFor="let item of plans" [value]="item.code">{{ item.name }}</option>
+      </select>
+      <select class="select" aria-label="Order" [(ngModel)]="order" (ngModelChange)="apply()">
+        <option value="attention">Needs attention first</option>
+        <option value="ending">Ending soonest</option>
+        <option value="name">Name, A to Z</option>
+      </select>
+    </div>
+
+    <table class="table" *ngIf="rows.length">
+      <thead>
+        <tr>
+          <th scope="col">Company</th>
+          <th scope="col">Status</th>
+          <th scope="col">Plan</th>
+          <th scope="col">Seats used</th>
+          <th scope="col">Trial or paid until</th>
+          <th scope="col" class="hide-tablet">Quotations this month</th>
+          <th scope="col" class="hide-tablet">Last activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let company of rows; trackBy: trackById">
+          <td>
+            <a class="title" [routerLink]="['/admin/companies', company.id]"><bdi>{{ company.name }}</bdi></a>
+            <div class="faint tiny" *ngIf="company.email">{{ company.email }}</div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="statusBadge(company.subscription.status)">{{
+              statusLabel(company.subscription.status)
+            }}</span>
+            <div
+              class="tiny attention"
+              [class.is-danger]="urgent(company)"
+              *ngIf="attentionText(company.subscription) as why"
+            >
+              {{ why }}
+            </div>
+          </td>
+          <td>{{ company.subscription.plan?.name || 'No plan' }}</td>
+          <td class="num">{{ seatsText(company.subscription) }}</td>
+          <td class="num">
+            <ng-container *ngIf="company.subscription.ends_on as day; else noEnd">
+              {{ day | date : 'd MMM y' }}
+              <div class="faint tiny">{{ endsLabel(company.subscription) }}</div>
+            </ng-container>
+            <ng-template #noEnd><span class="muted">No end date</span></ng-template>
+          </td>
+          <td class="num hide-tablet">{{ company.usage.quotations_this_month }}</td>
+          <td class="muted num hide-tablet">
+            {{ company.usage.last_activity_at ? (company.usage.last_activity_at | date : 'd MMM y') : 'None yet' }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="empty" *ngIf="!rows.length">
+      <h2>No company matches</h2>
+      <p>Change the search or the filters.</p>
+      <button type="button" class="btn btn-secondary" (click)="clear()">Show every company</button>
+    </div>
+
+    <div class="table-foot" *ngIf="rows.length">
+      <span>{{ rows.length === companies.length ? subtitle : rows.length + ' of ' + companies.length + ' shown' }}</span>
+      <button type="button" class="btn btn-ghost btn-sm" *ngIf="filtered" (click)="clear()">Show every company</button>
+    </div>
+  </ng-container>
+</section>

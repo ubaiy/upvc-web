@@ -1,0 +1,300 @@
+<app-page-header
+  [title]="company?.name || 'Company'"
+  [crumbs]="[{ label: 'Companies', link: '/admin/companies' }, { label: company?.name || 'Company' }]"
+>
+  <span meta class="badge" *ngIf="company as c" [ngClass]="statusBadge(c.subscription.status)">{{
+    statusLabel(c.subscription.status)
+  }}</span>
+</app-page-header>
+
+<app-callout tone="warn" *ngIf="state === 'error'">
+  {{ error }}
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card card-pad" *ngIf="state === 'loading'" aria-busy="true">
+  <span class="sr-only" role="status">Loading the company</span>
+  <div class="stack-4" aria-hidden="true"><span class="skeleton"></span><span class="skeleton"></span><span class="skeleton"></span></div>
+</section>
+
+<ng-container *ngIf="state === 'ready' && company as c">
+  <app-callout tone="success" *ngIf="result">{{ result }}</app-callout>
+  <app-callout tone="warn" *ngIf="attentionText(c.subscription) as why">{{ why }}.</app-callout>
+
+  <section class="card">
+    <div class="card-head"><h2>What you can do</h2></div>
+    <div class="card-pad actions">
+      <button type="button" class="btn btn-primary" (click)="open('activate')">Record a payment and activate</button>
+      <button type="button" class="btn btn-secondary" (click)="open('plan')">Change plan</button>
+      <button type="button" class="btn btn-secondary" (click)="open('trial')">Extend the trial</button>
+      <button type="button" class="btn btn-secondary" (click)="open('limits')">Seats and 3D view</button>
+      <button type="button" class="btn btn-danger" *ngIf="c.subscription.status !== 'suspended'" (click)="open('suspend')">
+        Suspend
+      </button>
+      <button type="button" class="btn btn-secondary" *ngIf="c.subscription.status === 'suspended'" (click)="open('reactivate')">
+        Reactivate
+      </button>
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-head"><h2>Subscription</h2></div>
+      <dl class="dl facts card-pad">
+        <dt>Status</dt>
+        <dd>
+          {{ statusLabel(c.subscription.status) }}
+          <span class="muted" *ngIf="c.subscription.read_only">(read-only)</span>
+        </dd>
+        <dt>Plan</dt>
+        <dd>
+          <ng-container *ngIf="c.subscription.plan as plan; else noPlan">
+            {{ plan.name }}, {{ plan.price | inr }} a month before GST
+          </ng-container>
+          <ng-template #noPlan>No plan</ng-template>
+        </dd>
+        <dt>{{ endsLabel(c.subscription) === 'No end date' ? 'Ends' : endsLabel(c.subscription) }}</dt>
+        <dd>
+          {{ c.subscription.ends_on ? (c.subscription.ends_on | date : 'd MMM y') : 'No end date' }}
+          <span class="muted" *ngIf="c.subscription.days_left !== null && !c.subscription.read_only">
+            ({{ c.subscription.days_left }} {{ c.subscription.days_left === 1 ? 'day' : 'days' }} left{{
+              c.subscription.status === 'grace' ? ' before it locks' : ''
+            }})
+          </span>
+        </dd>
+        <ng-container *ngIf="c.subscription.grace_ends_on as grace">
+          <dt>Read-only after</dt>
+          <dd>{{ grace | date : 'd MMM y' }}</dd>
+        </ng-container>
+        <ng-container *ngIf="c.subscription.suspended_at as when">
+          <dt>Suspended on</dt>
+          <dd>{{ when | date : 'd MMM y' }}</dd>
+        </ng-container>
+        <dt>Note</dt>
+        <dd>{{ c.note || 'None' }}</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><h2>Limits and use</h2></div>
+      <dl class="dl facts card-pad">
+        <dt>Seats used</dt>
+        <dd>
+          {{ seatsText(c.subscription) }}
+          <span class="muted" *ngIf="c.subscription.seats.override !== null">
+            (set for this company; the plan gives {{ c.subscription.seats.plan ?? 'no limit' }})
+          </span>
+        </dd>
+        <dt>What it has</dt>
+        <dd>
+          <div *ngFor="let line of featureList(c.subscription.features)">{{ line }}</div>
+          <span class="muted" *ngIf="!featureList(c.subscription.features).length">Nothing listed</span>
+        </dd>
+        <dt>Quotations this month</dt>
+        <dd>{{ c.usage.quotations_this_month }}</dd>
+        <dt>Last activity</dt>
+        <dd>{{ c.usage.last_activity_at ? (c.usage.last_activity_at | date : 'd MMM y, h:mm a') : 'None yet' }}</dd>
+        <dt>Contact</dt>
+        <dd>
+          <div *ngIf="c.email">{{ c.email }}</div>
+          <div *ngIf="c.phone">{{ c.phone }}</div>
+          <div *ngIf="c.city || stateName(c.state_code)">{{ c.city }}{{ c.city && stateName(c.state_code) ? ', ' : '' }}{{ stateName(c.state_code) }}</div>
+        </dd>
+        <dt>Created</dt>
+        <dd>{{ c.created_at | date : 'd MMM y' }}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>People</h2>
+      <span class="muted small">{{ seatsText(c.subscription) }} seats</span>
+    </div>
+    <table class="table" *ngIf="c.users?.length; else noUsers">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">E-mail</th>
+          <th scope="col">Added</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of c.users; trackBy: trackById">
+          <td class="title"><bdi>{{ user.name }}</bdi></td>
+          <td class="muted">{{ user.email }}</td>
+          <td class="muted num">{{ user.created_at | date : 'd MMM y' }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #noUsers><p class="card-pad muted">No people yet.</p></ng-template>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>Payments entered</h2></div>
+    <table class="table" *ngIf="c.payments?.length; else noPayments">
+      <thead>
+        <tr>
+          <th scope="col">Paid on</th>
+          <th scope="col">Amount</th>
+          <th scope="col">How</th>
+          <th scope="col">Plan</th>
+          <th scope="col">Period paid for</th>
+          <th scope="col" class="hide-tablet">Note</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let payment of c.payments; trackBy: trackById">
+          <td class="num title">{{ payment.paid_on | date : 'd MMM y' }}</td>
+          <td class="num">{{ payment.amount | inr }}</td>
+          <td>
+            {{ modeLabel(payment.mode) }}
+            <div class="faint tiny" *ngIf="payment.reference">{{ payment.reference }}</div>
+          </td>
+          <td>{{ planName(payment.plan) }}</td>
+          <td class="num">
+            {{ payment.period_from | date : 'd MMM y' }} to {{ payment.period_to | date : 'd MMM y' }}
+            <div class="faint tiny">{{ payment.months }} {{ payment.months === 1 ? 'month' : 'months' }}</div>
+          </td>
+          <td class="muted hide-tablet">{{ payment.note || '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #noPayments><p class="card-pad muted">No payment has been entered for this company.</p></ng-template>
+  </section>
+</ng-container>
+
+<p-dialog
+  [header]="title"
+  [(visible)]="dialogOpen"
+  [modal]="true"
+  closeAriaLabel="Close"
+  [closable]="!busy"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '480px' }"
+>
+  <form id="company-action" class="stack-4" *ngIf="action && step === 'form'" (ngSubmit)="next()" novalidate>
+    <ng-container [ngSwitch]="action">
+      <ng-container *ngSwitchCase="'activate'">
+        <p class="muted">Enter a payment you have received by hand. The company becomes active for the months paid.</p>
+        <div class="field">
+          <label class="label" for="act-plan">Plan</label>
+          <select class="select" id="act-plan" name="plan" [(ngModel)]="form.plan">
+            <option *ngFor="let plan of planChoices" [value]="plan.code">
+              {{ plan.name }}, {{ plan.price | inr : 0 }} a month before GST
+            </option>
+          </select>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label class="label" for="act-months">Months paid for</label>
+            <input class="input" id="act-months" name="months" type="number" inputmode="numeric" min="1" max="60" [(ngModel)]="form.months" />
+          </div>
+          <div class="field">
+            <label class="label" for="act-amount">Amount received</label>
+            <div class="input-group">
+              <span class="unit">₹</span>
+              <input id="act-amount" name="amount" type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="form.amount" />
+            </div>
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label class="label" for="act-mode">Paid by</label>
+            <select class="select" id="act-mode" name="mode" [(ngModel)]="form.mode">
+              <option *ngFor="let mode of modes" [value]="mode.value">{{ mode.label }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="label" for="act-ref">Reference</label>
+            <input class="input" id="act-ref" name="reference" type="text" placeholder="UTR or receipt number" [(ngModel)]="form.reference" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label class="label" for="act-paid">Received on</label>
+            <input class="input" id="act-paid" name="paidOn" type="date" [(ngModel)]="form.paidOn" />
+          </div>
+          <div class="field">
+            <label class="label" for="act-from">Period starts on</label>
+            <input class="input" id="act-from" name="from" type="date" [(ngModel)]="form.from" aria-describedby="act-from-hint" />
+          </div>
+        </div>
+        <span class="hint" id="act-from-hint">
+          Leave "Period starts on" empty to start the day after the paid period that is still running, or today. The last paid
+          day is worked out from the months.
+        </span>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'plan'">
+        <div class="field">
+          <label class="label" for="plan-plan">New plan</label>
+          <select class="select" id="plan-plan" name="plan" [(ngModel)]="form.plan">
+            <option *ngFor="let plan of planChoices" [value]="plan.code">
+              {{ plan.name }}, {{ plan.price | inr : 0 }} a month, {{ plan.seats }} seats
+            </option>
+          </select>
+          <span class="hint">This changes what the company may use. It records no payment and moves no date.</span>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'trial'">
+        <div class="field">
+          <label class="label" for="trial-days">Days to add</label>
+          <input class="input" id="trial-days" name="days" type="number" inputmode="numeric" min="1" max="365" [(ngModel)]="form.days" />
+          <span class="hint">Counted from today, or from the end of the trial when that is later.</span>
+        </div>
+      </ng-container>
+
+      <ng-container *ngSwitchCase="'limits'">
+        <div class="field">
+          <label class="label" for="lim-seats">Seats for this company</label>
+          <input class="input" id="lim-seats" name="seats" type="number" inputmode="numeric" min="1" [(ngModel)]="form.seats"
+            [placeholder]="'The plan gives ' + (company?.subscription?.seats?.plan ?? 'no limit')" />
+          <span class="hint">Leave empty to use the plan's seats. {{ company?.subscription?.seats?.used }} used today.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="lim-3d">3D view</label>
+          <select class="select" id="lim-3d" name="threeD" [(ngModel)]="form.threeD">
+            <option value="plan">As the plan says ({{ company?.subscription?.plan?.features?.['feature_3d'] ? 'on' : 'off' }})</option>
+            <option value="on">On for this company</option>
+            <option value="off">Off for this company</option>
+          </select>
+        </div>
+      </ng-container>
+
+      <p class="muted" *ngSwitchCase="'suspend'">
+        A suspended company is read-only: its people can sign in, view and download, and change nothing.
+      </p>
+      <p class="muted" *ngSwitchCase="'reactivate'">Lifting the suspension gives the company back what its dates allow.</p>
+    </ng-container>
+
+    <div class="field">
+      <label class="label" for="action-note">Note (optional)</label>
+      <input class="input" id="action-note" name="note" type="text" maxlength="250" [(ngModel)]="form.note" placeholder="Why, or who asked" />
+    </div>
+    <app-callout tone="danger" *ngIf="actionError">{{ actionError }}</app-callout>
+  </form>
+
+  <div class="stack-4" *ngIf="action && step === 'confirm'">
+    <p class="strong">Please check. This is what will happen:</p>
+    <ul class="will">
+      <li *ngFor="let line of willHappen">{{ line }}</li>
+    </ul>
+    <app-callout tone="danger" *ngIf="actionError">{{ actionError }}</app-callout>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <ng-container *ngIf="step === 'form'">
+      <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+      <button type="submit" form="company-action" class="btn btn-primary">Continue</button>
+    </ng-container>
+    <ng-container *ngIf="step === 'confirm'">
+      <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="back()">Go back</button>
+      <button type="button" class="btn" [ngClass]="action === 'suspend' ? 'btn-danger' : 'btn-primary'" [disabled]="busy" (click)="send()">
+        {{ busy ? 'Working…' : confirmLabel }}
+      </button>
+    </ng-container>
+  </ng-template>
+</p-dialog>
