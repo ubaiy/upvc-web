@@ -16,6 +16,7 @@
 import {
   WindowDesign,
   setLeafSpec,
+  setPaneGlass,
   splitPane,
   walkLeaves,
 } from 'src/app/shared/design-model';
@@ -48,6 +49,24 @@ function mullionAndTransom(): WindowDesign {
   });
 }
 
+/** One opening sash, hinged or tilting as named. */
+function sash(direction: string): WindowDesign {
+  return setLeafSpec(start('casement-1'), 'p1', {
+    category: 'Casement',
+    casementType: 'Openable',
+    opening: { direction, handleId: null, hingesType: null },
+  });
+}
+
+/** The last pane glazed differently from the rest of the window. */
+function ownGlass(build: () => WindowDesign): () => WindowDesign {
+  return () => {
+    const d = build();
+    const leaves = walkLeaves(d.root);
+    return setPaneGlass(d, [leaves[leaves.length - 1].id], 15);
+  };
+}
+
 const WINDOWS: { name: string; build: () => WindowDesign }[] = [
   { name: 'fixed window', build: () => start('fixed') },
   { name: 'casement', build: () => start('casement-2') },
@@ -55,6 +74,17 @@ const WINDOWS: { name: string; build: () => WindowDesign }[] = [
   { name: 'window with a mullion and a transom', build: mullionAndTransom },
   { name: 'door', build: () => start('door') },
   { name: 'arch', build: () => start('arch') },
+  // T104: every window type the drawing distinguishes, and glass per pane.
+  { name: '2-track slider', build: () => start('slider-2') },
+  { name: 'top-hung sash', build: () => sash('Top') },
+  { name: 'tilt and turn sash', build: () => sash('Tilt & Turn Left') },
+  { name: 'casement with top light', build: () => start('top-light') },
+  { name: 'fixed and opening', build: () => start('fixed-open') },
+  { name: 'french door with top light', build: () => start('door-top-light') },
+  { name: 'mullion and transom, one pane with its own glass', build: ownGlass(mullionAndTransom) },
+  { name: '2-sash casement, one sash with its own glass', build: ownGlass(() => start('casement-2')) },
+  { name: 'fixed window with its own glass', build: ownGlass(() => start('fixed')) },
+  { name: '3-track slider with its own glass', build: ownGlass(() => start('slider-3')) },
 ];
 
 /** What Laravel's ConvertEmptyStringsToNull does to a request. */
@@ -122,6 +152,45 @@ describe('designer round trip: save, reopen, same payload and same total', () =>
       expect(JSON.stringify(resaved.design)).toBe(JSON.stringify(saved.design));
     });
   }
+
+  it('a pane with its own glass is priced with it, and the others with the window glass', () => {
+    const design = completeDesign(ownGlass(mullionAndTransom)(), catalog);
+    const body = buildManageProductBody(design, catalog, ctx(null), { image: null });
+    expect(body.parts.map((p) => p.glazz_id)).toEqual([1, 1, 15]);
+    expect((body.design as WindowDesign).glazing.glassId).toBe(1);
+    expect(walkLeaves((body.design as WindowDesign).root).map((l) => l.glassId)).toEqual([undefined, undefined, 15]);
+    // The same window with one glass differs in that part's glass and in nothing else.
+    const plain = buildManageProductBody(completeDesign(mullionAndTransom(), catalog), catalog, ctx(null));
+    expect(JSON.stringify(body.parts.map((p) => ({ ...p, glazz_id: 1 })))).toBe(JSON.stringify(plain.parts));
+    expect(body.sections).toEqual(plain.sections);
+    expect(body.mullion).toEqual(plain.mullion);
+  });
+
+  it('a pane glass the catalogue no longer offers, or equal to the window glass, is dropped on completion', () => {
+    const base = mullionAndTransom();
+    const last = walkLeaves(base.root)[2].id;
+    const gone = completeDesign(setPaneGlass(base, [last], 999), catalog);
+    expect(walkLeaves(gone.root).some((l) => 'glassId' in l)).toBeFalse();
+    // The window glass becomes 15; the pane that already had 15 keeps nothing of its own.
+    const d = setPaneGlass(base, [last], 15);
+    const same = completeDesign({ ...d, glazing: { ...d.glazing, glassId: 15 } }, catalog);
+    expect(walkLeaves(same.root).some((l) => 'glassId' in l)).toBeFalse();
+    expect(completeDesign(same, catalog)).toEqual(same);
+  });
+
+  it('a window saved before glass per pane opens unchanged: same document, same payload', () => {
+    for (const key of ['fixed', 'casement-2', 'slider-3', 'door', 'top-light']) {
+      const design = completeDesign(start(key), catalog);
+      const stored = JSON.parse(JSON.stringify(design));
+      expect(JSON.stringify(stored)).not.toContain('glassId":15');
+      expect(walkLeaves(stored.root).some((l: object) => 'glassId' in l)).toBeFalse();
+      const body = buildManageProductBody(design, catalog, ctx(1), { image: null });
+      const opened = openSavedLine(savedRow(body, 1));
+      const reopened = completeDesign(opened.design, catalog);
+      expect(JSON.stringify(reopened)).toBe(JSON.stringify(design));
+      expect(buildManageProductBody(reopened, catalog, ctx(1)).parts.every((p) => p.glazz_id === 1)).toBeTrue();
+    }
+  });
 
   it('the live price request and the save request price the same payload', () => {
     const design = completeDesign(mullionAndTransom(), catalog);

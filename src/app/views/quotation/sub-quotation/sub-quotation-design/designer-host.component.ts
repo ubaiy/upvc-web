@@ -31,7 +31,8 @@ import { catchError, debounceTime, switchMap } from 'rxjs/operators';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { designPicture } from 'src/app/shared/design-canvas/canvas-export';
 import { CanvasSelection, CanvasTool } from 'src/app/shared/design-canvas/canvas-view';
-import { GlassTints } from 'src/app/shared/design-canvas/canvas-renderer';
+import { GlassTints, SashFaces } from 'src/app/shared/design-canvas/canvas-renderer';
+import { KeyItem, drawingKey } from 'src/app/shared/design-canvas/drawing-key';
 import { DesignCanvasComponent } from 'src/app/shared/design-canvas/design-canvas.component';
 import {
   DesignInspectorComponent,
@@ -59,6 +60,7 @@ import {
   DesignerCatalog,
   completeDesign,
   handlesFor,
+  sashFacesOf,
   systemKeyOf,
 } from './designer-catalog';
 import { DesignerCatalogService } from './designer-catalog.service';
@@ -180,6 +182,12 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   glassOptions: GlassOption[] = [];
   colourOptions: { label: string; hex: string }[] = [];
   glassTints: GlassTints = {};
+  /** Glass names by id: the tag on a pane glazed differently, and the key. */
+  glassLabels: Record<string, string> = {};
+  /** Sash face widths the catalogue gives; the drawing uses them. */
+  sashFaces: Partial<SashFaces> = {};
+  /** What the symbols of THIS window mean, shown beside the drawing. */
+  keyItems: KeyItem[] = [];
 
   private opened: OpenedLine | null = null;
   private openedKey = '';
@@ -221,6 +229,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     this.glassOptions = this.catalog.glass.map((g) => ({ id: g.id, label: g.label }));
     this.colourOptions = this.catalog.colours.map((c) => ({ label: c.label, hex: c.hex }));
     this.glassTints = tintsOf(this.catalog);
+    this.glassLabels = Object.fromEntries(this.catalog.glass.map((g) => [String(g.id), g.label]));
 
     this.priceSub = this.price$
       .pipe(
@@ -266,6 +275,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       this.model = completed;
       this.current = completed;
       this.effective = completed;
+      this.afterCompleted();
       this.openedKey = this.edit ? serialize(completed) : '';
       this.ready = true;
       if (this.edit && this.stored) {
@@ -370,6 +380,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       await this.catalogs.ensure(this.current, this.catalog);
       if (seq !== this.refreshSeq) return;
       this.effective = completeDesign(this.current, this.catalog);
+      this.afterCompleted();
       this.saveError = '';
       if (this.changed) {
         this.requestPrice();
@@ -383,6 +394,15 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       this.refreshing--;
       this.settle();
       this.cdr.markForCheck();
+    }
+  }
+
+  /** The key and the profile faces follow the completed document. */
+  private afterCompleted(): void {
+    this.keyItems = drawingKey(this.effective, this.glassLabels);
+    const byId = sashFacesOf(this.catalog);
+    if (Object.keys(byId).length !== Object.keys(this.sashFaces.byId ?? {}).length) {
+      this.sashFaces = { byId };
     }
   }
 
@@ -780,7 +800,12 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
    * Halved when it would be too large for the api.
    */
   private picture(pixelRatio = 1): string | null {
-    const opts = { frameFaceMm: FRAME_FACE_MM, glassTints: this.glassTints };
+    const opts = {
+      frameFaceMm: FRAME_FACE_MM,
+      glassTints: this.glassTints,
+      glassLabels: this.glassLabels,
+      sashFaces: this.sashFaces as SashFaces,
+    };
     try {
       let png = designPicture(this.effective, { ...opts, pixelRatio });
       if (png.length > 320_000) png = designPicture(this.effective, { ...opts, pixelRatio: pixelRatio / 2 });
@@ -809,6 +834,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     this.model = next;
     this.current = next;
     this.effective = next;
+    this.afterCompleted();
     this.selection = null;
     this.tab = 'window';
     // Price details lies over the size boxes: the next window starts with them in view.

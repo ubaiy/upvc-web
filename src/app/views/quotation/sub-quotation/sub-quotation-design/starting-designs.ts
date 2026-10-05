@@ -16,6 +16,7 @@ import {
   setFrameShape,
   setLeafSpec,
   setSlide,
+  slideLayout,
   splitPane,
   splitPaneEqualSash,
   walkLeaves,
@@ -46,7 +47,7 @@ function openable(d: WindowDesign, id: string, direction = 'Left'): WindowDesign
 function slider(tracks: '2 Track' | '3 Track', panels: number, mesh: boolean): WindowDesign {
   const widthMm = panels > 2 ? 2400 : 1800;
   const d = blank(widthMm, 1200);
-  return setSlide(d, 'p1', { tracks, mesh, panels: equalPanels(panels, widthMm - 2 * FACE) });
+  return setSlide(d, 'p1', { tracks, mesh, panels: equalPanels(panels, widthMm - 2 * FACE, 0, tracks) });
 }
 
 export const STARTING_DESIGNS: StartingDesign[] = [
@@ -129,6 +130,12 @@ export interface ThumbPane {
   w: number;
   h: number;
   kind: 'fixed' | 'openable' | 'sliding';
+  /** The glass inside a sash, in viewBox units (a fixed pane is all glass). */
+  glass?: { x: number; y: number; w: number; h: number };
+  /** Opening triangle or slide arrow, an SVG path in viewBox units. */
+  mark?: string;
+  /** Fly-mesh hatch, an SVG path in viewBox units. */
+  mesh?: string;
 }
 
 export interface DesignThumb {
@@ -137,30 +144,88 @@ export interface DesignThumb {
   panes: ThumbPane[];
 }
 
-/** A schematic picture of a design for the starting row (not the real drawing). */
+/** Sash band of a thumbnail, in viewBox units. */
+const THUMB_SASH = 6;
+
+const n1 = (v: number): number => Math.round(v * 10) / 10;
+
+/** Triangle with its point on the hinge side of `g`. */
+function triangle(g: { x: number; y: number; w: number; h: number }, direction: string): string {
+  const d = direction.toLowerCase();
+  const { x, y, w, h } = g;
+  const p = (px: number, py: number): string => `${n1(px)} ${n1(py)}`;
+  if (d === 'top') return `M${p(x, y + h)} L${p(x + w / 2, y)} L${p(x + w, y + h)}`;
+  if (d === 'bottom') return `M${p(x, y)} L${p(x + w / 2, y + h)} L${p(x + w, y)}`;
+  if (d.includes('right')) return `M${p(x, y)} L${p(x + w, y + h / 2)} L${p(x, y + h)}`;
+  return `M${p(x + w, y)} L${p(x, y + h / 2)} L${p(x + w, y + h)}`;
+}
+
+/** Arrow with a head, across the middle of `g`. */
+function arrow(g: { x: number; y: number; w: number; h: number }, right: boolean): string {
+  const cy = n1(g.y + g.h / 2);
+  const a = n1(g.x + g.w * 0.2);
+  const b = n1(g.x + g.w * 0.8);
+  const [tail, tip, back] = right ? [a, b, n1(b - 7)] : [b, a, n1(a + 7)];
+  return `M${tail} ${cy} L${tip} ${cy} M${back} ${n1(cy - 5)} L${tip} ${cy} L${back} ${n1(cy + 5)}`;
+}
+
+function hatch(g: { x: number; y: number; w: number; h: number }): string {
+  let d = '';
+  for (let x = g.x + 4; x < g.x + g.w; x += 4) d += `M${n1(x)} ${n1(g.y)} V${n1(g.y + g.h)} `;
+  for (let y = g.y + 4; y < g.y + g.h; y += 4) d += `M${n1(g.x)} ${n1(y)} H${n1(g.x + g.w)} `;
+  return d.trim();
+}
+
+/**
+ * A small picture of a design for the starting row. It follows the drawing:
+ * a sash is a band round its glass, a triangle points at the hinges, a
+ * shutter laps its neighbour and carries its arrow, the mesh is hatched.
+ */
 export function thumbOf(design: WindowDesign): DesignThumb {
   const { widthMm, heightMm } = design.frame;
+  const width = Math.round((widthMm / heightMm) * 100);
   const panes: ThumbPane[] = [];
+  const inset = (r: { x: number; y: number; w: number; h: number }) => ({
+    x: n1(r.x * width + THUMB_SASH),
+    y: n1(r.y * 100 + THUMB_SASH),
+    w: n1(Math.max(2, r.w * width - 2 * THUMB_SASH)),
+    h: n1(Math.max(2, r.h * 100 - 2 * THUMB_SASH)),
+  });
   for (const { leaf, rect } of layout(design, { frameFaceMm: FACE }).leaves) {
     const base = { y: rect.yMm / heightMm, h: rect.hMm / heightMm };
     if (leaf.category === 'Slidding' && leaf.slide) {
-      const n = leaf.slide.panels.length;
-      for (let i = 0; i < n; i++) {
-        panes.push({
-          ...base,
-          x: (rect.xMm + (rect.wMm * i) / n) / widthMm,
-          w: rect.wMm / n / widthMm,
-          kind: 'sliding',
-        });
+      const slide = leaf.slide;
+      const sl = slideLayout(slide, rect.wMm);
+      // Shutters on different tracks lap by a sliver, the outer track on top.
+      const lap = 0.012;
+      const drawn = [...sl.panels].sort((p, q) => q.track - p.track);
+      for (const panel of drawn) {
+        const before = panel.index > 0 && sl.panels[panel.index - 1].track !== panel.track;
+        const after =
+          panel.index < sl.panels.length - 1 && sl.panels[panel.index + 1].track !== panel.track;
+        const x = (rect.xMm + panel.xMm) / widthMm - (before ? lap : 0);
+        const w = panel.widthMm / widthMm + (before ? lap : 0) + (after ? lap : 0);
+        const pane: ThumbPane = { ...base, x, w, kind: 'sliding' };
+        pane.glass = inset(pane);
+        if (!panel.fixed) pane.mark = arrow(pane.glass, panel.direction === 'Right');
+        const meshHere =
+          sl.mesh && (sl.mesh.position === 'Left' ? panel.index === 0 : panel.index === sl.panels.length - 1);
+        if (meshHere) pane.mesh = hatch(pane.glass);
+        panes.push(pane);
       }
     } else {
-      panes.push({
+      const pane: ThumbPane = {
         ...base,
         x: rect.xMm / widthMm,
         w: rect.wMm / widthMm,
         kind: leaf.casementType === 'Openable' ? 'openable' : 'fixed',
-      });
+      };
+      if (pane.kind === 'openable') {
+        pane.glass = inset(pane);
+        pane.mark = triangle(pane.glass, leaf.opening?.direction ?? 'Left');
+      }
+      panes.push(pane);
     }
   }
-  return { width: Math.round((widthMm / heightMm) * 100), panes };
+  return { width, panes };
 }

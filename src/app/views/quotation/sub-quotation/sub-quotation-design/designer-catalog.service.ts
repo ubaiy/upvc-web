@@ -70,10 +70,15 @@ export class DesignerCatalogService {
   }
 
   private options(rows: any[] | null | undefined): CatalogOption[] {
-    return (rows ?? []).map((r) => ({
-      id: r.id,
-      label: r.profile_code ? `${r.profile_code} · ${r.profile_name}` : r.profile_name ?? r.name,
-    }));
+    return (rows ?? []).map((r) => {
+      const option: CatalogOption = {
+        id: r.id,
+        label: r.profile_code ? `${r.profile_code} · ${r.profile_name}` : r.profile_name ?? r.name,
+      };
+      const face = Number(r.face_width_mm);
+      if (face > 0) option.faceMm = face;
+      return option;
+    });
   }
 
   private once(key: string, job: () => Promise<void>): Promise<void> {

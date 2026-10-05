@@ -28,6 +28,8 @@ import {
 export interface CatalogOption {
   id: Id;
   label: string;
+  /** Visible face width of a profile, mm, when the catalogue gives one. */
+  faceMm?: number;
 }
 
 export interface ColourOption extends CatalogOption {
@@ -187,6 +189,11 @@ function completeNode(
   };
 }
 
+function mapLeaves(node: PaneNode, fn: (leaf: LeafNode) => LeafNode): PaneNode {
+  if (isLeaf(node)) return fn(node);
+  return { ...node, children: node.children.map((c) => mapLeaves(c, fn)) };
+}
+
 /** The colour the design means: its id if that matches the drawn hex, else the hex, else the default. */
 export function colourOf(design: WindowDesign, catalog: DesignerCatalog): ColourOption | null {
   const byId = catalog.colours.find((c) => same(c.id, design.frame.colorId));
@@ -213,6 +220,17 @@ export function completeDesign(design: WindowDesign, catalog: DesignerCatalog): 
     catalog.glass.find((g) => g.isDefault) ??
     catalog.glass[0];
   const first = walkLeaves(root)[0];
+  // A pane keeps a glass of its own only while the catalogue offers it and
+  // it is not the window's glass anyway.
+  const windowGlass = glass ? glass.id : design.glazing.glassId;
+  const glazed = mapLeaves(root, (leaf) => {
+    if (leaf.glassId === undefined) return leaf;
+    const own = catalog.glass.find((g) => same(g.id, leaf.glassId));
+    const next = { ...leaf };
+    if (own && !same(own.id, windowGlass)) next.glassId = own.id;
+    else delete next.glassId;
+    return next;
+  });
   return {
     ...design,
     frame: {
@@ -221,9 +239,20 @@ export function completeDesign(design: WindowDesign, catalog: DesignerCatalog): 
       colorId: colour ? colour.id : design.frame.colorId,
       profileColor: colour ? colour.hex : design.frame.profileColor,
     },
-    glazing: { ...design.glazing, glassId: glass ? glass.id : design.glazing.glassId },
-    root,
+    glazing: { ...design.glazing, glassId: windowGlass },
+    root: glazed,
   };
+}
+
+/** Face width of every sash profile the catalogue gives one for, by profile id. */
+export function sashFacesOf(catalog: DesignerCatalog): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const lists of Object.values(catalog.systems)) {
+    for (const sash of lists.sashes) {
+      if (sash.faceMm && sash.faceMm > 0) out[String(sash.id)] = sash.faceMm;
+    }
+  }
+  return out;
 }
 
 /** Whether the catalogue already holds every list this design needs. */
