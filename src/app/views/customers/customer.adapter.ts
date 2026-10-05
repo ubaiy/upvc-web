@@ -119,8 +119,8 @@ export function toCustomerRow(dto: any, states: GstState[], address?: any): Cust
     email: dto.email || '',
     gstin: dto.gstin || '',
     place: cityPin(address?.city, pinOf(address)),
-    // The customer's own state; without one, the state of the default address.
-    stateName: stateName(dto.state_code, states) || stateName(stateCodeFor(address?.state_code || address?.state, states), states),
+    // The state the city is in; for a customer with no address, the customer's own (from the GSTIN).
+    stateName: stateName(stateCodeFor(address?.state_code || address?.state, states), states) || stateName(dto.state_code, states),
     priceList: Number(dto.is_dealer) ? 'dealer' : 'retail',
   };
 }

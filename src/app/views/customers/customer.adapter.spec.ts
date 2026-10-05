@@ -87,6 +87,8 @@ describe('customer adapter', () => {
     const row = toCustomerRow({ id: 4, name: 'Modern Homes LLP', is_dealer: 1 }, STATES, byCustomer.get(4));
     expect(row.place).toBe('Surat - 395007');
     expect(row.stateName).toBe('Gujarat');
+    // A GSTIN of one state and a site in another: the line under the city is the state the city is in.
+    expect(toCustomerRow({ id: 7, name: 'B', is_dealer: 0, state_code: '24' }, STATES, byCustomer.get(7)).stateName).toBe('Maharashtra');
     expect(toCustomerRow({ id: 1, name: 'A', is_dealer: 0 }, STATES).place).toBe('');
     expect(defaultAddresses(null).size).toBe(0);
   });
