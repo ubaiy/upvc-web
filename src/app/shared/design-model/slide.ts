@@ -188,7 +188,8 @@ export function slideLayout(
   const out: SlideLayout = { panels, interlocks, overlapMm: overlap };
   if (slide.mesh) {
     const position = slide.meshPosition ?? 'Left';
-    const widthMm = daylightWMm / 2;
+    // The mesh shutter is as wide as one panel: half of a 2-panel window, a third of a 3-panel one.
+    const widthMm = daylightWMm / Math.max(2, slide.panels.length);
     out.mesh = {
       xMm: position === 'Left' ? 0 : daylightWMm - widthMm,
       widthMm,

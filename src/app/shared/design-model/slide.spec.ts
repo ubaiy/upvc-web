@@ -175,12 +175,12 @@ describe('slideLayout', () => {
     );
     expect(lay.overlapMm).toBe(50);
     expect(lay.mesh).toEqual({ xMm: 940, widthMm: 940, position: 'Right' });
-    // Mesh defaults to the LEFT half.
+    // Mesh defaults to the LEFT, one panel wide: a third of a 3-panel window (T82, m3).
     const left = slideLayout(
       { tracks: '3 Track', mesh: true, panels: equalPanels(3, 2280) },
       2280
     );
-    expect(left.mesh).toEqual({ xMm: 0, widthMm: 1140, position: 'Left' });
+    expect(left.mesh).toEqual({ xMm: 0, widthMm: 760, position: 'Left' });
   });
 
   it('marks fixed panels', () => {
