@@ -63,7 +63,10 @@ export interface OrbitBenchmark {
 export function webglAvailable(): boolean {
   try {
     const canvas = document.createElement('canvas');
-    return !!(canvas.getContext('webgl2') || canvas.getContext('webgl'));
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    // Asked on every press of 3D: give the context back at once, a browser allows only a few at a time.
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return !!gl;
   } catch {
     return false;
   }

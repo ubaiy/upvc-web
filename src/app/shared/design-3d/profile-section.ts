@@ -114,8 +114,8 @@ export const SECTION_DATA = {
   handle: { plateWMm: 26, plateHMm: 130, plateDMm: 8, leverLMm: 110, leverWMm: 18, leverDMm: 12 },
 } as const;
 
-/** Opening limits by hanging, in degrees at "fully open". */
-export const OPEN_LIMITS_DEG = { side: 90, top: 45, bottom: 25 } as const;
+/** Opening limits by hanging, in degrees at "fully open". A centre pivot turns its sash edge-on. */
+export const OPEN_LIMITS_DEG = { side: 90, top: 45, bottom: 25, pivot: 90 } as const;
 
 /** A window casement in this market opens outwards; a door follows its own swing. */
 export const WINDOW_CASEMENT_OPENS_OUT = true;

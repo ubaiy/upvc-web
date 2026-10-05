@@ -145,9 +145,10 @@ describe('design-3d window-parts', () => {
     expect(group(parts, 2).pivot[1]).toBeGreaterThan(group(parts, 3).pivot[1]);
   });
 
-  it('a 3-track slider with mesh: one shutter per track, the mesh on its own track in front, a deeper frame', () => {
+  it('a 3-track slider with mesh: three tracks in all, the glass on the outer two, the mesh on the room-side one (T137)', () => {
     const { parts } = build('sliding-3-track-mesh');
-    expect(parts.depthMm).toBe(slidingFrameDepthMm(4));
+    expect(parts.depthMm).toBe(slidingFrameDepthMm(3));
+    expect(count(parts, 'rail')).toBe(6); // one at the sill and one at the head per track
     expect(count(parts, 'mesh')).toBe(1);
     expect(count(parts, 'glass')).toBe(3);
     expect(count(parts, 'sash')).toBe(16); // three shutters and the mesh shutter
@@ -162,12 +163,13 @@ describe('design-3d window-parts', () => {
     const meshBox = boundsOf(meshParts);
     expect(meshBox.min[0] + Math.min(0, meshGroup.travel)).toBeGreaterThanOrEqual(-1e-6);
     expect(meshBox.max[0] + Math.max(0, meshGroup.travel)).toBeLessThanOrEqual(parts.widthMm + 1e-6);
-    // It runs in front of every glass shutter (nearer the outside face), as the 2D drawing shows it.
-    const glassFront = boundsOf(parts.parts.filter((p) => /^p1-panel-\d+-sash/.test(p.id))).max[2];
-    expect(meshBox.min[2]).toBeGreaterThan(glassFront);
-    // Each shutter runs on its own track: three different depths.
+    // It runs behind every glass shutter (nearer the room), on the innermost track: the model's rule (slide-tracks.ts).
+    const glassBack = boundsOf(parts.parts.filter((p) => /^p1-panel-\d+-sash/.test(p.id))).min[2];
+    expect(meshBox.max[2]).toBeLessThan(glassBack);
+    // The glass runs on tracks 1 · 2 · 1, as the 2D drawing numbers it: the end shutters share the outside track.
     const depths = [0, 1, 2].map((i) => boundsOf(parts.parts.filter((p) => p.id.startsWith(`p1-panel-${i}-sash`))).max[2]);
-    expect(new Set(depths.map((d) => d.toFixed(3))).size).toBe(3);
+    expect(depths[0]).toBeCloseTo(depths[2], 9);
+    expect(depths[1]).toBeLessThan(depths[0]);
     const frame = boundsOf(partsOfRole(parts, 'frame'));
     expect(frame.min[2]).toBeCloseTo(-parts.depthMm, 9);
   });

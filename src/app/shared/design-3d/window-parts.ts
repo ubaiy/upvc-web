@@ -14,21 +14,32 @@
 
 import {
   LeafNode,
+  OpeningKind,
+  PALLA_BAR_FACE_MM,
+  PallaBars,
+  PaneOutline,
   PointMm,
+  ShapedSashHardware,
   WindowDesign,
   clipPanesToShape,
   clipPolygonToRect,
   daylightPolygon,
+  effectiveOpeningKind,
   findNode,
   hasOwnGlass,
   insetConvexPolygon,
   isLeaf,
   layout,
   outlinePath,
+  paneOutlines,
+  shapedSash,
+  shapedSashHardware,
   slideLayout,
+  storedOpeningKind,
   walkLeaves,
 } from '../design-model';
 import { DEFAULT_FRAME_FACE_MM, RectMm } from '../design-model/geometry';
+import { slideTracks } from '../design-model/slide-tracks';
 import { Geo, P2, boxGeo, extrudePolygon, sweepSection } from './member-mesh';
 import {
   OPEN_LIMITS_DEG,
@@ -50,6 +61,7 @@ export type PartRole =
   | 'gasket'
   | 'mesh'
   | 'glazing-bar'
+  | 'sash-bar'
   | 'rail'
   | 'threshold'
   | 'handle'
@@ -115,6 +127,14 @@ const RING_PROUD_MM = 2;
 /** From the back plate of a handle to the lever. */
 const HANDLE_NECK_MM = 26;
 const HINGE = { widthMm: 18, lengthMm: 96 } as const;
+/** A pivot fitting or a tilt bearing: a round boss on the edge of the sash. */
+const BOSS_MM = 24;
+/** The rebate gap between a shaped sash and the opening it stands in (the 2D drawing's 4 mm). */
+const SHAPED_SASH_GAP_MM = 4;
+/** The lever of a door leaf, above the bottom of the leaf (as the 2D drawing). */
+const DOOR_LEVER_MM = 1050;
+/** A bar inside a sash stands this far back from both faces of the sash. */
+const SASH_BAR_SETBACK_MM = 2;
 /** The pull of a sliding shutter. */
 const PULL = { widthMm: 12, lengthMm: 170, proudMm: 5 } as const;
 
@@ -311,20 +331,61 @@ function glassSlab(ctx: Ctx, id: string, groupId: string | null, poly: PointMm[]
   }
 }
 
-/** A sash: one mitred bar per side of `poly`, and the glass it holds. */
+/** The bars that divide ONE palla (a sash or a shutter): fractions of the palla's outer rect, as the model keeps them. */
+interface Division {
+  bars: PallaBars;
+  palla: RectMm;
+}
+
+/**
+ * A sash: one mitred bar per side of `poly`, and the glass it holds. A
+ * divided palla gets its bars from glass edge to glass edge and one glass
+ * per part; all of it belongs to `groupId`, so it moves with the sash.
+ */
 function sashWithGlass(
   ctx: Ctx,
   id: string,
   groupId: string | null,
   poly: PointMm[],
   section: ProfileSection,
-  zOutside: number
+  zOutside: number,
+  division?: Division
 ): void {
   const pts = poly.map((p) => up(ctx, p));
-  const bars = sweepSection(pts, section, { closed: true, zOutside, breaks: cornerBreaks(pts) });
-  bars.forEach((geo, i) => add(ctx, `${id}-sash-${i}`, 'sash', 'profile', groupId, geo));
+  const members = sweepSection(pts, section, { closed: true, zOutside, breaks: cornerBreaks(pts) });
+  members.forEach((geo, i) => add(ctx, `${id}-sash-${i}`, 'sash', 'profile', groupId, geo));
   const glass = inset(poly, section.faceMm - S.glassBiteMm);
-  glassSlab(ctx, `${id}-glass`, groupId, glass, zOutside - section.depthMm / 2, S.glassBiteMm);
+  const zCentre = zOutside - section.depthMm / 2;
+  if (!division || !division.bars.at.length) {
+    glassSlab(ctx, `${id}-glass`, groupId, glass, zCentre, S.glassBiteMm);
+    return;
+  }
+  const { bars, palla } = division;
+  const upright = bars.axis === 'x';
+  const from = upright ? palla.xMm : palla.yMm;
+  const size = upright ? palla.wMm : palla.hMm;
+  const half = PALLA_BAR_FACE_MM / 2;
+  const strip = (a: number, b: number): RectMm =>
+    upright
+      ? { xMm: a, yMm: palla.yMm - 1, wMm: b - a, hMm: palla.hMm + 2 }
+      : { xMm: palla.xMm - 1, yMm: a, wMm: palla.wMm + 2, hMm: b - a };
+  const cuts = [...bars.at].sort((a, b) => a - b).map((at) => from + at * size);
+  // The bar ends on the inner edge of the sash members.
+  const daylight = inset(poly, section.faceMm);
+  cuts.forEach((c, i) => {
+    const bar = clipPolygonToRect(daylight, strip(c - half, c + half)).map((p) => up(ctx, p));
+    if (bar.length < 3) return;
+    const geo = extrudePolygon(bar, zOutside - SASH_BAR_SETBACK_MM, zOutside - section.depthMm + SASH_BAR_SETBACK_MM);
+    add(ctx, `${id}-bar-${i}`, 'sash-bar', 'profile', groupId, geo);
+  });
+  // One glass per part, each going into the bar beside it as far as it goes into the sash.
+  const edges = [from - 1, ...cuts, from + size + 1];
+  for (let k = 0; k + 1 < edges.length; k++) {
+    const a = k === 0 ? edges[0] : edges[k] + half - S.glassBiteMm;
+    const b = k + 2 === edges.length ? edges[k + 1] : edges[k + 1] - half + S.glassBiteMm;
+    if (b - a < 1) continue;
+    glassSlab(ctx, `${id}-glass-${k}`, groupId, clipPolygonToRect(glass, strip(a, b)), zCentre, S.glassBiteMm);
+  }
 }
 
 function doorLeafIds(design: WindowDesign): Set<string> {
@@ -337,107 +398,199 @@ function doorLeafIds(design: WindowDesign): Set<string> {
 
 type Hang = 'left' | 'right' | 'top' | 'bottom';
 
-function hangOf(leaf: LeafNode): { side: Hang; tilt: boolean } {
-  const dir = (leaf.opening?.direction || 'Left').toLowerCase();
-  if (dir.startsWith('tilt')) return { side: dir.includes('right') ? 'right' : 'left', tilt: true };
-  return { side: dir === 'right' || dir === 'top' || dir === 'bottom' ? dir : 'left', tilt: false };
+/** How a sash moves, from the way the model says it opens. */
+function motionOf(kind: OpeningKind): { side: Hang; tilt: boolean; pivot: 'horizontal' | 'vertical' | null } {
+  if (kind === 'Pivot Horizontal') return { side: 'top', tilt: false, pivot: 'horizontal' };
+  if (kind === 'Pivot Vertical') return { side: 'left', tilt: false, pivot: 'vertical' };
+  if (kind.startsWith('Tilt')) return { side: kind.endsWith('Right') ? 'right' : 'left', tilt: true, pivot: null };
+  return { side: kind.toLowerCase() as Hang, tilt: false, pivot: null };
 }
 
-function buildCasementLeaf(ctx: Ctx, leaf: LeafNode, pane: PointMm[], isDoor: boolean): void {
-  const opens = leaf.casementType === 'Openable';
+function turned(poly: P2[], cx: number, cy: number, rad: number): P2[] {
+  if (!rad) return poly;
+  const c = Math.cos(rad);
+  const s = Math.sin(rad);
+  return poly.map((p) => ({ x: cx + (p.x - cx) * c - (p.y - cy) * s, y: cy + (p.x - cx) * s + (p.y - cy) * c }));
+}
+
+/** The turn that lays an upright lever handle along a profile running at `angleRad` (2D, y down), lever hanging down. */
+function leverTurn(angleRad: number): number {
+  const sign = Math.sin(angleRad) > 1e-9 ? -1 : 1;
+  return Math.atan2(-sign * Math.cos(angleRad), -sign * Math.sin(angleRad));
+}
+
+function buildCasementLeaf(
+  ctx: Ctx,
+  leaf: LeafNode,
+  pane: PointMm[],
+  rect: RectMm,
+  isDoor: boolean,
+  outline: PaneOutline | undefined
+): void {
   const zMid = -S.casementFrameDepthMm / 2;
-  if (!opens && !leaf.sashFramed) {
+  const plainGlass = (): void => {
     glassSlab(ctx, `${leaf.id}-glass`, null, pane, zMid);
     addPick(ctx, leaf.id, null, pane, zMid + S.glassThicknessMm, zMid - S.glassThicknessMm);
-    return;
-  }
+  };
+  // A pane the frame shape cuts: its sash follows the real outline (design-model shaped-sash),
+  // hung the way that outline can carry. A framed fixed palla in a cut pane is plain glass, as in 2D.
+  const cut = outline?.cut === true ? outline : null;
+  const opens = leaf.casementType === 'Openable';
+  const kind = !opens ? null : cut ? effectiveOpeningKind(leaf, cut) : storedOpeningKind(leaf);
+  if (!opens && (!leaf.sashFramed || cut)) return plainGlass();
+  if (cut && !kind) return plainGlass();
+
+  const size = isDoor ? S.doorSash : S.sash;
+  const section = rebatedSection(size.faceMm, size.depthMm, S.chamferMm);
+  const zOutside = -(S.casementFrameDepthMm - size.depthMm) / 2;
   let poly = pane;
+  let hardware: ShapedSashHardware | null = null;
   const threshold = ctx.design.door?.threshold;
-  if (isDoor && threshold && threshold !== 'Standard') {
+  if (cut && kind) {
+    try {
+      const shaped = shapedSash(cut, SHAPED_SASH_GAP_MM, size.faceMm);
+      // Three hinges on a door, and never more than two on a short side: the model's own rule.
+      hardware = shapedSashHardware(shaped, kind, { hingeCount: isDoor ? 3 : 2, doorLeverMm: isDoor ? DOOR_LEVER_MM : undefined });
+      poly = shaped.outerMm;
+    } catch {
+      // Too small to hold a sash of this face: the 2D drawing shows glass.
+      return plainGlass();
+    }
+  } else if (isDoor && threshold && threshold !== 'Standard') {
     // The leaf runs down to the low threshold (or the floor) instead of a full sill.
     const floor = ctx.h - (threshold === 'Low' ? S.lowThresholdHeightMm : 0) - 4;
     const bottom = Math.max(...pane.map((p) => p.yMm));
     poly = pane.map((p) => (Math.abs(p.yMm - bottom) < 1e-6 ? { xMm: p.xMm, yMm: floor } : p));
   }
-  const size = isDoor ? S.doorSash : S.sash;
-  const section = rebatedSection(size.faceMm, size.depthMm, S.chamferMm);
-  const zOutside = -(S.casementFrameDepthMm - size.depthMm) / 2;
-  const groupId = opens ? `open-${leaf.id}` : null;
-  sashWithGlass(ctx, leaf.id, groupId, poly, section, zOutside);
+  const groupId = kind ? `open-${leaf.id}` : null;
+  // The 2D drawing does not draw palla bars inside a cut pane; neither does this view.
+  const division = leaf.bars && !cut ? { bars: leaf.bars, palla: rect } : undefined;
+  sashWithGlass(ctx, leaf.id, groupId, poly, section, zOutside, division);
   addPick(ctx, leaf.id, groupId, poly, zOutside, zOutside - section.depthMm);
-  if (!opens || !groupId) return;
+  if (!kind || !groupId) return;
 
   const box = boxOf(poly);
   const x0 = box.xMm;
   const x1 = box.xMm + box.wMm;
   const yTop = ctx.h - box.yMm;
   const yBottom = ctx.h - (box.yMm + box.hMm);
-  const { side, tilt } = hangOf(leaf);
-  const out = isDoor
-    ? ctx.design.door?.swing === 'Out'
-    : !tilt && side !== 'bottom' && WINDOW_CASEMENT_OPENS_OUT;
-  const zPivot = out ? zOutside : zOutside - section.depthMm;
+  const { side, tilt, pivot } = motionOf(kind);
+  const zBack = zOutside - section.depthMm;
+  const metal = (id: string, shape: P2[], za: number, zb: number, role: PartRole = 'handle'): void =>
+    add(ctx, id, role, 'hardware', groupId, extrudePolygon(shape, Math.max(za, zb), Math.min(za, zb)));
+  const boss = (id: string, x: number, y: number): void =>
+    metal(id, stadium(x, y, BOSS_MM, BOSS_MM), zOutside + 3, zBack - 3, 'hinge');
+
+  const out = isDoor ? ctx.design.door?.swing === 'Out' : !tilt && !pivot && side !== 'bottom' && WINDOW_CASEMENT_OPENS_OUT;
   const sideways = side === 'left' || side === 'right';
-  const limit = sideways ? OPEN_LIMITS_DEG.side : side === 'top' ? OPEN_LIMITS_DEG.top : OPEN_LIMITS_DEG.bottom;
-  // Sign of the turn that takes the free edge outwards (+z), per hanging side.
-  const outSign = side === 'left' || side === 'top' ? -1 : 1;
-  ctx.groups.push({
-    id: groupId,
-    leafId: leaf.id,
-    kind: 'hinge',
-    pivot: [side === 'right' ? x1 : x0, side === 'top' ? yTop : yBottom, zPivot],
-    axis: sideways ? [0, 1, 0] : [1, 0, 0],
-    travel: ((out ? outSign : -outSign) * limit * Math.PI) / 180,
-  });
+  if (pivot) {
+    // A centre pivot turns about the line through the middle of the sash: the half above
+    // (left of) the axis swings in, the other half out, as the 2D drawing marks it.
+    ctx.groups.push({
+      id: groupId,
+      leafId: leaf.id,
+      kind: 'hinge',
+      pivot: [(x0 + x1) / 2, (yTop + yBottom) / 2, zOutside - section.depthMm / 2],
+      axis: pivot === 'horizontal' ? [1, 0, 0] : [0, 1, 0],
+      travel: (-OPEN_LIMITS_DEG.pivot * Math.PI) / 180,
+    });
+  } else {
+    const zPivot = out ? zOutside : zBack;
+    const limit = sideways ? OPEN_LIMITS_DEG.side : side === 'top' ? OPEN_LIMITS_DEG.top : OPEN_LIMITS_DEG.bottom;
+    // Sign of the turn that takes the free edge outwards (+z), per hanging side.
+    const outSign = side === 'left' || side === 'top' ? -1 : 1;
+    ctx.groups.push({
+      id: groupId,
+      leafId: leaf.id,
+      kind: 'hinge',
+      pivot: [side === 'right' ? x1 : x0, side === 'top' ? yTop : yBottom, zPivot],
+      axis: sideways ? [0, 1, 0] : [1, 0, 0],
+      travel: ((out ? outSign : -outSign) * limit * Math.PI) / 180,
+    });
+  }
 
   // Lever handle on the room side of the bar opposite the hinges (a door has one on each face):
   // a rounded back plate, a round neck, and the lever hanging down as it does when the sash is shut.
+  // On a shaped sash it stands where the model puts it, laid along the profile there.
   const hd = S.handle;
-  const cx = side === 'left' ? x1 - size.faceMm / 2 : side === 'right' ? x0 + size.faceMm / 2 : (x0 + x1) / 2;
-  const cy = sideways ? (yTop + yBottom) / 2 : side === 'top' ? yBottom + size.faceMm / 2 : yTop - size.faceMm / 2;
-  const faces: [number, number][] = [[zOutside - section.depthMm, -1]];
+  let cx = side === 'left' ? x1 - size.faceMm / 2 : side === 'right' ? x0 + size.faceMm / 2 : (x0 + x1) / 2;
+  let cy = sideways ? (yTop + yBottom) / 2 : side === 'top' ? yBottom + size.faceMm / 2 : yTop - size.faceMm / 2;
+  let turn = 0;
+  if (hardware?.handle) {
+    cx = hardware.handle.at.xMm;
+    cy = ctx.h - hardware.handle.at.yMm;
+    turn = leverTurn(hardware.handle.angleRad);
+  }
+  const faces: [number, number][] = [[zBack, -1]];
   if (isDoor) faces.push([zOutside, 1]);
-  const hardware = (id: string, poly: P2[], za: number, zb: number): void =>
-    add(ctx, id, 'handle', 'hardware', groupId, extrudePolygon(poly, Math.max(za, zb), Math.min(za, zb)));
-  faces.forEach(([z, s], i) => {
-    const neck = z + s * (hd.plateDMm + HANDLE_NECK_MM);
-    const spindleY = cy + hd.plateHMm / 5;
-    hardware(`${leaf.id}-handle-${i}`, stadium(cx, cy, hd.plateWMm, hd.plateHMm), z, z + s * hd.plateDMm);
-    hardware(`${leaf.id}-neck-${i}`, stadium(cx, spindleY, hd.leverWMm, hd.leverWMm), z + s * hd.plateDMm, neck);
-    hardware(
-      `${leaf.id}-lever-${i}`,
-      stadium(cx, spindleY + hd.leverWMm / 2 - hd.leverLMm / 2, hd.leverWMm, hd.leverLMm),
-      neck - s * hd.leverDMm,
-      neck
-    );
-  });
+  const laid = (shape: P2[]): P2[] => turned(shape, cx, cy, turn);
+  if (!hardware || hardware.handle) {
+    faces.forEach(([z, s], i) => {
+      const neck = z + s * (hd.plateDMm + HANDLE_NECK_MM);
+      const spindleY = cy + hd.plateHMm / 5;
+      metal(`${leaf.id}-handle-${i}`, laid(stadium(cx, cy, hd.plateWMm, hd.plateHMm)), z, z + s * hd.plateDMm);
+      metal(`${leaf.id}-neck-${i}`, laid(stadium(cx, spindleY, hd.leverWMm, hd.leverWMm)), z + s * hd.plateDMm, neck);
+      metal(
+        `${leaf.id}-lever-${i}`,
+        laid(stadium(cx, spindleY + hd.leverWMm / 2 - hd.leverLMm / 2, hd.leverWMm, hd.leverLMm)),
+        neck - s * hd.leverDMm,
+        neck
+      );
+    });
+  }
+
+  if (pivot) {
+    // The two pivot fittings, where the axis meets the edge of the sash.
+    const ends: P2[] = hardware
+      ? hardware.pivots.map((p) => up(ctx, p))
+      : pivot === 'horizontal'
+        ? [
+            { x: x0, y: (yTop + yBottom) / 2 },
+            { x: x1, y: (yTop + yBottom) / 2 },
+          ]
+        : [
+            { x: (x0 + x1) / 2, y: yTop },
+            { x: (x0 + x1) / 2, y: yBottom },
+          ];
+    ends.forEach((p, i) => boss(`${leaf.id}-pivot-${i}`, p.x, p.y));
+    return;
+  }
 
   // Hinges on the hung edge, on the face the sash turns towards: two on a window, three on a door.
-  const zHinge = out ? zOutside : zOutside - section.depthMm;
+  const zHinge = out ? zOutside : zBack;
   // The knuckle stands as far as the frame's own face, so a shut window stays inside its frame.
   const zKnuckle = out ? 0 : -S.casementFrameDepthMm;
   const zA = Math.max(zHinge, zKnuckle);
   const zB = Math.min(zHinge, zKnuckle);
   const hw = HINGE.widthMm / 2;
   const hl = HINGE.lengthMm / 2;
+  const hinge = (i: number, hx: number, hy: number): void => {
+    const geo = sideways ? boxGeo(hx - hw, hy - hl, hx + hw, hy + hl, zA, zB) : boxGeo(hx - hl, hy - hw, hx + hl, hy + hw, zA, zB);
+    add(ctx, `${leaf.id}-hinge-${i}`, 'hinge', 'hardware', groupId, geo);
+  };
+  if (hardware) {
+    // Only on a straight side; a full round tilts on two bearings either side of its lowest point.
+    hardware.hinges.forEach((h, i) => hinge(i, h.at.xMm, ctx.h - h.at.yMm));
+    hardware.bearings.forEach((b, i) => boss(`${leaf.id}-bearing-${i}`, b.xMm, ctx.h - b.yMm));
+    return;
+  }
   (isDoor ? [0.12, 0.5, 0.88] : [0.16, 0.84]).forEach((k, i) => {
     const hx = sideways ? (side === 'right' ? x1 : x0) : x0 + (x1 - x0) * k;
     const hy = sideways ? yBottom + (yTop - yBottom) * k : side === 'top' ? yTop : yBottom;
-    const geo = sideways ? boxGeo(hx - hw, hy - hl, hx + hw, hy + hl, zA, zB) : boxGeo(hx - hl, hy - hw, hx + hl, hy + hw, zA, zB);
-    add(ctx, `${leaf.id}-hinge-${i}`, 'hinge', 'hardware', groupId, geo);
+    hinge(i, hx, hy);
   });
 }
 
 function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: number): void {
   if (!leaf.slide) return;
   const sl = slideLayout(leaf.slide, rect.wMm);
-  const used = sl.panels.reduce((m, p) => Math.max(m, p.track + 1), 0);
+  // Which track each shutter runs on is the model's rule (slide-tracks.ts): track 0 is the
+  // outside one, and the fly mesh runs on the track nearest the room.
+  const tracks = slideTracks(leaf.slide);
   const sash = boxSection(S.slidingSash.faceMm, S.slidingSash.depthMm, S.chamferMm);
-  // The fly mesh runs on the outermost track, in front of the glass shutter it covers.
-  const first = sl.mesh ? 1 : 0;
   const yMid = ctx.h - (rect.yMm + rect.hMm / 2);
   sl.panels.forEach((p, i) => {
-    const zc = -trackCentreMm(p.track + first);
+    const zc = -trackCentreMm(tracks.panelTrack[i]);
     const r: RectMm = { xMm: rect.xMm + p.xMm, yMm: rect.yMm, wMm: p.widthMm, hMm: rect.hMm };
     // A shutter slides the way it is set to, or the other way when that side has no room.
     const roomLeft = p.xMm;
@@ -445,7 +598,8 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
     const goLeft = p.direction === 'Left' ? roomLeft > 1 : roomRight <= 1;
     const reach = Math.min(goLeft ? roomLeft : roomRight, p.widthMm - sl.overlapMm);
     const groupId = !p.fixed && reach > 1 ? `slide-${leaf.id}-${i}` : null;
-    sashWithGlass(ctx, `${leaf.id}-panel-${i}`, groupId, rectPoly(r), sash, zc + sash.depthMm / 2);
+    const bars = leaf.slide?.panels[i]?.bars;
+    sashWithGlass(ctx, `${leaf.id}-panel-${i}`, groupId, rectPoly(r), sash, zc + sash.depthMm / 2, bars && { bars, palla: r });
     addPick(ctx, leaf.id, groupId, rectPoly(r), zc + sash.depthMm / 2, zc - sash.depthMm / 2, i);
     if (groupId) {
       // A pull on the stile the shutter closes against, on both faces.
@@ -466,16 +620,19 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
       });
     }
   });
-  if (sl.mesh) {
-    const zc = -trackCentreMm(0);
+  if (sl.mesh && tracks.meshTrack !== null) {
+    const zc = -trackCentreMm(tracks.meshTrack);
     const section = boxSection(S.meshSash.faceMm, S.meshSash.depthMm, S.chamferMm);
-    const poly = rectPoly({ xMm: rect.xMm + sl.mesh.xMm, yMm: rect.yMm, wMm: sl.mesh.widthMm, hMm: rect.hMm });
+    // As in the 2D drawing: the mesh is the size of the end glass shutter it is parked behind.
+    const end = sl.panels[sl.mesh.position === 'Left' ? 0 : sl.panels.length - 1];
+    const at = end ? { xMm: end.xMm, widthMm: end.widthMm } : sl.mesh;
+    const poly = rectPoly({ xMm: rect.xMm + at.xMm, yMm: rect.yMm, wMm: at.widthMm, hMm: rect.hMm });
     const pts = poly.map((q) => up(ctx, q));
     // It slides to the side that has room for it, as far as its own width.
-    const roomLeft = sl.mesh.xMm;
-    const roomRight = rect.wMm - (sl.mesh.xMm + sl.mesh.widthMm);
+    const roomLeft = at.xMm;
+    const roomRight = rect.wMm - (at.xMm + at.widthMm);
     const goLeft = roomLeft > roomRight;
-    const reach = Math.min(goLeft ? roomLeft : roomRight, sl.mesh.widthMm);
+    const reach = Math.min(goLeft ? roomLeft : roomRight, at.widthMm);
     const groupId = reach > 1 ? `slide-${leaf.id}-mesh` : null;
     sweepSection(pts, section, { closed: true, zOutside: zc + section.depthMm / 2 }).forEach((geo, i) =>
       add(ctx, `${leaf.id}-mesh-sash-${i}`, 'sash', 'profile', groupId, geo)
@@ -488,11 +645,10 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
     }
   }
   // One rail per track along the sill and the head.
-  const tracks = used + first;
   const rail = S.track;
   const yBottom = ctx.h - (rect.yMm + rect.hMm);
   const yTop = ctx.h - rect.yMm;
-  for (let t = 0; t < tracks && trackCentreMm(t) < depthMm; t++) {
+  for (let t = 0; t < tracks.railCount && trackCentreMm(t) < depthMm; t++) {
     const z = -trackCentreMm(t);
     const zF = z + rail.railWidthMm / 2;
     const zB = z - rail.railWidthMm / 2;
@@ -508,8 +664,7 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
 /** Tracks a sliding leaf needs in the frame (its fly-mesh track included). */
 function tracksOf(leaf: LeafNode): number {
   if (leaf.category !== 'Slidding' || !leaf.slide) return 0;
-  const sl = slideLayout(leaf.slide, 1);
-  return sl.panels.reduce((m, p) => Math.max(m, p.track + 1), 0) + (leaf.slide.mesh ? 1 : 0);
+  return slideTracks(leaf.slide).railCount;
 }
 
 export function buildWindowParts(design: WindowDesign, opts?: PartsOptions): WindowParts {
@@ -531,13 +686,14 @@ export function buildWindowParts(design: WindowDesign, opts?: PartsOptions): Win
   });
 
   const clips = new Map(clipPanesToShape(design, { frameFaceMm: f, arcSegments }).map((c) => [c.leafId, c.polygonMm]));
+  const outlines = shape.kind === 'rect' ? null : paneOutlines(design, { frameFaceMm: f, arcSegments });
   const doors = doorLeafIds(design);
   for (const { leaf, rect } of lay.leaves) {
     const pane = clips.get(leaf.id) ?? [];
     if (pane.length < 3) continue; // the shape leaves nothing of this pane
     ctx.ownGlass = hasOwnGlass(design, leaf) ? String(leaf.glassId) : undefined;
     if (leaf.category === 'Slidding' && leaf.slide) buildSlidingLeaf(ctx, leaf, rect, depthMm);
-    else buildCasementLeaf(ctx, leaf, pane, doors.has(leaf.id));
+    else buildCasementLeaf(ctx, leaf, pane, rect, doors.has(leaf.id), outlines?.get(leaf.id));
   }
   ctx.ownGlass = undefined;
   // A split that carries its own sash band (nested content inside one sash).
