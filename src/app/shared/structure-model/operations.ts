@@ -129,7 +129,7 @@ export function parseStructure(text: string): Structure {
   const s = doc as Partial<Structure> | null;
   if (!s || s.schema !== STRUCTURE_SCHEMA) throw new Error('This file is not a structure document (schema upvc.structure/1 expected).');
   if (!Array.isArray(s.faces) || !Array.isArray(s.joints) || !Array.isArray(s.hubs)) throw new Error('This structure document is incomplete.');
-  const structure = { extras: [], ...s } as Structure;
+  const structure = { ...s, extras: s.extras ?? [] } as Structure;
   const problems = checkStructure(structure);
   if (problems.length) throw new Error(`This structure document is damaged: ${problems[0]}.`);
   return structure;

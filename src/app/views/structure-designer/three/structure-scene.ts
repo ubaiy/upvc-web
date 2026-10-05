@@ -52,6 +52,7 @@ import {
 export const MAX_PIXEL_RATIO = 2;
 export type ViewPreset = '3d' | 'front' | 'side' | 'top';
 const FOV_DEG = 32;
+const WORLD_UP = new Vector3(0, 1, 0);
 const BACKGROUND = '#eef1f1';
 const ACCENT = '#0e6f6a';
 const VIEW: Record<ViewPreset, Vector3> = {
@@ -104,6 +105,7 @@ export class StructureScene {
   private structure: Structure | null = null;
   private centre = new Vector3();
   private radius = 1000;
+  private half = new Vector3(500, 500, 500);
   /** Centre and radius the camera was last fitted to. */
   private fitted = { centre: new Vector3(), radius: 0 };
   private direction = VIEW['3d'].clone();
@@ -196,6 +198,7 @@ export class StructureScene {
     const size = new Vector3(box.max[0] - box.min[0], box.max[1], box.max[2] - box.min[2]);
     this.centre.set((box.min[0] + box.max[0]) / 2, box.max[1] / 2, (box.min[2] + box.max[2]) / 2);
     this.radius = Math.max(600, size.length() / 2);
+    this.half.copy(size).multiplyScalar(0.5);
     this.placeStage(box.max[0], box.max[2]);
     this.renderer.shadowMap.needsUpdate = true;
     const moved = this.centre.distanceTo(this.fitted.centre) > this.fitted.radius * 0.12;
@@ -236,7 +239,7 @@ export class StructureScene {
     cam.near = r * 0.2;
     cam.far = r * 6;
     cam.updateProjectionMatrix();
-    this.human.position.set(maxX + 800, 0, maxZ + 500);
+    this.human.position.set(maxX + 900, 0, maxZ + 900);
   }
 
   setSelection(faceIds: string[], barId: string | null): void {
@@ -270,8 +273,21 @@ export class StructureScene {
 
   private frameCamera(aspect: number): void {
     const tanV = Math.tan((FOV_DEG * Math.PI) / 360);
-    const tan = Math.min(tanV, tanV * aspect);
-    const distance = (this.radius / Math.sin(Math.atan(tan))) * 1.08;
+    const tanH = tanV * aspect;
+    // Far enough for every corner of the structure's box to be in view, plus room for handles and labels.
+    const right = new Vector3().crossVectors(WORLD_UP, this.direction).normalize();
+    const upward = new Vector3().crossVectors(this.direction, right);
+    const rel = new Vector3();
+    let distance = 0;
+    for (const sx of [-1, 1]) {
+      for (const sy of [-1, 1]) {
+        for (const sz of [-1, 1]) {
+          rel.set(sx * this.half.x, sy * this.half.y, sz * this.half.z);
+          distance = Math.max(distance, rel.dot(this.direction) + Math.max(Math.abs(rel.dot(upward)) / tanV, Math.abs(rel.dot(right)) / tanH));
+        }
+      }
+    }
+    distance = Math.max(distance * 1.3, this.radius * 1.2);
     this.camera.aspect = aspect;
     this.camera.near = Math.max(20, distance / 200);
     this.camera.far = distance * 30;

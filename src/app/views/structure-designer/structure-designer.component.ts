@@ -341,6 +341,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   editDim(d: Dim): void {
     this.editingDim = d.id;
     this.dimDraft = String(Math.round(d.value * 10) / 10);
+    this.cdr.markForCheck();
     setTimeout(() => this.labelLayer?.nativeElement.querySelector<HTMLInputElement>('input')?.select());
   }
 
