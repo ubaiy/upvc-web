@@ -18,11 +18,12 @@ export function scenePicture(scene: DesignScene): string {
 
 /** Look of a design: its own profile colour, and the glass tint the host knows for its glass. */
 export function lookOf(design: WindowDesign, glassTint?: string | null, glassTints?: Record<string, string> | null): WindowLook {
-  return {
-    glassTints: glassTints ?? undefined,
+  const look: WindowLook = {
     profileColor: design.frame.profileColor || DEFAULT_LOOK.profileColor,
     glassTint: glassTint || DEFAULT_LOOK.glassTint,
   };
+  if (glassTints) look.glassTints = glassTints;
+  return look;
 }
 
 /**
