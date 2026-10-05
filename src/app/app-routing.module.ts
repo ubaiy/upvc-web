@@ -112,6 +112,14 @@ const routes: Routes = [
           import('./views/crm/crm.module').then((m) => m.CrmModule),
       },
       {
+        // Design a dome, cabin, bay or roof in 3D (card T100). No menu item yet.
+        path: 'structure-designer',
+        loadChildren: () =>
+          import('./views/structure-designer/structure-designer.module').then(
+            (m) => m.StructureDesignerModule
+          ),
+      },
+      {
         path: 'masters',
         loadChildren: () =>
           import('./views/masters/masters.module').then((m) => m.MastersModule),

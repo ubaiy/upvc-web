@@ -1,0 +1,229 @@
+<!-- Start screen: choose what to build. -->
+<div class="sd sd--start" *ngIf="!structure">
+  <header class="sd-hero">
+    <h1>Design a structure in 3D</h1>
+    <p>Choose a shape. It appears at a usual size; then stretch it, set the counts and change any panel.</p>
+  </header>
+  <div class="sd-cards">
+    <button type="button" class="sd-card" *ngFor="let t of templates" (click)="start(t.kind)" [attr.data-kind]="t.kind">
+      <span class="sd-card__picture">
+        <img *ngIf="thumbnails[t.kind] as src" [src]="src" [alt]="t.label" />
+      </span>
+      <span class="sd-card__name">{{ t.label }}</span>
+      <span class="sd-card__blurb">{{ t.blurb }}</span>
+    </button>
+  </div>
+  <section class="sd-saved">
+    <div class="sd-saved__head">
+      <h2>Saved in this browser</h2>
+      <button type="button" class="sd-btn" (click)="chooseFile()">Open a JSON file</button>
+    </div>
+    <p class="sd-muted" *ngIf="!saved.length">Nothing saved yet. A structure you save appears here.</p>
+    <ul class="sd-saved__list" *ngIf="saved.length">
+      <li *ngFor="let row of saved">
+        <button type="button" class="sd-saved__row" (click)="load(row)">
+          <strong>{{ row.name }}</strong>
+          <span>{{ row.savedAt | date : 'd MMM y, HH:mm' }}</span>
+        </button>
+        <button type="button" class="sd-icon" (click)="removeSaved(row, $event)" [attr.aria-label]="'Delete ' + row.name">×</button>
+      </li>
+    </ul>
+  </section>
+  <p class="sd-toast" *ngIf="message" role="status">{{ message }}</p>
+</div>
+
+<!-- The designer. -->
+<div class="sd sd--design" *ngIf="structure as s" [attr.data-sheet]="sheet" [class.is-sheet-open]="sheetOpen">
+  <div class="sd-top">
+    <button type="button" class="sd-btn" (click)="close()" title="Back to the shapes">‹ Shapes</button>
+    <input class="sd-name" [value]="s.name" (change)="rename($any($event.target).value)" aria-label="Name of the structure" maxlength="80" />
+    <span class="sd-group">
+      <button type="button" class="sd-btn" (click)="undo()" [disabled]="!history?.canUndo" title="Undo (Ctrl+Z)">Undo</button>
+      <button type="button" class="sd-btn" (click)="redo()" [disabled]="!history?.canRedo" title="Redo (Ctrl+Y)">Redo</button>
+      <button type="button" class="sd-btn" (click)="reset()" title="Back to the default size and panels">Reset</button>
+    </span>
+    <span class="sd-spacer"></span>
+    <span class="sd-group">
+      <button type="button" class="sd-btn sd-btn--primary" (click)="save()">Save</button>
+      <span class="sd-menu">
+        <button type="button" class="sd-btn" (click)="openList = !openList" [attr.aria-expanded]="openList">Open</button>
+        <div class="sd-menu__list" *ngIf="openList">
+          <p class="sd-muted" *ngIf="!saved.length">Nothing saved yet.</p>
+          <div class="sd-menu__item" *ngFor="let row of saved">
+            <button type="button" (click)="load(row)">{{ row.name }}<small>{{ row.savedAt | date : 'd MMM, HH:mm' }}</small></button>
+            <button type="button" class="sd-icon" (click)="removeSaved(row, $event)" [attr.aria-label]="'Delete ' + row.name">×</button>
+          </div>
+          <button type="button" class="sd-btn" (click)="chooseFile()">Open a JSON file</button>
+        </div>
+      </span>
+      <button type="button" class="sd-btn" (click)="exportJson()">Export JSON</button>
+      <button type="button" class="sd-btn" (click)="exportPicture()">Export picture</button>
+    </span>
+  </div>
+
+  <div class="sd-body">
+    <aside class="sd-panel sd-left">
+      <section class="sd-sec sd-sec--shape" *ngIf="def">
+        <h2>{{ def.label }}</h2>
+        <div class="sd-field" *ngFor="let p of visibleParams; trackBy: trackKey" [attr.data-param]="p.key">
+          <label [attr.for]="'sd-' + p.key">{{ p.label }}</label>
+          <ng-container [ngSwitch]="p.type">
+            <div class="sd-seg" *ngSwitchCase="'choice'" role="group" [attr.aria-label]="p.label">
+              <button type="button" *ngFor="let o of p.options" [class.is-on]="params[p.key] === o.value" (click)="setParam(p, o.value, false)">{{ o.label }}</button>
+            </div>
+            <ng-container *ngSwitchDefault>
+              <div class="sd-number">
+                <button type="button" (click)="step(p, -1)" [attr.aria-label]="'Less ' + p.label">−</button>
+                <input
+                  [id]="'sd-' + p.key"
+                  type="number"
+                  inputmode="decimal"
+                  [value]="num(p.key)"
+                  [min]="p.min ?? null"
+                  [max]="p.max ?? null"
+                  [step]="p.step ?? 1"
+                  (change)="setParam(p, $any($event.target).value, false)"
+                />
+                <span class="sd-unit">{{ p.type === 'mm' ? 'mm' : p.type === 'deg' ? '°' : '' }}</span>
+                <button type="button" (click)="step(p, 1)" [attr.aria-label]="'More ' + p.label">+</button>
+              </div>
+              <input
+                class="sd-range"
+                type="range"
+                [value]="num(p.key)"
+                [min]="p.min ?? 0"
+                [max]="p.max ?? 100"
+                [step]="p.type === 'mm' ? 10 : (p.step ?? 1)"
+                (input)="setParam(p, $any($event.target).value, true)"
+                (change)="commit()"
+                [attr.aria-label]="p.label"
+              />
+            </ng-container>
+          </ng-container>
+          <small *ngIf="p.hint">{{ p.hint }}</small>
+        </div>
+
+        <h3>Profile colour</h3>
+        <div class="sd-swatches">
+          <button type="button" *ngFor="let c of profileColours" [style.background]="c.value" [class.is-on]="s.appearance.profileColour === c.value" (click)="setColour(c.value)" [title]="c.label" [attr.aria-label]="'Profile colour ' + c.label"></button>
+        </div>
+        <h3>Glass tint</h3>
+        <div class="sd-swatches">
+          <button type="button" *ngFor="let c of glassTints" [style.background]="c.value" [class.is-on]="s.appearance.glassTint === c.value" (click)="setTint(c.value)" [title]="c.label" [attr.aria-label]="'Glass tint ' + c.label"></button>
+        </div>
+      </section>
+    </aside>
+
+    <div class="sd-stage">
+      <canvas #canvas *ngIf="webgl" class="sd-canvas" aria-label="3D view of the structure"></canvas>
+      <div class="sd-nowebgl" *ngIf="!webgl">
+        <strong>3D is not available on this device.</strong>
+        <span>Sizes, counts, panels and the parts summary still work; the picture needs WebGL.</span>
+      </div>
+      <div #labels class="sd-labels" [hidden]="!showDims || !webgl">
+        <ng-container *ngFor="let d of dims; trackBy: trackDim">
+          <button type="button" class="sd-dim" *ngIf="editingDim !== d.id" [attr.data-dim]="d.id" (click)="editDim(d)" [title]="d.label + ': tap to type'">
+            <small>{{ d.label }}</small>{{ dimText(d) }}
+          </button>
+          <span class="sd-dim sd-dim--edit" *ngIf="editingDim === d.id" [attr.data-dim]="d.id">
+            <small>{{ d.label }}</small>
+            <input type="number" inputmode="decimal" [(ngModel)]="dimDraft" (keydown.enter)="applyDim(d)" (keydown.escape)="editingDim = null" (blur)="applyDim(d)" [attr.aria-label]="d.label" />
+          </span>
+        </ng-container>
+      </div>
+      <div class="sd-views">
+        <div class="sd-seg" role="group" aria-label="View">
+          <button type="button" *ngFor="let v of views" (click)="setView(v.key)" [attr.data-view]="v.key">{{ v.label }}</button>
+        </div>
+        <button type="button" class="sd-btn" (click)="fit()">Fit</button>
+        <button type="button" class="sd-btn" [class.is-on]="showDims" (click)="toggleDims()" [attr.aria-pressed]="showDims">Sizes</button>
+      </div>
+      <p class="sd-hint">Drag to turn · two fingers or right button to move · scroll or pinch to zoom · drag a green handle to stretch · tap a size to type it · tap a panel or a bar to select</p>
+      <p class="sd-toast" *ngIf="message" role="status">{{ message }}</p>
+    </div>
+
+    <aside class="sd-panel sd-right">
+      <section class="sd-sec sd-sec--panel">
+        <h2>Selection</h2>
+        <p class="sd-muted" *ngIf="!faceInfo && !barInfo">Tap a panel or a bar in the 3D view. Shift + tap adds panels.</p>
+        <ng-container *ngIf="faceInfo as f">
+          <dl class="sd-facts">
+            <div><dt>Selected</dt><dd>{{ f.title }}</dd></div>
+            <div><dt>{{ selectedFaces.length === 1 ? 'Shape' : 'Group' }}</dt><dd>{{ f.shape }}</dd></div>
+            <div *ngIf="f.size"><dt>Size</dt><dd>{{ f.size }}</dd></div>
+            <div><dt>Area</dt><dd>{{ f.area }}</dd></div>
+          </dl>
+          <div class="sd-fills" role="group" aria-label="Panel type">
+            <button type="button" *ngFor="let k of fillKeys" [class.is-on]="f.fill === k" (click)="setFill(k)" [attr.data-fill]="k">{{ fillLabel[k] }}</button>
+          </div>
+          <div class="sd-row">
+            <button type="button" class="sd-btn" (click)="selectGroup()" data-action="group">Select all of: {{ f.group }}</button>
+            <button type="button" class="sd-btn" (click)="clearSelection()">Clear</button>
+          </div>
+        </ng-container>
+        <ng-container *ngIf="barInfo as b">
+          <dl class="sd-facts">
+            <div><dt>Bar</dt><dd>{{ b.role }}</dd></div>
+            <div><dt>True length</dt><dd>{{ b.length | number }} mm</dd></div>
+            <div><dt>Joins</dt><dd>{{ b.faces }} panel{{ b.faces === 1 ? '' : 's' }}</dd></div>
+          </dl>
+          <button type="button" class="sd-btn" (click)="clearSelection()">Clear</button>
+        </ng-container>
+      </section>
+
+      <section class="sd-sec sd-sec--parts" *ngIf="summary as m">
+        <h2>Parts summary</h2>
+        <p class="sd-note">Sizes are geometric centre-line sizes; workshop cut sizes and prices come in the next step.</p>
+        <dl class="sd-facts sd-facts--tiles">
+          <div><dt>Overall</dt><dd>{{ m.overall.widthMm | number }} × {{ m.overall.depthMm | number }} × {{ m.overall.heightMm | number }} mm</dd></div>
+          <div><dt>Glass</dt><dd>{{ m.glassAreaSqM | number : '1.2-2' }} m²</dd></div>
+          <div *ngIf="m.solidAreaSqM"><dt>Solid panels</dt><dd>{{ m.solidAreaSqM | number : '1.2-2' }} m²</dd></div>
+          <div><dt>Bars</dt><dd>{{ m.barCount }} · {{ m.barTotalMm / 1000 | number : '1.1-1' }} m</dd></div>
+        </dl>
+
+        <h3>Panels ({{ m.panelCount }})</h3>
+        <table class="sd-table">
+          <thead><tr><th>Qty</th><th>Shape and size, mm</th><th>Type</th><th class="num">m² each</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of m.panels" (click)="selectRow(r.faceIds)" tabindex="0" (keydown.enter)="selectRow(r.faceIds)">
+              <td>{{ r.count }}</td>
+              <td><strong>{{ shapeLabel[r.shape] }}</strong> {{ r.size.text }}</td>
+              <td>{{ fillLabel[r.fill] }}</td>
+              <td class="num">{{ r.areaSqM | number : '1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Bars by role</h3>
+        <table class="sd-table">
+          <thead><tr><th>Qty</th><th>Role and lengths, mm</th><th class="num">Total, mm</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let r of m.bars">
+              <td>{{ r.count }}</td>
+              <td>
+                <strong>{{ r.label }}</strong>
+                <span class="sd-lengths"><ng-container *ngFor="let l of r.lengths; let last = last">{{ l.qty }} × {{ l.mm | number }}{{ last ? '' : ', ' }}</ng-container></span>
+              </td>
+              <td class="num">{{ r.totalMm | number }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Hubs and posts</h3>
+        <dl class="sd-facts">
+          <div *ngFor="let h of m.hubs"><dt>{{ h.label }}</dt><dd>{{ h.count }}</dd></div>
+          <div><dt>Corner posts</dt><dd>{{ m.cornerPosts }}</dd></div>
+          <div *ngIf="!m.hubs.length"><dt>Hubs</dt><dd>0</dd></div>
+        </dl>
+      </section>
+    </aside>
+  </div>
+
+  <nav class="sd-tabs" aria-label="Panels">
+    <button type="button" [class.is-on]="sheetOpen && sheet === 'shape'" (click)="showSheet('shape')">Shape</button>
+    <button type="button" [class.is-on]="sheetOpen && sheet === 'panel'" (click)="showSheet('panel')">Selection<i *ngIf="selectedFaces.length || selectedBar"></i></button>
+    <button type="button" [class.is-on]="sheetOpen && sheet === 'parts'" (click)="showSheet('parts')">Parts</button>
+  </nav>
+</div>
+
+<input #fileInput type="file" accept=".json,application/json" hidden (change)="importFile($event)" />
