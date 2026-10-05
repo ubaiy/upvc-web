@@ -36,12 +36,6 @@ export const API_END_POINT = {
     update: 'order-type-margin/update',
     delete: 'order-type-margin/delete',
   },
-  area: {
-    list: 'area/list',
-    add: 'area/add',
-    get: 'area/show',
-    update: 'area/update',
-  },
   bills: {
     list: 'bill/list',
     converToBill: 'bill/convert-to-bill',
@@ -54,18 +48,6 @@ export const API_END_POINT = {
     get: 'payment-term/show',
     update: 'payment-term/update',
     delete: 'payment-term/delete',
-  },
-  footer: {
-    list: 'footer/list',
-    add: 'footer/add',
-    get: 'footer/show',
-    update: 'footer/update',
-  },
-  header: {
-    list: 'header/list',
-    add: 'header/add',
-    get: 'header/show',
-    update: 'header/update',
   },
   product: {
     category: 'product/get-category',

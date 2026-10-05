@@ -49,8 +49,6 @@ describe('shell navigation', () => {
       ['/profile', 'settings'],
       ['/type-margin', 'settings'],
       ['/payment-terms', 'settings'],
-      ['/area', 'settings'],
-      ['/crm/header', 'settings'],
     ];
     for (const [url, id] of cases) {
       expect(findNavItem(url)?.id).withContext(url).toBe(id);

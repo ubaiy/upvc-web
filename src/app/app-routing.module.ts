@@ -13,6 +13,7 @@ import { ProfileResolver } from './views/profile/profile.resolver';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
 import { BulkPriceUpdateResolver } from './views/bulk-price-upload/bulk-price-update.resolver';
 import { environment } from '../environments/environment';
+import { OLD_ADDRESSES } from './old-addresses';
 
 // Development pages. A production build does not register these addresses at all:
 // /design-lab and /ui answer with the 404 page there.
@@ -144,13 +145,6 @@ const routes: Routes = [
           ),
       },
       {
-        path: 'area',
-        canActivate: [AbilityGuard],
-        data: { ability: 'catalogue.view' },
-        loadChildren: () =>
-          import('./views/area/area.module').then((m) => m.AreaModule),
-      },
-      {
         path: 'payment-terms',
         canActivate: [AbilityGuard],
         data: { ability: 'catalogue.view' },
@@ -159,13 +153,8 @@ const routes: Routes = [
             (m) => m.PaymentTermsModule
           ),
       },
-      {
-        path: 'crm',
-        canActivate: [AbilityGuard],
-        data: { ability: 'quotations.view' },
-        loadChildren: () =>
-          import('./views/crm/crm.module').then((m) => m.CrmModule),
-      },
+      // Screens of the old app that are gone (card T138): their addresses lead to Settings.
+      ...OLD_ADDRESSES,
       // A 3D structure is designed inside a quotation and saved as one of its lines (card T123):
       // quotation/detail/:id/structure. The old addresses of the separate area lead to the quotations.
       { path: 'structures', redirectTo: 'quotation', pathMatch: 'full' },

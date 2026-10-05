@@ -62,7 +62,7 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Settings',
     icon: 'settings',
     link: '/settings',
-    match: ['/settings', '/profile', '/type-margin', '/payment-terms', '/area', '/crm'],
+    match: ['/settings', '/profile', '/type-margin', '/payment-terms'],
     foot: true,
     places: [
       { label: 'Company', link: '/profile?tab=company', ability: 'settings.write' },
