@@ -101,17 +101,9 @@ export class AreaComponent {
 
   public toggleWarningModal() {
     if (this.form.dirty && this.form.touched) {
-      this.confirmationDialogService.confirm(
-        'Are you sure!',
-        'Are you sure you want to Cancel ? ',
-        'pi-info-circle',
-        () => {
+      this.confirmationDialogService.discardChanges(() => {
           this.visible = false;
-        },
-        () => {
-          console.log('Action rejected');
-        }
-      );
+        });
     } else {
       this.visible = false;
     }

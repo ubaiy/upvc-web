@@ -12,7 +12,8 @@ export class ConfirmationDialogService {
     message: string,
     icon: string,
     accept: () => void,
-    reject: () => void
+    reject: () => void = () => {},
+    labels: { accept: string; reject: string } = { accept: 'Yes', reject: 'Cancel' }
   ) {
     this.confirmationService.confirm({
       header: header,
@@ -20,6 +21,23 @@ export class ConfirmationDialogService {
       icon: `pi ${icon}`,
       accept: accept,
       reject: reject,
+      acceptLabel: labels.accept,
+      rejectLabel: labels.reject,
     });
+  }
+
+  /**
+   * The one question asked before typed changes are thrown away. The title
+   * says what happens, the buttons say what each one does.
+   */
+  discardChanges(accept: () => void) {
+    this.confirm(
+      'Discard your changes?',
+      'What you typed here will not be saved.',
+      'pi-info-circle',
+      accept,
+      () => {},
+      { accept: 'Discard', reject: 'Keep editing' }
+    );
   }
 }

@@ -276,7 +276,8 @@ export class DetailsComponent implements OnInit, OnDestroy {
           error: (err) => this._toastService.showError(err?.error?.message || 'Could not remove the address'),
         });
       },
-      () => {}
+      () => {},
+      { accept: 'Remove address', reject: 'Keep it' }
     );
   }
 

@@ -56,17 +56,9 @@ export class DetailsComponent implements OnInit, OnDestroy {
 
   public toggleWarningModal() {
     if (this.form.dirty && this.form.touched) {
-      this.confirmationDialogService.confirm(
-        'Are you sure!',
-        'Are you sure you want to Cancel ? ',
-        'pi-info-circle',
-        () => {
+      this.confirmationDialogService.discardChanges(() => {
           this._router.navigate(['/crm/footer']);
-        },
-        () => {
-          console.log('Action rejected');
-        }
-      );
+        });
     } else {
       this._router.navigate(['/crm/footer']);
     }
