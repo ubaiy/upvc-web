@@ -95,7 +95,7 @@
   transition: border-color var(--dur) var(--ease);
   &::placeholder { color: var(--c-text-3); }
   &:enabled:hover { border-color: var(--c-border-strong); }
-  &:enabled:focus { border-color: var(--c-accent); box-shadow: var(--focus-ring); }
+  &:enabled:focus { border-color: var(--c-focus); box-shadow: var(--focus-ring); }
   &.ng-dirty.ng-invalid, &.ng-touched.ng-invalid { border-color: var(--c-danger); }
 }
 textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding-block: var(--s-2); }
@@ -120,7 +120,7 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
   border: 1px solid var(--c-border-strong); border-radius: var(--r-sm); background: var(--c-surface);
   transition: border-color var(--dur) var(--ease);
   &:not(.p-disabled):hover { border-color: var(--c-border-strong); }
-  &:not(.p-disabled).p-focus { border-color: var(--c-accent); box-shadow: var(--focus-ring); }
+  &:not(.p-disabled).p-focus { border-color: var(--c-focus); box-shadow: var(--focus-ring); }
   .p-dropdown-label { height: auto; padding: 0 var(--s-3); border: 0; background: transparent; color: var(--c-text); line-height: calc(var(--h-control) - 2px); }
   .p-dropdown-label.p-placeholder { color: var(--c-text-3); }
   .p-dropdown-trigger { width: 32px; color: var(--c-text-3); .p-icon { width: 12px; height: 12px; } }
@@ -148,20 +148,20 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
     width: 16px; height: 16px; border: 1px solid var(--c-border-strong); border-radius: 4px; background: var(--c-surface); color: var(--c-on-accent);
     transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
     .p-checkbox-icon, .p-icon { width: 10px; height: 10px; color: var(--c-on-accent); }
-    &.p-highlight { background: var(--c-accent); border-color: var(--c-accent); }
+    &.p-highlight { background: var(--c-accent); border-color: var(--c-accent-text); }
   }
-  &:not(.p-checkbox-disabled) .p-checkbox-box:hover { border-color: var(--c-accent); }
-  &:not(.p-checkbox-disabled) .p-checkbox-box.p-focus { border-color: var(--c-accent); box-shadow: var(--focus-ring); }
-  &:not(.p-checkbox-disabled) .p-checkbox-box.p-highlight:hover { background: var(--c-accent-hover); border-color: var(--c-accent-hover); color: var(--c-on-accent); }
+  &:not(.p-checkbox-disabled) .p-checkbox-box:hover { border-color: var(--c-accent-text); }
+  &:not(.p-checkbox-disabled) .p-checkbox-box.p-focus { border-color: var(--c-focus); box-shadow: var(--focus-ring); }
+  &:not(.p-checkbox-disabled) .p-checkbox-box.p-highlight:hover { background: var(--c-accent-hover); border-color: var(--c-accent-text); color: var(--c-on-accent); }
 }
 .p-checkbox-label { margin-inline-start: var(--s-2); margin-block-end: 0; }
 .p-radiobutton { width: 16px; height: 16px;
   .p-radiobutton-box { width: 16px; height: 16px; border: 1px solid var(--c-border-strong); background: var(--c-surface);
     .p-radiobutton-icon { width: 8px; height: 8px; background: var(--c-on-accent); }
-    &.p-highlight { background: var(--c-accent); border-color: var(--c-accent); }
-    &:not(.p-disabled):not(.p-highlight):hover { border-color: var(--c-accent); }
-    &:not(.p-disabled).p-focus { border-color: var(--c-accent); box-shadow: var(--focus-ring); }
-    &.p-highlight:not(.p-disabled):hover { background: var(--c-accent-hover); border-color: var(--c-accent-hover); }
+    &.p-highlight { background: var(--c-accent); border-color: var(--c-accent-text); }
+    &:not(.p-disabled):not(.p-highlight):hover { border-color: var(--c-accent-text); }
+    &:not(.p-disabled).p-focus { border-color: var(--c-focus); box-shadow: var(--focus-ring); }
+    &.p-highlight:not(.p-disabled):hover { background: var(--c-accent-hover); border-color: var(--c-accent-text); }
   }
 }
 
@@ -191,7 +191,7 @@ textarea.p-inputtext, .p-inputtextarea { height: auto; min-height: 88px; padding
   }
   .p-sortable-column {
     &:not(.p-highlight):hover { background: var(--c-surface); color: var(--c-text); .p-sortable-column-icon { color: var(--c-text-2); } }
-    &.p-highlight, &.p-highlight:hover { background: var(--c-surface); color: var(--c-text); .p-sortable-column-icon { color: var(--c-accent); } }
+    &.p-highlight, &.p-highlight:hover { background: var(--c-surface); color: var(--c-text); .p-sortable-column-icon { color: var(--c-accent-text); } }
     &:focus { box-shadow: none; }
     &:focus-visible { box-shadow: inset var(--focus-ring); }
     .p-sortable-column-icon { width: 12px; height: 12px; margin-inline-start: var(--s-1); color: var(--c-text-3); }
