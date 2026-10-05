@@ -7,6 +7,7 @@ import { BehaviorSubject, of } from 'rxjs';
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 import { ApiHttpService } from '../../shared/services/api-http.service';
 import { AuthService } from '../../shared/services/auth.service';
+import { RouteLoadingService } from '../../shared/services/route-loading.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
 import { QuotationListService } from '../../views/quotation/quotation-list.service';
 import { CommandPaletteComponent } from './command-palette.component';
@@ -213,6 +214,29 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
     expect(labels().length).toBe(8);
     expect(fixture.nativeElement.querySelector('.plan-banner')).toBeNull();
+  });
+
+  it('draws the next page as a skeleton in place of the page being left while its resolver is waited for (card T138)', () => {
+    const routeLoading = TestBed.inject(RouteLoadingService);
+    const pages = () => Array.from(fixture.nativeElement.querySelectorAll('.main .page')) as HTMLElement[];
+    expect(routeLoading.shellOnScreen).toBeTrue();
+    expect(pages().length).toBe(1);
+    expect(fixture.nativeElement.querySelector('app-page-skeleton')).toBeNull();
+
+    routeLoading.state$.next('page');
+    fixture.detectChanges();
+    expect(pages().length).toBe(2);
+    expect(pages()[0].querySelector('app-page-skeleton')).not.toBeNull();
+    expect(pages()[1].style.display).withContext('the page being left').toBe('none');
+    expect(pages()[1].querySelector('router-outlet')).withContext('the outlet stays').not.toBeNull();
+
+    routeLoading.state$.next('none');
+    fixture.detectChanges();
+    expect(pages().length).toBe(1);
+    expect(pages()[0].style.display).toBe('');
+
+    fixture.destroy();
+    expect(routeLoading.shellOnScreen).toBeFalse();
   });
 
   it('falls back to the product name until the company has loaded', () => {

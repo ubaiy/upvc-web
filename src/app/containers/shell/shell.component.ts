@@ -5,6 +5,7 @@ import { filter } from 'rxjs/operators';
 
 import { IUserDto } from '../../shared/model/user.model';
 import { AuthService } from '../../shared/services/auth.service';
+import { RouteLoadingService } from '../../shared/services/route-loading.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
 import { PRODUCT_NAME } from '../../shared/configs/product';
 import { AccessService } from '../../shared/access/access.service';
@@ -51,6 +52,8 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   active?: NavItem;
   wide = false;
+  /** The next page is not here yet: its skeleton is shown, the page being left is hidden. */
+  pageLoading = false;
 
   accountOpen = false;
   paletteOpen = false;
@@ -67,10 +70,15 @@ export class ShellComponent implements OnInit, OnDestroy {
     private auth: AuthService,
     private store: LocalStoreService,
     private workspace: WorkspaceService,
-    private access: AccessService
+    private access: AccessService,
+    private routeLoading: RouteLoadingService
   ) {}
 
   ngOnInit(): void {
+    // A page whose resolver is still asking the api is drawn as a skeleton in place of the page being left (card T138).
+    this.routeLoading.shellOnScreen = true;
+    this.subscriptions.add(this.routeLoading.state$.subscribe((state) => (this.pageLoading = state === 'page')));
+
     this.subscriptions.add(
       this.workspace.workspace$.subscribe((workspace) => (this.company = workspace.name))
     );
@@ -104,6 +112,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.routeLoading.shellOnScreen = false;
     this.subscriptions.unsubscribe();
   }
 

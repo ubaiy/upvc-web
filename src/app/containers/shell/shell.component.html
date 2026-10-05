@@ -116,7 +116,8 @@
       <span class="grow">{{ line.text }}<ng-container *ngIf="!canSeePlan"> Ask the owner of the account.</ng-container></span>
       <a *ngIf="canSeePlan" class="btn btn-secondary btn-sm" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
     </div>
-    <div class="page" [class.page-wide]="wide">
+    <div class="page" *ngIf="pageLoading"><app-page-skeleton></app-page-skeleton></div>
+    <div class="page" [class.page-wide]="wide" [style.display]="pageLoading ? 'none' : null">
       <router-outlet></router-outlet>
     </div>
   </main>

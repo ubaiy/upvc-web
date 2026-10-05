@@ -9,6 +9,9 @@ import { DateFieldComponent } from './date-field/date-field.component';
 import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { IconComponent } from './icon/icon.component';
 import { PageHeaderComponent } from './page-header/page-header.component';
+import { BootSkeletonComponent } from './page-skeleton/boot-skeleton.component';
+import { OwnLoadingDirective } from './page-skeleton/own-loading.directive';
+import { PageSkeletonComponent } from './page-skeleton/page-skeleton.component';
 import { QuoteStatusComponent } from './quote-status/quote-status.component';
 import { StatComponent } from './stat/stat.component';
 import { TableLabelsDirective } from './table-labels/table-labels.directive';
@@ -17,12 +20,15 @@ import { UndoToastComponent } from './undo-toast/undo-toast.component';
 import { WindowThumbComponent } from './window-thumb/window-thumb.component';
 
 const COMPONENTS = [
+  BootSkeletonComponent,
   BulkBarComponent,
   CalloutComponent,
   DateFieldComponent,
   EmptyStateComponent,
   IconComponent,
+  OwnLoadingDirective,
   PageHeaderComponent,
+  PageSkeletonComponent,
   QuoteStatusComponent,
   StatComponent,
   TableLabelsDirective,
@@ -35,7 +41,8 @@ const COMPONENTS = [
  * The shared building blocks of the design system. Import this module into a
  * feature module to use <app-page-header>, <app-icon>, <app-stat>,
  * <app-empty-state>, <app-callout>, <app-totals>, <app-quote-status>,
- * <app-window-thumb>, <app-bulk-bar>, <app-date-field> (every date, as dd/mm/yyyy) and the `inr` pipe. (<app-undo-toast> is
+ * <app-window-thumb>, <app-bulk-bar>, <app-date-field> (every date, as dd/mm/yyyy), <app-page-skeleton>,
+ * `appOwnLoading` (on a screen's own skeleton: the app's ring stays hidden) and the `inr` pipe. (<app-undo-toast> is
  * placed once, in AppComponent; screens call UndoService.) It also carries
  * TableLabelsDirective, which needs no markup: every `<table class="table">`
  * in the importing module becomes row cards on a phone.
