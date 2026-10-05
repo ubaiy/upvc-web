@@ -217,7 +217,19 @@ export function splitPane(
   const pos = Math.min(hi, Math.max(lo, positionMm));
 
   let seq = nextIdSeq(design.root);
-  const inherit = (): LeafNode => ({ ...node, id: `p${seq++}` });
+  // Each half is the pane it came from. The panels of a sliding pane are
+  // sized in mm, so across a vertical divider they shrink with their half:
+  // kept at the old widths they would overlap and be priced as two windows
+  // of the full width.
+  const inherit = (widthMm: number): LeafNode => {
+    const leaf: LeafNode = { ...node, id: `p${seq++}` };
+    if (axis !== 'x' || !node.slide || span <= 0) return leaf;
+    const ratio = widthMm / span;
+    return {
+      ...leaf,
+      slide: { ...node.slide, panels: node.slide.panels.map((p) => ({ ...p, widthMm: p.widthMm * ratio })) },
+    };
+  };
   const split: SplitNode = {
     id: node.id,
     kind: 'split',
@@ -227,7 +239,7 @@ export function splitPane(
     dividerFaceMm: faceMm,
     positionsMm: [pos],
     lockedMm: [false],
-    children: [inherit(), inherit()],
+    children: [inherit(pos - faceMm / 2), inherit(span - pos - faceMm / 2)],
     ...(node.sashFramed ? { sashFramed: true } : {}),
   };
   return withRoot(design, replaceNode(design.root, paneId, () => split));

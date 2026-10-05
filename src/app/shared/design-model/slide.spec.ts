@@ -5,7 +5,7 @@
  * 2-track 2-panel and 3-track 3-panel+mesh goldens live in payload.spec.
  */
 
-import { createDesign, createLeaf } from './operations';
+import { createDesign, createLeaf, splitPane } from './operations';
 import { setSlide } from './leaf-ops';
 import { checkInvariants } from './invariants';
 import { DesignPayload, GlobalSpec, toPayload } from './payload';
@@ -21,7 +21,7 @@ import {
   trackOf,
   validateSlide,
 } from './slide';
-import { LeafNode, SlideSpec, WindowDesign, findNode } from './types';
+import { LeafNode, SlideSpec, WindowDesign, findNode, walkLeaves } from './types';
 
 function slidingDesign(
   frame: { widthMm: number; heightMm: number },
@@ -365,5 +365,44 @@ describe('toPayload goldens — Phase 2 sliding set', () => {
         col: 0,
       })),
     });
+  });
+});
+
+describe('splitting a sliding pane (T88)', () => {
+  const slider = (): WindowDesign =>
+    slidingDesign(
+      { widthMm: 1500, heightMm: 1200 },
+      {
+        tracks: '3 Track',
+        mesh: true,
+        panels: [
+          { widthMm: 460, direction: 'Left' },
+          { widthMm: 460, direction: 'Left' },
+          { widthMm: 460, direction: 'Right' },
+        ],
+      }
+    );
+  const panelWidths = (leaf: LeafNode): number[] => leaf.slide!.panels.map((p) => p.widthMm);
+
+  it('a mullion gives each half its own panels, sized to the half: they do not keep the full width', () => {
+    // 1380 mm of daylight, a 60 mm mullion at the centre: two panes of 660.
+    const split = splitPane(slider(), 'p1', 'x', 690, { dividerFaceMm: 60 });
+    const [left, right] = walkLeaves(split.root);
+    expect(panelWidths(left)).toEqual([220, 220, 220]);
+    expect(panelWidths(right)).toEqual([220, 220, 220]);
+    expect(validateSlide(left.slide!, 660)).toEqual([]);
+    expect(checkInvariants(split)).toEqual([]);
+  });
+
+  it('an off-centre mullion shares the panels in the same proportion', () => {
+    const split = splitPane(slider(), 'p1', 'x', 490, { dividerFaceMm: 60 });
+    const [left, right] = walkLeaves(split.root);
+    expect(panelWidths(left).reduce((a, b) => a + b, 0)).toBeCloseTo(460, 6);
+    expect(panelWidths(right).reduce((a, b) => a + b, 0)).toBeCloseTo(860, 6);
+  });
+
+  it('a transom leaves the panel widths as they are: both halves keep the full width', () => {
+    const split = splitPane(slider(), 'p1', 'y', 540, { dividerFaceMm: 60 });
+    for (const leaf of walkLeaves(split.root)) expect(panelWidths(leaf)).toEqual([460, 460, 460]);
   });
 });
