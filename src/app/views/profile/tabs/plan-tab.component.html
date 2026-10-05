@@ -51,7 +51,15 @@
 
     <section aria-labelledby="h-plans" class="stack-3">
       <h2 id="h-plans" class="plans-title">Plans</h2>
-      <div class="offers">
+      <div class="card card-pad sk-card" *ngIf="plans === 'loading'" aria-busy="true" aria-label="Loading the plans" data-plans="loading">
+        <span class="skeleton" style="width: 50%"></span>
+        <span class="skeleton" style="width: 70%"></span>
+      </div>
+      <app-callout tone="warn" *ngIf="plans === 'failed'" data-plans="failed">
+        We could not load the other plans.
+        <button action type="button" class="btn btn-secondary btn-sm" (click)="loadPlans()">Try again</button>
+      </app-callout>
+      <div class="offers" *ngIf="plans !== 'loading'">
         <article class="card offer" *ngFor="let offer of offers" [class.current]="isCurrent(offer)" [attr.data-plan]="offer.code">
           <div class="offer-head">
             <h3>{{ offer.name }}</h3>

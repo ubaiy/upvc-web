@@ -15,7 +15,7 @@ import { environment } from 'src/environments/environment';
 import { AuthLayoutComponent } from '../auth-layout/auth-layout.component';
 import { cleanGstin, cleanMobile, gstinCheckCharacter, gstinError, mobileError, passwordError } from './signup-rules';
 import { contactLines, SignupComponent, whatsappLink } from './signup.component';
-import { SignupForm, SignupOutcome, SignupService, signupBody, waitWords } from './signup.service';
+import { SignupForm, SignupOutcome, SignupService, signupBody, toGstStates, waitWords } from './signup.service';
 
 const URL = `${environment.API_URL}/signup`;
 const STATE_URL = `${environment.API_URL}/signup/state`;
@@ -271,7 +271,8 @@ describe('Sign-up page (T140)', () => {
 
   async function open(state: 'open' | 'closed' | 'unknown', trialDays: number | null = null) {
     subject = new Subject<SignupOutcome>() as any;
-    signup = jasmine.createSpyObj<SignupService>('SignupService', ['ask', 'signUp']);
+    signup = jasmine.createSpyObj<SignupService>('SignupService', ['ask', 'signUp', 'states']);
+    signup.states.and.returnValue(of(GST_STATES));
     signup.ask.and.returnValue(of({ state, trialDays }));
     signup.signUp.and.returnValue(subject as any);
     auth = jasmine.createSpyObj<AuthService>('AuthService', ['getToken']);
@@ -432,7 +433,8 @@ describe('Sign-up page (T140)', () => {
   });
 
   it('someone who is signed in is sent into the app', () => {
-    signup = jasmine.createSpyObj<SignupService>('SignupService', ['ask', 'signUp']);
+    signup = jasmine.createSpyObj<SignupService>('SignupService', ['ask', 'signUp', 'states']);
+    signup.states.and.returnValue(of(GST_STATES));
     signup.ask.and.returnValue(of({ state: 'open', trialDays: null }));
     auth = jasmine.createSpyObj<AuthService>('AuthService', ['getToken']);
     auth.getToken.and.returnValue('tok');
@@ -466,5 +468,102 @@ describe('Sign-up closed: the contact (T140)', () => {
     expect(text).toContain('Mobile: 9876543210');
     expect(text).toContain('City: Surat');
     expect(decodeURIComponent(whatsappLink('919000000000', { name: '', mobile: '', city: '' }).split('text=')[1])).not.toContain('Name:');
+  });
+});
+
+describe('Sign-up: the states come from the api (T143)', () => {
+  const STATES_URL = `${environment.API_URL}/public/gst/states`;
+  /** GET public/gst/states as the api answers it: by code, with an abbreviation. */
+  const ROWS = [
+    { code: '01', name: 'Jammu and Kashmir', abbreviation: 'JK' },
+    { code: '24', name: 'Gujarat', abbreviation: 'GJ' },
+    { code: '27', name: 'Maharashtra', abbreviation: 'MH' },
+    { code: '97', name: 'Other Territory', abbreviation: 'OT' },
+  ];
+  let service: SignupService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [HttpClientTestingModule],
+      providers: [
+        { provide: AuthService, useValue: jasmine.createSpyObj<AuthService>('AuthService', ['setUserAndToken', 'getToken']) },
+        { provide: AccessService, useValue: jasmine.createSpyObj<AccessService>('AccessService', ['forget']) },
+      ],
+    });
+    service = TestBed.inject(SignupService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => http.verify());
+
+  function ask() {
+    let got: { code: string; name: string }[] | undefined;
+    service.states().subscribe((states) => (got = states));
+    return { states: () => got!, request: http.expectOne(STATES_URL) };
+  }
+
+  it('reads the rows by name; a list with a bad row is not used', () => {
+    expect(toGstStates(ROWS)).toEqual([
+      { code: '24', name: 'Gujarat' },
+      { code: '01', name: 'Jammu and Kashmir' },
+      { code: '27', name: 'Maharashtra' },
+      { code: '97', name: 'Other Territory' },
+    ]);
+    expect(toGstStates([...ROWS, { code: '7', name: 'Short code' }])).toEqual([]);
+    expect(toGstStates({ states: ROWS })).toEqual([]);
+    expect(toGstStates(null)).toEqual([]);
+  });
+
+  it('200: the api\'s list, asked without a token and without the global error toast', () => {
+    const { states, request } = ask();
+    expect(request.request.method).toBe('GET');
+    request.flush({ success: true, data: ROWS, message: 'States get succesfully' });
+    expect(states().map((state) => state.code)).toEqual(['24', '01', '27', '97']);
+  });
+
+  it('404 (an api without the route): the web\'s own 37 states', () => {
+    const { states, request } = ask();
+    request.flush({ message: 'Not found' }, { status: 404, statusText: 'Not Found' });
+    expect(states()).toBe(GST_STATES);
+  });
+
+  it('429, 500, no connection, or an answer that is not a list: the web\'s copy, so the form can still be filled', () => {
+    for (const status of [429, 500]) {
+      const { states, request } = ask();
+      request.flush({ message: 'no' }, { status, statusText: 'no' });
+      expect(states()).toBe(GST_STATES);
+    }
+    const lost = ask();
+    lost.request.error(new ProgressEvent('error'));
+    expect(lost.states()).toBe(GST_STATES);
+    const odd = ask();
+    odd.request.flush({ success: true, data: [] });
+    expect(odd.states()).toBe(GST_STATES);
+  });
+
+  it('the State box of the page lists what the service gives, and the GSTIN line names the state from that list', () => {
+    const signup = jasmine.createSpyObj<SignupService>('SignupService', ['ask', 'signUp', 'states']);
+    signup.ask.and.returnValue(of({ state: 'open', trialDays: 14 }));
+    signup.states.and.returnValue(of(toGstStates(ROWS)));
+    const auth = jasmine.createSpyObj<AuthService>('AuthService', ['getToken']);
+    auth.getToken.and.returnValue('');
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      declarations: [AuthLayoutComponent, SignupComponent],
+      imports: [FormsModule, RouterTestingModule, SharedComponentsModule, HttpClientTestingModule],
+      providers: [
+        { provide: SignupService, useValue: signup },
+        { provide: AuthService, useValue: auth },
+        { provide: MessageService, useValue: jasmine.createSpyObj<MessageService>('MessageService', ['clear', 'add']) },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    const fixture = TestBed.createComponent(SignupComponent);
+    fixture.detectChanges();
+    const options = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll('#signup_state_code option')) as HTMLOptionElement[];
+    expect(options.map((option) => option.textContent!.trim()).filter((text) => ROWS.some((row) => row.name === text))).toEqual(['Gujarat', 'Jammu and Kashmir', 'Maharashtra', 'Other Territory']);
+    expect(options.length).toBeLessThan(10);
+    expect(gstinError('27AAACC1206D1ZM', '24', false, toGstStates(ROWS))).toContain('a GSTIN of Gujarat starts with 24');
   });
 });

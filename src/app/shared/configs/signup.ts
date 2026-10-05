@@ -20,8 +20,9 @@ export interface GstState {
 }
 
 /**
- * TO BE REPLACED by the api's public list of states (GET gst/states needs a sign-in today; a public
- * route is being made). The same 37 rows as `App\Services\Gst\IndianStates` of the api.
+ * FALLBACK ONLY (card T143): the sign-up page reads the states from GET public/gst/states (no token).
+ * This copy is drawn only when that read gives no list (the route is not there: 404; or no answer at
+ * all, so the form can still be filled). The same 37 rows as `App\Services\Gst\IndianStates` of the api.
  */
 export const GST_STATES: GstState[] = [
   { code: '35', name: 'Andaman and Nicobar Islands' },

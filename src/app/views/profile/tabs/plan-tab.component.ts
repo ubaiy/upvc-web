@@ -8,6 +8,7 @@ import { SubscriptionInfo, bannerFor, plainDate } from 'src/app/shared/access/ac
 import { AccessService } from 'src/app/shared/access/access.service';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { PLAN_CONTACT, PLAN_OFFERS, PlanOffer } from 'src/app/shared/configs/plans';
+import { PlansService } from '../plans.service';
 
 const STATUS_WORDS: Record<string, string> = {
   trial: 'Free trial',
@@ -75,28 +76,46 @@ export class PlanTabComponent implements OnInit, OnDestroy {
 
   state: 'loading' | 'error' | 'ready' = 'loading';
   sub: SubscriptionInfo | null = null;
-  offers: PlanOffer[] = PLAN_OFFERS;
+  /** The plans of GET plans (or the web's copy when the api has no such route); the company's own is drawn from GET subscription. */
+  offers: PlanOffer[] = [];
+  /** 'loading' until GET plans has answered; 'failed': only the company's own plan is known. */
+  plans: 'loading' | 'api' | 'fallback' | 'failed' = 'loading';
+  private available: PlanOffer[] = [];
   /** The plan the open instructions are about. */
   chosen: PlanOffer | null = null;
 
   private subscription?: Subscription;
+  private plansRequest?: Subscription;
   private timer?: ReturnType<typeof setTimeout>;
 
-  constructor(private access: AccessService) {}
+  constructor(private access: AccessService, private plansService: PlansService) {}
 
   ngOnInit(): void {
     this.subscription = this.access.state$.subscribe((state) => {
       if (state.subscription) {
         this.sub = state.subscription;
-        this.offers = offersFor(this.sub);
+        this.offers = offersFor(this.sub, this.available);
         this.state = 'ready';
         clearTimeout(this.timer);
       }
     });
     this.load();
+    this.loadPlans();
+  }
+
+  /** The plans to choose from: GET plans; the web's copy only when that route is not there (404). */
+  loadPlans(): void {
+    this.plans = 'loading';
+    this.plansRequest?.unsubscribe();
+    this.plansRequest = this.plansService.list().subscribe((list) => {
+      this.plans = list.source;
+      this.available = list.offers;
+      this.offers = offersFor(this.sub, this.available);
+    });
   }
 
   ngOnDestroy(): void {
+    this.plansRequest?.unsubscribe();
     this.subscription?.unsubscribe();
     clearTimeout(this.timer);
   }

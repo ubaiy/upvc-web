@@ -4,7 +4,7 @@ import { Observable, catchError, map, of } from 'rxjs';
 
 import { AccessService } from 'src/app/shared/access/access.service';
 import { PRODUCT_NAME } from 'src/app/shared/configs/product';
-import { SIGNUP_ASK_ON_OPEN, TERMS_VERSION } from 'src/app/shared/configs/signup';
+import { GST_STATES, GstState, SIGNUP_ASK_ON_OPEN, TERMS_VERSION } from 'src/app/shared/configs/signup';
 import { quiet } from 'src/app/shared/interceptors/request-options';
 import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 import { AuthService } from 'src/app/shared/services/auth.service';
@@ -116,6 +116,18 @@ export function readRefusal(err: HttpErrorResponse): SignupOutcome {
   return { kind: 'refused', text: 'Something went wrong on our side. Nothing was created. Try again.', retry: true };
 }
 
+/**
+ * The rows of GET public/gst/states ({ code, name, abbreviation }) for the State box, by name.
+ * Empty when the answer is not such a list: the caller then uses the web's own copy.
+ */
+export function toGstStates(data: unknown): GstState[] {
+  const rows: any[] = Array.isArray(data) ? data : [];
+  const states = rows
+    .filter((row) => row && /^\d\d$/.test(String(row.code)) && typeof row.name === 'string' && row.name.trim())
+    .map((row): GstState => ({ code: String(row.code), name: row.name.trim() }));
+  return states.length === rows.length ? states.sort((a, b) => a.name.localeCompare(b.name)) : [];
+}
+
 const STATE_KEY = 'signup-state';
 
 @Injectable({ providedIn: 'root' })
@@ -143,6 +155,21 @@ export class SignupService {
           ? this.askByPost().pipe(map((state): SignupOpening => ({ state, trialDays: null })))
           : of<SignupOpening>({ state: 'unknown', trialDays: null })
       )
+    );
+  }
+
+  /**
+   * The states of the State box: GET public/gst/states (no token; the api lets it be kept for a day).
+   * The web's own copy is the fallback: when the api has no such route (404), and also when it gives
+   * no list at all, because a form without states could not be sent.
+   */
+  states(): Observable<GstState[]> {
+    return this.api.get('public/gst/states', quiet()).pipe(
+      map((res: any): GstState[] => {
+        const states = toGstStates(res?.data);
+        return states.length ? states : GST_STATES;
+      }),
+      catchError(() => of(GST_STATES))
     );
   }
 

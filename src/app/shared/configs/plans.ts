@@ -32,9 +32,9 @@ export interface PlanOffer {
 }
 
 /**
- * The three plans, as the rows of the api's `plans` table are today (phase-46 section 2).
- * API GAP: no route lists the plans to a company (GET admin/plans is the platform admin's), so they
- * are repeated here. The company's own plan is always drawn from GET subscription, not from this list.
+ * FALLBACK ONLY (card T143): the plans are read from GET plans (views/profile/plans.service.ts). This
+ * copy of the three rows is drawn only when the api has no such route (404). The company's own plan
+ * is always drawn from GET subscription, not from this list.
  */
 export const PLAN_OFFERS: PlanOffer[] = [
   { code: 'starter', name: 'Starter', price: 999, seats: 2, quotationsPerMonth: 30, designTemplates: 10, has3d: false },

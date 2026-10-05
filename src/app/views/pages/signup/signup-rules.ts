@@ -1,4 +1,4 @@
-import { GST_STATES } from 'src/app/shared/configs/signup';
+import { GST_STATES, GstState } from 'src/app/shared/configs/signup';
 
 /**
  * The rules of the sign-up form (card T140), as the api checks them (phase-59 section 1).
@@ -60,12 +60,12 @@ const GSTIN_LAYOUT = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
  * GSTIN is optional. `whileTyping`: a number that is not complete yet is not called wrong,
  * but a wrong state is said as soon as the first two digits are there.
  */
-export function gstinError(typed: string, stateCode: string, whileTyping = false): string {
+export function gstinError(typed: string, stateCode: string, whileTyping = false, states: GstState[] = GST_STATES): string {
   const gstin = cleanGstin(typed);
   if (!gstin) {
     return '';
   }
-  const state = GST_STATES.find((s) => s.code === stateCode);
+  const state = states.find((s) => s.code === stateCode);
   if (stateCode && gstin.length >= 2 && /^\d\d/.test(gstin) && gstin.slice(0, 2) !== stateCode) {
     return `This GSTIN starts with ${gstin.slice(0, 2)}, but a GSTIN of ${state ? state.name : 'the state you chose'} starts with ${stateCode}. Check the state and the number.`;
   }

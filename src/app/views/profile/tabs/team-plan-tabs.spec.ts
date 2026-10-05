@@ -8,6 +8,7 @@ import { AccessState, SubscriptionInfo } from 'src/app/shared/access/access.mode
 import { AccessService } from 'src/app/shared/access/access.service';
 import { PLAN_CONTACT, PLAN_OFFERS } from 'src/app/shared/configs/plans';
 import { Team, TeamService, TeamUser, seatsLine, teamRefusal } from '../team.service';
+import { PlansService } from '../plans.service';
 import { PlanTabComponent, offersFor, periodLine } from './plan-tab.component';
 import { TeamTabComponent } from './team-tab.component';
 
@@ -90,7 +91,7 @@ describe('TeamTabComponent', () => {
   let fixture: ComponentFixture<TeamTabComponent>;
   let service: jasmine.SpyObj<TeamService>;
   let state$: BehaviorSubject<AccessState>;
-  let access: { state$: BehaviorSubject<AccessState>; refreshSubscription: jasmine.Spy };
+  let access: { state$: BehaviorSubject<AccessState>; readonly state: AccessState; refreshSubscription: jasmine.Spy };
   let el: HTMLElement;
 
   const text = (selector: string) => Array.from(document.querySelectorAll(selector)).map((node) => (node.textContent ?? '').replace(/\s+/g, ' ').trim());
@@ -108,8 +109,9 @@ describe('TeamTabComponent', () => {
   beforeEach(async () => {
     service = jasmine.createSpyObj<TeamService>('TeamService', ['team', 'invite', 'resendInvite', 'setRole', 'deactivate', 'reactivate', 'remove']);
     service.team.and.returnValue(of(TEAM));
-    state$ = new BehaviorSubject<AccessState>({ me: { company: { id: 1, name: 'Hakimi Enterprise' } } as any, subscription: SUB });
-    access = { state$, refreshSubscription: jasmine.createSpy('refreshSubscription') };
+    // the owner: the dialogs' buttons follow team.manage (card T143)
+    state$ = new BehaviorSubject<AccessState>({ me: { company: { id: 1, name: 'Hakimi Enterprise' }, abilities: ['team.manage', 'billing.view'] } as any, subscription: SUB });
+    access = { state$, get state() { return state$.value; }, refreshSubscription: jasmine.createSpy('refreshSubscription') };
     await TestBed.configureTestingModule({
       imports: [TeamTabComponent, RouterTestingModule, NoopAnimationsModule],
       providers: [
@@ -304,7 +306,11 @@ describe('plan page', () => {
       const state$ = new BehaviorSubject<AccessState>({ me: null, subscription: SUB });
       await TestBed.configureTestingModule({
         imports: [PlanTabComponent, NoopAnimationsModule],
-        providers: [{ provide: AccessService, useValue: { state$, refreshSubscription: () => undefined } }],
+        providers: [
+          { provide: AccessService, useValue: { state$, refreshSubscription: () => undefined } },
+          // GET plans is covered by plans.service.spec.ts; here the api has no such route (404): the web's copy.
+          { provide: PlansService, useValue: { list: () => of({ source: 'fallback', offers: PLAN_OFFERS }) } },
+        ],
       }).compileComponents();
       fixture = TestBed.createComponent(PlanTabComponent);
       fixture.detectChanges();

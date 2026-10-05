@@ -5,7 +5,7 @@ import { finalize } from 'rxjs';
 
 import { PLAN_CONTACT } from 'src/app/shared/configs/plans';
 import { PRODUCT_NAME } from 'src/app/shared/configs/product';
-import { GST_STATES } from 'src/app/shared/configs/signup';
+import { GstState } from 'src/app/shared/configs/signup';
 import { AuthService } from 'src/app/shared/services/auth.service';
 import { PASSWORD_MIN, cleanGstin, cleanMobile, gstinError, mobileError, passwordError } from './signup-rules';
 import { SignupForm, SignupService } from './signup.service';
@@ -53,7 +53,8 @@ export function whatsappLink(number: string, who: { name: string; mobile: string
 })
 export class SignupComponent implements OnInit {
   readonly product = PRODUCT_NAME;
-  readonly states = GST_STATES;
+  /** The api's public list of GST states; the web's own copy when the api has none (the service decides). */
+  states: GstState[] = [];
   readonly passwordMin = PASSWORD_MIN;
 
   /** 'asking': the api has not yet said whether sign-up is open. */
@@ -104,6 +105,7 @@ export class SignupComponent implements OnInit {
       this.router.navigateByUrl('/');
       return;
     }
+    this.signup.states().subscribe((states) => (this.states = states));
     this.signup.ask().subscribe((opening) => {
       this.trialDays = opening.trialDays;
       this.view = opening.state === 'closed' ? 'closed' : 'form';
@@ -118,7 +120,7 @@ export class SignupComponent implements OnInit {
     const m = this.model;
     // GSTIN speaks while it is typed (a wrong state, a wrong character); the others wait until the field was left.
     if (field === 'gstin') {
-      return gstinError(m.gstin, m.state_code, !(this.submitted || this.touched.gstin));
+      return gstinError(m.gstin, m.state_code, !(this.submitted || this.touched.gstin), this.states);
     }
     if (!this.submitted && !(this.touched[field] && this.hasValue(field))) {
       return '';
@@ -145,7 +147,7 @@ export class SignupComponent implements OnInit {
       case 'state_code':
         return m.state_code ? '' : 'Choose your state';
       case 'gstin':
-        return gstinError(m.gstin, m.state_code);
+        return gstinError(m.gstin, m.state_code, false, this.states);
       case 'password':
         return passwordError(m.password);
       case 'accept_terms':
