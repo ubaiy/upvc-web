@@ -62,7 +62,7 @@ describe('browser tab title', () => {
 
   it('inside the shell: the page, then the company, which may arrive late', async () => {
     await router.navigateByUrl('/quotation');
-    expect(title.getTitle()).withContext('menu label, company not loaded yet').toBe('Quotations · UPVC');
+    expect(title.getTitle()).withContext('menu label, company not loaded yet').toBe('Quotations · ' + PRODUCT_NAME);
 
     workspace$.next({ name: 'Hakimi Enterprise' });
     expect(title.getTitle()).toBe('Quotations · Hakimi Enterprise');
@@ -77,9 +77,9 @@ describe('browser tab title', () => {
   it('outside the shell: the page, then the product, never the company', async () => {
     workspace$.next({ name: 'Hakimi Enterprise' });
     await router.navigateByUrl('/auth/login');
-    expect(title.getTitle()).toBe('Sign in · UPVC');
+    expect(title.getTitle()).toBe('Sign in · ' + PRODUCT_NAME);
 
     await router.navigateByUrl('/ui');
-    expect(title.getTitle()).withContext('no title on the route').toBe('UPVC');
+    expect(title.getTitle()).withContext('no title on the route').toBe(PRODUCT_NAME);
   });
 });

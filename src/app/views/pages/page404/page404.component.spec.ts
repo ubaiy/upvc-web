@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { Location } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
@@ -22,7 +23,7 @@ describe('Page404Component', () => {
 
   it('says the page was not found and sets the tab title', () => {
     expect(el.querySelector('h1')!.textContent).toBe('We could not find that page');
-    expect(TestBed.inject(Title).getTitle()).toBe('Page not found · UPVC');
+    expect(TestBed.inject(Title).getTitle()).toBe('Page not found · ' + PRODUCT_NAME);
   });
 
   it('has one primary button, to Home', () => {

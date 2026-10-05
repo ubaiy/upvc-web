@@ -87,6 +87,9 @@ export class ShellComponent implements OnInit, OnDestroy {
     this.subscriptions.unsubscribe();
   }
 
+  /** The product's name: the title of the mark beside the company's name. */
+  readonly product = PRODUCT_NAME;
+
   get companyName(): string {
     return this.company || PRODUCT_NAME;
   }

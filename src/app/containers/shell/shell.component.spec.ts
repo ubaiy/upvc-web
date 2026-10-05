@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
@@ -176,7 +177,7 @@ describe('ShellComponent', () => {
   it('falls back to the product name until the company has loaded', () => {
     workspace$.next({ name: '' });
     fixture.detectChanges();
-    expect(text('.ws-name')).toBe('UPVC');
+    expect(text('.ws-name')).toBe(PRODUCT_NAME);
     workspace$.next({ name: 'Hakimi Enterprise' });
   });
 });

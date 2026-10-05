@@ -1,3 +1,4 @@
+import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { Location } from '@angular/common';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
@@ -22,7 +23,7 @@ describe('Page500Component', () => {
 
   it('says the fault is ours and sets the tab title', () => {
     expect(el.querySelector('h1')!.textContent).toBe('Something went wrong on our side');
-    expect(TestBed.inject(Title).getTitle()).toBe('Something went wrong · UPVC');
+    expect(TestBed.inject(Title).getTitle()).toBe('Something went wrong · ' + PRODUCT_NAME);
   });
 
   it('has one primary button, "Try again", which returns to the page that failed', () => {
