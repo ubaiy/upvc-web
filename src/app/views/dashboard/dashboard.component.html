@@ -94,7 +94,14 @@
           </thead>
           <tbody>
             <tr *ngFor="let quotation of home.recent; trackBy: trackQuotation">
-              <td><a class="title" [routerLink]="link(quotation)">{{ quotation.title }}</a></td>
+              <td>
+                <a class="title" [routerLink]="link(quotation)">{{ quotation.title }}</a>
+                <!-- Customer and date move under the name when their columns are hidden. -->
+                <span class="muted small show-tablet"
+                  >{{ quotation.customer }}<ng-container *ngIf="quotation.customer && dateOf(quotation)"> · </ng-container
+                  >{{ dateOf(quotation) }}</span
+                >
+              </td>
               <td class="muted hide-tablet">{{ quotation.customer }}</td>
               <td><app-quote-status [status]="quotation.status"></app-quote-status></td>
               <td class="right num">{{ quotation.amount | inr }}</td>

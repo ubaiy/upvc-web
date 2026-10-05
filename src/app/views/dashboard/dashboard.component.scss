@@ -90,12 +90,50 @@
   width: 84px;
 }
 
+// The customer and the date of a recent quotation, under its name, when their columns are hidden.
+.show-tablet {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .show-tablet {
+    display: block;
+  }
+}
+
+// Phone: the full name with its action on the first line; the badge and the amount under it.
 @media (max-width: 560px) {
-  .todo > .tag {
-    width: auto;
+  .todo:not(p) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'text action'
+      'tag amount';
+    align-items: center;
+    gap: var(--s-2) var(--s-3);
+    padding-inline: var(--s-4);
+
+    > .grow {
+      grid-area: text;
+    }
+
+    > .btn {
+      grid-area: action;
+    }
+
+    > .tag {
+      grid-area: tag;
+      width: auto;
+    }
+
+    > .num {
+      grid-area: amount;
+      text-align: end;
+    }
   }
 
-  .todo > .num {
-    display: none;
+  .todo-title {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 }
