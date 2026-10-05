@@ -2,8 +2,9 @@
  * Palla bars (card T127): Split / Transom divide ONE palla. The four cases
  * the owner named: (a) a single fixed window, (b) a 2-sash casement, (c) a
  * 3-track 3-shutter slider with and without mesh, (d) a door with a top
- * light. A divided palla stays one sash / one shutter, so the payload (and
- * with it the price) is the one of the undivided window, and a document
+ * light. A divided palla stays one sash / one shutter, so the payload is
+ * the one of the undivided window with the bars and panes of that palla
+ * added to its part (card T144: payload-extras.spec.ts), and a document
  * saved before bars existed is read back unchanged.
  */
 
@@ -22,13 +23,18 @@ import {
   removePallaBar,
   splitPalla,
 } from './palla';
-import { toPayload } from './payload';
+import { DesignPayload, toPayload } from './payload';
 import { parse, serialize } from './serialize';
 import { setSlideMesh } from './slide';
 import { singleFixed, slidingThreeTrackMesh, twoSashOpenable } from './testing/fixtures';
 import { DesignError, LeafNode, WindowDesign, findNode, isSplit, walkLeaves } from './types';
 
 const OPTS = { frameFaceMm: 60 };
+
+/** The payload without what a divided palla adds to its part. */
+function lessBars(p: DesignPayload): DesignPayload {
+  return { ...p, parts: p.parts.map(({ bars, panes, ...rest }) => rest) };
+}
 
 function leafOf(d: WindowDesign, id: string): LeafNode {
   return findNode(d.root, id) as LeafNode;
@@ -92,7 +98,7 @@ describe('palla bars', () => {
       expect(bars[0].rect.xMm).toBeGreaterThanOrEqual(bars[0].palla.xMm);
       expect(bars[0].rect.xMm + bars[0].rect.wMm).toBeLessThanOrEqual(bars[0].palla.xMm + bars[0].palla.wMm);
       expect(() => splitPalla(d, { paneId: 'p1', panelIndex: 3 }, 'x', 0.5, OPTS)).toThrowError(DesignError);
-      expect(toPayload(split, OPTS)).toEqual(toPayload(d, OPTS));
+      expect(lessBars(toPayload(split, OPTS))).toEqual(toPayload(d, OPTS));
     });
   }
 
@@ -108,7 +114,7 @@ describe('palla bars', () => {
     expect(leafOf(split, light.id).bars).toBeUndefined();
     expect(leafOf(split, leafA.id).opening).toEqual(leafA.opening);
     expect(checkInvariants(split)).toEqual([]);
-    expect(toPayload(split, OPTS)).toEqual(toPayload(d, OPTS));
+    expect(lessBars(toPayload(split, OPTS))).toEqual(toPayload(d, OPTS));
   });
 
   it('a bar moves inside its palla, kept clear of the edges, and is removed again', () => {
@@ -182,14 +188,14 @@ describe('palla bars', () => {
     }
   });
 
-  it('a divided document round-trips, and its payload is the undivided one', () => {
+  it('a divided document round-trips, and its payload is the undivided one plus its bars and panes', () => {
     const d = twoSashOpenable();
     const id = walkLeaves(d.root)[0].id;
     const split = splitPalla(d, { paneId: id }, 'y', 0.4, OPTS);
     const back = parse(serialize(split));
     expect(back).toEqual(split);
     expect(checkInvariants(back)).toEqual([]);
-    expect(toPayload(back, OPTS)).toEqual(toPayload(d, OPTS));
+    expect(lessBars(toPayload(back, OPTS))).toEqual(toPayload(d, OPTS));
     // Resizing the window does not rewrite the bar: it is a fraction of the palla.
     const wide = { ...back, frame: { ...back.frame, widthMm: 2000 } };
     expect(pallaBarLayouts(layout(wide, OPTS))[0].rect.hMm).toBe(40);

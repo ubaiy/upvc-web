@@ -403,3 +403,52 @@ export function shapedSashHardware(
   if (tiltTurn) hw.marks.push(...triangle(s, 'bottom', 'tilt'));
   return hw;
 }
+
+/* ------------------------------------------------------------------ */
+/* Lengths of the sash profile (for the price)                         */
+/* ------------------------------------------------------------------ */
+
+export interface ShapedSashLengths {
+  /** The whole sash, along its outer edge, mm. */
+  outlineMm: number;
+  /** The part of it that is bent to a curve, mm (0 for a sloped sash: its members are straight). */
+  curvedMm: number;
+  /** Bent pieces: one per run of the outer edge that follows a curve. */
+  bends: number;
+}
+
+/**
+ * How much of a shaped sash is bent, measured on the outline the canvas
+ * draws: the straight members are the sides {@link shapedSash} found, the
+ * rest follows the frame.
+ */
+export function shapedSashLengths(o: PaneOutline, sash: ShapedSash): ShapedSashLengths {
+  const pts = sash.outerMm;
+  const n = pts.length;
+  const onStraight = (a: PointMm, b: PointMm): boolean =>
+    SIDES.some((side) => {
+      if (!sash.straight[side]) return false;
+      const l = sideLine(o.box, side, sash.gapMm);
+      const ca = l.axis === 'x' ? a.xMm : a.yMm;
+      const cb = l.axis === 'x' ? b.xMm : b.yMm;
+      return Math.abs(ca - l.coord) < 0.05 && Math.abs(cb - l.coord) < 0.05;
+    });
+  let outlineMm = 0;
+  let bentMm = 0;
+  const bent: boolean[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = pts[i];
+    const b = pts[(i + 1) % n];
+    const len = Math.hypot(b.xMm - a.xMm, b.yMm - a.yMm);
+    const isBent = !onStraight(a, b);
+    bent.push(isBent);
+    outlineMm += len;
+    if (isBent) bentMm += len;
+  }
+  if (!o.curved) return { outlineMm, curvedMm: 0, bends: 0 };
+  // A run starts where a bent edge follows a straight one; all bent = one piece (a round).
+  let bends = 0;
+  for (let i = 0; i < n; i++) if (bent[i] && !bent[(i + n - 1) % n]) bends++;
+  if (!bends && bent.some(Boolean)) bends = 1;
+  return { outlineMm, curvedMm: bentMm, bends };
+}

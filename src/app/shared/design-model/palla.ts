@@ -266,3 +266,47 @@ export function checkPallaBars(root: PaneNode): string[] {
   visit(root);
   return problems;
 }
+
+/* ------------------------------------------------------------------ */
+/* Sizes for the price                                                 */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Face of the sash member a bar ends on, mm, when the price needs the bar's
+ * length: the faces the canvas draws a sash with when the catalogue gives
+ * none (render-common DEFAULT_SASH_FACES).
+ */
+export const PALLA_SASH_FACE_MM = { casement: 48, sliding: 45 };
+
+/**
+ * The size of every part of a divided palla, in reading order (left to
+ * right, or top to bottom): from the palla's edge, or from the face of a
+ * bar, to the next one. These are the figures the canvas labels the parts
+ * with (render-bars drawPallaPartLabels).
+ */
+export function pallaPartSizesMm(bars: PallaBars, palla: RectMm): { wMm: number; hMm: number }[] {
+  const alongX = bars.axis === 'x';
+  const span = alongX ? palla.wMm : palla.hMm;
+  const half = PALLA_BAR_FACE_MM / 2;
+  const edges = [0, ...bars.at.map((at) => at * span), span];
+  const last = edges.length - 2;
+  const out: { wMm: number; hMm: number }[] = [];
+  for (let i = 0; i <= last; i++) {
+    const size = edges[i + 1] - (i === last ? 0 : half) - (edges[i] + (i === 0 ? 0 : half));
+    out.push(
+      alongX
+        ? { wMm: Math.round(size), hMm: Math.round(palla.hMm) }
+        : { wMm: Math.round(palla.wMm), hMm: Math.round(size) }
+    );
+  }
+  return out;
+}
+
+/**
+ * Length of one bar of a palla, mm: across the palla from glass edge to
+ * glass edge, which is the palla less the sash member at both ends.
+ */
+export function pallaBarLengthMm(bars: PallaBars, palla: RectMm, sashFaceMm: number): number {
+  const across = bars.axis === 'x' ? palla.hMm : palla.wMm;
+  return Math.max(1, Math.round(across - 2 * sashFaceMm));
+}

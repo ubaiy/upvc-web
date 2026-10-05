@@ -37,18 +37,35 @@
  *    sections[i] ↔ i-th leaf;
  *  - a leaf that a shaped frame cuts away completely (the corner beyond a
  *    triangle's slope) has no part and no section: the charged path is not
- *    shape-aware and would price it as a rectangle.
+ *    shape-aware and would price it as a rectangle;
+ *  - what the api prices only when it is told (docs/review/
+ *    phase-61-bar-shape-price-log.md section 5), appended to the part it
+ *    belongs to and ABSENT otherwise, so a design without them is the
+ *    payload it always was: `bars` and `panes` of a divided palla,
+ *    `pivot` of a centre-pivot sash, `shaped_sash` of an opening sash the
+ *    frame's shape cuts.
  */
 
 import {
+  DEFAULT_FRAME_FACE_MM,
   Layout,
   LayoutOptions,
   LeafGridInfo,
+  RectMm,
   layout,
   leafGrid,
 } from './geometry';
+import {
+  PALLA_SASH_FACE_MM,
+  pallaBarLengthMm,
+  pallaBarsOf,
+  pallaPartSizesMm,
+  pallaRectMm,
+} from './palla';
 import { clipPanesToShape } from './shape-geometry';
 import { API_SHAPE_KINDS, ShapePayload, toShapePayload } from './shape-payload';
+import { PaneOutline, effectiveOpeningKind, paneOutlines, storedOpeningKind } from './shaped-opening';
+import { shapedSash, shapedSashLengths } from './shaped-sash';
 import {
   DoorSpec,
   FrameShape,
@@ -58,6 +75,29 @@ import {
   isLeaf,
   walkLeaves,
 } from './types';
+
+/** A bar inside one palla. No `product_id`: the designer gives a bar no profile, so the company's rate per metre applies. */
+export interface PallaBarPayload {
+  direction: 'vertical' | 'horizontal';
+  /** Cut length, mm. */
+  length: number;
+}
+
+/** One glass pane of a divided palla, as the designer labels it, mm. */
+export interface PallaPanePayload {
+  width: number;
+  height: number;
+}
+
+/** The bent profile of an opening sash in a shaped frame. */
+export interface ShapedSashPayload {
+  curved_mm: number;
+  bends: number;
+  outline_mm: number;
+}
+
+/** Gap between the outer frame and a shaped sash, mm (what the canvas draws it with). */
+const SHAPED_SASH_GAP_MM = 4;
 
 /**
  * The full design-spec field set, in the EXACT key order of the legacy
@@ -99,6 +139,14 @@ export interface GlobalSpec {
    * rectangular payloads stay byte-identical. Absent = rectangle.
    */
   shape?: FrameShape;
+  /** Bars dividing this palla. Present only when it has any. */
+  bars?: PallaBarPayload[];
+  /** The glass panes of a divided palla, in reading order. Present only with bars. */
+  panes?: PallaPanePayload[];
+  /** A centre-pivot sash: the axis it turns on. Present only for one. */
+  pivot?: 'horizontal' | 'vertical';
+  /** An opening sash cut by the frame's shape. Present only for one. */
+  shaped_sash?: ShapedSashPayload;
 }
 
 export interface SectionPayload {
@@ -299,6 +347,57 @@ function ownGlass(leaf: LeafNode): Partial<GlobalSpec> {
     : { glazz_id: leaf.glassId };
 }
 
+/** `bars` and `panes` of a divided palla; nothing for an undivided one. */
+function barExtras(
+  leaf: LeafNode,
+  rect: RectMm,
+  frameFaceMm: number,
+  panelIndex?: number
+): Partial<GlobalSpec> {
+  const bars = pallaBarsOf(leaf, panelIndex);
+  if (!bars || !bars.at.length) return {};
+  const palla = pallaRectMm(leaf, rect, panelIndex);
+  const face =
+    leaf.category === 'Slidding'
+      ? PALLA_SASH_FACE_MM.sliding
+      : isOpenable(leaf)
+        ? PALLA_SASH_FACE_MM.casement
+        : frameFaceMm; // a framed fixed palla is drawn with the frame's face
+  const length = pallaBarLengthMm(bars, palla, face);
+  return {
+    bars: bars.at.map(() => ({
+      direction: bars.axis === 'x' ? ('vertical' as const) : ('horizontal' as const),
+      length,
+    })),
+    panes: pallaPartSizesMm(bars, palla).map((p) => ({ width: p.wMm, height: p.hMm })),
+  };
+}
+
+const round1 = (v: number): number => Math.round(v * 10) / 10;
+
+/** `pivot` and `shaped_sash` of an opening sash, as it is drawn; nothing for a hinged rectangular one. */
+function sashExtras(leaf: LeafNode, outline: PaneOutline | undefined): Partial<GlobalSpec> {
+  if (!isOpenable(leaf)) return {};
+  const out: Partial<GlobalSpec> = {};
+  const kind = outline ? effectiveOpeningKind(leaf, outline) : storedOpeningKind(leaf);
+  if (kind === 'Pivot Horizontal') out.pivot = 'horizontal';
+  if (kind === 'Pivot Vertical') out.pivot = 'vertical';
+  if (outline?.cut && kind) {
+    try {
+      const sash = shapedSash(outline, SHAPED_SASH_GAP_MM, PALLA_SASH_FACE_MM.casement);
+      const len = shapedSashLengths(outline, sash);
+      out.shaped_sash = {
+        curved_mm: round1(len.curvedMm),
+        bends: len.bends,
+        outline_mm: round1(len.outlineMm),
+      };
+    } catch {
+      // Too small to hold a sash: the canvas draws plain glass there.
+    }
+  }
+  return out;
+}
+
 /** One per-section part: full spec + the pane's own configuration. */
 function leafPart(
   base: GlobalSpec,
@@ -357,6 +456,10 @@ export function toPayload(
   const cutAway = cutAwayLeafIds(design, opts);
   // A pane without its own frame profile uses the window's, never a neighbour's.
   const frameProductId = design.frame.productId;
+  const frameFaceMm = opts?.frameFaceMm ?? DEFAULT_FRAME_FACE_MM;
+  // Outlines only where a shape can cut a pane: a rectangle needs none.
+  const outlines =
+    design.frame.shape.kind !== 'rect' ? paneOutlines(design, opts) : undefined;
 
   for (const { leaf, rect } of lay.leaves) {
     if (cutAway.has(leaf.id)) continue;
@@ -368,11 +471,12 @@ export function toPayload(
       // One part (and one section) per sliding PANEL, each carrying the
       // leaf's own track/mesh — panels are a property of the leaf, not
       // geometric splits (the structural fix for defect B2).
-      for (const panel of leaf.slide.panels) {
+      for (const [panelIndex, panel] of leaf.slide.panels.entries()) {
         parts.push(
           leafPart(base, leaf, panel.widthMm, rect.hMm, frameProductId, {
             opening_direction: panel.direction,
             ...shapeExtra,
+            ...barExtras(leaf, rect, frameFaceMm, panelIndex),
           })
         );
         sections.push({
@@ -395,10 +499,15 @@ export function toPayload(
     // part (full spec with the frame outer size), byte-identical to what
     // the old component sent, so its pricing is unchanged.
     const own = ownHardware(leaf);
+    const extras: Partial<GlobalSpec> = {
+      ...shapeExtra,
+      ...barExtras(leaf, rect, frameFaceMm),
+      ...sashExtras(leaf, outlines?.get(leaf.id)),
+    };
     if (singleFixedRoot) {
-      parts.push({ ...base, ...ownGlass(leaf), ...shapeExtra });
+      parts.push({ ...base, ...ownGlass(leaf), ...extras });
     } else {
-      parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, frameProductId, shapeExtra));
+      parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, frameProductId, extras));
     }
     sections.push({
       casementType: leaf.casementType ?? 'Fixed',
