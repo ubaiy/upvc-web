@@ -17,7 +17,6 @@ import {
 } from '@coreui/angular';
 import { ChartjsModule } from '@coreui/angular-chartjs';
 import { IconModule } from '@coreui/icons-angular';
-import { WidgetsModule } from '../widgets/widgets.module';
 import { TableModule } from 'primeng/table';
 import { TooltipModule } from 'primeng/tooltip';
 import { PaginatorModule } from 'primeng/paginator';
@@ -86,7 +85,6 @@ import { SiteAddressDialogComponent } from './site-address/site-address-dialog.c
     AvatarModule,
     TableModule,
     TooltipModule,
-    WidgetsModule,
     ModalModule,
     AlertModule,
     FormsModule,
