@@ -187,6 +187,11 @@ export class QuotationService {
     return this._apiHttpService.get(API_END_POINT.paymentType.list, quiet());
   }
 
+  /** The GST states, for the "Place of supply" list: the same list the API decides the tax split with. */
+  public getGstStates(): Observable<IResponseDto<{ code: string; name: string }[]>> {
+    return this._apiHttpService.get('gst/states', quiet());
+  }
+
   /** Customers for the picker in "Duplicate". */
   public getCustomerChoices(): Observable<IResponseDto<any[]>> {
     return this._apiHttpService.get(API_END_POINT.customer.list, quiet());

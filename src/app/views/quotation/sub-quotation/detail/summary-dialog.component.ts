@@ -60,6 +60,15 @@ export class SummaryDialogComponent implements OnChanges {
   validUntil = '';
   pricesIncludeGst = false;
 
+  /**
+   * Place of supply: 'auto' follows the rule (site address, then the customer,
+   * then the company); a state code fixes it for this quotation. Sent only
+   * when it was changed, so an older quotation keeps the state it had.
+   */
+  supply = 'auto';
+  states: { code: string; name: string }[] = [];
+  private _supplyAtOpen = 'auto';
+
   readonly chargeKinds = CHARGE_KINDS;
   charges: ChargeRow[] = [];
 
@@ -91,6 +100,23 @@ export class SummaryDialogComponent implements OnChanges {
       return 'A discount cannot be more than 100%.';
     }
     return '';
+  }
+
+  /** Offered only where GST is charged and the API says which state is in force. */
+  get hasSupply(): boolean {
+    return !!this.quotation?.placeOfSupply;
+  }
+
+  /** "Automatic: Maharashtra" */
+  get supplyRuleLabel(): string {
+    const rule = this.quotation?.placeOfSupply?.byRule;
+    return rule ? `Automatic: ${rule.name}` : 'Automatic';
+  }
+
+  get supplyHint(): string {
+    const rule = this.quotation?.placeOfSupply?.byRule;
+    const why = this.supply === 'auto' ? rule?.reason || '' : 'Chosen for this quotation.';
+    return `${why} Within your own state the quotation shows CGST and SGST; to another state, IGST.`.trim();
   }
 
   get canAddCharge(): boolean {
@@ -158,6 +184,22 @@ export class SummaryDialogComponent implements OnChanges {
         },
         error: () => (this.loadError = 'We could not load your price lists and payment terms.'),
       });
+    // The state list is on its own: without it the field still offers "Automatic" and the state in force.
+    if (this.hasSupply && !this.states.length) {
+      this._dataService.getGstStates().subscribe({
+        next: (res) => (this.states = res?.success && Array.isArray(res.data) ? res.data : []),
+        error: () => (this.states = []),
+      });
+    }
+  }
+
+  /** The states to offer: the list, or just the state in force while the list is not there. */
+  get supplyStates(): { code: string; name: string }[] {
+    const current = this.quotation?.placeOfSupply;
+    if (this.states.length || !current) {
+      return this.states;
+    }
+    return [{ code: current.code, name: current.name }];
   }
 
   setDiscountType(type: DiscountType): void {
@@ -203,6 +245,9 @@ export class SummaryDialogComponent implements OnChanges {
     if (this.validUntil) {
       body.valid_until = this.validUntil;
     }
+    if (this.hasSupply && this.supply !== this._supplyAtOpen) {
+      body.place_of_supply = this.supply;
+    }
     this.saving = true;
     this._dataService
       .saveQuotationSummary(this.quotation.id, body)
@@ -228,6 +273,8 @@ export class SummaryDialogComponent implements OnChanges {
     this.discountValue = this.discountType === 'none' ? null : q.discountValue;
     this.validUntil = q.validUntilIso;
     this.pricesIncludeGst = q.pricesIncludeGst;
+    this.supply = q.placeOfSupply?.fixed ? q.placeOfSupply.code : 'auto';
+    this._supplyAtOpen = this.supply;
     this.charges = (q.charges || []).map((charge) => ({
       ...charge,
       // The API fills an empty label with the kind's name; show it as empty again.

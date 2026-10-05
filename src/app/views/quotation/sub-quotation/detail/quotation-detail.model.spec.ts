@@ -46,6 +46,53 @@ describe('quotation-detail.model', () => {
     expect(toQuotationView(raw).stateMissing).withContext('no tax, no sentence').toBeNull();
   });
 
+  it('takes whose state is missing from the API when it says so', () => {
+    const raw = sampleQuotation();
+    raw.totals.tax.place_of_supply_assumed = true;
+    raw.totals.tax.seller_state_code = '24';
+    raw.totals.tax.missing_state = 'company';
+    expect(toQuotationView(raw).stateMissing).toBe('company');
+    raw.totals.tax.missing_state = null;
+    expect(toQuotationView(raw).stateMissing).toBeNull();
+  });
+
+  it('reads the place of supply, its reason, and what the rule would give (M2)', () => {
+    const raw = sampleQuotation();
+    expect(toQuotationView(raw).placeOfSupply).withContext('an API that does not say').toBeNull();
+    Object.assign(raw.totals.tax, {
+      place_of_supply: '24',
+      place_of_supply_name: 'Gujarat',
+      place_of_supply_source: 'legacy',
+      place_of_supply_reason: 'Kept as it was before the place of supply could be chosen.',
+      place_of_supply_default: { code: '27', name: 'Maharashtra', source: 'site_address', reason: 'The state of the site address.' },
+    });
+    expect(toQuotationView(raw).placeOfSupply).toEqual({
+      code: '24',
+      name: 'Gujarat',
+      reason: 'Kept as it was before the place of supply could be chosen.',
+      fixed: true,
+      byRule: { code: '27', name: 'Maharashtra', reason: 'The state of the site address.' },
+    });
+    raw.totals.tax.place_of_supply_source = 'site_address';
+    expect(toQuotationView(raw).placeOfSupply?.fixed).toBeFalse();
+    raw.totals.tax.applicable = false;
+    expect(toQuotationView(raw).placeOfSupply).withContext('no GST, nothing to decide').toBeNull();
+  });
+
+  it('reads the bill warnings and the Settings tab each one points to (M3)', () => {
+    const raw = sampleQuotation({
+      bill_warnings: [
+        { code: 'seller_gstin_missing', message: 'Your company\'s GSTIN is not set.', settings_field: 'gstin', line_ids: [] },
+        { code: 'hsn_missing', message: '2 windows have no HSN code.', settings_field: 'default_hsn_code', line_ids: [19, 20] },
+      ],
+    });
+    expect(toQuotationView(raw).billWarnings.map((w) => [w.code, w.settingsTab])).toEqual([
+      ['seller_gstin_missing', 'company'],
+      ['hsn_missing', 'pricing'],
+    ]);
+    expect(toQuotationView(sampleQuotation()).billWarnings).toEqual([]);
+  });
+
   it('prints charges where the PDF does: taxed ones above the taxable value, the others under the tax (M9)', () => {
     const raw = sampleQuotation();
     raw.totals.discount = { type: 'percent', value: 5, amount: 878.39 };

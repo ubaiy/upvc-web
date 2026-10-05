@@ -90,6 +90,10 @@ export interface QuotationView {
    * the company's (Settings) or the customer's (the customer page). Null when both are known.
    */
   stateMissing: 'company' | 'customer' | null;
+  /** The state that decides CGST + SGST or IGST, and why; null when no GST is charged. */
+  placeOfSupply: PlaceOfSupply | null;
+  /** What the company's settings lack for a proper tax invoice; shown before "Create bill". */
+  billWarnings: BillWarning[];
   marginId: number | null;
   paymentTermId: number | null;
   discountType: 'percent' | 'amount' | null;
@@ -99,6 +103,55 @@ export interface QuotationView {
   revisions: QuotationRevision[];
   /** Catalogue prices moved after this quotation was priced (sent by the API when it knows). */
   pricesChanged: boolean;
+}
+
+export interface PlaceOfSupply {
+  code: string;
+  name: string;
+  /** The API's sentence: "The state of the site address." */
+  reason: string;
+  /** True when a person chose it, or it was kept from before the rule: it no longer follows the site address. */
+  fixed: boolean;
+  /** What the rule gives today (site address, then the customer, then the company). */
+  byRule: { code: string; name: string; reason: string } | null;
+}
+
+export interface BillWarning {
+  code: string;
+  /** Ready to show, from the API. */
+  message: string;
+  /** The Settings tab that holds the missing field. */
+  settingsTab: 'company' | 'pricing';
+  settingsLabel: string;
+}
+
+function readPlaceOfSupply(tax: any): PlaceOfSupply | null {
+  // Older bills and an older API send no source: nothing to show.
+  if (!tax?.applicable || !text(tax.place_of_supply) || !text(tax.place_of_supply_source)) {
+    return null;
+  }
+  const rule = tax.place_of_supply_default;
+  return {
+    code: text(tax.place_of_supply),
+    name: text(tax.place_of_supply_name) || text(tax.place_of_supply),
+    reason: text(tax.place_of_supply_reason),
+    fixed: tax.place_of_supply_source === 'manual' || tax.place_of_supply_source === 'legacy',
+    byRule: text(rule?.code) ? { code: text(rule.code), name: text(rule.name) || text(rule.code), reason: text(rule.reason) } : null,
+  };
+}
+
+function readBillWarnings(rows: any): BillWarning[] {
+  return (Array.isArray(rows) ? rows : [])
+    .filter((row: any) => text(row?.message))
+    .map((row: any) => {
+      const pricing = row.settings_field === 'default_hsn_code';
+      return {
+        code: text(row.code),
+        message: text(row.message),
+        settingsTab: pricing ? 'pricing' : 'company',
+        settingsLabel: pricing ? 'Settings, Pricing and tax' : 'Settings, Company',
+      };
+    });
 }
 
 export type ChargeKind = 'transport' | 'installation' | 'other';
@@ -313,7 +366,14 @@ function readSummary(raw: any): TotalsLine[] {
 
 /** Whose state the API did not have when it worked out the tax split. The seller's state comes first: without it no split can be right. */
 function readStateMissing(tax: any): 'company' | 'customer' | null {
-  if (!tax?.applicable || !tax.place_of_supply_assumed) {
+  if (!tax?.applicable) {
+    return null;
+  }
+  // The API says it outright since T81; before that it only said "assumed".
+  if (tax.missing_state !== undefined) {
+    return tax.missing_state === 'company' || tax.missing_state === 'customer' ? tax.missing_state : null;
+  }
+  if (!tax.place_of_supply_assumed) {
     return null;
   }
   return text(tax.seller_state_code) ? 'customer' : 'company';
@@ -366,6 +426,8 @@ export function toQuotationView(raw: any): QuotationView {
     advance: num(totals?.advance?.amount) > 0 ? { percent: num(totals.advance.percent), amount: num(totals.advance.amount) } : null,
     taxNote: text(totals?.tax?.note) || null,
     stateMissing: readStateMissing(totals?.tax),
+    placeOfSupply: readPlaceOfSupply(totals?.tax),
+    billWarnings: readBillWarnings(raw?.bill_warnings),
     marginId: raw?.order_type_margin_id ?? margin?.id ?? null,
     paymentTermId: raw?.payment_term_id ?? term?.id ?? null,
     discountType: raw?.discount_type === 'percent' || raw?.discount_type === 'amount' ? raw.discount_type : null,

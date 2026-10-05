@@ -195,7 +195,7 @@ describe('SubQuotationComponent (quotation page)', () => {
   it('sends the user to Settings when the company state is the one missing (M5)', () => {
     const note = stateNote(null);
     expect(note.textContent).toContain('Your company’s state is not set');
-    expect(note.querySelector('a')?.getAttribute('href')).toContain('/settings');
+    expect(note.querySelector('a')?.getAttribute('href')).toBe('/profile?tab=company');
   });
 
   it('sends the user to the customer when only the customer state is missing (M5)', () => {
@@ -285,6 +285,55 @@ describe('SubQuotationComponent (quotation page)', () => {
     expect(text()).toContain('Billed as INV/26-27/0002 on 4 Oct 2026 for ₹20,730.00');
     expect(primary()?.textContent).toContain('Download bill');
     expect(el().querySelector('.add-row')).toBeNull();
+  });
+
+  it('says what the company settings lack before the bill is created, with a link to Settings (M3)', () => {
+    show({
+      status: 'accepted',
+      bill_warnings: [
+        { code: 'seller_gstin_missing', message: 'Your company\'s GSTIN is not set. The bill is headed "Invoice".', settings_field: 'gstin', line_ids: [] },
+        { code: 'hsn_missing', message: '2 windows have no HSN code, and no default HSN code is set.', settings_field: 'default_hsn_code', line_ids: [19, 20] },
+      ],
+    });
+    el().querySelector<HTMLButtonElement>('.page-actions [data-action="bill"]')!.click();
+    fixture.detectChanges();
+    const dialog = el().querySelector('app-confirm-dialog') as HTMLElement;
+    const note = dialog.querySelector('[data-q="bill-warnings"]') as HTMLElement;
+    expect(note.textContent).toContain('Your company\'s GSTIN is not set.');
+    expect(note.textContent).toContain('2 windows have no HSN code');
+    const links = Array.from(note.querySelectorAll('a')).map((a) => a.getAttribute('href'));
+    expect(links).toEqual(['/profile?tab=company', '/profile?tab=pricing']);
+    // Without the GSTIN the API heads the bill "Invoice".
+    expect(dialog.textContent).toContain('This issues an invoice');
+    // The bill can still be created: the API does not refuse it.
+    expect(service.createBill).not.toHaveBeenCalled();
+    service.createBill.and.returnValue(ok({ id: 3, number: 'INV/26-27/0002' }));
+    confirmBill();
+    expect(service.createBill).toHaveBeenCalledWith(14);
+  });
+
+  it('has no warning in the confirm when nothing is missing', () => {
+    show({ status: 'accepted' });
+    el().querySelector<HTMLButtonElement>('.page-actions [data-action="bill"]')!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-confirm-dialog [data-q="bill-warnings"]')).toBeNull();
+    expect(el().querySelector('app-confirm-dialog')?.textContent).toContain('This issues a tax invoice');
+  });
+
+  it('says which state decides the tax and why, and what the site address would give (M2)', () => {
+    const raw = sampleQuotation();
+    Object.assign(raw.totals.tax, {
+      place_of_supply: '24',
+      place_of_supply_name: 'Gujarat',
+      place_of_supply_source: 'legacy',
+      place_of_supply_reason: 'Kept as it was before the place of supply could be chosen.',
+      place_of_supply_default: { code: '27', name: 'Maharashtra', source: 'site_address', reason: 'The state of the site address.' },
+      missing_state: null,
+    });
+    create(ok(raw));
+    const line = (el().querySelector('[data-q="place-of-supply"]')?.textContent || '').replace(/\s+/g, ' ');
+    expect(line).toContain('Place of supply: Gujarat. Kept as it was before the place of supply could be chosen.');
+    expect(line).toContain('The rule now gives Maharashtra: choose “Automatic” under “Change”.');
   });
 
   it('makes "Create order" the one primary button of an accepted quotation, with "Create bill" beside it', () => {

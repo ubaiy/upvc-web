@@ -255,9 +255,16 @@
         <app-totals [lines]="q.summary" [total]="q.total"></app-totals>
 
         <p class="muted small side-gap" *ngIf="q.taxNote">{{ q.taxNote }}</p>
+        <!-- Which state decided CGST + SGST or IGST, and why (the API's sentence). -->
+        <p class="muted small side-gap" data-q="place-of-supply" *ngIf="!q.stateMissing && q.placeOfSupply as supply">
+          Place of supply: <span class="strong">{{ supply.name }}</span>. {{ supply.reason }}
+          <ng-container *ngIf="supply.fixed && supply.byRule && supply.byRule.code !== supply.code">
+            The rule now gives {{ supply.byRule.name }}: choose “Automatic” under “Change”.
+          </ng-container>
+        </p>
         <p class="muted small side-gap" data-q="state-missing" *ngIf="q.stateMissing === 'company'">
           Your company’s state is not set, so GST is shown as a sale within one state.
-          <a routerLink="/settings">Set it in Settings</a>
+          <a routerLink="/profile" [queryParams]="{ tab: 'company' }">Set it in Settings</a>
         </p>
         <p class="muted small side-gap" data-q="state-missing" *ngIf="q.stateMissing === 'customer' && q.customer.id">
           The customer’s state is not set, so GST is shown as a sale within your state.
@@ -454,7 +461,7 @@
 <app-confirm-dialog
   *ngIf="billAsking && view as q"
   [title]="'Create the bill for ' + q.number + '?'"
-  text="This issues a tax invoice with the next bill number. A bill cannot be deleted afterwards, only cancelled."
+  [text]="'This issues ' + billKind + ' with the next bill number. A bill cannot be deleted afterwards, only cancelled.'"
   confirmLabel="Create bill"
   keepLabel="Not now"
   (confirmed)="createBill()"
@@ -466,4 +473,14 @@
     <dt class="total">Bill total</dt>
     <dd class="total">{{ q.total | inr }}</dd>
   </dl>
+  <!-- What the company's settings lack for a tax invoice, as the API words it (T82, M3). -->
+  <div class="callout warn bill-warnings" role="note" data-q="bill-warnings" *ngIf="q.billWarnings.length">
+    <div class="grow">
+      <p *ngFor="let warning of q.billWarnings">
+        {{ warning.message }}
+        <a routerLink="/profile" [queryParams]="{ tab: warning.settingsTab }">Open {{ warning.settingsLabel }}</a>
+      </p>
+      <p>You can set these first, or create the bill as it is.</p>
+    </div>
+  </div>
 </app-confirm-dialog>

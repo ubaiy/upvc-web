@@ -29,7 +29,7 @@ describe('SummaryDialogComponent', () => {
   }
 
   beforeEach(() => {
-    service = jasmine.createSpyObj('QuotationService', ['getMarginOptions', 'getPaymentTermOptions', 'saveQuotationSummary']);
+    service = jasmine.createSpyObj('QuotationService', ['getMarginOptions', 'getPaymentTermOptions', 'saveQuotationSummary', 'getGstStates']);
     service.getMarginOptions.and.returnValue(
       ok([
         { id: 1, name: 'Retail', mark_up: '20' },
@@ -85,6 +85,60 @@ describe('SummaryDialogComponent', () => {
       valid_until: '2026-12-01',
     });
     expect(saved).toHaveBeenCalled();
+  });
+
+  describe('place of supply (M2)', () => {
+    const supply = (source: string, code: string, name: string) => {
+      const raw = sampleQuotation();
+      Object.assign(raw.totals.tax, {
+        place_of_supply: code,
+        place_of_supply_name: name,
+        place_of_supply_source: source,
+        place_of_supply_reason: 'x',
+        place_of_supply_default: { code: '27', name: 'Maharashtra', source: 'site_address', reason: 'The state of the site address.' },
+      });
+      return { totals: raw.totals };
+    };
+    const options = (): string[] =>
+      Array.from(document.body.querySelectorAll('#sum-supply option')).map((o) => o.textContent!.trim());
+
+    beforeEach(() => {
+      service.getGstStates.and.returnValue(ok([{ code: '24', name: 'Gujarat' }, { code: '27', name: 'Maharashtra' }]));
+      service.saveQuotationSummary.and.returnValue(ok({}));
+    });
+
+    it('follows the site address by default and says why', () => {
+      open(supply('site_address', '27', 'Maharashtra'));
+      expect(document.body.querySelector('label[for="sum-supply"]')?.textContent).toContain('Place of supply');
+      expect(component.supply).toBe('auto');
+      expect(options()).toEqual(['Automatic: Maharashtra', 'Gujarat', 'Maharashtra']);
+      expect(document.body.querySelector('#sum-supply-hint')?.textContent).toContain('The state of the site address.');
+    });
+
+    it('sends nothing about it when it was not touched, so an older quotation keeps its state', () => {
+      open(supply('legacy', '24', 'Gujarat'));
+      expect(component.supply).toBe('24');
+      component.submit();
+      expect('place_of_supply' in service.saveQuotationSummary.calls.mostRecent().args[1]).toBeFalse();
+    });
+
+    it('sends the chosen state, or "auto" to go back to the rule', () => {
+      open(supply('site_address', '27', 'Maharashtra'));
+      component.supply = '24';
+      component.submit();
+      expect(service.saveQuotationSummary.calls.mostRecent().args[1].place_of_supply).toBe('24');
+
+      open(supply('manual', '24', 'Gujarat'));
+      component.supply = 'auto';
+      component.submit();
+      expect(service.saveQuotationSummary.calls.mostRecent().args[1].place_of_supply).toBe('auto');
+    });
+
+    it('is not offered where the API states no place of supply', () => {
+      open();
+      expect(document.body.querySelector('#sum-supply')).toBeNull();
+      expect(service.getGstStates).not.toHaveBeenCalled();
+    });
   });
 
   describe('charges (M9)', () => {

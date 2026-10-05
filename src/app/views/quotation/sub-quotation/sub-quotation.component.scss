@@ -131,6 +131,19 @@ button.name {
   border-block-end: 0;
 }
 
+// What is missing for a tax invoice, in the Create bill confirmation.
+.bill-warnings {
+  align-items: flex-start;
+
+  p {
+    margin: 0;
+  }
+
+  p + p {
+    margin-block-start: var(--s-2);
+  }
+}
+
 // The drag handle of a row: a draft with two or more windows.
 .grip {
   flex: none;

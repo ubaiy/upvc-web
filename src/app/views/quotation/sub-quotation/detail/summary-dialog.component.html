@@ -120,6 +120,15 @@
       <span class="hint">A charge is added after the discount and is never discounted.</span>
     </div>
 
+    <div class="field" *ngIf="hasSupply">
+      <label class="label" for="sum-supply">Place of supply</label>
+      <select class="select" id="sum-supply" name="supply" aria-describedby="sum-supply-hint" [(ngModel)]="supply">
+        <option value="auto">{{ supplyRuleLabel }}</option>
+        <option *ngFor="let state of supplyStates" [value]="state.code">{{ state.name }}</option>
+      </select>
+      <span class="hint" id="sum-supply-hint">{{ supplyHint }}</span>
+    </div>
+
     <div class="field">
       <label class="label" for="sum-valid">Valid until</label>
       <input class="input" id="sum-valid" name="valid" type="date" [min]="today" [(ngModel)]="validUntil" />

@@ -226,6 +226,11 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   /** True while "Create bill" waits for a yes. */
   billAsking = false;
 
+  /** How the API will head the bill: without the company GSTIN it is an "Invoice", not a "Tax Invoice". */
+  get billKind(): string {
+    return this.view?.billWarnings.some((warning) => warning.code === 'seller_gstin_missing') ? 'an invoice' : 'a tax invoice';
+  }
+
   /** "Create bill" in the confirm. The bill copies the quotation's lines, discount and tax. */
   createBill(): void {
     this.billAsking = false;
