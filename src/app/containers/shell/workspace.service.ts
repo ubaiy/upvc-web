@@ -3,6 +3,7 @@ import { BehaviorSubject } from 'rxjs';
 
 import { ApiHttpService } from '../../shared/services/api-http.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
+import { quiet } from '../../shared/interceptors/request-options';
 
 export interface Workspace {
   /** The fabricator's company name, shown at the top of the sidebar. */
@@ -32,7 +33,7 @@ export class WorkspaceService {
       return;
     }
     this.loaded = true;
-    this.api.get('get-company-branding').subscribe({
+    this.api.get('get-company-branding', quiet('loader')).subscribe({
       next: (res: any) => {
         const name = typeof res?.data?.name === 'string' ? res.data.name.trim() : '';
         if (name) {

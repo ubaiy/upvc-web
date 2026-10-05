@@ -72,7 +72,7 @@ describe('SettingsAdapter', () => {
   it('loads through company/settings', (done) => {
     api.get.and.returnValue(of({ success: true, data: API_ROW }));
     adapter.load().subscribe((snapshot) => {
-      expect(api.get).toHaveBeenCalledWith(SETTINGS_API.settings);
+      expect(api.get).toHaveBeenCalledWith(SETTINGS_API.settings, jasmine.anything());
       expect(snapshot.company.gstin).toBe('24ABCDE1234F1Z5');
       done();
     });

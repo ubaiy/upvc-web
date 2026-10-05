@@ -6,6 +6,7 @@ import { IResponseDto } from '../../shared/model/common/response.model';
 import { API_END_POINT } from '../../shared/configs/api.config';
 import { IDashboardModelDto } from '../../shared/model/dashboard.model';
 import { HomeQuotationRow, HomeView, buildHomeView } from './home-data';
+import { quiet } from '../../shared/interceptors/request-options';
 
 @Injectable({
   providedIn: 'root',
@@ -14,12 +15,12 @@ export class DashboardService {
   constructor(private _apiHttpService: ApiHttpService) {}
 
   public getDashboardData(): Observable<IResponseDto<IDashboardModelDto>> {
-    return this._apiHttpService.get(API_END_POINT.home);
+    return this._apiHttpService.get(API_END_POINT.home, quiet('loader'));
   }
 
   /** Every quotation, billed ones included. An API without status ignores the filter and sends the open ones. */
   public getQuotations(): Observable<IResponseDto<HomeQuotationRow[]>> {
-    return this._apiHttpService.get(`${API_END_POINT.quatation.list}?status=all`);
+    return this._apiHttpService.get(`${API_END_POINT.quatation.list}?status=all`, quiet('loader'));
   }
 
   /** Everything the Home screen shows, in two requests. */

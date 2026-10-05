@@ -16,6 +16,7 @@ import {
   TaxSettings,
   normaliseGstin,
 } from './settings.model';
+import { quiet } from '../../shared/interceptors/request-options';
 
 /** Endpoints the Settings page talks to. `upvc-api` routes/api.php. */
 export const SETTINGS_API = {
@@ -53,12 +54,12 @@ export class SettingsAdapter {
   constructor(private api: ApiHttpService) {}
 
   load(): Observable<SettingsSnapshot> {
-    return this.api.get(SETTINGS_API.settings).pipe(map((res) => toSnapshot(unwrap(res))));
+    return this.api.get(SETTINGS_API.settings, quiet('loader')).pipe(map((res) => toSnapshot(unwrap(res))));
   }
 
   /** GST state list; fetched once. */
   states(): Observable<GstState[]> {
-    this.states$ ??= this.api.get(SETTINGS_API.states).pipe(
+    this.states$ ??= this.api.get(SETTINGS_API.states, quiet('loader')).pipe(
       map((res) => (unwrap(res) as GstState[]) ?? []),
       shareReplay({ bufferSize: 1, refCount: false })
     );

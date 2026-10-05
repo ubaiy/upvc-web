@@ -145,7 +145,8 @@ export class CatalogueAdapter {
   }
 
   private read<T>(url: string): Observable<T> {
-    return this.api.get(url).pipe(map((res) => this.unwrap<T>(res)));
+    // The lists draw their own skeleton rows: the app ring stays out (card T138). A failure still raises the toast.
+    return this.api.get(url, quiet('loader')).pipe(map((res) => this.unwrap<T>(res)));
   }
 
   private write<T>(url: string, body?: unknown): Observable<T> {
