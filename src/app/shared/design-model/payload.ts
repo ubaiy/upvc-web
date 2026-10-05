@@ -11,7 +11,10 @@
  *    `palla_type: 1` (the per-sash form), whether it is the only pane or
  *    one of several. The old screen sent either that or one whole-window
  *    part depending on what was selected, and the two gave different totals;
- *  - a sliding pane is always one part per panel.
+ *  - a sliding pane is always one part per panel;
+ *  - every part carries the glass of ITS pane in `glazz_id` (the pane's own
+ *    glass, else the window's). The api charges glass per part from that
+ *    key, so a pane with different glass is priced with it.
  *
  * Byte-compatibility contract (golden-tested):
  *  - a single un-split FIXED window emits the legacy single-part array —
@@ -289,6 +292,13 @@ function ownHardware(leaf: LeafNode): Pick<
   };
 }
 
+/** The pane's own glass; nothing when it uses the window's. */
+function ownGlass(leaf: LeafNode): Partial<GlobalSpec> {
+  return leaf.glassId === null || leaf.glassId === undefined
+    ? {}
+    : { glazz_id: leaf.glassId };
+}
+
 /** One per-section part: full spec + the pane's own configuration. */
 function leafPart(
   base: GlobalSpec,
@@ -308,6 +318,7 @@ function leafPart(
     height: Math.round(heightMm),
     width: Math.round(widthMm),
     ...ownHardware(leaf),
+    ...ownGlass(leaf),
     ...override,
   };
 }
@@ -385,7 +396,7 @@ export function toPayload(
     // the old component sent, so its pricing is unchanged.
     const own = ownHardware(leaf);
     if (singleFixedRoot) {
-      parts.push({ ...base, ...shapeExtra });
+      parts.push({ ...base, ...ownGlass(leaf), ...shapeExtra });
     } else {
       parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, frameProductId, shapeExtra));
     }

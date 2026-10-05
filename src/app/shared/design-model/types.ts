@@ -169,6 +169,12 @@ export interface LeafNode {
    * legacy renderer's `framed` nodes. Visual-only for plain leaves.
    */
   sashFramed?: boolean;
+  /**
+   * Glass of THIS pane when it differs from the window's
+   * (`glazing.glassId`). Absent = the window's glass, which is what every
+   * document saved before per-pane glass means. See glass.ts.
+   */
+  glassId?: Id | null;
 }
 
 export interface SplitNode {
