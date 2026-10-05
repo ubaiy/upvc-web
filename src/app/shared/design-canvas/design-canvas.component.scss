@@ -175,6 +175,24 @@
 
 /* ---- Inline mm editor --------------------------------------------------- */
 
+/* What the split tools will divide: one line over the top of the drawing. */
+.dc-tool-hint {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 16px);
+  padding: 3px 10px;
+  border-radius: 4px;
+  background: rgba(17, 24, 39, 0.86);
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+  z-index: 4;
+}
+
 .dc-edit {
   position: absolute;
   transform: translate(-50%, -120%);

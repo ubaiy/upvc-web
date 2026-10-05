@@ -29,7 +29,8 @@ import {
   screenSide,
   shadeColor,
 } from './render-common';
-import { drawGlass, drawSashFrame } from './render-sash';
+import { drawPallaBars } from './render-bars';
+import { drawGlass, drawSashFrame, sashColor } from './render-sash';
 
 const DASH = [6, 4];
 /** Height of a door lever above the floor. */
@@ -62,6 +63,7 @@ export function drawOpenableCasement(
     attrs: { paneId: leaf.id },
   });
   drawGlass(parent, leaf, glass, ctx);
+  drawPallaBars(parent, leaf.bars, sash, glass, ctx, { paneId: leaf.id, tone: sashColor(ctx.color) });
 
   const dir = (leaf.opening?.direction || 'Left').toLowerCase();
   const hinges = leaf.opening?.hingesType === '3D Hinges' ? 3 : 2;

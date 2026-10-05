@@ -261,6 +261,7 @@ export class DesignLabComponent implements OnInit, OnDestroy {
         ? `pane ${s.paneId}`
         : `pane ${s.paneId}, panel ${s.panelIndex + 1}`;
     }
+    if (s.type === 'bar') return `bar ${s.index} of palla ${s.paneId}`;
     return `divider ${s.index} of split ${s.splitId}`;
   }
 

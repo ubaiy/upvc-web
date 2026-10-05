@@ -15,6 +15,9 @@ import {
   LeafNode,
   RectMm,
   WindowDesign,
+  carriesBars,
+  pallaBarLayouts,
+  pallaRectMm,
   slideLayout,
 } from '../design-model';
 
@@ -30,7 +33,9 @@ export type CanvasSelection =
    * long-press): every selected pane, `paneId` (the one picked last) included.
    */
   | { type: 'pane'; paneId: string; panelIndex?: number; paneIds?: string[] }
-  | { type: 'divider'; splitId: string; index: number };
+  | { type: 'divider'; splitId: string; index: number }
+  /** A bar carried by one palla (a sash, or shutter `panelIndex` of a slider). */
+  | { type: 'bar'; paneId: string; panelIndex?: number; index: number };
 
 /** Every selected pane id ([] when the selection is not a pane). */
 export function selectedPaneIds(sel: CanvasSelection | null): string[] {
@@ -222,13 +227,15 @@ export function rectContains(r: RectMm, p: PointMm, tolMm = 0): boolean {
 export type HitResult =
   | { kind: 'frame-handle'; corner: FrameCorner }
   | { kind: 'divider'; splitId: string; index: number; axis: Axis }
+  | { kind: 'bar'; paneId: string; panelIndex?: number; index: number; axis: Axis }
   | { kind: 'pane'; paneId: string }
   | { kind: 'frame' }
   | { kind: 'none' };
 
 /**
  * Model-driven hit test, priority: corner resize handles > divider band (fattened by
- * `tolMm` so thin bars stay grabbable on touch) > leaf pane > frame border.
+ * `tolMm` so thin bars stay grabbable on touch) > a palla's own bar > leaf pane >
+ * frame border.
  * Every pane's FULL rect is a hit target — no dead zones by construction
  * (gap-report defect B5).
  */
@@ -271,6 +278,21 @@ export function hitTest(
     }
   }
 
+  for (const b of pallaBarLayouts(lay)) {
+    const band: RectMm =
+      b.axis === 'x'
+        ? { ...b.rect, xMm: b.rect.xMm - tolMm / 2, wMm: b.rect.wMm + tolMm }
+        : { ...b.rect, yMm: b.rect.yMm - tolMm / 2, hMm: b.rect.hMm + tolMm };
+    // In an interlock the bar of the shutter in front is the one hit.
+    if (!rectContains(band, p)) continue;
+    const l = lay.leaves.find((x) => x.leaf.id === b.paneId);
+    const front = l ? slidePanelAt(l.leaf, l.rect, p) : null;
+    if (b.panelIndex !== undefined && front !== null && front !== b.panelIndex) continue;
+    const hit: HitResult = { kind: 'bar', paneId: b.paneId, index: b.index, axis: b.axis };
+    if (b.panelIndex !== undefined) hit.panelIndex = b.panelIndex;
+    return hit;
+  }
+
   for (const l of lay.leaves) {
     if (rectContains(l.rect, p)) {
       return { kind: 'pane', paneId: l.leaf.id };
@@ -302,4 +324,52 @@ export function slidePanelAt(
   if (!under.length) return null;
   // Where two shutters overlap, the one on the outer track is in front.
   return under.reduce((front, panel) => (panel.track < front.track ? panel : front)).index;
+}
+
+/** What a split tool would divide at a point. */
+export interface SplitTarget {
+  paneId: string;
+  /** Set when the target is one shutter of a sliding leaf. */
+  panelIndex?: number;
+  /** True: a bar carried by the palla. False: a frame mullion / transom. */
+  palla: boolean;
+  /** The region divided: the palla's outer rect, or the pane's content. */
+  rect: RectMm;
+  /** What the hint line calls it. */
+  label: string;
+}
+
+/**
+ * The thing a split tool divides for pane `paneId`: the shutter of a slider
+ * (`panelIndex`, or the one under `p`), an opening sash or a framed palla
+ * get a bar of their own; plain fixed glass, or anything when `whole` is
+ * asked for, gets a frame mullion / transom across the pane.
+ */
+export function splitTargetOf(
+  lay: Layout,
+  paneId: string,
+  o: { panelIndex?: number; p?: PointMm; whole?: boolean } = {}
+): SplitTarget | null {
+  const nl = lay.nodes.get(paneId);
+  if (!nl || nl.node.kind !== 'leaf') return null;
+  const leaf = nl.node;
+  const order = lay.leaves.findIndex((l) => l.leaf.id === paneId) + 1;
+  if (o.whole || !carriesBars(leaf)) {
+    const what = leaf.category === 'Slidding' ? 'whole sliding window' : `pane ${order}`;
+    return { paneId, palla: false, rect: nl.content, label: `the ${what} (frame divider)` };
+  }
+  if (leaf.category === 'Slidding' && leaf.slide) {
+    const n = leaf.slide.panels.length;
+    const index = o.panelIndex ?? (n === 1 ? 0 : o.p ? slidePanelAt(leaf, nl.rect, o.p) : null);
+    if (index === null || index === undefined) return null;
+    return {
+      paneId,
+      panelIndex: index,
+      palla: true,
+      rect: pallaRectMm(leaf, nl.rect, index),
+      label: `shutter ${index + 1} of ${n}`,
+    };
+  }
+  const what = leaf.casementType === 'Openable' ? 'sash' : 'palla';
+  return { paneId, palla: true, rect: nl.rect, label: `${what} ${order}` };
 }

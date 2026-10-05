@@ -14,6 +14,8 @@ import {
   isSplit,
   layout,
   moveDivider,
+  movePallaBar,
+  pallaBarsOf,
   resizeFrame,
   snapDividerMm,
 } from '../design-model';
@@ -24,6 +26,7 @@ import {
   hitTest,
   mmFromPx,
   slidePanelAt,
+  splitTargetOf,
   togglePaneInSelection,
 } from './canvas-view';
 
@@ -100,8 +103,9 @@ export class PointerController {
       frameHandle: !h.readOnly,
     });
 
-    if (h.armedTool && hit.kind === 'pane' && !h.readOnly) {
-      this.splitAt(hit.paneId, h.armedTool, mm);
+    // An armed tool divides the palla under the pointer, a bar of it included.
+    if (h.armedTool && (hit.kind === 'pane' || hit.kind === 'bar') && !h.readOnly) {
+      this.splitAt(hit.paneId, h.armedTool, mm, e.altKey);
       h.armedTool = null;
       h.ghost = null;
       h.render();
@@ -134,6 +138,18 @@ export class PointerController {
         }
         h.render();
         break;
+      case 'bar': {
+        const ref =
+          hit.panelIndex === undefined
+            ? { paneId: hit.paneId }
+            : { paneId: hit.paneId, panelIndex: hit.panelIndex };
+        h.setSelection({ type: 'bar', ...ref, index: hit.index });
+        if (!h.readOnly) {
+          h.drag = { kind: 'bar', ...ref, index: hit.index, axis: hit.axis, preview: h.design, moved: false };
+        }
+        h.render();
+        break;
+      }
       case 'pane': {
         const nl = lay.nodes.get(hit.paneId);
         const panel =
@@ -211,7 +227,7 @@ export class PointerController {
 
     // Armed-tool hover ghost (no button down).
     if (!h.drag && h.armedTool && !h.readOnly) {
-      this.updateGhost(h.armedTool, pos);
+      this.updateGhost(h.armedTool, pos, e.altKey);
       h.render();
       return;
     }
@@ -234,6 +250,30 @@ export class PointerController {
           h.readout = { xMm: mm.xMm, yMm: mm.yMm, text: `${Math.round(next.posMm)} mm` };
           h.render();
         }
+        break;
+      }
+      case 'bar': {
+        // The bar follows the pointer inside its own palla, on whole mm.
+        const mm = mmFromPx(h.currentView(), pos.x, pos.y);
+        const ref = { paneId: drag.paneId, panelIndex: drag.panelIndex };
+        const target = splitTargetOf(layout(h.design, { frameFaceMm: h.frameFaceMm }), drag.paneId, {
+          panelIndex: drag.panelIndex,
+        });
+        if (!target) break;
+        const span = drag.axis === 'x' ? target.rect.wMm : target.rect.hMm;
+        const raw = Math.round(drag.axis === 'x' ? mm.xMm - target.rect.xMm : mm.yMm - target.rect.yMm);
+        try {
+          drag.preview = movePallaBar(h.design, ref, drag.index, raw / span, {
+            frameFaceMm: h.frameFaceMm,
+          });
+        } catch {
+          break; // keep the last valid preview
+        }
+        drag.moved = true;
+        const leaf = findNode(drag.preview.root, drag.paneId);
+        const at = leaf && isLeaf(leaf) ? pallaBarsOf(leaf, drag.panelIndex)?.at[drag.index] : undefined;
+        h.readout = { xMm: mm.xMm, yMm: mm.yMm, text: `${Math.round((at ?? 0) * span)} mm` };
+        h.render();
         break;
       }
       case 'frame-handle': {
@@ -272,7 +312,7 @@ export class PointerController {
     h.drag = null;
     h.readout = null;
 
-    if (drag.kind === 'divider' && drag.moved) {
+    if ((drag.kind === 'divider' || drag.kind === 'bar') && drag.moved) {
       h.commit(drag.preview);
       return;
     }
@@ -373,7 +413,7 @@ export class PointerController {
     if (Math.hypot(pos.x - h.drag.startX, pos.y - h.drag.startY) > 5) {
       h.drag.moved = true;
     }
-    this.updateGhost(h.drag.tool, pos);
+    this.updateGhost(h.drag.tool, pos, e.altKey);
     h.render();
   }
 
@@ -384,7 +424,14 @@ export class PointerController {
     h.drag = null;
     const pos = h.eventPos(e);
     if (!drag.moved) {
-      // Click (no drag): toggle armed mode — next click on a pane splits it.
+      // Click (no drag). With a palla (or the frame) selected the tool
+      // divides THAT, in the middle. With nothing to divide selected it is
+      // armed: the next click on a palla divides it.
+      if (!h.armedTool && h.splitSelected(drag.tool === 'split-x' ? 'x' : 'y')) {
+        h.ghost = null;
+        h.render();
+        return;
+      }
       h.armedTool = h.armedTool === drag.tool ? null : drag.tool;
       h.ghost = null;
       h.render();
@@ -392,35 +439,39 @@ export class PointerController {
     }
     const mm = mmFromPx(h.currentView(), pos.x, pos.y);
     const hit = hitTest(h.displayDesign, h.currentLayout(), mm, 0.1);
-    if (hit.kind === 'pane') this.splitAt(hit.paneId, drag.tool, mm);
+    if (hit.kind === 'pane' || hit.kind === 'bar') this.splitAt(hit.paneId, drag.tool, mm, e.altKey);
     h.ghost = null;
     h.render();
   }
 
-  private updateGhost(tool: CanvasTool, pos: PosPx): void {
+  /** The ghost: the palla (or pane) the tool would divide, and where. */
+  private updateGhost(tool: CanvasTool, pos: PosPx, whole: boolean): void {
     const h = this.host;
     const mm = mmFromPx(h.currentView(), pos.x, pos.y);
     const lay = h.currentLayout();
     const hit = hitTest(h.displayDesign, lay, mm, 0.1);
-    const nl = hit.kind === 'pane' ? lay.nodes.get(hit.paneId) : undefined;
-    if (hit.kind !== 'pane' || !nl) {
+    const target =
+      hit.kind === 'pane' || hit.kind === 'bar'
+        ? splitTargetOf(lay, hit.paneId, { p: mm, whole })
+        : null;
+    if (!target) {
       h.ghost = null;
       return;
     }
     const axis = tool === 'split-x' ? 'x' : 'y';
-    const raw = axis === 'x' ? mm.xMm - nl.content.xMm : mm.yMm - nl.content.yMm;
-    const span = axis === 'x' ? nl.content.wMm : nl.content.hMm;
-    h.ghost = { paneId: hit.paneId, axis, posMm: Math.min(span, Math.max(0, raw)) };
+    const raw = axis === 'x' ? mm.xMm - target.rect.xMm : mm.yMm - target.rect.yMm;
+    const span = axis === 'x' ? target.rect.wMm : target.rect.hMm;
+    h.ghost = {
+      paneId: target.paneId,
+      axis,
+      posMm: Math.min(span, Math.max(0, raw)),
+      rect: target.rect,
+      whole,
+    };
+    if (target.panelIndex !== undefined) h.ghost.panelIndex = target.panelIndex;
   }
 
-  private splitAt(paneId: string, tool: CanvasTool, mm: PointMm): void {
-    const nl = this.host.currentLayout().nodes.get(paneId);
-    if (!nl) return;
-    const axis = tool === 'split-x' ? 'x' : 'y';
-    // Whole millimetres only: a dropped divider never lands on a fraction.
-    const pos = Math.round(
-      axis === 'x' ? mm.xMm - nl.content.xMm : mm.yMm - nl.content.yMm
-    );
-    this.host.trySplit(paneId, axis, pos);
+  private splitAt(paneId: string, tool: CanvasTool, mm: PointMm, whole: boolean): void {
+    this.host.splitAt(paneId, tool === 'split-x' ? 'x' : 'y', mm, whole);
   }
 }

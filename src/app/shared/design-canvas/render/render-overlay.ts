@@ -5,7 +5,7 @@
  */
 
 import Konva from 'konva';
-import { Layout, PointMm, isLeaf, slideLayout } from '../../design-model';
+import { Layout, PointMm, RectMm, isLeaf, pallaBarLayouts, slideLayout } from '../../design-model';
 import { CanvasSelection, selectedPaneIds } from '../canvas-view';
 import {
   COL,
@@ -22,8 +22,14 @@ import { slidePanelRectPx } from './render-sliding';
 export interface RenderGhost {
   paneId: string;
   axis: 'x' | 'y';
-  /** Centreline mm from the pane's content left/top edge. */
+  /** Centreline mm from the left/top edge of `rect` (the pane's content when absent). */
   posMm: number;
+  /** The region the tool would divide: one palla, outlined. */
+  rect?: RectMm;
+  /** The shutter of a slider that would be divided. */
+  panelIndex?: number;
+  /** A frame divider across the pane was asked for (Alt). */
+  whole?: boolean;
 }
 
 /** Floating mm readout (drag feedback), anchored in mm space. */
@@ -108,6 +114,14 @@ export function drawSelection(
         }
       }
     }
+  } else if (selection.type === 'bar') {
+    const b = pallaBarLayouts(lay).find(
+      (x) =>
+        x.paneId === selection.paneId &&
+        x.panelIndex === selection.panelIndex &&
+        x.index === selection.index
+    );
+    if (b) rect = ctx.rect(b.rect);
   } else {
     const d = lay.dividers.find(
       (dv) => dv.split.id === selection.splitId && dv.index === selection.index
@@ -204,7 +218,23 @@ export function drawGhost(
   if (!ghost) return;
   const nl = lay.nodes.get(ghost.paneId);
   if (!nl) return;
-  const c = nl.content;
+  const c = ghost.rect ?? nl.content;
+  if (ghost.rect) {
+    // The palla that will be divided, so it is seen before the click.
+    const r = ctx.rect(ghost.rect);
+    const target = new Konva.Rect({
+      x: r.x,
+      y: r.y,
+      width: r.w,
+      height: r.h,
+      stroke: COL.ghost,
+      strokeWidth: 2,
+      listening: false,
+      name: 'ghost-target',
+    });
+    target.setAttrs({ paneId: ghost.paneId, panelIndex: ghost.panelIndex ?? null, whole: !!ghost.whole });
+    parent.add(target);
+  }
   const a =
     ghost.axis === 'x'
       ? ctx.pt(c.xMm + ghost.posMm, c.yMm)

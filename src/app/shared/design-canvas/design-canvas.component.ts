@@ -56,6 +56,7 @@ import {
   renderDesign,
 } from './canvas-renderer';
 import {
+  PointMm,
   CanvasSelection,
   CanvasTool,
   ViewFrom,
@@ -483,12 +484,21 @@ export class DesignCanvasComponent
   /* Commands (canvas-commands.ts)                                       */
   /* ------------------------------------------------------------------ */
 
-  splitSelected(axis: 'x' | 'y'): void {
-    cmd.splitSelected(this, axis);
+  splitSelected(axis: 'x' | 'y'): boolean {
+    return cmd.splitSelected(this, axis);
   }
 
   trySplit(paneId: string, axis: 'x' | 'y', posMm: number): void {
     cmd.trySplit(this, paneId, axis, posMm);
+  }
+
+  splitAt(paneId: string, axis: 'x' | 'y', p: PointMm, whole: boolean): void {
+    cmd.splitAt(this, paneId, axis, p, whole);
+  }
+
+  /** What Split / Transom will divide, in words (shown over the drawing). */
+  get toolHint(): string {
+    return this.history ? cmd.toolHint(this) : '';
   }
 
   equalizeSelected(): void {

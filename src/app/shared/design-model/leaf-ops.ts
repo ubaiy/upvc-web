@@ -71,11 +71,17 @@ export function setLeafSpec(
         else {
           delete leaf.casementType;
           delete leaf.opening;
+          // A slider carries bars per shutter, never on the leaf.
+          delete leaf.bars;
         }
       }
       if (patch.casementType !== undefined) {
         leaf.casementType = patch.casementType;
-        if (patch.casementType === 'Fixed') delete leaf.opening;
+        if (patch.casementType === 'Fixed') {
+          delete leaf.opening;
+          // Plain fixed glass has no sash to carry bars.
+          if (!leaf.sashFramed) delete leaf.bars;
+        }
       }
       if (patch.productId !== undefined) leaf.productId = patch.productId;
       if (patch.sashId !== undefined) leaf.sashId = patch.sashId;
@@ -107,6 +113,7 @@ export function setSlide(
       leaf.category = 'Slidding';
       delete leaf.casementType;
       delete leaf.opening;
+      delete leaf.bars;
       leaf.slide = {
         tracks: slide.tracks,
         mesh: slide.mesh,

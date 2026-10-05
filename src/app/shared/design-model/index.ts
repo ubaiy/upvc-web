@@ -20,3 +20,4 @@ export * from './shape-geometry';
 export * from './shape-payload';
 export * from './template';
 export * from './glass';
+export * from './palla';

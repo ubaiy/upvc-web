@@ -19,6 +19,7 @@ import {
   widthsFromPositions,
 } from './geometry';
 import { checkDoor } from './door';
+import { checkPallaBars } from './palla';
 import { checkShape } from './shape';
 import { validateSlide } from './slide';
 import { DESIGN_SCHEMA, PaneNode, WindowDesign, isLeaf } from './types';
@@ -54,6 +55,8 @@ export function checkInvariants(
   problems.push(...checkShape(design.frame.shape, widthMm, heightMm));
   // Phase 2: door structure validity (no-ops without a door spec).
   problems.push(...checkDoor(design));
+  // Bars carried by a palla (no-ops on an undivided design).
+  problems.push(...checkPallaBars(design.root));
 
   const ids = new Set<string>();
   const visit = (node: PaneNode, spanW: number, spanH: number): void => {

@@ -11,7 +11,8 @@ import Konva from 'konva';
 import { LeafNode } from '../../design-model';
 import { drawOpenableCasement } from './render-casement';
 import { COL, Parent, PxRect, RenderCtx, insetPx, shadeColor } from './render-common';
-import { drawGlass, drawSashFrame } from './render-sash';
+import { drawPallaBars } from './render-bars';
+import { drawGlass, drawSashFrame, sashColor } from './render-sash';
 import { drawSlidingLeaf } from './render-sliding';
 
 export interface LeafDrawOpts {
@@ -42,6 +43,7 @@ export function drawLeaf(
     ? drawSashFrame(parent, r, ctx.facePx, ctx.color, { name: 'sash-band' })
     : r;
   drawGlass(parent, leaf, glass, ctx);
+  drawPallaBars(parent, leaf.bars, r, glass, ctx, { paneId: leaf.id, tone: sashColor(ctx.color) });
   const bead = Math.max(2, Math.min(ctx.px(BEAD_MM), Math.min(glass.w, glass.h) * 0.12));
   if (ctx.detail !== 'tiny' && glass.w > 4 * bead && glass.h > 4 * bead) {
     const b = insetPx(glass, bead);

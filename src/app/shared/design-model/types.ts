@@ -113,6 +113,21 @@ export interface OpeningSpec {
 }
 
 /**
+ * Bars carried BY one palla (an opening sash, a framed fixed palla or a
+ * sliding shutter): glazing bars inside its own sash frame, moving with it.
+ * They are not frame members: the palla stays ONE leaf / ONE panel, with its
+ * one opening, and nothing is added to the payload's `mullion[]`.
+ * `at` are the bar centrelines as fractions (0..1, strictly increasing) of
+ * the palla's width (axis 'x', vertical bars) or height (axis 'y',
+ * horizontal bars), so they follow every resize without being rewritten.
+ * Absent = an undivided palla, which is what every older document means.
+ */
+export interface PallaBars {
+  axis: Axis;
+  at: number[];
+}
+
+/**
  * One sliding panel. Panels are NOT geometric splits (they overlap on
  * tracks); they are a property of the sliding leaf. `widthMm` is the user's
  * intended daylight width of the panel (the renderer derives interlock
@@ -127,6 +142,8 @@ export interface SlidePanel {
    * per-panel fixed flag (see the Phase 2 log's api notes).
    */
   fixed?: boolean;
+  /** Bars dividing THIS shutter only. Absent = undivided. See {@link PallaBars}. */
+  bars?: PallaBars;
 }
 
 export interface SlideSpec {
@@ -175,6 +192,11 @@ export interface LeafNode {
    * document saved before per-pane glass means. See glass.ts.
    */
   glassId?: Id | null;
+  /**
+   * Bars dividing THIS sash only (casement leaves; a sliding leaf carries
+   * them per shutter, on its panels). Absent = undivided. See {@link PallaBars}.
+   */
+  bars?: PallaBars;
 }
 
 export interface SplitNode {

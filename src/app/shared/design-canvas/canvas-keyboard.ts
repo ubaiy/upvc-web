@@ -11,6 +11,7 @@ import {
   findNode,
   isSplit,
   moveDivider,
+  pallaBarLayouts,
   walkLeaves,
 } from '../design-model';
 import { CanvasHost, NUDGE_BIG_MM, NUDGE_MM } from './canvas-host';
@@ -144,6 +145,18 @@ export function selectionText(
     if (!nl) return '';
     const panel = sel.panelIndex === undefined ? '' : `, panel ${sel.panelIndex + 1}`;
     return `pane ${Math.round(nl.rect.wMm)} × ${Math.round(nl.rect.hMm)} mm${panel}`;
+  }
+  if (sel.type === 'bar') {
+    const b = pallaBarLayouts(lay).find(
+      (x) => x.paneId === sel.paneId && x.panelIndex === sel.panelIndex && x.index === sel.index
+    );
+    if (!b) return '';
+    const at =
+      b.axis === 'x'
+        ? b.rect.xMm + b.rect.wMm / 2 - b.palla.xMm
+        : b.rect.yMm + b.rect.hMm / 2 - b.palla.yMm;
+    const where = sel.panelIndex === undefined ? 'sash' : `shutter ${sel.panelIndex + 1}`;
+    return `${b.axis === 'x' ? 'vertical' : 'horizontal'} bar of the ${where} @ ${Math.round(at)} mm`;
   }
   const dv = lay.dividers.find(
     (x) => x.split.id === sel.splitId && x.index === sel.index

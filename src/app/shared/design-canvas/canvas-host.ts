@@ -11,6 +11,7 @@ import {
   CanvasSelection,
   CanvasTool,
   FrameCorner,
+  PointMm,
   ViewTransform,
 } from './canvas-view';
 
@@ -31,6 +32,15 @@ export type DragState =
       w0Mm: number;
       h0Mm: number;
       preview: WindowDesign;
+    }
+  | {
+      kind: 'bar';
+      paneId: string;
+      panelIndex?: number;
+      index: number;
+      axis: 'x' | 'y';
+      preview: WindowDesign;
+      moved: boolean;
     }
   | { kind: 'palette'; tool: CanvasTool; startX: number; startY: number; moved: boolean }
   | { kind: 'pan'; startX: number; startY: number; panX0: number; panY0: number };
@@ -90,13 +100,15 @@ export interface CanvasHost {
   focusCanvas(): void;
   focusEditSoon(): void;
   trySplit(paneId: string, axis: 'x' | 'y', posMm: number): void;
+  /** Divide what a split tool targets at `p` (a palla, or the pane when `whole`). */
+  splitAt(paneId: string, axis: 'x' | 'y', p: PointMm, whole: boolean): void;
 
   undo(): void;
   redo(): void;
   zoomIn(): void;
   zoomOut(): void;
   fitToScreen(): void;
-  splitSelected(axis: 'x' | 'y'): void;
+  splitSelected(axis: 'x' | 'y'): boolean;
   equalizeSelected(): void;
   deleteSelectedDivider(): void;
 }

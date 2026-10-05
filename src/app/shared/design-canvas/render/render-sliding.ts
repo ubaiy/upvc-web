@@ -39,7 +39,8 @@ import {
   sashFacePx,
   shadeColor,
 } from './render-common';
-import { drawGlass, drawShutterSash, meshSashColor } from './render-sash';
+import { drawPallaBars } from './render-bars';
+import { drawGlass, drawShutterSash, meshSashColor, shutterColor } from './render-sash';
 
 /** One shutter as drawn. */
 interface ShutterPx {
@@ -210,6 +211,11 @@ export function drawSlidingLeaf(
     drawGlass(parent, leaf, glass, ctx, {
       name: sh.index === 0 ? 'glass-pane' : 'slide-glass',
       tag: sh.index === 0,
+    });
+    drawPallaBars(parent, slide.panels[sh.index]?.bars, sh.rect, glass, ctx, {
+      paneId: leaf.id,
+      panelIndex: sh.index,
+      tone: shutterColor(ctx.color),
     });
   }
 

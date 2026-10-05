@@ -109,10 +109,6 @@
             aria-label="Frame height in millimetres"
           />
         </label>
-        <span class="dc-hint" *ngIf="armedTool">
-          {{ armedTool === 'split-x' ? 'Vertical' : 'Horizontal' }} divider armed —
-          click a pane to split (Esc cancels)
-        </span>
       </ng-container>
     </div>
 
@@ -138,6 +134,9 @@
         (wheel)="onWheel($event)"
         (dblclick)="onDblClick($event)"
       ></div>
+
+      <!-- What Split / Transom will divide -->
+      <div class="dc-tool-hint" data-dc="tool-hint" aria-live="polite" *ngIf="toolHint">{{ toolHint }}</div>
 
       <!-- Inline mm editor (double-click a dimension) -->
       <div
