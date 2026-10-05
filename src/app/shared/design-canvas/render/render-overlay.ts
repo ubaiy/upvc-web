@@ -149,6 +149,7 @@ export function drawSelectionSizes(
   let sashW = nl.rect.wMm;
   const sashH = nl.rect.hMm;
   let kind: SashKind;
+  let where = '';
   if (leaf.category === 'Slidding' && leaf.slide) {
     const index = selection.panelIndex ?? (leaf.slide.panels.length === 1 ? 0 : undefined);
     if (index === undefined) return;
@@ -158,6 +159,7 @@ export function drawSelectionSizes(
     at = pr;
     sashW = panel.widthMm;
     kind = 'sliding';
+    where = `Shutter ${index + 1} of ${leaf.slide.panels.length} · track ${panel.track + 1}${panel.fixed ? ' · fixed' : ''}\n`;
   } else if (leaf.casementType === 'Openable') {
     kind = isDoor ? 'door' : 'casement';
   } else {
@@ -166,7 +168,7 @@ export function drawSelectionSizes(
   const faceMm = sashFacePx(ctx, leaf, kind, at) / ctx.view.pxPerMm;
   const mm = (w: number, h: number): string => `${Math.round(w)} × ${Math.round(h)}`;
   const text = new Konva.Text({
-    text: `Sash ${mm(sashW, sashH)}\nGlass ${mm(sashW - 2 * faceMm, sashH - 2 * faceMm)}`,
+    text: `${where}Sash ${mm(sashW, sashH)}\nGlass ${mm(sashW - 2 * faceMm, sashH - 2 * faceMm)}`,
     fontSize: ctx.detail === 'full' ? 11 : 9,
     lineHeight: 1.25,
     padding: 4,
@@ -182,6 +184,7 @@ export function drawSelectionSizes(
   label.setAttrs({
     paneId: leaf.id,
     panelIndex: selection.panelIndex ?? null,
+    where: where.trim(),
     sashWMm: Math.round(sashW),
     sashHMm: Math.round(sashH),
     glassWMm: Math.round(sashW - 2 * faceMm),

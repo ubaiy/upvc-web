@@ -47,6 +47,9 @@ export function drawSashFrame(
   color: string,
   o: SashOpts
 ): PxRect {
+  // A sash is a shade darker than the frame it sits in, so its two stiles
+  // and two rails read as members of their own even in a white profile.
+  color = sashColor(color);
   const edge = new Konva.Rect({
     x: r.x,
     y: r.y,
@@ -54,7 +57,7 @@ export function drawSashFrame(
     height: r.h,
     fill: color,
     stroke: COL.stroke,
-    strokeWidth: 1,
+    strokeWidth: 1.5,
     listening: false,
     name: `${o.name}-edge`,
     ...(o.shadow
@@ -65,6 +68,14 @@ export function drawSashFrame(
   parent.add(edge);
   drawBevelBands(parent, r.x, r.y, r.w, r.h, facePx, color, o.name);
   return insetPx(r, facePx);
+}
+
+/** The sash colour for a profile colour: a shade darker (lighter when the profile is dark). */
+export function sashColor(profile: string): string {
+  const hex = shadeColor(profile, 0);
+  const n = parseInt(hex.slice(1), 16);
+  const luma = (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
+  return shadeColor(hex, luma < 90 ? 0.14 : -0.09);
 }
 
 export interface GlassOpts {

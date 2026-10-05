@@ -239,6 +239,11 @@ describe('drawing clarity: sliding windows', () => {
     // Glass is the sight size: the sash less its 45 mm band on each side.
     expect(sizes[0].getAttr('glassWMm')).toBe(750);
     expect(sizes[0].getAttr('glassHMm')).toBe(990);
+    expect(sizes[0].getAttr('where')).toBe('Shutter 2 of 2 · track 2');
+    // The sash is a shade darker than the white frame: four members that can be seen.
+    const edge = all(layer, 'slide-sash-edge')[0] as Konva.Rect;
+    expect(edge.fill()).not.toBe('#ffffff');
+    expect(edge.strokeWidth()).toBeGreaterThan(1);
     expect(all(draw(d), 'leaf-sizes').length).toBe(0);
 
     const overlapped = setSlide(d, 'p1', {
