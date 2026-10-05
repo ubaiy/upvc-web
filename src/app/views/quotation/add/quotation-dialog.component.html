@@ -30,7 +30,7 @@
         [filter]="true"
         filterBy="name,phone"
         filterPlaceholder="Search by name or phone"
-        [placeholder]="loadingCustomers ? 'Loading customers…' : 'Choose a customer'"
+        placeholder="Choose a customer"
         appendTo="body"
         [style]="{ width: '100%' }"
         [styleClass]="customerError ? 'ng-invalid ng-dirty' : ''"
@@ -47,7 +47,12 @@
           <span class="muted small">No customer matches “{{ filterText }}”.</span>
         </ng-template>
         <ng-template pTemplate="empty">
-          <span class="muted small">{{ loadingCustomers ? 'Loading customers…' : 'No customers yet.' }}</span>
+          <span class="muted small" *ngIf="!loadingCustomers">No customers yet.</span>
+          <ng-container *ngIf="loadingCustomers">
+            <span class="skeleton" style="width: 60%" aria-hidden="true"></span>
+            <span class="skeleton" style="width: 45%; margin-block-start: 10px" aria-hidden="true"></span>
+            <span class="sr-only" role="status">Loading customers</span>
+          </ng-container>
         </ng-template>
         <ng-template pTemplate="footer">
           <div class="nq-footer">

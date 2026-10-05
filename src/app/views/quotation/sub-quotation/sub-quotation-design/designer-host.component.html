@@ -87,7 +87,7 @@
     </div>
   </div>
 
-  <div class="dz-loading" *ngIf="!ready && !loadError">
+  <div class="dz-loading" *ngIf="!ready && !loadError" appOwnLoading>
     <span class="skeleton" style="width: 220px"></span>
     <span class="muted small">Opening the designer…</span>
   </div>
@@ -248,7 +248,8 @@
           <button type="button" data-dz="view-2d" [attr.aria-pressed]="!view3d.on" (click)="show2d()">2D</button>
           <button *appHas3d type="button" data-dz="view-3d" [attr.aria-pressed]="view3d.on" [disabled]="view3d.loading"
             title="See this window in 3D: turn it, open it, tap a pane to change it." (click)="show3d()">
-            {{ view3d.loading ? 'Loading…' : '3D' }}
+            <ng-container *ngIf="!view3d.loading">3D</ng-container>
+            <ng-container *ngIf="view3d.loading"><span class="skeleton" style="width: 20px" aria-hidden="true"></span><span class="sr-only" role="status">Loading the 3D view</span></ng-container>
           </button>
           <app-plan-lock label="3D" look="seg"></app-plan-lock>
         </div>
