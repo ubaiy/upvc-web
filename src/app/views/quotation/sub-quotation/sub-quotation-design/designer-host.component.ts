@@ -23,6 +23,7 @@ import {
   OnDestroy,
   OnInit,
   ViewChild,
+  ViewContainerRef,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -63,6 +64,7 @@ import {
   sashFacesOf,
   systemKeyOf,
 } from './designer-catalog';
+import { Designer3dView, View3dInputs } from './designer-3d';
 import { DesignerCatalogService } from './designer-catalog.service';
 import {
   PriceLine,
@@ -122,6 +124,11 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   @ViewChild('templateNameInput') set templateNameInput(input: ElementRef<HTMLInputElement> | undefined) {
     input?.nativeElement.focus();
   }
+
+  /** Where the 3D view is made when "3D" is pressed. */
+  @ViewChild('view3dHost', { read: ViewContainerRef }) view3dHost?: ViewContainerRef;
+  /** 2D | 3D: the 3D view of this window, loaded on demand (see designer-3d.ts). */
+  view3d = new Designer3dView();
 
   readonly frameFaceMm = FRAME_FACE_MM;
   readonly frameMinMm = FRAME_MIN_MM;
@@ -248,6 +255,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     if (this.sizeTimer) clearTimeout(this.sizeTimer);
+    this.view3d.close();
     this.priceSub?.unsubscribe();
     this.price$.complete();
   }
@@ -404,6 +412,35 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     if (Object.keys(byId).length !== Object.keys(this.sashFaces.byId ?? {}).length) {
       this.sashFaces = { byId };
     }
+    this.view3d.sync(this.inputs3d());
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 2D | 3D                                                             */
+  /* ------------------------------------------------------------------ */
+
+  private inputs3d(): View3dInputs {
+    const glass = this.effective.glazing.glassId;
+    return {
+      design: this.effective,
+      glassTint: (glass !== null && glass !== undefined && this.glassTints[String(glass)]) || null,
+      glassTints: this.glassTints,
+      frameFaceMm: FRAME_FACE_MM,
+    };
+  }
+
+  /** 3D shows the window as it stands and follows every change; it never edits it. */
+  async show3d(): Promise<void> {
+    this.canvas?.armTool(null);
+    const opening = this.view3d.open(this.view3dHost, () => this.inputs3d());
+    this.cdr.markForCheck();
+    await opening;
+    this.cdr.markForCheck();
+  }
+
+  show2d(): void {
+    this.view3d.close();
+    this.view3d.note = '';
   }
 
   /** True while the document or its price is still catching up with the last change. */

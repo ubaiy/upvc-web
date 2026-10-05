@@ -224,9 +224,24 @@
 }
 
 .stage {
+  position: relative;
   flex: 1 1 auto;
   min-height: 0;
   padding: var(--s-4) var(--s-4) 56px;
+
+  /* 3D lies over the drawing, on the same area; empty and out of the way until 3D is on. */
+  .stage3d {
+    position: absolute;
+    inset: var(--s-4) var(--s-4) 60px;
+    z-index: 2;
+    pointer-events: none;
+
+    &.on {
+      pointer-events: auto;
+      background: var(--c-surface);
+      border-radius: var(--r-md);
+    }
+  }
 
   app-design-canvas {
     display: block;
@@ -318,6 +333,19 @@
     font-size: 8px;
     font-weight: 700;
   }
+}
+
+.view-note {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin: var(--s-2) var(--s-4) 0;
+  padding: var(--s-2) var(--s-3);
+  font-size: var(--fs-13);
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-strong);
+  border-radius: var(--r-md);
 }
 
 .float {
@@ -926,6 +954,14 @@
     height: min(84vw, 340px);
     min-height: 250px;
     padding: var(--s-2);
+
+    .stage3d {
+      inset: var(--s-2);
+    }
+  }
+
+  .view-note {
+    margin-inline: var(--s-2);
   }
 
   .hints {

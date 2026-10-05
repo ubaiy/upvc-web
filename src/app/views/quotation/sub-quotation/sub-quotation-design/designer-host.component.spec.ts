@@ -13,6 +13,7 @@ import { SKIP_ERROR_TOAST, SKIP_LOADER } from 'src/app/shared/interceptors/reque
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { DesignTemplateStore } from '../../../design-lab/design-template-store.service';
 import { QuotationService } from '../../quotation.service';
+import { Designer3dView, NO_CHUNK_NOTE, NO_WEBGL_NOTE, View3dChunk } from './designer-3d';
 import { DesignerCatalogService } from './designer-catalog.service';
 import { DesignerHostComponent } from './designer-host.component';
 import { PICTURE_HEIGHT_PX, PICTURE_WIDTH_PX, designPicture } from 'src/app/shared/design-canvas/canvas-export';
@@ -206,4 +207,52 @@ describe('DesignerHostComponent (the window designer screen)', () => {
     tick(400);
     flushMicrotasks();
   }));
+
+  describe('2D | 3D (T113)', () => {
+    const press3d = (): void => {
+      (el().querySelector('[data-dz="view-3d"]') as HTMLButtonElement).click();
+      flushMicrotasks();
+      fixture.detectChanges();
+    };
+    const pressed = (which: '2d' | '3d'): string | null =>
+      el().querySelector(`[data-dz="view-${which}"]`)?.getAttribute('aria-pressed') ?? null;
+
+    it('opens on 2D with the switch in the view tools', fakeAsync(() => {
+      open();
+      expect(pressed('2d')).toBe('true');
+      expect(pressed('3d')).toBe('false');
+      expect(el().querySelector('[data-dz="view-note"]')).toBeNull();
+      expect(el().querySelector('app-design-canvas')).not.toBeNull();
+    }));
+
+    it('a 3D chunk that cannot be fetched: the reason is said, the drawing stays, price and Save are untouched', fakeAsync(() => {
+      open();
+      component.view3d = new Designer3dView(() => Promise.reject(new Error('ChunkLoadError')));
+      const priced = quotations.quotationManageProduct.calls.count();
+      press3d();
+      expect(el().querySelector('[data-dz="view-note"]')?.textContent).toContain(NO_CHUNK_NOTE);
+      expect(pressed('2d')).toBe('true');
+      expect(el().querySelector('[data-dz="stage3d"]')?.classList.contains('on')).toBeFalse();
+      expect(el().querySelector('[data-dz="stage3d"]')?.children.length).withContext('never a blank area').toBe(0);
+      expect(el().querySelector('app-design-canvas')).not.toBeNull();
+      expect(saveButton().disabled).toBeFalse();
+      expect(quotations.quotationManageProduct.calls.count()).toBe(priced);
+    }));
+
+    it('a device without WebGL: the reason is said and the designer stays on 2D', fakeAsync(() => {
+      open();
+      component.view3d = new Designer3dView(() =>
+        Promise.resolve({ Design3dComponent: class {}, webglAvailable: () => false } as unknown as View3dChunk)
+      );
+      press3d();
+      expect(el().querySelector('[data-dz="view-note"]')?.textContent).toContain(NO_WEBGL_NOTE);
+      expect(pressed('2d')).toBe('true');
+      expect(el().querySelector('[data-dz="stage3d"]')?.children.length).toBe(0);
+
+      // 2D takes the reason away again.
+      (el().querySelector('[data-dz="view-2d"]') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(el().querySelector('[data-dz="view-note"]')).toBeNull();
+    }));
+  });
 });

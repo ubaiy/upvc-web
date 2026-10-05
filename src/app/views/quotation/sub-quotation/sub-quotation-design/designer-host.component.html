@@ -101,7 +101,7 @@
 
   <div class="dz-body" *ngIf="ready">
     <aside class="palette" aria-label="Tools">
-      <button type="button" class="tool" [attr.aria-pressed]="!armedTool" [disabled]="readOnly" (click)="selectTool()">
+      <button type="button" class="tool" [attr.aria-pressed]="!armedTool" [disabled]="readOnly || view3d.on" (click)="selectTool()">
         <app-icon name="pointer" [size]="20"></app-icon>Select
       </button>
       <button
@@ -110,7 +110,7 @@
         data-dz="tool-split"
         title="Add a vertical divider: drag onto a pane, or click here and then click a pane (V)"
         [attr.aria-pressed]="armedTool === 'split-x'"
-        [disabled]="readOnly"
+        [disabled]="readOnly || view3d.on"
         (pointerdown)="canvas?.onPaletteDown($event, 'split-x')"
         (pointermove)="canvas?.onPaletteMove($event)"
         (pointerup)="canvas?.onPaletteUp($event)"
@@ -123,7 +123,7 @@
         data-dz="tool-transom"
         title="Add a horizontal divider: drag onto a pane, or click here and then click a pane (H)"
         [attr.aria-pressed]="armedTool === 'split-y'"
-        [disabled]="readOnly"
+        [disabled]="readOnly || view3d.on"
         (pointerdown)="canvas?.onPaletteDown($event, 'split-y')"
         (pointermove)="canvas?.onPaletteMove($event)"
         (pointerup)="canvas?.onPaletteUp($event)"
@@ -185,7 +185,7 @@
       </div>
 
       <div class="hints" *ngIf="keyItems.length || (!readOnly && !templatesOpen)">
-        <span class="tip" *ngIf="!readOnly && !templatesOpen">
+        <span class="tip" *ngIf="!readOnly && !templatesOpen && !view3d.on">
           Drag a divider to resize · double-click a size to type it
         </span>
         <ul class="key" *ngIf="keyItems.length" data-dz="key" aria-label="Key to the drawing">
@@ -223,7 +223,13 @@
         </ul>
       </div>
 
+      <p class="view-note" *ngIf="view3d.note" role="status" data-dz="view-note">
+        <app-icon name="info"></app-icon>{{ view3d.note }}
+      </p>
+
       <div class="stage">
+        <!-- The 3D view lies over the drawing; the drawing stays alive under it (undo, properties). -->
+        <div class="stage3d" [class.on]="view3d.on" data-dz="stage3d"><ng-container #view3dHost></ng-container></div>
         <app-design-canvas
           chrome="none"
           [model]="model"
@@ -238,6 +244,15 @@
       </div>
 
       <div class="float" role="toolbar" aria-label="View">
+        <div class="seg view-switch" role="group" aria-label="2D drawing or 3D view">
+          <button type="button" data-dz="view-2d" [attr.aria-pressed]="!view3d.on" (click)="show2d()">2D</button>
+          <button type="button" data-dz="view-3d" [attr.aria-pressed]="view3d.on" [disabled]="view3d.loading"
+            title="See this window in 3D: turn it, open it. Editing stays in 2D." (click)="show3d()">
+            {{ view3d.loading ? 'Loading…' : '3D' }}
+          </button>
+        </div>
+        <ng-container *ngIf="!view3d.on">
+        <span class="sep"></span>
         <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Zoom out" (click)="canvas?.zoomOut()">
           <app-icon name="zoom-out"></app-icon>
         </button>
@@ -256,6 +271,7 @@
           <button type="button" class="btn btn-ghost btn-sm" *ngIf="dividerSelected" (click)="canvas?.deleteSelectedDivider()">
             <app-icon name="trash"></app-icon>Remove divider
           </button>
+        </ng-container>
         </ng-container>
       </div>
     </section>
