@@ -32,9 +32,9 @@ describe('ProfileComponent (Settings page)', () => {
     fixture.detectChanges();
   });
 
-  it('is one page called Settings with the five sections', () => {
+  it('is one page called Settings with the six sections', () => {
     expect(text('h1')).toEqual(['Settings']);
-    expect(text('[role=tab]')).toEqual(['Company', 'Team', 'Pricing and tax', 'Documents', 'Your profile']);
+    expect(text('[role=tab]')).toEqual(['Company', 'Team', 'Pricing and tax', 'Structure rates', 'Documents', 'Your profile']);
   });
 
   it('opens on Company and marks it selected', () => {

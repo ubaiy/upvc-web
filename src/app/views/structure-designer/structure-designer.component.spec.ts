@@ -69,7 +69,7 @@ describe('StructureDesignerComponent', () => {
     expect(c.dims.map((d) => d.id)).toEqual(['diameter', 'rise']);
     expect(el.querySelector('.sd-sec--shape h2')?.textContent).toBe('Dome');
     expect(el.querySelectorAll('.sd-field').length).toBe(6);
-    expect(el.querySelector('.sd-note')?.textContent).toContain('Sizes are geometric centre-line sizes; workshop cut sizes and prices come in the next step.');
+    expect(el.querySelector('.sd-note')?.textContent).toContain('Sizes are geometric centre-line sizes, and the price is worked out from them; workshop cut sizes come in a later step.');
   });
 
   it('?kind= opens a structure directly', async () => {
