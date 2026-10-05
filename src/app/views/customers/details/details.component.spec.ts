@@ -3,8 +3,10 @@ import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of, throwError } from 'rxjs';
+import { AddressFieldsComponent } from 'src/app/shared/components/address-fields/address-fields.component';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
+import { LocationService } from 'src/app/shared/services/location.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { CustomerService } from '../customer.service';
 import { DetailsComponent } from './details.component';
@@ -31,6 +33,16 @@ describe('DetailsComponent (customer page)', () => {
   let component: DetailsComponent;
   let service: jasmine.SpyObj<CustomerService>;
   let toast: jasmine.SpyObj<ToastService>;
+  let location: jasmine.SpyObj<LocationService>;
+
+  /** Types a PIN code into an address block and waits for the lookup. */
+  function typePin(index: number, pin: string): void {
+    const input = fixture.nativeElement.querySelector('#addr-pin-' + index) as HTMLInputElement;
+    input.value = pin;
+    input.dispatchEvent(new Event('input'));
+    tick(400);
+    fixture.detectChanges();
+  }
   let router: Router;
   const el = (): HTMLElement => fixture.nativeElement;
 
@@ -49,6 +61,17 @@ describe('DetailsComponent (customer page)', () => {
       'getCustomerBills',
     ]);
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
+    location = jasmine.createSpyObj('LocationService', ['lookupPin', 'cities']);
+    location.cities.and.returnValue(of([]));
+    location.lookupPin.and.callFake((pin: string) =>
+      of(
+        pin === '395007'
+          ? { pincode: pin, city: 'Surat', district: 'Surat', stateCode: '24', stateName: 'Gujarat', localities: ['Adajan'] }
+          : pin === '400050'
+          ? { pincode: pin, city: 'Mumbai', district: 'Mumbai Suburban', stateCode: '27', stateName: 'Maharashtra', localities: [] }
+          : null
+      )
+    );
     service.getStates.and.returnValue(ok(STATES));
     service.getCompanySettings.and.returnValue(ok({ state_code: '24' }));
     service.getCustomerDetail.and.returnValue(ok(CUSTOMER));
@@ -66,8 +89,9 @@ describe('DetailsComponent (customer page)', () => {
 
     TestBed.configureTestingModule({
       declarations: [DetailsComponent],
-      imports: [RouterTestingModule, ReactiveFormsModule, SharedComponentsModule],
+      imports: [RouterTestingModule, ReactiveFormsModule, SharedComponentsModule, AddressFieldsComponent],
       providers: [
+        { provide: LocationService, useValue: location },
         { provide: CustomerService, useValue: service },
         { provide: ToastService, useValue: toast },
         { provide: ConfirmationDialogService, useValue: jasmine.createSpyObj('ConfirmationDialogService', ['confirm']) },
@@ -138,6 +162,41 @@ describe('DetailsComponent (customer page)', () => {
       expect(text).toContain('Enter a 6-digit PIN code.');
       expect(el().querySelector('#cust-name')?.getAttribute('aria-invalid')).toBe('true');
     });
+
+    it('asks for the PIN code first; PIN 395007 fills Surat and Gujarat, and they are saved (T90)', fakeAsync(() => {
+      const ids = Array.from(el().querySelectorAll('.address input, .address select')).map((field) => field.id);
+      expect(ids).toEqual(['addr-pin-0', 'addr-line-0', 'addr-line2-0', 'addr-city-0', 'addr-state-0']);
+
+      component.form.patchValue({ name: 'T90 Amit Mehta', phone: '9812345670' });
+      component.addresses.at(0).patchValue({ address: '12 Ring Road', state_code: '27' });
+      typePin(0, '395007');
+      expect(component.addresses.at(0).value).toEqual(
+        jasmine.objectContaining({ city: 'Surat', district: 'Surat', state_code: '24', zip_code: '395007' })
+      );
+      (el().querySelector('.af-areas .af-chip') as HTMLButtonElement).click();
+      component.submit();
+      const body: any = service.addCustomer.calls.mostRecent().args[0];
+      expect(body.address).toEqual({
+        address: '12 Ring Road',
+        address_line2: 'Adajan',
+        city: 'Surat',
+        district: 'Surat',
+        state: 'Gujarat',
+        zip_code: '395007',
+      });
+      expect(body.state_code).toBe('24');
+    }));
+
+    it('saves a PIN code and a city the directory does not have, as typed (T90)', fakeAsync(() => {
+      component.form.patchValue({ name: 'T90 Amit Mehta', phone: '9812345670' });
+      component.addresses.at(0).patchValue({ address: 'Plot 4', city: 'Navagam' });
+      typePin(0, '999999');
+      expect(el().textContent).toContain('This PIN is not in our list.');
+      component.submit();
+      expect(service.addCustomer).toHaveBeenCalledTimes(1);
+      const body: any = service.addCustomer.calls.mostRecent().args[0];
+      expect(body.address).toEqual(jasmine.objectContaining({ city: 'Navagam', district: null, state: 'Gujarat', zip_code: '999999' }));
+    }));
 
     it('puts the cursor in the first field that has a message (m16)', fakeAsync(() => {
       document.body.appendChild(el());
@@ -250,6 +309,14 @@ describe('DetailsComponent (customer page)', () => {
       expect(toast.showSuccess).toHaveBeenCalledWith('Customer saved');
     });
 
+    it('a PIN typed into a saved address marks it changed, so it is sent (T90)', fakeAsync(() => {
+      typePin(1, '395007');
+      component.submit();
+      expect(service.editCustomerAddress).toHaveBeenCalledTimes(1);
+      const address: any = service.editCustomerAddress.calls.mostRecent().args[0];
+      expect(address).toEqual(jasmine.objectContaining({ id: 8, city: 'Surat', district: 'Surat', state: 'Gujarat', zip_code: '395007' }));
+    }));
+
     it('shows an inline error with "Try again" when the history fails, and keeps the form', () => {
       service.getCustomerBills.and.returnValue(throwError(() => new Error('offline')));
       component.loadHistory();
@@ -307,6 +374,43 @@ describe('DetailsComponent (customer page)', () => {
       component.makeDefault(last);
       expect(component.addresses.at(0).value.id).toBe(first);
       expect(toast.showError).toHaveBeenCalledWith('Invalid address id');
+    });
+  });
+
+  describe('an address saved before city and PIN code were asked for (T90)', () => {
+    beforeEach(() => {
+      create({ id: 3, edit: true });
+      service.getCustomerDetail.and.returnValue(
+        ok({ ...CUSTOMER, addresses: [{ id: 7, address: 'B-203 Sunrise Towers', is_default: 1, city: null, district: null, state: 'MH', zip_code: null }] })
+      );
+      component.load();
+      fixture.detectChanges();
+    });
+
+    it('opens with empty city and PIN and saves the customer without asking for them', () => {
+      expect(component.addresses.at(0).value).toEqual(jasmine.objectContaining({ city: '', district: '', zip_code: '', state_code: '27' }));
+      component.form.patchValue({ phone: '9812345670' });
+      component.submit();
+      fixture.detectChanges();
+      expect(service.editCustomer).toHaveBeenCalledTimes(1);
+      expect(service.editCustomerAddress).withContext('untouched: not sent').not.toHaveBeenCalled();
+      expect(el().textContent).not.toContain('Enter the city.');
+    });
+
+    it('saves its other lines when they change, city and PIN still empty', () => {
+      component.addresses.at(0).patchValue({ address_line2: 'Near the lake' });
+      component.addresses.at(0).markAsDirty();
+      component.submit();
+      const address: any = service.editCustomerAddress.calls.mostRecent().args[0];
+      expect(address).toEqual(jasmine.objectContaining({ id: 7, address_line2: 'Near the lake', city: '', zip_code: '', state: 'Maharashtra' }));
+    });
+
+    it('still refuses a PIN code that is not 6 digits', () => {
+      component.addresses.at(0).patchValue({ zip_code: '1234' });
+      component.submit();
+      fixture.detectChanges();
+      expect(service.editCustomer).not.toHaveBeenCalled();
+      expect(el().textContent).toContain('Enter a 6-digit PIN code.');
     });
   });
 });

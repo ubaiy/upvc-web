@@ -29,6 +29,8 @@ export interface AddressValue {
   address: string;
   address_line2: string;
   city: string;
+  /** Filled by the PIN code directory; empty for a city typed by hand. */
+  district: string;
   state_code: string;
   zip_code: string;
 }
@@ -108,7 +110,9 @@ export function toAddressValues(dto: any, states: GstState[]): AddressValue[] {
     address: row.address || '',
     address_line2: row.address_line2 || '',
     city: row.city || '',
-    state_code: stateCodeFor(row.state, states),
+    district: row.district || '',
+    // An address saved since the PIN directory carries the code; older rows only the name.
+    state_code: stateCodeFor(row.state_code, states) || stateCodeFor(row.state, states),
     zip_code: row.zip_code || '',
   }));
 }
@@ -137,6 +141,7 @@ export function toCustomerPayload(value: CustomerFormValue, states: GstState[], 
       address: first.address.trim(),
       address_line2: first.address_line2.trim() || null,
       city: first.city.trim() || null,
+      district: first.district.trim() || null,
       state: stateName(first.state_code, states) || null,
       zip_code: first.zip_code.trim() || null,
     };
@@ -158,6 +163,7 @@ export function toAddressPayload(
     address: address.address.trim(),
     address_line2: address.address_line2.trim(),
     city: address.city.trim(),
+    district: address.district.trim() || null,
     state: stateName(address.state_code, states),
     zip_code: address.zip_code.trim(),
   };

@@ -23,6 +23,7 @@ const address = (over: Partial<AddressValue> = {}): AddressValue => ({
   address: '12 MG Road',
   address_line2: '',
   city: 'Dahod',
+  district: 'Dahod',
   state_code: '24',
   zip_code: '389151',
   ...over,
@@ -87,7 +88,7 @@ describe('customer adapter', () => {
       is_dealer: 0,
       gstin: null,
       state_code: '24',
-      address: { address: '12 MG Road', address_line2: null, city: 'Dahod', state: 'Gujarat', zip_code: '389151' },
+      address: { address: '12 MG Road', address_line2: null, city: 'Dahod', district: 'Dahod', state: 'Gujarat', zip_code: '389151' },
     });
   });
 
@@ -112,9 +113,11 @@ describe('customer adapter', () => {
       address: '12 MG Road',
       address_line2: '',
       city: 'Dahod',
+      district: 'Dahod',
       state: 'Gujarat',
       zip_code: '389151',
     });
+    expect(toAddressPayload(address({ id: 9, district: '' }), 3, true, STATES).district).withContext('a city typed by hand').toBeNull();
   });
 
   it('keeps only the quotations of one customer and reads status and total with fallbacks', () => {

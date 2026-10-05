@@ -26,7 +26,7 @@ describe('LocationService', () => {
     expect(request.request.context.get(SKIP_LOADER)).toBeTrue();
     expect(request.request.context.get(SKIP_ERROR_TOAST)).toBeTrue();
     request.flush({
-      data: { pincode: '395007', city: 'Surat', district: 'Surat', state_code: 24, state_name: 'Gujarat', localities: ['Adajan', ''] },
+      data: { pincode: '395007', city: 'Surat', district: 'Surat', state_code: 24, state_name: 'Gujarat', localities: ['Adajan', '', 'Athwa/Piplod / Umra', 'adajan'] },
     });
     expect(found).toEqual({
       pincode: '395007',
@@ -34,7 +34,7 @@ describe('LocationService', () => {
       district: 'Surat',
       stateCode: '24',
       stateName: 'Gujarat',
-      localities: ['Adajan'],
+      localities: ['Adajan', 'Athwa', 'Piplod', 'Umra'],
     });
 
     let again: PinLookup | null | undefined;

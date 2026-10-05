@@ -75,8 +75,20 @@ function toPinLookup(data: any, pin: string): PinLookup | null {
     district: String(data.district || ''),
     stateCode: data.state_code != null ? String(data.state_code) : '',
     stateName: String(data.state_name || ''),
-    localities: Array.isArray(data.localities) ? data.localities.map(String).filter(Boolean) : [],
+    localities: toLocalities(data.localities),
   };
+}
+
+/**
+ * The directory lists the areas of one post office in one string, split by
+ * slashes ("Athwa/Piplod/Umra/Vesu"). Each area is its own suggestion.
+ */
+function toLocalities(value: any): string[] {
+  const names = (Array.isArray(value) ? value : [])
+    .flatMap((entry) => String(entry ?? '').split('/'))
+    .map((name) => name.trim())
+    .filter(Boolean);
+  return names.filter((name, index) => names.findIndex((other) => other.toLowerCase() === name.toLowerCase()) === index);
 }
 
 function toCityOption(row: any): CityOption {

@@ -11,6 +11,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, concat, forkJoin, Observable, of, switchMap, toArray } from 'rxjs';
 import { Crumb } from 'src/app/shared/components/page-header/page-header.component';
 import { IResponseDto } from 'src/app/shared/model/common/response.model';
+import { PIN_PATTERN } from 'src/app/shared/services/location.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
 import { BillRow, billsOf, toBillRows } from '../../bills/bills.adapter';
@@ -30,7 +31,11 @@ import {
 } from '../customer.adapter';
 import { CustomerService } from '../customer.service';
 
-/** A block that has anything in it needs the whole address; an empty one is fine. */
+/**
+ * A block that has anything in it needs the whole address; an empty one is fine.
+ * An address saved before city and PIN code were asked for (T90) keeps working
+ * without them. A city or PIN the directory does not know is accepted as typed.
+ */
 function addressComplete(group: AbstractControl): ValidationErrors | null {
   const value = group.value as AddressValue;
   if (!value.id && isBlankAddress(value)) {
@@ -38,9 +43,10 @@ function addressComplete(group: AbstractControl): ValidationErrors | null {
   }
   const errors: ValidationErrors = {};
   if (!value.address.trim()) errors['address'] = true;
-  if (!value.city.trim()) errors['city'] = true;
+  const pin = value.zip_code.trim();
+  if (!value.city.trim() && !value.id) errors['city'] = true;
   if (!value.state_code) errors['state_code'] = true;
-  if (!/^[1-9][0-9]{5}$/.test(value.zip_code.trim())) errors['zip_code'] = true;
+  if (!(PIN_PATTERN.test(pin) || (!pin && value.id))) errors['zip_code'] = true;
   return Object.keys(errors).length ? errors : null;
 }
 
@@ -402,6 +408,7 @@ export class DetailsComponent implements OnInit {
         address: [address?.address ?? ''],
         address_line2: [address?.address_line2 ?? ''],
         city: [address?.city ?? ''],
+        district: [address?.district ?? ''],
         // A new address starts in the fabricator's own state.
         state_code: [address ? address.state_code : this.companyStateCode],
         zip_code: [address?.zip_code ?? ''],

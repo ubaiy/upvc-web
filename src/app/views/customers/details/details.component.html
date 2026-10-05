@@ -182,79 +182,30 @@
         </div>
 
         <div class="form-grid">
-          <div class="field span-2">
-            <label class="label" [for]="'addr-line-' + i">Address</label>
-            <input
-              class="input"
-              [id]="'addr-line-' + i"
-              type="text"
-              formControlName="address"
-              autocomplete="off"
-              [class.is-invalid]="addressInvalid(i, 'address')"
-              [attr.aria-invalid]="addressInvalid(i, 'address')"
-              [attr.aria-describedby]="addressInvalid(i, 'address') ? 'addr-line-e-' + i : null"
-            />
-            <span class="error" [id]="'addr-line-e-' + i" *ngIf="addressInvalid(i, 'address')"
-              >Enter the house or flat number and street.</span
-            >
-          </div>
+          <!-- PIN code first: it fills the city and the state (T90). -->
+          <app-address-fields [group]="$any(group)" [states]="states" [idSuffix]="'-' + i" [submitted]="submitted">
+            <div class="field span-2">
+              <label class="label" [for]="'addr-line-' + i">Address</label>
+              <input
+                class="input"
+                [id]="'addr-line-' + i"
+                type="text"
+                formControlName="address"
+                autocomplete="off"
+                [class.is-invalid]="addressInvalid(i, 'address')"
+                [attr.aria-invalid]="addressInvalid(i, 'address')"
+                [attr.aria-describedby]="addressInvalid(i, 'address') ? 'addr-line-e-' + i : null"
+              />
+              <span class="error" [id]="'addr-line-e-' + i" *ngIf="addressInvalid(i, 'address')"
+                >Enter the house or flat number and street.</span
+              >
+            </div>
 
-          <div class="field span-2">
-            <label class="label" [for]="'addr-line2-' + i">Area or landmark (optional)</label>
-            <input class="input" [id]="'addr-line2-' + i" type="text" formControlName="address_line2" autocomplete="off" />
-          </div>
-
-          <div class="field">
-            <label class="label" [for]="'addr-city-' + i">City</label>
-            <input
-              class="input"
-              [id]="'addr-city-' + i"
-              type="text"
-              formControlName="city"
-              autocomplete="off"
-              [class.is-invalid]="addressInvalid(i, 'city')"
-              [attr.aria-invalid]="addressInvalid(i, 'city')"
-              [attr.aria-describedby]="addressInvalid(i, 'city') ? 'addr-city-e-' + i : null"
-            />
-            <span class="error" [id]="'addr-city-e-' + i" *ngIf="addressInvalid(i, 'city')">Enter the city.</span>
-          </div>
-
-          <div class="field">
-            <label class="label" [for]="'addr-pin-' + i">PIN code</label>
-            <input
-              class="input num"
-              [id]="'addr-pin-' + i"
-              type="text"
-              inputmode="numeric"
-              maxlength="6"
-              formControlName="zip_code"
-              autocomplete="off"
-              [class.is-invalid]="addressInvalid(i, 'zip_code')"
-              [attr.aria-invalid]="addressInvalid(i, 'zip_code')"
-              [attr.aria-describedby]="addressInvalid(i, 'zip_code') ? 'addr-pin-e-' + i : null"
-            />
-            <span class="error" [id]="'addr-pin-e-' + i" *ngIf="addressInvalid(i, 'zip_code')"
-              >Enter a 6-digit PIN code.</span
-            >
-          </div>
-
-          <div class="field">
-            <label class="label" [for]="'addr-state-' + i">State</label>
-            <select
-              class="select"
-              [id]="'addr-state-' + i"
-              formControlName="state_code"
-              [class.is-invalid]="addressInvalid(i, 'state_code')"
-              [attr.aria-invalid]="addressInvalid(i, 'state_code')"
-              [attr.aria-describedby]="addressInvalid(i, 'state_code') ? 'addr-state-h-' + i : null"
-            >
-              <option value="">Choose a state</option>
-              <option *ngFor="let state of states" [value]="state.code">{{ state.name }}</option>
-            </select>
-            <span class="error" [id]="'addr-state-h-' + i" *ngIf="addressInvalid(i, 'state_code')"
-              >Choose the state.</span
-            >
-          </div>
+            <div class="field span-2">
+              <label class="label" [for]="'addr-line2-' + i">Area or landmark (optional)</label>
+              <input class="input" [id]="'addr-line2-' + i" type="text" formControlName="address_line2" autocomplete="off" />
+            </div>
+          </app-address-fields>
         </div>
       </div>
 
