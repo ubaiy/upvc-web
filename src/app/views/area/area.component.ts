@@ -1,3 +1,4 @@
+import { finalize } from 'rxjs/operators';
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -35,11 +36,18 @@ export class AreaComponent {
     return this.form.controls;
   }
 
+  /** True while a save is on its way: a second press does nothing. */
+  saving = false;
+
   public submit() {
     this.submitted = true;
+    if (this.saving) {
+      return;
+    }
     if (this.form.valid) {
+      this.saving = true;
       if (this.edit) {
-        this._dataService.editArea(this.form.getRawValue()).subscribe((res) => {
+        this._dataService.editArea(this.form.getRawValue()).pipe(finalize(() => (this.saving = false))).subscribe((res) => {
           if (res.success) {
             this.visible = false;
             this._toastService.showSuccess(res.message);
@@ -65,7 +73,7 @@ export class AreaComponent {
           }
         });
       } else {
-        this._dataService.addArea(this.form.getRawValue()).subscribe((res) => {
+        this._dataService.addArea(this.form.getRawValue()).pipe(finalize(() => (this.saving = false))).subscribe((res) => {
           if (res.success) {
             this.visible = false;
             this.form.reset();

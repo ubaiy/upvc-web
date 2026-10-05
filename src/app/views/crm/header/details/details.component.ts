@@ -1,3 +1,4 @@
+import { finalize } from 'rxjs/operators';
 import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -68,12 +69,19 @@ export class DetailsComponent implements OnInit, OnDestroy {
     this._router.navigate(['/crm/header']);
   }
 
+  /** True while a save is on its way: a second press does nothing. */
+  saving = false;
+
   public submit() {
     this.submitted = true;
+    if (this.saving) {
+      return;
+    }
     if (this.form.valid) {
+      this.saving = true;
       if (this.editable) {
         this._dataService
-          .editHeader(this.form.getRawValue())
+          .editHeader(this.form.getRawValue()).pipe(finalize(() => (this.saving = false)))
           .subscribe((res) => {
             if (res.success) {
               this._toastService.showSuccess(res.message);
@@ -85,7 +93,7 @@ export class DetailsComponent implements OnInit, OnDestroy {
           });
       } else {
         this._dataService
-          .addHeader(this.form.getRawValue())
+          .addHeader(this.form.getRawValue()).pipe(finalize(() => (this.saving = false)))
           .subscribe((res) => {
             if (res.success) {
               this._toastService.showSuccess(res.message);

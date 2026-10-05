@@ -102,7 +102,7 @@
     <p-button styleClass="p-button-secondary" (click)="toggleWarningModal()">
       Cancel
     </p-button>
-    <p-button (click)="submit()">
+    <p-button [disabled]="saving" (click)="submit()">
       {{ edit ? "Save" : "Add" }}
     </p-button>
   </c-modal-footer>

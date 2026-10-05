@@ -44,7 +44,7 @@
       </c-col>
     </c-row>
     <div class="mt-5 d-flex gap-4">
-      <p-button (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
+      <p-button [disabled]="saving" (click)="submit()"> {{ editable ? "Save" : "Add" }}</p-button>
       <p-button
         color="secondary"
         styleClass="p-button-secondary"
