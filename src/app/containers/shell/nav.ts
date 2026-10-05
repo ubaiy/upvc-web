@@ -48,7 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Colours', link: '/masters/profile-color' },
       { label: 'Glass', link: '/masters/glass' },
       { label: 'Hardware', link: '/masters/hardware' },
-      { label: 'Update rates', link: '/bulk-price-update' },
+      { label: 'Price file', link: '/bulk-price-update' },
     ],
   },
   {

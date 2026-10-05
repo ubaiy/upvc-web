@@ -46,8 +46,7 @@ describe('OrderCreateComponent (Create order)', () => {
   }
 
   beforeEach(() => {
-    service = jasmine.createSpyObj('OrdersService', ['quotation', 'forQuotation', 'create', 'termAdvancePercent']);
-    service.termAdvancePercent.and.returnValue(of(50));
+    service = jasmine.createSpyObj('OrdersService', ['quotation', 'forQuotation', 'create']);
     service.quotation.and.returnValue(ok(QUOTATION));
     service.forQuotation.and.returnValue(ok([]));
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
@@ -61,15 +60,14 @@ describe('OrderCreateComponent (Create order)', () => {
     });
   });
 
-  it("shows the term's own percentage when it is not the one the quotation was worked out with, and no amount of its own", async () => {
-    service.termAdvancePercent.and.returnValue(of(30));
+  it('shows the advance the api worked out from the payment term, percent and amount', async () => {
+    service.quotation.and.returnValue(of({ ok: true, data: { ...QUOTATION, totals: { ...QUOTATION.totals, advance: { percent: 30, amount: 10637 } } } } as any));
     await create();
-    expect(text()).toContain('Advance30%of the order total, by the payment terms.');
-    expect(text()).not.toContain('₹17,728.00');
+    expect(text()).toContain('Advance₹10,637.0030% by the payment terms');
   });
 
   it('says there is no advance when the term asks for none', async () => {
-    service.termAdvancePercent.and.returnValue(of(0));
+    service.quotation.and.returnValue(of({ ok: true, data: { ...QUOTATION, totals: { ...QUOTATION.totals, advance: { percent: 0, amount: 0 } } } } as any));
     await create();
     expect(text()).toContain('AdvanceNoneThe payment terms name no advance');
   });
@@ -86,7 +84,6 @@ describe('OrderCreateComponent (Create order)', () => {
     expect(text()).toContain('Al-Rashid Villa Windows');
     expect(text()).toContain('Order total₹35,456.00');
     expect(text()).toContain('Advance₹17,728.0050% by the payment terms');
-    expect(service.termAdvancePercent).toHaveBeenCalledWith(1);
     expect(el().querySelectorAll('.btn-primary').length).toBe(1);
     expect(el().querySelector('.btn-primary')?.textContent).toContain('Create order');
   });

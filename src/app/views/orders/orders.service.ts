@@ -31,20 +31,6 @@ export class OrdersService {
       .pipe(map((res) => toResult(res, toOrders, 'The orders could not be loaded.')));
   }
 
-  /**
-   * The advance a payment term asks for, as a percentage: the term's own
-   * field, else what the api reads in its wording. Null when it has none.
-   */
-  termAdvancePercent(termId: number): Observable<number | null> {
-    return this.api.get('payment-term/list', quiet()).pipe(
-      map((res: any) => {
-        const term = (Array.isArray(res?.data) ? res.data : []).find((row: any) => Number(row?.id) === termId);
-        const percent = term?.advance_percent ?? term?.advance_percent_in_use;
-        return percent === null || percent === undefined || !Number.isFinite(Number(percent)) ? null : Number(percent);
-      })
-    );
-  }
-
   counts(): Observable<Result<StageCounts>> {
     return this.api
       .get('order/stage-counts', quiet())

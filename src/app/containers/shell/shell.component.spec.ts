@@ -58,7 +58,7 @@ describe('shell navigation', () => {
   it('draws no section tabs: Catalogue and Settings are one page each and only name their places for the page finder', () => {
     expect(NAV_ITEMS.some((item) => 'tabs' in item)).toBeFalse();
     const places = (id: string) => NAV_ITEMS.find((item) => item.id === id)?.places?.map((place) => place.label);
-    expect(places('catalogue')).toEqual(['Profiles', 'Colours', 'Glass', 'Hardware', 'Update rates']);
+    expect(places('catalogue')).toEqual(['Profiles', 'Colours', 'Glass', 'Hardware', 'Price file']);
     expect(places('settings')).toEqual(['Company', 'Team', 'Pricing and tax', 'Documents', 'Your profile']);
   });
 });
