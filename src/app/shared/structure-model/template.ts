@@ -67,7 +67,8 @@ export function normalizeParams(def: TemplateDef, input: Params): Params {
     } else {
       let v = typeof raw === 'number' && Number.isFinite(raw) ? raw : (s.default as number);
       const step = s.step ?? 1;
-      v = Math.round(v / step) * step;
+      // On its step, without the 58.800000000000004 of binary fractions.
+      v = Number((Math.round(v / step) * step).toFixed(4));
       p[s.key] = clamp(v, s.min ?? -Infinity, s.max ?? Infinity);
     }
   }

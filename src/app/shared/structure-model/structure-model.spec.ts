@@ -141,6 +141,8 @@ describe('structure-model templates', () => {
     expect(p['width']).toBe(3600);
     expect(p['height']).toBe(3600);
     expect(() => createStructure('igloo')).toThrowError(/Unknown structure template/);
+    expect(normalizeParams(templateOf('bay')!, { angle: 58.8 })['angle']).toBe(58.8);
+    expect(normalizeParams(templateOf('bay')!, { angle: 44.96 })['angle']).toBe(45);
   });
 });
 
