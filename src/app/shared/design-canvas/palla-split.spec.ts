@@ -26,6 +26,12 @@ describe('DesignCanvasComponent: Split / Transom on one palla (T127)', () => {
   let fixture: ComponentFixture<DesignCanvasComponent>;
   let component: DesignCanvasComponent;
 
+  /**
+   * T144: a divided palla adds bars[] and panes[] to ITS part of the price payload (payload-extras.spec.ts pins them).
+   * Everything else of the payload is what the undivided design sends.
+   */
+  const withoutBars = (payload: any) => ({ ...payload, parts: payload.parts.map(({ bars, panes, ...part }: any) => part) });
+
   function create(model: WindowDesign): void {
     fixture = TestBed.createComponent(DesignCanvasComponent);
     component = fixture.componentInstance;
@@ -118,7 +124,7 @@ describe('DesignCanvasComponent: Split / Transom on one palla (T127)', () => {
     expect(component.splitSelected('y')).toBeTrue();
     expect(leaf(right.id).bars).toEqual({ axis: 'y', at: [0.5] });
     expect(find('palla-bar').length).toBe(2);
-    expect(toPayload(component.design)).toEqual(toPayload(model));
+    expect(withoutBars(toPayload(component.design))).toEqual(toPayload(model));
   });
 
   for (const mesh of [true, false]) {
@@ -152,7 +158,7 @@ describe('DesignCanvasComponent: Split / Transom on one palla (T127)', () => {
       const b = pxFromMm(component.currentView(), palla.xMm + palla.wMm, palla.yMm + palla.hMm);
       expect(drawn[0].x()).toBeGreaterThanOrEqual(a.x - 0.5);
       expect(drawn[0].x() + drawn[0].width()).toBeLessThanOrEqual(b.x + 0.5);
-      expect(toPayload(component.design)).toEqual(toPayload(model));
+      expect(withoutBars(toPayload(component.design))).toEqual(toPayload(model));
     });
   }
 
@@ -165,7 +171,7 @@ describe('DesignCanvasComponent: Split / Transom on one palla (T127)', () => {
     expect(leaves().length).toBe(3);
     expect(leaf(leafA.id).bars).toEqual({ axis: 'y', at: [0.5] });
     expect(leaf(leafB.id).bars).toBeUndefined();
-    expect(toPayload(component.design)).toEqual(toPayload(model));
+    expect(withoutBars(toPayload(component.design))).toEqual(toPayload(model));
     component.selectPane(light.id);
     expect(component.toolHint).toContain('frame divider');
     expect(component.splitSelected('x')).toBeTrue();
