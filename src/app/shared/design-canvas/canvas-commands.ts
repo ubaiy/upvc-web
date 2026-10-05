@@ -120,6 +120,10 @@ export function toolHint(h: CanvasHost): string {
     const over = h.ghost
       ? splitTargetOf(lay, h.ghost.paneId, { panelIndex: h.ghost.panelIndex, whole: h.ghost.whole })
       : null;
+    const crossed = over ? barsAcross(h, over, h.armedTool === 'split-x' ? 'x' : 'y') : '';
+    if (over && crossed) {
+      return `${bar} divider: ${over.label} already has ${crossed} bars. Remove them first (pick a bar, Delete), or Alt+click for a frame divider across the pane.`;
+    }
     return over
       ? `${bar} divider: click to divide ${over.label}. Alt+click puts a frame divider across the pane. Esc cancels.`
       : `${bar} divider: pick the palla to divide (it is outlined under the pointer). Esc cancels.`;
@@ -133,10 +137,25 @@ export function toolHint(h: CanvasHost): string {
   if (sel?.type === 'pane' && !sel.paneIds) {
     const target = splitTargetOf(lay, sel.paneId, { panelIndex: sel.panelIndex });
     if (!target) return 'Pick one shutter of the slider: Split or Transom then divides that shutter only.';
+    const has = barsAcross(h, target, 'x') || barsAcross(h, target, 'y');
+    if (has) {
+      // A palla carries bars one way: say which tool still works on it.
+      const [more, other] = has === 'vertical' ? ['Split', 'Transom'] : ['Transom', 'Split'];
+      return `${more} adds another bar to ${target.label} only. ${other} needs its ${has} bars removed first (pick a bar, Delete).`;
+    }
     return `Split / Transom will divide ${target.label} only.`;
   }
   if (sel?.type === 'bar') return 'Drag the bar to move it. Delete removes it.';
   return '';
+}
+
+/** 'vertical' / 'horizontal' when the palla already has bars that a bar along `axis` would cross. */
+function barsAcross(h: CanvasHost, target: SplitTarget, axis: 'x' | 'y'): string {
+  if (!target.palla) return '';
+  const node = findNode(h.design.root, target.paneId);
+  const bars = node && isLeaf(node) ? pallaBarsOf(node, target.panelIndex) : undefined;
+  if (!bars || bars.axis === axis) return '';
+  return bars.axis === 'x' ? 'vertical' : 'horizontal';
 }
 
 export function trySplit(

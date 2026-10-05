@@ -39,7 +39,7 @@ import {
   sashFacePx,
   shadeColor,
 } from './render-common';
-import { drawPallaBars } from './render-bars';
+import { drawPallaBars, drawPallaPartLabels } from './render-bars';
 import { drawGlass, drawShutterSash, meshSashColor, shutterColor } from './render-sash';
 
 /** One shutter as drawn. */
@@ -237,6 +237,11 @@ export function drawSlidingLeaf(
       drawTouchLock(parent, sh, s.facePx);
     }
     if (ctx.detail === 'full') drawTrackBadge(parent, glass, String(sh.track + 1), sh.track);
+    drawPallaPartLabels(parent, slide.panels[sh.index]?.bars, sh.rect, ctx, {
+      paneId: leaf.id,
+      panelIndex: sh.index,
+      railPx: s.facePx,
+    });
   }
 }
 

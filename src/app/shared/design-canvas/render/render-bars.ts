@@ -52,3 +52,78 @@ export function drawPallaBars(
     parent.add(bar);
   });
 }
+
+export interface PallaPartLabelOpts {
+  paneId: string;
+  panelIndex?: number;
+  /** Depth of the palla's top rail on screen: the first label sits below it. */
+  railPx: number;
+}
+
+/**
+ * The mm size of every part of a divided palla, each on its own white pill
+ * (the look of a pane's size label). A part runs from the palla's edge, or
+ * from the face of a bar, to the next one: the same reading as the panes on
+ * the two sides of a frame divider.
+ */
+export function drawPallaPartLabels(
+  parent: Parent,
+  bars: PallaBars | undefined,
+  outer: PxRect,
+  ctx: RenderCtx,
+  o: PallaPartLabelOpts
+): void {
+  if (!bars || ctx.detail === 'tiny') return;
+  const alongX = bars.axis === 'x';
+  const flipped = alongX && ctx.flip;
+  const face = Math.max(2, ctx.px(PALLA_BAR_FACE_MM));
+  const span = alongX ? outer.w : outer.h;
+  const cuts = bars.at.map((at) => (flipped ? 1 - at : at) * span).sort((a, b) => a - b);
+  const edges = [0, ...cuts, span];
+  const last = edges.length - 2;
+  const compact = ctx.detail === 'compact';
+  for (let i = 0; i <= last; i++) {
+    const from = edges[i] + (i === 0 ? 0 : face / 2);
+    const to = edges[i + 1] - (i === last ? 0 : face / 2);
+    const part: PxRect = alongX
+      ? { x: outer.x + from, y: outer.y, w: to - from, h: outer.h }
+      : { x: outer.x, y: outer.y + from, w: outer.w, h: to - from };
+    const wMm = Math.round(part.w / ctx.view.pxPerMm);
+    const hMm = Math.round(part.h / ctx.view.pxPerMm);
+    const label = new Konva.Text({
+      text: compact ? `${wMm} × ${hMm}` : `${wMm} × ${hMm} mm`,
+      fontSize: compact ? 9 : 11,
+      fill: COL.label,
+      listening: false,
+      name: 'palla-part-label',
+    });
+    const textW = label.width();
+    // A label wider than its part would run into the next one: left out.
+    if (textW + 10 > part.w || label.height() + 14 > part.h) continue;
+    const lx = part.x + (part.w - textW) / 2;
+    // Under the top rail; a part below a bar starts on the glass already.
+    const ly = part.y + 6 + (alongX || i === 0 ? o.railPx : 0);
+    label.position({ x: lx, y: ly });
+    label.setAttrs({
+      paneId: o.paneId,
+      panelIndex: o.panelIndex ?? null,
+      part: flipped ? last - i : i,
+      wMm,
+      hMm,
+    });
+    parent.add(
+      new Konva.Rect({
+        x: lx - 4,
+        y: ly - 2,
+        width: textW + 8,
+        height: label.height() + 4,
+        cornerRadius: 3,
+        fill: '#ffffff',
+        opacity: 0.85,
+        listening: false,
+        name: 'palla-part-label-bg',
+      })
+    );
+    parent.add(label);
+  }
+}

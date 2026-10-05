@@ -11,7 +11,7 @@ import Konva from 'konva';
 import { LeafNode } from '../../design-model';
 import { drawOpenableCasement } from './render-casement';
 import { COL, Parent, PxRect, RenderCtx, insetPx, shadeColor } from './render-common';
-import { drawPallaBars } from './render-bars';
+import { drawPallaBars, drawPallaPartLabels } from './render-bars';
 import { drawGlass, drawSashFrame, sashColor } from './render-sash';
 import { drawSlidingLeaf } from './render-sliding';
 
@@ -71,6 +71,12 @@ export function drawPaneLabel(
   inside: boolean
 ): void {
   if (ctx.detail === 'tiny') return;
+  if (leaf.bars && leaf.category !== 'Slidding') {
+    // A divided palla: every part carries its own size instead of one for the whole.
+    const railPx = leaf.casementType === 'Openable' ? Math.min(ctx.px(64), r.h * 0.16) : ctx.facePx;
+    drawPallaPartLabels(parent, leaf.bars, r, ctx, { paneId: leaf.id, railPx });
+    return;
+  }
   const wMm = Math.round(r.w / ctx.view.pxPerMm);
   const hMm = Math.round(r.h / ctx.view.pxPerMm);
   const compact = ctx.detail === 'compact';
