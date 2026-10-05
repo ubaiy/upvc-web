@@ -124,13 +124,14 @@ export function bounds(structure: Structure): Bounds {
   return { min, max };
 }
 
-export type FillKey = 'fixed' | 'casement' | 'top-hung' | 'door' | 'panel' | 'open';
+export type FillKey = 'fixed' | 'casement' | 'top-hung' | 'door' | 'sliding' | 'panel' | 'open';
 
 export const FILL_LABEL: Record<FillKey, string> = {
   fixed: 'Fixed glass',
   casement: 'Casement (side-hung)',
   'top-hung': 'Top-hung vent',
   door: 'Door',
+  sliding: 'Sliding (2 leaves)',
   panel: 'Solid panel',
   open: 'Open (no infill)',
 };

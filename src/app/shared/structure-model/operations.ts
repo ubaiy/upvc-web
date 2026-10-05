@@ -25,8 +25,9 @@ export function paramsOf(structure: Structure): { def: TemplateDef; params: Para
 
 /**
  * Run the template again with other parameters. The name and colours are
- * kept, and so is the fill of every face the user changed by hand whose id
- * still exists (panel 3 of the front wall stays a door while the wall grows).
+ * kept, and so are the fill and the glass tint of every face the user changed
+ * by hand whose id still exists (panel 3 of the front wall stays a door while
+ * the wall grows).
  */
 export function retemplate(structure: Structure, params: Params): Structure {
   const own = paramsOf(structure);
@@ -40,7 +41,8 @@ export function retemplate(structure: Structure, params: Params): Structure {
     appearance: structure.appearance,
     faces: next.faces.map((face) => {
       const old = edited.get(face.id);
-      return old && old.role === face.role ? { ...face, fill: old.fill, edited: true } : face;
+      if (!old || old.role !== face.role) return face;
+      return { ...face, fill: old.fill, edited: true, ...(old.glassTint ? { glassTint: old.glassTint } : {}) };
     }),
   };
 }
@@ -65,6 +67,20 @@ export function setFaceFill(structure: Structure, faceIds: string[], key: FillKe
   return {
     ...structure,
     faces: structure.faces.map((f) => (ids.has(f.id) ? { ...f, fill: fillFor(f, key), edited: true } : f)),
+  };
+}
+
+/** A glass tint for these faces only; null puts them back on the tint of the structure. */
+export function setFaceGlassTint(structure: Structure, faceIds: string[], tint: string | null): Structure {
+  const ids = new Set(faceIds);
+  if (!structure.faces.some((f) => ids.has(f.id))) return structure;
+  return {
+    ...structure,
+    faces: structure.faces.map((f) => {
+      if (!ids.has(f.id)) return f;
+      const { glassTint: _own, ...rest } = f;
+      return tint ? { ...rest, glassTint: tint, edited: true } : rest;
+    }),
   };
 }
 

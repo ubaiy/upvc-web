@@ -15,7 +15,7 @@ export type Vec3 = [number, number, number];
 export type Vec2 = [number, number];
 
 /** How a framed face opens. The full WindowDesign joins it on a later card. */
-export type FaceOpening = 'fixed' | 'casement' | 'top-hung' | 'door';
+export type FaceOpening = 'fixed' | 'casement' | 'top-hung' | 'door' | 'sliding';
 
 export type FaceFill =
   /** A framed unit; `design` is filled in when the 2D designer is wired to faces. */
@@ -40,6 +40,8 @@ export interface Face {
   /** Outline in face (u, v) mm, anticlockwise seen from outside, on the system lines. */
   outline: Vec2[];
   fill: FaceFill;
+  /** Drawing tint of this face's glass; absent = the tint of the structure (appearance.glassTint). */
+  glassTint?: string;
   /** True once the user changed this face by hand; a template re-run keeps its fill. */
   edited?: boolean;
 }
