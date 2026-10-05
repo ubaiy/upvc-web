@@ -197,9 +197,14 @@ describe('ProductionComponent', () => {
 
   it('opens the preview inline in a sandboxed frame and closes it again', async () => {
     create(job());
-    service.getDocument.and.returnValue(of({ blob: new Blob(['<html></html>'], { type: 'text/html' }), fileName: null }));
+    // The page reads the file's text before it shows the frame. The test holds that read itself and waits
+    // for it, instead of waiting a fixed time that a busy machine can outlast.
+    const blob = new Blob(['<html></html>'], { type: 'text/html' });
+    const read = Promise.resolve('<html></html>');
+    spyOn(blob, 'text').and.returnValue(read);
+    service.getDocument.and.returnValue(of({ blob, fileName: null }));
     labelled('Preview Cutting list').click();
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await read;
     fixture.detectChanges();
     expect(service.getDocument).toHaveBeenCalledWith('14', 'cutting-list', 'html', 1);
     const frame = el().querySelector<HTMLIFrameElement>('iframe.preview-frame')!;
