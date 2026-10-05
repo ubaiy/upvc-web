@@ -271,14 +271,13 @@ input:focus-visible {
   user-select: none;
 }
 
-// Inside the shell the designer takes the whole content area (the component measures it).
-:host(.sd-fill) .sd--design {
-  position: fixed;
+// Inside the shell the designer takes the whole content area: the shell's <main> is the
+// containing block and is as tall as the window (less the phone's tab bar), so nothing is measured.
+:host-context(main) .sd--design {
+  position: absolute;
   z-index: 1;
-  left: var(--sd-x, 0);
-  top: var(--sd-y, 0);
-  width: var(--sd-w, 100vw);
-  height: var(--sd-h, 100vh);
+  inset: 0;
+  height: auto;
   min-height: 0;
   border: 0;
   border-radius: 0;

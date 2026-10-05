@@ -66,6 +66,9 @@ const HORIZON = '#bcc8d2';
 const PAPER = '#ffffff';
 /** How much of the free view a fitted structure fills. */
 const FIT_FILL = 0.8;
+/** The person for scale (buildHuman), mm. */
+const HUMAN_HEIGHT = 1700;
+const HUMAN_HALF_WIDTH = 215;
 const ACCENT = '#0e6f6a';
 const VIEW: Record<ViewPreset, Vector3> = {
   '3d': new Vector3(0.62, 0.4, 1).normalize(),
@@ -239,6 +242,11 @@ export class StructureScene {
     this.half.copy(size).multiplyScalar(0.5);
     this.extent = structure.joints.flatMap((j) => [new Vector3(...j.a).sub(this.centre), new Vector3(...j.b).sub(this.centre)]);
     this.placeStage(box.min[0], box.max[2]);
+    // Fit counts the person for scale too, so it stands in the free part of the view and never behind a panel.
+    if (this.human.visible) {
+      const at = this.human.position;
+      for (const dx of [-HUMAN_HALF_WIDTH, HUMAN_HALF_WIDTH]) for (const y of [0, HUMAN_HEIGHT]) this.extent.push(new Vector3(at.x + dx, y, at.z).sub(this.centre));
+    }
     this.contact.position.set(this.centre.x, -0.5, this.centre.z);
     this.contact.scale.set(Math.max(size.x * 1.5, 900), Math.max(size.z * 1.5, 900), 1);
     this.renderer.shadowMap.needsUpdate = true;

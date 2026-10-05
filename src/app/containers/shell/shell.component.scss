@@ -46,7 +46,9 @@
 .who { width: 28px; height: 28px; margin-inline-start: -6px; border-radius: var(--r-full); background: var(--c-accent-soft); color: var(--c-accent-text); display: grid; place-items: center; font-size: var(--fs-12); font-weight: var(--fw-semibold); flex: none; }
 .account-menu { position: absolute; inset-block-end: calc(100% + var(--s-1)); inset-inline-start: 0; z-index: 40; }
 
-.main { min-width: 0; }
+// A screen that is all canvas (the 3D structure designer) lays itself over the whole of .main:
+// .main is the containing block and, with the grid row, as tall as the window.
+.main { min-width: 0; position: relative; }
 .main:focus { outline: none; box-shadow: none; }
 .page-wide { max-width: none; }
 
@@ -74,6 +76,8 @@
 @media (max-width: 640px) {
   .shell { display: block; padding-block-end: calc(var(--h-bar) + env(safe-area-inset-bottom, 0px)); }
   .side { display: none; }
+  // As tall as the window less the bar, so a full-area screen ends on the bar and not under it.
+  .main { min-height: calc(100vh - var(--h-bar) - env(safe-area-inset-bottom, 0px)); min-height: calc(100dvh - var(--h-bar) - env(safe-area-inset-bottom, 0px)); }
   .bar {
     position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 30;
     display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));

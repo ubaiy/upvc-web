@@ -1,10 +1,10 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
+import { BehaviorSubject, firstValueFrom } from 'rxjs';
+import { WorkspaceService } from '../../containers/shell/workspace.service';
 import { fillKey, serializeStructure } from '../../shared/structure-model';
-import { StructureDesignerComponent } from './structure-designer.component';
-import { StructureStoreService } from './structure-store.service';
-
-const STORE_KEY = 'upvc.structures.v1';
+import { canSlide, StructureDesignerComponent } from './structure-designer.component';
+import { STRUCTURE_STORE_KEY as STORE_KEY, StructureStore } from './structure-store.service';
 
 // The 3D view is driven through its callbacks here (pick, dragDim), so the
 // specs hold with or without WebGL in the test browser. The pictures and the
@@ -20,7 +20,11 @@ describe('StructureDesignerComponent', () => {
   async function make(query: Record<string, string> = {}): Promise<void> {
     await TestBed.configureTestingModule({
       imports: [StructureDesignerComponent],
-      providers: [{ provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } }],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query) } } },
+        { provide: WorkspaceService, useValue: { workspace$: new BehaviorSubject({ name: 'Hakimi Enterprise' }) } },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(StructureDesignerComponent);
     c = fixture.componentInstance;
@@ -247,19 +251,65 @@ describe('StructureDesignerComponent', () => {
     inner().pick({ kind: 'face', id: 'front-2' }, false);
     c.setFill('door');
     const saved = serializeStructure(c.structure!);
+    const store = TestBed.inject(StructureStore);
+    const navigate = spyOn(TestBed.inject(Router), 'navigate').and.resolveTo(true);
+    const waitFor = async (done: () => boolean): Promise<void> => {
+      for (let i = 0; i < 200 && !done(); i++) await new Promise((r) => setTimeout(r, 20));
+    };
     c.save();
+    await waitFor(() => navigate.calls.count() === 1);
+    // Save goes back to the list of saved structures.
+    expect(navigate).toHaveBeenCalledWith(['/structures']);
     c.save(); // a second save goes over the first
-    expect(c.saved.length).toBe(1);
-    expect(c.message).toContain('Saved');
-    c.close();
-    fixture.detectChanges();
-    expect(el.querySelector('.sd-saved__row strong')?.textContent).toBe('Verandah for Mr Shah');
-    el.querySelector<HTMLElement>('.sd-saved__row')?.click();
-    fixture.detectChanges();
+    await waitFor(() => navigate.calls.count() === 2);
+    const rows = await firstValueFrom(store.list());
+    expect(rows.length).toBe(1);
+    expect(rows[0].name).toBe('Verandah for Mr Shah');
+    expect(rows[0].kind).toBe('lean-to');
+    expect(rows[0].overall.depthMm).toBe(3000);
+    expect(c.savedId).toBe(rows[0].id);
+
+    // The list opens it again by id.
+    fixture.destroy();
+    TestBed.resetTestingModule();
+    await make({ id: rows[0].id });
     expect(serializeStructure(c.structure!)).toBe(saved);
     expect(c.num('projection')).toBe(3000);
-    c.removeSaved(c.saved[0], new Event('click'));
-    expect(TestBed.inject(StructureStoreService).list()).toEqual([]);
+    expect(el.querySelector('[data-action="back"]')?.textContent).toContain('Structures');
+  });
+
+  it('says so when the saved structure of the address is gone', async () => {
+    await make({ id: 'nothing-here' });
+    expect(c.structure).toBeNull();
+    expect(c.message).toContain('no longer saved on this device');
+    expect(el.querySelectorAll('.sd-card').length).toBe(6);
+  });
+
+  it('does not offer Sliding for a panel that is not a rectangle, and says why', async () => {
+    await make({ kind: 'lean-to' });
+    const raked = c.structure!.faces.find((f) => !canSlide(f))!;
+    const plain = c.structure!.faces.find((f) => canSlide(f) && f.fill.kind === 'design')!;
+    expect(raked).withContext('a lean-to has raked side panels').toBeTruthy();
+    inner().pick({ kind: 'face', id: raked.id }, false);
+    fixture.detectChanges();
+    const button = el.querySelector<HTMLButtonElement>('.sd-fills [data-fill="sliding"]')!;
+    expect(button.disabled).toBeTrue();
+    expect(el.querySelector('.sd-why')?.textContent).toContain('Sliding needs a rectangular panel');
+    c.setFill('sliding'); // not through the button either
+    expect(fillKey(c.structure!.faces.find((f) => f.id === raked.id)!)).not.toBe('sliding');
+    expect(c.message).toContain('rectangular');
+
+    inner().pick({ kind: 'face', id: plain.id }, false);
+    fixture.detectChanges();
+    expect(el.querySelector<HTMLButtonElement>('.sd-fills [data-fill="sliding"]')!.disabled).toBeFalse();
+    expect(el.querySelector('.sd-why')).toBeNull();
+    c.setFill('sliding');
+    expect(fillKey(c.structure!.faces.find((f) => f.id === plain.id)!)).toBe('sliding');
+
+    // A mixed selection: Sliding is held back and the count is given.
+    c.selectFaces([raked.id, plain.id]);
+    fixture.detectChanges();
+    expect(el.querySelector('.sd-why')?.textContent).toContain('1 of the 2 selected is not');
   });
 
   it('opens an exported JSON file and refuses another file with a plain message', async () => {

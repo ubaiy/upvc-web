@@ -20,7 +20,7 @@ import {
   ViewChild,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import {
   barSection,
   createStructure,
@@ -56,7 +56,9 @@ import {
   TEMPLATES,
 } from '../../shared/structure-model';
 import { environment } from '../../../environments/environment';
-import { SavedStructure, StructureStoreService } from './structure-store.service';
+import { WorkspaceService } from '../../containers/shell/workspace.service';
+import { customerSheet, sheetFacts } from './customer-sheet';
+import { StructureStore } from './structure-store.service';
 import { PickTarget } from './three/structure-mesh';
 import { LabelPosition, OrbitBenchmark, StructureScene, ViewInsets, ViewPreset, webglAvailable } from './three/structure-scene';
 
@@ -88,7 +90,7 @@ const GLASS_TINTS = [
 @Component({
   selector: 'app-structure-designer',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './structure-designer.component.html',
   styleUrls: ['./structure-designer.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -124,8 +126,9 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   rightOpen = window.innerWidth >= OPEN_FROM_PX;
   editingDim: string | null = null;
   dimDraft = '';
-  saved: SavedStructure[] = [];
+  /** The saved structure this one was opened from, or was last saved as. */
   savedId: string | null = null;
+  saving = false;
   openList = false;
   message = '';
   showDims = true;
@@ -133,7 +136,6 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   private scene: StructureScene | null = null;
   private canvasEl: HTMLCanvasElement | null = null;
   private observer: ResizeObserver | null = null;
-  private shellObserver: ResizeObserver | null = null;
   /** The document before a slider or handle gesture began; the gesture is one undo step. */
   private gestureBase: Structure | null = null;
   private messageTimer = 0;
@@ -155,13 +157,16 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   constructor(
     private readonly cdr: ChangeDetectorRef,
     private readonly zone: NgZone,
-    private readonly store: StructureStoreService,
+    private readonly store: StructureStore,
     private readonly route: ActivatedRoute,
-    private readonly host: ElementRef<HTMLElement>
+    private readonly router: Router,
+    private readonly workspace: WorkspaceService
   ) {
-    this.saved = this.store.list();
-    const kind = this.route.snapshot.queryParamMap.get('kind');
-    if (kind && TEMPLATES.some((t) => t.kind === kind)) this.start(kind);
+    const query = this.route.snapshot.queryParamMap;
+    const kind = query.get('kind');
+    const id = query.get('id');
+    if (id) this.openSaved(id);
+    else if (kind && TEMPLATES.some((t) => t.kind === kind)) this.start(kind);
     // For the end-to-end script and the frame-rate measurement of the review log; not in a production build.
     if (!environment.production) (window as unknown as Record<string, unknown>)['structureDesigner'] = this;
   }
@@ -172,39 +177,10 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     if (!this.structure && this.webgl) setTimeout(() => this.drawThumbnails(), 30);
-    const main = this.host.nativeElement.closest('main');
-    if (main && typeof ResizeObserver !== 'undefined') {
-      this.shellObserver = new ResizeObserver(() => this.fillContentArea());
-      this.shellObserver.observe(main);
-    }
-    this.fillContentArea();
-  }
-
-  /**
-   * The designer takes the whole content area of the shell (beside the menu,
-   * above the phone's tab bar), not the padded column a page of forms gets.
-   * The start screen stays an ordinary page.
-   */
-  private fillContentArea(): void {
-    const host = this.host.nativeElement;
-    const main = host.closest('main');
-    const on = !!main && !!this.structure;
-    host.classList.toggle('sd-fill', on);
-    if (!main || !on) return;
-    const area = main.getBoundingClientRect();
-    const top = Math.max(0, (host.parentElement ?? main).getBoundingClientRect().top);
-    host.style.setProperty('--sd-x', `${Math.round(area.left)}px`);
-    host.style.setProperty('--sd-y', `${Math.round(top)}px`);
-    host.style.setProperty('--sd-w', `${Math.round(area.width)}px`);
-    // The room the shell keeps free under the content (the phone's tab bar) is its own bottom padding.
-    let reserved = 0;
-    for (let el = main.parentElement; el && el !== document.body; el = el.parentElement) reserved += parseFloat(getComputedStyle(el).paddingBottom) || 0;
-    host.style.setProperty('--sd-h', `${Math.round(window.innerHeight - reserved - top)}px`);
   }
 
   @HostListener('window:resize')
   onWindowResize(): void {
-    this.fillContentArea();
     this.pushInsets(false);
   }
 
@@ -229,8 +205,6 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    this.shellObserver?.disconnect();
-    this.host.nativeElement.classList.remove('sd-fill');
     this.dropScene();
     window.clearTimeout(this.messageTimer);
     const w = window as unknown as Record<string, unknown>;
@@ -276,8 +250,24 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.gestureBase = null;
     this.sheet = 'shape';
     this.openList = false;
-    this.fillContentArea();
     this.refresh(true);
+  }
+
+  /** A saved structure, opened from the list (?id=). */
+  private openSaved(id: string): void {
+    this.store.get(id).subscribe({
+      next: (saved) => {
+        this.open(saved.document, saved.id);
+        this.cdr.markForCheck();
+      },
+      error: (e: Error) => this.say(e.message),
+    });
+  }
+
+  /** Back: a saved structure goes back to the list it was opened from, a new one to the shapes. */
+  back(): void {
+    if (this.savedId) void this.router.navigate(['/structures']);
+    else this.close();
   }
 
   /** Back to the start screen. */
@@ -286,8 +276,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.def = null;
     this.summary = null;
     this.dims = [];
-    this.saved = this.store.list();
-    this.fillContentArea();
+    this.savedId = null;
     this.cdr.markForCheck();
     if (this.webgl) setTimeout(() => this.drawThumbnails(), 30);
   }
@@ -522,6 +511,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     tint: string | null;
     /** Some selected panel has a tint of its own. */
     ownTint: boolean;
+    /** Why Sliding is not offered for this selection; '' when it is. */
+    noSliding: string;
   } | null {
     const s = this.structure;
     const first = this.face;
@@ -531,7 +522,14 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     const area = chosen.reduce((sum, f) => sum + faceAreaSqMm(f), 0) / 1e6;
     const size = panelSize(first);
     const tints = new Set(chosen.filter(isGlazed).map((f) => f.glassTint ?? s.appearance.glassTint));
+    const raked = chosen.filter((f) => !canSlide(f)).length;
+    const noSliding = !raked
+      ? ''
+      : chosen.length === 1
+        ? 'Sliding needs a rectangular panel: two leaves cannot run on a sloped or pointed frame.'
+        : `Sliding needs rectangular panels: ${raked} of the ${chosen.length} selected ${raked === 1 ? 'is' : 'are'} not.`;
     return {
+      noSliding,
       glazed: tints.size > 0,
       tint: tints.size === 1 ? [...tints][0] : null,
       ownTint: chosen.some((f) => !!f.glassTint),
@@ -561,6 +559,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   setFill(key: FillKey): void {
     const h = this.history;
     if (!h || !this.selectedFaces.length) return;
+    const why = key === 'sliding' ? this.faceInfo?.noSliding : '';
+    if (why) return this.say(why);
     h.push(setFaceFill(h.present, this.selectedFaces, key));
     this.refresh();
   }
@@ -644,27 +644,24 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.sheet = sheet;
   }
 
+  /** Save with a small picture for the list, then back to the list. */
   save(): void {
     const s = this.structure;
-    if (!s) return;
-    const id = this.store.save(s, this.savedId);
-    if (!id) return this.say('Could not save: the browser storage is full or blocked. Use Export JSON.');
-    this.savedId = id;
-    this.saved = this.store.list();
-    this.say(`Saved "${s.name}" in this browser`);
-  }
-
-  load(row: SavedStructure): void {
-    const s = this.store.load(row.id);
-    if (!s) return this.say('This saved structure can no longer be read.');
-    this.open(s, row.id);
-  }
-
-  removeSaved(row: SavedStructure, e: Event): void {
-    e.stopPropagation();
-    this.store.remove(row.id);
-    if (this.savedId === row.id) this.savedId = null;
-    this.saved = this.store.list();
+    if (!s || this.saving) return;
+    this.saving = true;
+    void listPicture(this.scene).then((thumbnail) => {
+      this.store.save({ id: this.savedId, document: s, thumbnail }).subscribe({
+        next: (row) => {
+          this.savedId = row.id;
+          this.saving = false;
+          void this.router.navigate(['/structures']);
+        },
+        error: (e: Error) => {
+          this.saving = false;
+          this.say(e.message);
+        },
+      });
+    });
   }
 
   exportJson(): void {
@@ -676,6 +673,36 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     const s = this.structure;
     if (!s || !this.scene) return this.say('The picture needs the 3D view, which this device does not offer.');
     saveAs(dataUrlBlob(this.scene.snapshot(1600, 1200)), `${fileName(s.name)}.png`);
+  }
+
+  /**
+   * The sheet a customer is handed: the picture, the name, the overall size and
+   * the short parts summary under the fabricator's name. One PNG, no prices.
+   * A phone offers its share sheet; elsewhere the file is downloaded.
+   */
+  sharePicture(): Promise<void> {
+    const s = this.structure;
+    const m = this.summary;
+    this.openList = false;
+    if (!s || !m || !this.scene) {
+      this.say('The picture needs the 3D view, which this device does not offer.');
+      return Promise.resolve();
+    }
+    const picture = this.scene.snapshot(1600, 1200);
+    return customerSheet({ company: this.workspace.workspace$.value.name, picture, ...sheetFacts(s, m, this.def?.label ?? 'Structure') })
+      .then((canvas) => new Promise<Blob | null>((done) => canvas.toBlob(done, 'image/png')))
+      .then((blob) => {
+        if (!blob) throw new Error('no picture');
+        const file = new File([blob], `${fileName(s.name)}-sheet.png`, { type: 'image/png' });
+        const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+        if (window.innerWidth < OVERLAY_FROM_PX && nav.canShare?.({ files: [file] })) {
+          return nav.share({ files: [file], title: s.name }).catch(() => undefined);
+        }
+        saveAs(blob, file.name);
+        this.say('The customer sheet was saved as a picture.');
+        return undefined;
+      })
+      .catch(() => this.say('The customer sheet could not be made on this device.'));
   }
 
   chooseFile(): void {
@@ -714,6 +741,36 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   trackKey = (_: number, s: ParamSpec): string => s.key;
   trackDim = (_: number, d: Dim): string => d.id;
+}
+
+/** Sliding leaves run on a straight head and sill: only a plain rectangle can have them. */
+export function canSlide(face: Face): boolean {
+  return panelSize(face).shape === 'rectangle';
+}
+
+/** The picture of a row of the list: 480 x 360 JPEG, some 15 kB, so fifty fit the browser's storage with room to spare. */
+function listPicture(scene: StructureScene | null): Promise<string | null> {
+  if (!scene) return Promise.resolve(null);
+  return new Promise((done) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement('canvas');
+        c.width = 480;
+        c.height = 360;
+        const g = c.getContext('2d');
+        if (!g) return done(null);
+        g.fillStyle = '#fff';
+        g.fillRect(0, 0, 480, 360);
+        g.drawImage(img, 0, 0, 480, 360);
+        done(c.toDataURL('image/jpeg', 0.8));
+      };
+      img.onerror = () => done(null);
+      img.src = scene.snapshot(960, 720);
+    } catch {
+      done(null);
+    }
+  });
 }
 
 function fileName(name: string): string {

@@ -15,19 +15,9 @@
   </div>
   <section class="sd-saved">
     <div class="sd-saved__head">
-      <h2>Saved in this browser</h2>
+      <a class="sd-btn" routerLink="/structures">‹ Saved structures</a>
       <button type="button" class="sd-btn" (click)="chooseFile()">Open a JSON file</button>
     </div>
-    <p class="sd-muted" *ngIf="!saved.length">Nothing saved yet. A structure you save appears here.</p>
-    <ul class="sd-saved__list" *ngIf="saved.length">
-      <li *ngFor="let row of saved">
-        <button type="button" class="sd-saved__row" (click)="load(row)">
-          <strong>{{ row.name }}</strong>
-          <span>{{ row.savedAt | date : 'd MMM y, HH:mm' }}</span>
-        </button>
-        <button type="button" class="sd-icon" (click)="removeSaved(row, $event)" [attr.aria-label]="'Delete ' + row.name">×</button>
-      </li>
-    </ul>
   </section>
   <p class="sd-toast" *ngIf="message" role="status">{{ message }}</p>
 </div>
@@ -35,7 +25,7 @@
 <!-- The designer. -->
 <div class="sd sd--design" *ngIf="structure as s" [attr.data-sheet]="sheet" [class.is-sheet-open]="sheetOpen">
   <div class="sd-top">
-    <button type="button" class="sd-btn" (click)="close()" title="Back to the shapes" aria-label="Back to the shapes">‹<span class="sd-w"> Shapes</span></button>
+    <button type="button" class="sd-btn" (click)="back()" [title]="savedId ? 'Back to the saved structures' : 'Back to the shapes'" [attr.aria-label]="savedId ? 'Back to the saved structures' : 'Back to the shapes'" data-action="back">‹<span class="sd-w"> {{ savedId ? 'Structures' : 'Shapes' }}</span></button>
     <input class="sd-name" [value]="s.name" (change)="rename($any($event.target).value)" aria-label="Name of the structure" maxlength="80" />
     <span class="sd-group">
       <button type="button" class="sd-btn" (click)="undo()" [disabled]="!history?.canUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><span class="sd-w">Undo</span><span class="sd-n" aria-hidden="true">↶</span></button>
@@ -44,9 +34,9 @@
     </span>
     <span class="sd-spacer"></span>
     <span class="sd-group">
-      <button type="button" class="sd-btn sd-btn--primary" (click)="save()">Save</button>
+      <button type="button" class="sd-btn sd-btn--primary" (click)="save()" [disabled]="saving" title="Save and go back to the list" data-action="save">Save</button>
       <span class="sd-menu">
-        <button type="button" class="sd-btn" (click)="openList = !openList" [attr.aria-expanded]="openList" aria-label="Open, export and more"><span class="sd-w">Open</span><span class="sd-n" aria-hidden="true">⋯</span></button>
+        <button type="button" class="sd-btn" (click)="openList = !openList" [attr.aria-expanded]="openList" aria-label="Share, export and more"><span class="sd-w">More</span><span class="sd-n" aria-hidden="true">⋯</span></button>
         <div class="sd-menu__list" *ngIf="openList">
           <!-- On a phone the bar keeps one row: what does not fit is here. -->
           <div class="sd-menu__more sd-n">
@@ -54,16 +44,13 @@
             <button type="button" class="sd-btn" (click)="exportJson(); openList = false">Export JSON</button>
             <button type="button" class="sd-btn" (click)="exportPicture(); openList = false">Export picture</button>
           </div>
-          <p class="sd-muted" *ngIf="!saved.length">Nothing saved yet.</p>
-          <div class="sd-menu__item" *ngFor="let row of saved">
-            <button type="button" (click)="load(row)">{{ row.name }}<small>{{ row.savedAt | date : 'd MMM, HH:mm' }}</small></button>
-            <button type="button" class="sd-icon" (click)="removeSaved(row, $event)" [attr.aria-label]="'Delete ' + row.name">×</button>
-          </div>
+          <button type="button" class="sd-btn sd-n" (click)="sharePicture()">Share picture</button>
+          <button type="button" class="sd-btn sd-w" (click)="exportJson(); openList = false">Export JSON</button>
+          <button type="button" class="sd-btn sd-w" (click)="exportPicture(); openList = false">Export picture</button>
           <button type="button" class="sd-btn" (click)="chooseFile()">Open a JSON file</button>
         </div>
       </span>
-      <button type="button" class="sd-btn sd-w" (click)="exportJson()">Export JSON</button>
-      <button type="button" class="sd-btn sd-w" (click)="exportPicture()">Export picture</button>
+      <button type="button" class="sd-btn sd-w" (click)="sharePicture()" title="One picture for the customer: the 3D view, the size and the parts summary. No prices." data-action="share">Share picture</button>
     </span>
   </div>
 
@@ -165,8 +152,9 @@
             <div><dt>Area</dt><dd>{{ f.area }}</dd></div>
           </dl>
           <div class="sd-fills" role="group" aria-label="Panel type">
-            <button type="button" *ngFor="let k of fillKeys" [class.is-on]="f.fill === k" (click)="setFill(k)" [attr.data-fill]="k">{{ fillLabel[k] }}</button>
+            <button type="button" *ngFor="let k of fillKeys" [class.is-on]="f.fill === k" (click)="setFill(k)" [attr.data-fill]="k" [disabled]="k === 'sliding' && !!f.noSliding" [attr.title]="k === 'sliding' && f.noSliding ? f.noSliding : null">{{ fillLabel[k] }}</button>
           </div>
+          <p class="sd-muted sd-small sd-why" *ngIf="f.noSliding">{{ f.noSliding }}</p>
           <ng-container *ngIf="f.glazed">
             <h3>Glass tint of {{ selectedFaces.length === 1 ? 'this panel' : 'these ' + selectedFaces.length + ' panels' }}</h3>
             <div class="sd-swatches" data-tint="face">
