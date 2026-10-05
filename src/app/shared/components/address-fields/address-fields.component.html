@@ -1,0 +1,158 @@
+<ng-container [formGroup]="group">
+  <div class="field af-pin">
+    <label class="label" [for]="id('pin')">PIN code</label>
+    <input
+      class="input num"
+      [id]="id('pin')"
+      type="text"
+      inputmode="numeric"
+      pattern="[0-9]*"
+      maxlength="6"
+      autocomplete="off"
+      enterkeyhint="next"
+      [formControlName]="pinName"
+      [class.is-invalid]="invalid(pinName)"
+      [attr.aria-invalid]="invalid(pinName)"
+      [attr.aria-describedby]="id('pin') + '-note'"
+      (input)="onPinInput($event)"
+    />
+    <span class="af-note" [id]="id('pin') + '-note'">
+      <span class="error" *ngIf="invalid(pinName); else pinNote">Enter a 6-digit PIN code.</span>
+      <ng-template #pinNote>
+        <ng-container [ngSwitch]="pinStatus">
+          <span class="hint" *ngSwitchCase="'looking'">Looking up the PIN…</span>
+          <span class="hint af-found" data-af="found" *ngSwitchCase="'found'">{{ foundText }}</span>
+          <span class="hint af-warn" data-af="unknown" *ngSwitchCase="'unknown'"
+            >This PIN is not in our list. Type the city and choose the state.</span
+          >
+          <span class="hint af-warn" data-af="failed" *ngSwitchCase="'failed'"
+            >We could not look up this PIN just now. Type the city and choose the state.</span
+          >
+          <span class="hint" *ngSwitchDefault>6 digits. It fills the city and the state.</span>
+        </ng-container>
+      </ng-template>
+    </span>
+  </div>
+
+  <ng-content></ng-content>
+
+  <div
+    class="field span-2 af-areas"
+    role="group"
+    *ngIf="hasArea && found && found.localities.length"
+    [attr.aria-label]="'Areas under PIN ' + found.pincode"
+  >
+    <span class="hint">Areas under {{ found.pincode }}. Tap one to use it as the area, or type your own.</span>
+    <div class="af-chips">
+      <button
+        type="button"
+        class="af-chip"
+        *ngFor="let area of areas"
+        [class.is-on]="isArea(area)"
+        [attr.aria-pressed]="isArea(area)"
+        (click)="pickArea(area)"
+      >
+        {{ area }}
+      </button>
+      <button type="button" class="af-chip af-more" *ngIf="moreAreas" (click)="allAreas = true">Show {{ moreAreas }} more</button>
+    </div>
+  </div>
+
+  <div class="field af-city">
+    <label class="label" [for]="id('city')">City</label>
+    <div class="af-combo">
+      <input
+        class="input"
+        [id]="id('city')"
+        type="text"
+        autocomplete="off"
+        autocapitalize="words"
+        spellcheck="false"
+        role="combobox"
+        aria-autocomplete="list"
+        [formControlName]="cityName"
+        [class.is-invalid]="invalid(cityName)"
+        [attr.aria-invalid]="invalid(cityName)"
+        [attr.aria-expanded]="cityOpen"
+        [attr.aria-controls]="cityOpen ? id('city') + '-list' : null"
+        [attr.aria-activedescendant]="cityOpen && activeIndex >= 0 ? optionId(activeIndex) : null"
+        [attr.aria-describedby]="invalid(cityName) || cityNoMatch ? id('city') + '-note' : null"
+        (input)="onCityInput($event)"
+        (keydown)="onCityKeydown($event)"
+        (blur)="closeCities()"
+      />
+      <ul
+        class="af-list"
+        role="listbox"
+        aria-label="Cities"
+        *ngIf="cityOpen"
+        [id]="id('city') + '-list'"
+        (mousedown)="$event.preventDefault()"
+      >
+        <li
+          class="af-option"
+          role="option"
+          *ngFor="let option of cityOptions; let i = index; trackBy: trackByIndex"
+          [id]="optionId(i)"
+          [class.is-active]="i === activeIndex"
+          [attr.aria-selected]="i === activeIndex"
+          (click)="pickCity(option)"
+        >
+          <span class="af-option-name">{{ option.city }}</span>
+          <span class="faint tiny" *ngIf="optionDetail(option) as detail">{{ detail }}</span>
+        </li>
+      </ul>
+    </div>
+    <span class="error" [id]="id('city') + '-note'" *ngIf="invalid(cityName); else cityNote">Enter the city.</span>
+    <ng-template #cityNote>
+      <span class="hint" data-af="no-city" [id]="id('city') + '-note'" *ngIf="cityNoMatch"
+        >No city in our list matches “{{ cityNoMatch }}”. It is kept as typed.</span
+      >
+    </ng-template>
+  </div>
+
+  <div class="field af-state">
+    <label class="label" [for]="id('state')"
+      >State <span class="req" aria-hidden="true" *ngIf="stateRequired">*</span></label
+    >
+    <select
+      class="select"
+      [id]="id('state')"
+      [formControlName]="stateName"
+      [class.is-invalid]="invalid(stateName)"
+      [attr.aria-invalid]="invalid(stateName)"
+      [attr.aria-describedby]="id('state') + '-note'"
+      (change)="onStateChange()"
+    >
+      <option value="">Choose a state</option>
+      <option *ngFor="let state of states" [value]="state.code">
+        {{ state.name }}<ng-container *ngIf="stateCodes"> ({{ state.code }})</ng-container>
+      </option>
+    </select>
+    <span class="af-note" [id]="id('state') + '-note'">
+      <span class="error" *ngIf="invalid(stateName); else stateNote">Choose the state.</span>
+      <ng-template #stateNote>
+        <span class="hint af-warn" data-af="mismatch" role="status" *ngIf="mismatch; else plainHint">{{ mismatch }}</span>
+        <ng-template #plainHint>
+          <span class="hint" *ngIf="stateHint">{{ stateHint }}</span>
+          <ng-content select="[stateHint]"></ng-content>
+        </ng-template>
+      </ng-template>
+    </span>
+  </div>
+
+  <div class="field span-2 af-choices" role="group" *ngIf="choiceCity as city" [attr.aria-label]="'PIN codes of ' + city.city">
+    <span class="hint">{{ city.city }} has {{ city.pincodes.length }} PIN codes. Choose one, or type it in PIN code.</span>
+    <div class="af-pins">
+      <button type="button" class="af-pin-choice" *ngFor="let choice of choices" (click)="pickPin(choice)">
+        <span class="num strong">{{ choice.pincode }}</span>
+        <span class="faint tiny" *ngIf="choice.areas">{{ choice.areas }}</span>
+      </button>
+      <button type="button" class="af-chip af-more" *ngIf="moreChoices" (click)="showAllChoices()">
+        Show all {{ city.pincodes.length }}
+      </button>
+    </div>
+  </div>
+
+  <span class="sr-only" role="status" aria-live="polite">{{ announcement }}</span>
+</ng-container>
