@@ -36,11 +36,11 @@
   @include both(border-radius-sm, var(--r-sm));
   @include both(border-radius-lg, var(--r-md));
   @include both(primary, var(--c-accent));
-  @include both(primary-rgb, "255, 164, 46");
-  @include both(link-color, var(--c-link));
-  @include both(link-color-rgb, "21, 94, 156");
-  @include both(link-hover-color, var(--c-link));
-  @include both(link-hover-color-rgb, "21, 94, 156");
+  @include both(primary-rgb, "14, 111, 106");
+  @include both(link-color, var(--c-accent-text));
+  @include both(link-color-rgb, "11, 90, 86");
+  @include both(link-hover-color, var(--c-accent-text));
+  @include both(link-hover-color-rgb, "11, 90, 86");
   @include both(success, var(--c-success));
   @include both(danger, var(--c-danger));
   @include both(warning, var(--c-warning));
@@ -53,9 +53,9 @@
   @include both(primary-border-subtle, var(--c-border));
 }
 [data-theme="dark"] {
-  @include both(primary-rgb, "255, 164, 46");
-  @include both(link-color-rgb, "127, 200, 255");
-  @include both(link-hover-color-rgb, "127, 200, 255");
+  @include both(primary-rgb, "63, 181, 173");
+  @include both(link-color-rgb, "111, 210, 202");
+  @include both(link-hover-color-rgb, "111, 210, 202");
 }
 
 h4, .h4 { margin: 0; font-size: var(--fs-16); font-weight: var(--fw-semibold); line-height: var(--lh-tight); letter-spacing: -.01em; }
@@ -98,7 +98,7 @@ hr { border-color: var(--c-border); opacity: 1; }
   border: 1px solid var(--c-border-strong); border-radius: var(--r-sm);
   background-color: var(--c-surface); color: var(--c-text); font-size: var(--fs-14); line-height: var(--lh-body);
   &::placeholder { color: var(--c-text-3); }
-  &:focus { border-color: var(--c-focus); background-color: var(--c-surface); color: var(--c-text); box-shadow: var(--focus-ring); }
+  &:focus { border-color: var(--c-accent); background-color: var(--c-surface); color: var(--c-text); box-shadow: var(--focus-ring); }
   &:disabled, &[readonly] { background-color: var(--c-surface-2); color: var(--c-text-2); }
   &.is-invalid, &.ng-touched.ng-invalid { border-color: var(--c-danger); background-image: none; }
 }
@@ -109,11 +109,8 @@ textarea.form-control { height: auto; min-height: 88px; padding-block: var(--s-2
 .invalid-feedback { font-size: var(--fs-12); color: var(--c-danger); }
 .form-check-input {
   width: 16px; height: 16px; margin-block-start: 3px; border: 1px solid var(--c-border-strong); background-color: var(--c-surface);
-  &:checked { background-color: var(--c-accent); border-color: var(--c-accent-text); }
-  // Bootstrap draws the tick and the dot in white: dark on the saffron fill
-  &:checked[type="checkbox"] { @include both(form-check-bg-image, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath fill='none' stroke='%231b1204' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='m6 10 3 3 6-6'/%3E%3C/svg%3E")); }
-  &:checked[type="radio"] { @include both(form-check-bg-image, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3E%3Ccircle r='2' fill='%231b1204'/%3E%3C/svg%3E")); }
-  &:focus { border-color: var(--c-focus); box-shadow: var(--focus-ring); }
+  &:checked { background-color: var(--c-accent); border-color: var(--c-accent); }
+  &:focus { border-color: var(--c-accent); box-shadow: var(--focus-ring); }
 }
 .form-check-label { color: var(--c-text); }
 // Bootstrap's group is a row of bordered boxes; the design draws one box with a unit inside.
