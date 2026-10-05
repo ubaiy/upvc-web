@@ -1,0 +1,112 @@
+<div class="plan-col stack-6">
+  <div class="card card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading plan">
+    <span class="skeleton" style="width: 40%"></span>
+    <span class="skeleton" style="width: 60%"></span>
+  </div>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load your plan.
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <ng-container *ngIf="state === 'ready' && sub as s">
+    <app-callout *ngIf="attention" [tone]="s.read_only ? 'danger' : 'warn'" [icon]="s.read_only ? 'lock' : undefined" class="plan-attention">
+      {{ attention }}
+    </app-callout>
+
+    <section class="card" aria-labelledby="h-plan">
+      <div class="card-head">
+        <div>
+          <h2 id="h-plan">Your plan</h2>
+          <p>{{ s.company?.name }}</p>
+        </div>
+      </div>
+      <dl class="facts card-pad">
+        <div>
+          <dt>Plan</dt>
+          <dd class="plan-name">{{ s.plan?.name || 'No plan' }}</dd>
+          <dd class="muted small" *ngIf="s.plan">{{ s.plan.price | inr : 0 }} a month before GST</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>
+            <span class="badge" [class.success]="s.status === 'active'" [class.warn]="s.status === 'grace' || s.status === 'trial'" [class.danger]="s.read_only">{{
+              statusWords
+            }}</span>
+          </dd>
+          <dd class="muted small period">{{ period }}</dd>
+        </div>
+        <div>
+          <dt>Seats</dt>
+          <dd class="seats">{{ seats }}</dd>
+          <dd class="muted small">People who can sign in. Managed under Team.</dd>
+        </div>
+        <div>
+          <dt>3D structures</dt>
+          <dd>{{ s.features['feature_3d'] === true ? 'Included' : 'Not in this plan' }}</dd>
+          <dd class="muted small" *ngIf="s.features['feature_3d'] !== true">Available on the Business plan.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section aria-labelledby="h-plans" class="stack-3">
+      <h2 id="h-plans" class="plans-title">Plans</h2>
+      <div class="offers">
+        <article class="card offer" *ngFor="let offer of offers" [class.current]="isCurrent(offer)" [attr.data-plan]="offer.code">
+          <div class="offer-head">
+            <h3>{{ offer.name }}</h3>
+            <span class="badge plain" *ngIf="isCurrent(offer)">Your plan</span>
+          </div>
+          <p class="price">
+            <span class="amount">{{ offer.price | inr : 0 }}</span> <span class="muted">a month</span>
+          </p>
+          <p class="muted small">Before GST.</p>
+          <ul class="has">
+            <li><app-icon name="users"></app-icon>{{ offer.seats }} {{ offer.seats === 1 ? 'user' : 'users' }}</li>
+            <li><app-icon name="file"></app-icon>Quotations a month: {{ limit(offer.quotationsPerMonth) }}</li>
+            <li><app-icon name="layers"></app-icon>Saved design templates: {{ limit(offer.designTemplates) }}</li>
+            <li [class.off]="!offer.has3d" class="three-d">
+              <app-icon [name]="offer.has3d ? 'check' : 'lock'"></app-icon>{{ offer.has3d ? '3D structures: domes, cabins, bays, roofs' : 'No 3D structures' }}
+            </li>
+          </ul>
+          <button type="button" class="btn btn-block" [class.btn-primary]="!isCurrent(offer)" [class.btn-secondary]="isCurrent(offer)" (click)="chosen = offer">
+            {{ buttonLabel(offer) }}
+          </button>
+        </article>
+      </div>
+      <p class="muted small plans-note">Payment is by bank transfer or UPI for now. We activate the plan by hand once the payment has arrived.</p>
+    </section>
+  </ng-container>
+</div>
+
+<p-dialog
+  [header]="contact.heading"
+  [visible]="!!chosen"
+  (visibleChange)="chosen = null"
+  [modal]="true"
+  closeAriaLabel="Close"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '480px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <div class="stack-4 how" *ngIf="chosen as plan">
+    <p>
+      <strong>{{ plan.name }}</strong
+      >, {{ plan.price | inr : 0 }} a month before GST.
+    </p>
+    <ol class="steps">
+      <li>Tell us the plan and for how many months.</li>
+      <li>Pay by bank transfer or UPI. We send the details and the amount with GST.</li>
+      <li>We activate the plan the same working day and you see it on this page.</li>
+    </ol>
+    <ul class="contact-lines">
+      <li *ngFor="let line of contact.lines">{{ line }}</li>
+      <li *ngFor="let line of contact.payment">{{ line }}</li>
+    </ul>
+    <p class="muted small">No payment is taken on this page and nothing is charged by clicking here.</p>
+  </div>
+  <ng-template pTemplate="footer">
+    <button type="button" class="btn btn-primary" (click)="chosen = null">Close</button>
+  </ng-template>
+</p-dialog>

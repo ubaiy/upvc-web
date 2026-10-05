@@ -4,6 +4,9 @@ import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject } from 'rxjs';
 
+import { AccessState, EMPTY_ACCESS } from 'src/app/shared/access/access.models';
+import { AccessService } from 'src/app/shared/access/access.service';
+
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { imageProblem, maxImageBytes } from './image-rules';
 import { ProfileComponent, SETTINGS_TABS } from './profile.component';
@@ -14,27 +17,50 @@ class StubTabComponent {}
 describe('ProfileComponent (Settings page)', () => {
   let fixture: ComponentFixture<ProfileComponent>;
   let params: BehaviorSubject<any>;
+  let state$: BehaviorSubject<AccessState>;
 
   const text = (selector: string) =>
     Array.from(fixture.nativeElement.querySelectorAll(selector) as NodeListOf<HTMLElement>).map((el) => (el.textContent ?? '').trim());
 
   beforeEach(async () => {
     params = new BehaviorSubject(convertToParamMap({}));
+    state$ = new BehaviorSubject<AccessState>(EMPTY_ACCESS);
     await TestBed.configureTestingModule({
       declarations: [ProfileComponent],
       imports: [RouterTestingModule, SharedComponentsModule],
-      providers: [{ provide: ActivatedRoute, useValue: { queryParamMap: params } }],
+      providers: [
+        { provide: ActivatedRoute, useValue: { queryParamMap: params } },
+        { provide: AccessService, useValue: { state$ } },
+      ],
     }).compileComponents();
     fixture = TestBed.createComponent(ProfileComponent);
     // The real tabs load data; the page itself is under test here.
-    (fixture.componentInstance as any).tabs = SETTINGS_TABS.map((tab) => ({ ...tab, component: StubTabComponent }));
-    fixture.componentInstance.active = fixture.componentInstance.tabs[0];
+    fixture.componentInstance.source = SETTINGS_TABS.map((tab) => ({ ...tab, component: StubTabComponent }));
+    fixture.componentInstance.active = fixture.componentInstance.source[0];
     fixture.detectChanges();
   });
 
-  it('is one page called Settings with the six sections', () => {
+  it('is one page called Settings with the seven sections', () => {
     expect(text('h1')).toEqual(['Settings']);
-    expect(text('[role=tab]')).toEqual(['Company', 'Team', 'Pricing and tax', 'Structure rates', 'Documents', 'Your profile']);
+    expect(text('[role=tab]')).toEqual(['Company', 'Team', 'Plan', 'Pricing and tax', 'Structure rates', 'Documents', 'Your profile']);
+  });
+
+  it('shows a user only the sections their abilities open (card T117)', () => {
+    const me = (abilities: string[]) => ({ me: { abilities } as any, subscription: null });
+    const labels = () => fixture.componentInstance.tabs.map((tab) => tab.label);
+    state$.next(me(['quotations.view', 'quotations.write', 'catalogue.view']));
+    expect(labels()).withContext('sales').toEqual(['Your profile']);
+    expect(fixture.componentInstance.active.id).toBe('you');
+
+    params.next(convertToParamMap({ tab: 'team' }));
+    expect(fixture.componentInstance.active.id).withContext('a tab that is not theirs is not opened by its address').toBe('you');
+
+    state$.next(me(['prices.view_cost']));
+    expect(labels()).withContext('accounts').toEqual(['Pricing and tax', 'Structure rates', 'Your profile']);
+
+    state$.next(me(['settings.write', 'team.manage', 'billing.view', 'prices.view_cost']));
+    expect(labels().length).withContext('owner').toBe(7);
+    expect(fixture.componentInstance.active.id).toBe('team');
   });
 
   it('opens on Company and marks it selected', () => {

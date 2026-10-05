@@ -1,0 +1,28 @@
+// Settings → Team (card T117). Layout only.
+.settings-col { max-width: 920px; }
+.seats { font-weight: var(--fw-medium); color: var(--c-text-2); font-size: var(--fs-13); white-space: nowrap; }
+.card-head { gap: var(--s-3); flex-wrap: wrap; }
+.head-actions { display: flex; align-items: center; gap: var(--s-3); margin-inline-start: auto; flex-wrap: wrap; }
+.link-row { display: flex; gap: var(--s-2); align-items: center; }
+.link-row .input { flex: 1; min-width: 0; font-size: var(--fs-12); }
+.person-actions { display: flex; gap: var(--s-1); flex-wrap: nowrap; justify-content: flex-end; white-space: nowrap; }
+.table td { word-break: normal; overflow-wrap: anywhere; }
+.table td.title { min-width: 220px; }
+.table td.when { white-space: nowrap; }
+.table-wrap { overflow-x: auto; }
+.role-help { color: var(--c-text-3); font-size: var(--fs-13); margin: 0; }
+.roles { margin: 0; }
+.dialog-foot { display: flex; justify-content: flex-end; gap: var(--s-2); }
+
+// Phone: one person is a block, not a row of five columns.
+@media (max-width: 640px) {
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tr { padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); }
+  .table td { padding: 2px 0; border: 0; text-align: start; }
+  .table td[data-label]:not(.title)::before { content: attr(data-label) ': '; color: var(--c-text-3); }
+  .person-actions { justify-content: flex-start; flex-wrap: wrap; padding-block-start: var(--s-2); }
+  .table td.title { min-width: 0; }
+  .link-row { flex-wrap: wrap; }
+  .link-row .input { flex-basis: 100%; }
+}

@@ -13,7 +13,6 @@ import { SettingsAdapter, SettingsRefusal, toSnapshot } from '../settings.adapte
 import { CompanyTabComponent } from './company-tab.component';
 import { DocumentsTabComponent } from './documents-tab.component';
 import { PricingTaxTabComponent } from './pricing-tax-tab.component';
-import { TeamTabComponent } from './team-tab.component';
 
 const ROW = {
   name: 'Hakimi Enterprise',
@@ -473,12 +472,4 @@ describe('DocumentsTabComponent', () => {
   });
 });
 
-describe('TeamTabComponent', () => {
-  it('shows the one sign-in and what is coming, with no primary button', () => {
-    const { el } = setUp(TeamTabComponent);
-    expect(el.textContent).toContain('Demo User');
-    expect(el.textContent).toContain('Owner');
-    expect(el.textContent).toContain('Invite your team soon');
-    expect(primaryButtons(el)).toBe(0);
-  });
-});
+// Team and Plan (card T117): team-plan-tabs.spec.ts.

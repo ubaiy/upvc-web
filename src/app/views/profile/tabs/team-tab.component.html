@@ -1,0 +1,256 @@
+<div class="settings-col stack-6">
+  <app-callout *ngIf="lockedReason" tone="danger" icon="lock">
+    {{ lockedReason }} The team cannot be changed until then.
+    <a action class="btn btn-secondary btn-sm" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
+  </app-callout>
+
+  <app-callout *ngIf="notice && !notice.said" [tone]="notice.tone" class="team-notice">
+    {{ notice.text }}
+    <a *ngIf="notice.plan" action class="btn btn-secondary btn-sm" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
+  </app-callout>
+
+  <section class="card invite-link" *ngIf="invited as inv" aria-labelledby="h-link">
+    <div class="card-head">
+      <div>
+        <h2 id="h-link">Send this link to {{ inv.name }}</h2>
+        <p>
+          We do not send e-mails yet, so nothing has been sent to {{ inv.email }}. Copy the link and pass it on yourself
+          (WhatsApp, e-mail). It opens a page to set the password, works once, and is valid until
+          {{ inv.expires | date : 'd MMM y, h:mm a' }}.
+        </p>
+      </div>
+    </div>
+    <div class="card-pad stack-3">
+      <div class="link-row">
+        <input #link class="input" type="text" readonly [value]="inv.link" aria-label="Invitation link" (focus)="link.select()" />
+        <button type="button" class="btn btn-primary copy-link" (click)="copy(link)">
+          <app-icon [name]="copied ? 'check' : 'copy'"></app-icon>{{ copied ? 'Copied' : 'Copy link' }}
+        </button>
+        <button type="button" class="btn btn-ghost" (click)="invited = null">Done</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-team">
+    <div class="card-head">
+      <div>
+        <h2 id="h-team">People</h2>
+        <p>Everyone who can sign in to this company.</p>
+      </div>
+      <div class="head-actions" *ngIf="team">
+        <span class="seats">{{ seats }}</span>
+        <button
+          type="button"
+          class="btn btn-primary btn-sm invite"
+          [disabled]="!!lockedReason"
+          [attr.title]="lockedReason || null"
+          (click)="openInvite()"
+        >
+          <app-icon name="user-plus"></app-icon>Invite someone
+        </button>
+      </div>
+    </div>
+
+    <div class="card-pad" *ngIf="team && full && !lockedReason">
+      <app-callout tone="info" class="seats-full">
+        Every seat of your plan is in use. To add someone, deactivate or remove a person, or move to a larger plan.
+        <a action class="btn btn-secondary btn-sm" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
+      </app-callout>
+    </div>
+
+    <div class="card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading team">
+      <span class="skeleton" style="width: 50%"></span>
+      <span class="skeleton" style="width: 70%"></span>
+    </div>
+
+    <div class="card-pad" *ngIf="state === 'error'">
+      <app-callout tone="warn">
+        We could not load your team.
+        <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+      </app-callout>
+    </div>
+
+    <div class="table-wrap" *ngIf="state === 'ready' && team">
+      <table class="table">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Role</th>
+            <th scope="col">Status</th>
+            <th scope="col">Last sign-in</th>
+            <th scope="col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of team.users" [attr.data-user]="user.id">
+            <td class="title" data-label="Name">
+              {{ fullName(user) }} <span class="muted" *ngIf="user.is_you">(you)</span>
+              <div class="muted small">{{ user.email }}</div>
+            </td>
+            <td data-label="Role"><span class="badge plain">{{ user.role_name }}</span></td>
+            <td data-label="Status">
+              <span class="badge" [class.success]="user.status === 'active'" [class.warn]="user.status === 'invited'" [class.plain]="user.status === 'deactivated'">{{
+                statusLabel(user)
+              }}</span>
+            </td>
+            <td class="muted when" data-label="Last sign-in">
+              {{ user.last_login_at ? (user.last_login_at | date : 'd MMM y, h:mm a') : user.status === 'invited' ? 'Not yet' : 'No sign-in recorded' }}
+            </td>
+            <td>
+              <div class="person-actions">
+                <button type="button" class="btn btn-ghost btn-sm act-role" [disabled]="!!lockedReason" [attr.title]="lockedReason || null" (click)="openRole(user)">
+                  Change role
+                </button>
+                <button
+                  *ngIf="user.status === 'invited'"
+                  type="button"
+                  class="btn btn-ghost btn-sm act-resend"
+                  [disabled]="!!lockedReason"
+                  [attr.title]="lockedReason || null"
+                  (click)="ask(user, 'resend')"
+                >
+                  New link
+                </button>
+                <button
+                  *ngIf="user.status !== 'deactivated'"
+                  type="button"
+                  class="btn btn-ghost btn-sm act-deactivate"
+                  [disabled]="!!lockedReason"
+                  [attr.title]="lockedReason || null"
+                  (click)="ask(user, 'deactivate')"
+                >
+                  Deactivate
+                </button>
+                <button
+                  *ngIf="user.status === 'deactivated'"
+                  type="button"
+                  class="btn btn-ghost btn-sm act-reactivate"
+                  [disabled]="!!lockedReason"
+                  [attr.title]="lockedReason || null"
+                  (click)="ask(user, 'reactivate')"
+                >
+                  Reactivate
+                </button>
+                <button type="button" class="btn btn-ghost btn-sm act-remove" [disabled]="!!lockedReason" [attr.title]="lockedReason || null" (click)="ask(user, 'remove')">
+                  Remove
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" *ngIf="team?.roles?.length" aria-labelledby="h-roles">
+    <div class="card-head">
+      <div>
+        <h2 id="h-roles">What each role can do</h2>
+      </div>
+    </div>
+    <dl class="card-pad stack-3 roles">
+      <div *ngFor="let role of team!.roles">
+        <dt class="title">{{ role.name }}</dt>
+        <dd class="role-help">{{ role.description }}</dd>
+      </div>
+    </dl>
+  </section>
+</div>
+
+<p-dialog
+  header="Invite someone"
+  [visible]="dialog === 'invite'"
+  (visibleChange)="close()"
+  [modal]="true"
+  closeAriaLabel="Close"
+  [closable]="!busy"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '460px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <form id="invite-form" class="stack-4" (ngSubmit)="sendInvite()" novalidate *ngIf="dialog === 'invite'">
+    <app-callout *ngIf="refusal && !refusal.said" tone="warn" class="dialog-refusal">
+      {{ refusal.text }}
+      <a *ngIf="refusal.plan" action class="btn btn-secondary btn-sm" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
+    </app-callout>
+    <div class="field">
+      <label class="label" for="inv-name">Name</label>
+      <input class="input" [class.is-invalid]="!!nameError" id="inv-name" name="name" type="text" autocomplete="off" [(ngModel)]="form.name" />
+      <span class="error" *ngIf="nameError">{{ nameError }}</span>
+    </div>
+    <div class="field">
+      <label class="label" for="inv-email">E-mail</label>
+      <input class="input" [class.is-invalid]="!!emailError" id="inv-email" name="email" type="email" autocomplete="off" [(ngModel)]="form.email" />
+      <span class="error" *ngIf="emailError; else emailHint">{{ emailError }}</span>
+      <ng-template #emailHint><span class="hint">They sign in with this address.</span></ng-template>
+    </div>
+    <div class="field">
+      <label class="label" for="inv-role">Role</label>
+      <select class="select" id="inv-role" name="role" [(ngModel)]="form.role">
+        <option *ngFor="let role of team?.roles" [value]="role.code">{{ role.name }}</option>
+      </select>
+      <span class="hint">{{ roleDescription(form.role) }}</span>
+    </div>
+    <p class="muted small">No e-mail is sent yet. You get a link to copy and pass on yourself.</p>
+  </form>
+  <ng-template pTemplate="footer">
+    <div class="dialog-foot">
+      <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="close()">Cancel</button>
+      <button type="submit" form="invite-form" class="btn btn-primary" [disabled]="busy">{{ busy ? 'Inviting…' : 'Invite and get the link' }}</button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  [header]="'Role of ' + (target ? fullName(target) : '')"
+  [visible]="dialog === 'role'"
+  (visibleChange)="close()"
+  [modal]="true"
+  closeAriaLabel="Close"
+  [closable]="!busy"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '460px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <div class="stack-4" *ngIf="dialog === 'role'">
+    <app-callout *ngIf="refusal && !refusal.said" tone="warn" class="dialog-refusal">{{ refusal.text }}</app-callout>
+    <div class="field">
+      <label class="label" for="role-pick">Role</label>
+      <select class="select" id="role-pick" name="newRole" [(ngModel)]="newRole">
+        <option *ngFor="let role of team?.roles" [value]="role.code">{{ role.name }}</option>
+      </select>
+      <span class="hint">{{ roleDescription(newRole) }}</span>
+    </div>
+  </div>
+  <ng-template pTemplate="footer">
+    <div class="dialog-foot">
+      <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="close()">Cancel</button>
+      <button type="button" class="btn btn-primary save-role" [disabled]="busy" (click)="saveRole()">{{ busy ? 'Saving…' : 'Save role' }}</button>
+    </div>
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  [header]="confirmTitle"
+  [visible]="dialog === 'confirm'"
+  (visibleChange)="close()"
+  [modal]="true"
+  closeAriaLabel="Close"
+  [closable]="!busy"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '440px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <p *ngIf="dialog === 'confirm'">{{ confirmText }}</p>
+  <ng-template pTemplate="footer">
+    <div class="dialog-foot">
+      <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="close()">Cancel</button>
+      <button type="button" class="btn confirm-action" [class.btn-danger]="action === 'remove'" [class.btn-primary]="action !== 'remove'" [disabled]="busy" (click)="confirm()">
+        {{ busy ? 'Working…' : confirmButton }}
+      </button>
+    </div>
+  </ng-template>
+</p-dialog>
