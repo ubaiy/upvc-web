@@ -24,6 +24,8 @@ export interface WindowLook {
   profileColor: string;
   /** Glass tint (hex). */
   glassTint: string;
+  /** Tint (hex) by glass id, for panes glazed differently from the window. */
+  glassTints?: Record<string, string>;
 }
 
 export const DEFAULT_LOOK: WindowLook = { profileColor: '#ffffff', glassTint: '#c4e4f1' };
@@ -88,15 +90,20 @@ export interface Mover {
   group: Group;
 }
 
+/** A pane in its own glass with no known tint still has to read as another glass. */
+const OWN_GLASS_TINTS = ['#8fa9bd', '#c9a27a', '#9fd3b4'];
+
 export interface WindowObject {
   root: Group;
+  /** Glass materials of panes in their own glass; they live and die with the window. */
+  ownMaterials: MeshStandardMaterial[];
   movers: Mover[];
   geometries: BufferGeometry[];
   triangles: number;
 }
 
 /** One group in face-local mm; the caller places it (a structure face is this group × its plane matrix). */
-export function buildWindowGroup(parts: WindowParts, materials: WindowMaterials): WindowObject {
+export function buildWindowGroup(parts: WindowParts, materials: WindowMaterials, look?: WindowLook): WindowObject {
   const root = new Group();
   const geometries: BufferGeometry[] = [];
   const movers = new Map<string, Mover>();
@@ -108,13 +115,29 @@ export function buildWindowGroup(parts: WindowParts, materials: WindowMaterials)
   }
 
   // Merge: one buffer per (moving group, material).
-  const buckets = new Map<string, { groupId: string | null; material: PartMaterial; pos: number[][]; nrm: number[][] }>();
+  const buckets = new Map<
+    string,
+    { groupId: string | null; material: PartMaterial; glassId?: string; pos: number[][]; nrm: number[][] }
+  >();
+  const ownGlass = new Map<string, MeshStandardMaterial>();
+  const glassOf = (glassId: string): MeshStandardMaterial => {
+    let m = ownGlass.get(glassId);
+    if (!m) {
+      m = materials.glass.clone();
+      const fallback = OWN_GLASS_TINTS[ownGlass.size % OWN_GLASS_TINTS.length];
+      m.color.copy(safeColor(look?.glassTints?.[glassId] ?? '', fallback));
+      // A little denser than the window's glass, so the tint shows against the room.
+      m.opacity = 0.55;
+      ownGlass.set(glassId, m);
+    }
+    return m;
+  };
   let triangles = 0;
   for (const part of parts.parts) {
-    const key = `${part.groupId ?? ''}|${part.material}`;
+    const key = `${part.groupId ?? ''}|${part.material}|${part.glassId ?? ''}`;
     let bucket = buckets.get(key);
     if (!bucket) {
-      bucket = { groupId: part.groupId, material: part.material, pos: [], nrm: [] };
+      bucket = { groupId: part.groupId, material: part.material, glassId: part.glassId, pos: [], nrm: [] };
       buckets.set(key, bucket);
     }
     bucket.pos.push(part.positions);
@@ -126,7 +149,7 @@ export function buildWindowGroup(parts: WindowParts, materials: WindowMaterials)
     geometry.setAttribute('position', new Float32BufferAttribute(bucket.pos.flat(), 3));
     geometry.setAttribute('normal', new Float32BufferAttribute(bucket.nrm.flat(), 3));
     geometries.push(geometry);
-    const mesh = new Mesh(geometry, materials[bucket.material]);
+    const mesh = new Mesh(geometry, bucket.glassId ? glassOf(bucket.glassId) : materials[bucket.material]);
     if (bucket.material === 'profile') {
       const edges = new EdgesGeometry(geometry, EDGE_ANGLE_DEG);
       geometries.push(edges);
@@ -141,7 +164,7 @@ export function buildWindowGroup(parts: WindowParts, materials: WindowMaterials)
       root.add(mesh);
     }
   });
-  return { root, movers: [...movers.values()], geometries, triangles };
+  return { root, movers: [...movers.values()], geometries, triangles, ownMaterials: [...ownGlass.values()] };
 }
 
 /** t = 0 closed … 1 fully open. */
@@ -162,6 +185,7 @@ export function setOpen(obj: WindowObject, t: number): void {
 
 export function disposeWindow(obj: WindowObject): void {
   obj.geometries.forEach((g) => g.dispose());
+  obj.ownMaterials.forEach((m) => m.dispose());
   obj.root.removeFromParent();
   obj.root.clear();
 }

@@ -129,7 +129,7 @@ export class DesignScene {
       this.size.w !== parts.widthMm || this.size.h !== parts.heightMm || this.size.d !== parts.depthMm;
     if (this.window) disposeWindow(this.window);
     applyLook(this.materials, look);
-    this.window = buildWindowGroup(parts, this.materials);
+    this.window = buildWindowGroup(parts, this.materials, look);
     this.parts = parts;
     setOpen(this.window, this.open);
     this.scene.add(this.window.root);

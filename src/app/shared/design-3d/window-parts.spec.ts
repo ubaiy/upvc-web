@@ -1,4 +1,4 @@
-import { WindowDesign, frameMembers, layout, serialize } from '../design-model';
+import { WindowDesign, frameMembers, layout, serialize, setPaneGlass, walkLeaves } from '../design-model';
 import { LAB_PRESETS } from 'src/app/views/design-lab/lab-presets';
 import { boundsOf } from './member-mesh';
 import { SECTION_DATA, slidingFrameDepthMm } from './profile-section';
@@ -227,5 +227,21 @@ describe('design-3d window-parts', () => {
     const withBars: WindowDesign = { ...design, glazing: { ...design.glazing, barsH: 1, barsV: 2 } };
     expect(count(buildWindowParts(withBars), 'glazing-bar')).toBe(3);
     expect(count(buildWindowParts(design), 'glazing-bar')).toBe(0);
+  });
+
+  it('a pane in its own glass carries that glass; the other panes carry none (T113)', () => {
+    const design = preset('mixed-mullion-transom');
+    const leaves = walkLeaves(design.root);
+    expect(leaves.length).toBeGreaterThan(1);
+    expect(partsOfRole(buildWindowParts(design), 'glass').some((p) => p.glassId)).toBeFalse();
+
+    const own = setPaneGlass(design, [leaves[0].id], 77);
+    const glass = partsOfRole(buildWindowParts(own), 'glass');
+    const tinted = glass.filter((p) => p.glassId === '77');
+    expect(tinted.length).toBe(1);
+    expect(tinted[0].id.startsWith(leaves[0].id)).toBeTrue();
+    expect(glass.filter((p) => !p.glassId).length).toBe(glass.length - 1);
+    // Only glass is marked: the sash and the gasket keep the shared materials.
+    expect(buildWindowParts(own).parts.filter((p) => p.glassId && p.material !== 'glass').length).toBe(0);
   });
 });

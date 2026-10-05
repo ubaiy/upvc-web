@@ -13,6 +13,7 @@ import {
   Component,
   ElementRef,
   EventEmitter,
+  HostBinding,
   Input,
   NgZone,
   OnChanges,
@@ -25,6 +26,9 @@ import { WindowDesign } from '../design-model';
 import { DesignScene, OrbitBenchmark, SceneInfo, webglAvailable } from './scene';
 import { SNAPSHOT_HEIGHT_PX, SNAPSHOT_WIDTH_PX, lookOf, scenePicture } from './snapshot';
 import { buildWindowParts } from './window-parts';
+
+// A host asks this before it shows the view; it comes with the same lazy chunk.
+export { webglAvailable } from './scene';
 
 export interface Design3dTimings {
   /** From `startedAt` (the tap that asked for 3D) to the first drawn frame. */
@@ -62,10 +66,13 @@ export interface Design3dTimings {
         <output>{{ openLabel }}</output>
       </label>
       <button type="button" data-d3="fit" (click)="fit()">Fit</button>
-      <button type="button" data-d3="picture" (click)="takePicture()">Picture</button>
-      <a *ngIf="picture" [href]="picture" download="window-3d.png" data-d3="download">Download PNG</a>
+      <ng-container *ngIf="!product">
+        <button type="button" data-d3="picture" (click)="takePicture()">Picture</button>
+        <a *ngIf="picture" [href]="picture" download="window-3d.png" data-d3="download">Download PNG</a>
+      </ng-container>
+      <span class="d3-readonly" *ngIf="product" data-d3="readonly">View only. Switch to 2D to edit.</span>
     </div>
-    <p class="d3-stats" *ngIf="timings" data-d3="stats">
+    <p class="d3-stats" *ngIf="timings && !product" data-d3="stats">
       {{ timings.triangles }} triangles, {{ timings.drawCalls }} draw calls, built in {{ timings.buildMs | number: '1.0-1' }} ms<ng-container
         *ngIf="timings.firstFrameMs !== null"
         >, first frame {{ timings.firstFrameMs | number: '1.0-0' }} ms after the tap</ng-container
@@ -83,6 +90,28 @@ export interface Design3dTimings {
         flex-direction: column;
         gap: 8px;
         min-width: 0;
+      }
+      :host(.d3-product) {
+        height: 100%;
+        gap: 0;
+      }
+      :host(.d3-product) .d3-stage {
+        flex: 1 1 auto;
+        aspect-ratio: auto;
+        min-height: 0;
+        border-radius: 6px 6px 0 0;
+      }
+      :host(.d3-product) .d3-bar {
+        padding: 6px 10px;
+        border: 1px solid #d6dbe1;
+        border-top: 0;
+        border-radius: 0 0 6px 6px;
+        background: #fff;
+        color: #1f2933;
+      }
+      .d3-readonly {
+        color: #52606d;
+        font-size: 12px;
       }
       .d3-stage {
         position: relative;
@@ -178,6 +207,10 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() design: WindowDesign | null = null;
   /** Tint (hex) of the design's glass; the host knows its glass list. */
   @Input() glassTint: string | null | undefined = null;
+  /** Tints (hex) by glass id, for panes glazed differently from the window. */
+  @Input() glassTints: Record<string, string> | null | undefined = null;
+  /** Inside the product: the view fills its host, and says it is view only; no picture, no figures. */
+  @HostBinding('class.d3-product') @Input() product = false;
   /** Lab only: show the window twice, round a 90° corner with a post (thrown away after P0). */
   @Input() cornerDemo = false;
   /** performance.now() of the tap that asked for 3D; null = not timed. */
@@ -208,7 +241,7 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['cornerDemo']) this.scene?.setCornerDemo(this.cornerDemo === true);
     // One rebuild for a change of document, glass tint and face together.
-    if (changes['design'] || changes['glassTint'] || changes['frameFaceMm']) this.rebuild();
+    if (changes['design'] || changes['glassTint'] || changes['glassTints'] || changes['frameFaceMm']) this.rebuild();
   }
 
   ngAfterViewInit(): void {
@@ -269,7 +302,7 @@ export class Design3dComponent implements OnChanges, AfterViewInit, OnDestroy {
     if (!scene || !design) return;
     const t0 = performance.now();
     const parts = buildWindowParts(design, { frameFaceMm: this.frameFaceMm });
-    this.zone.runOutsideAngular(() => scene.setParts(parts, lookOf(design, this.glassTint)));
+    this.zone.runOutsideAngular(() => scene.setParts(parts, lookOf(design, this.glassTint, this.glassTints)));
     const buildMs = performance.now() - t0;
     scene.onFrame = () => this.afterFrame(buildMs);
     this.canOpen = scene.movers > 0;

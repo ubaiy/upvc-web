@@ -20,6 +20,7 @@ import {
   clipPolygonToRect,
   daylightPolygon,
   findNode,
+  hasOwnGlass,
   insetConvexPolygon,
   isLeaf,
   layout,
@@ -61,6 +62,8 @@ export interface MeshPart extends Geo {
   material: PartMaterial;
   /** The moving group this part belongs to; null = fixed to the frame. */
   groupId: string | null;
+  /** Glass only: the glass of a pane glazed differently from the window (absent = the window's glass). */
+  glassId?: string;
 }
 
 /** A sash that opens (turns about `axis` through `pivot`) or a shutter that slides along `axis`. */
@@ -97,12 +100,17 @@ interface Ctx {
   f: number;
   parts: MeshPart[];
   groups: MovingGroup[];
+  /** Own glass of the pane being built; undefined = the window's glass. */
+  ownGlass?: string;
 }
 
 const up = (ctx: Ctx, p: PointMm): P2 => ({ x: p.xMm, y: ctx.h - p.yMm });
 
 function add(ctx: Ctx, id: string, role: PartRole, material: PartMaterial, groupId: string | null, geo: Geo): void {
-  if (geo.positions.length) ctx.parts.push({ id, role, material, groupId, ...geo });
+  if (!geo.positions.length) return;
+  const part: MeshPart = { id, role, material, groupId, ...geo };
+  if (material === 'glass' && ctx.ownGlass) part.glassId = ctx.ownGlass;
+  ctx.parts.push(part);
 }
 
 function rectPoly(r: RectMm): PointMm[] {
@@ -419,9 +427,11 @@ export function buildWindowParts(design: WindowDesign, opts?: PartsOptions): Win
   for (const { leaf, rect } of lay.leaves) {
     const pane = clips.get(leaf.id) ?? [];
     if (pane.length < 3) continue; // the shape leaves nothing of this pane
+    ctx.ownGlass = hasOwnGlass(design, leaf) ? String(leaf.glassId) : undefined;
     if (leaf.category === 'Slidding' && leaf.slide) buildSlidingLeaf(ctx, leaf, rect, depthMm);
     else buildCasementLeaf(ctx, leaf, pane, doors.has(leaf.id));
   }
+  ctx.ownGlass = undefined;
   // A split that carries its own sash band (nested content inside one sash).
   lay.nodes.forEach((n) => {
     if (isLeaf(n.node) || !n.node.sashFramed) return;
