@@ -1,0 +1,129 @@
+<app-page-header title="Price file" subtitle="Change many rates at once from the supplier's price list" [crumbs]="crumbs">
+  <ng-container ngProjectAs="[actions]">
+    <a class="btn btn-secondary" routerLink="/masters/profile" [queryParams]="{ rates: 1 }">Change by a percentage</a>
+  </ng-container>
+</app-page-header>
+
+<div class="col">
+  <app-callout tone="danger" *ngIf="error">{{ error }}</app-callout>
+
+  <app-callout tone="success" *ngIf="applied as done">
+    {{ done.summary.ratesChanged }} {{ done.summary.ratesChanged === 1 ? 'rate was' : 'rates were' }} updated:
+    {{ done.summary.profilesChanged }} {{ done.summary.profilesChanged === 1 ? 'profile' : 'profiles' }} and
+    {{ done.summary.itemsChanged }} glass or hardware {{ done.summary.itemsChanged === 1 ? 'item' : 'items' }}. Quotations already
+    made keep their prices.
+    <a action class="btn btn-secondary btn-sm" routerLink="/masters/profile">Open the catalogue</a>
+  </app-callout>
+
+  <section class="card" aria-labelledby="pf-step-1">
+    <div class="card-head">
+      <div>
+        <h2 id="pf-step-1">1. Download your rates</h2>
+        <p class="muted small">An Excel file with every profile, glass and hardware item and its rate today.</p>
+      </div>
+      <button type="button" class="btn btn-secondary" [disabled]="downloading" (click)="download()">
+        <app-icon name="download"></app-icon>{{ downloading ? 'Preparing…' : 'Download rates' }}
+      </button>
+    </div>
+    <p class="card-pad muted small note">
+      Change only the rate columns. Leave the ID column as it is: rows are matched by it. A cell left empty and a row
+      deleted change nothing.
+    </p>
+  </section>
+
+  <section class="card" aria-labelledby="pf-step-2">
+    <div class="card-head">
+      <div>
+        <h2 id="pf-step-2">2. Upload the file to see what changes</h2>
+        <p class="muted small">Nothing is saved yet. The .xlsx file, 2 MB at most.</p>
+      </div>
+      <input #picker type="file" hidden accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" (change)="onFileChosen($event)" />
+      <button type="button" class="btn" [class.btn-primary]="!preview" [class.btn-secondary]="!!preview" [disabled]="!!busy" (click)="picker.click()">
+        <app-icon name="upload"></app-icon>{{ busy === 'preview' ? 'Reading…' : preview ? 'Choose another file' : 'Choose the file' }}
+      </button>
+    </div>
+
+    <p class="card-pad muted small note" role="status" *ngIf="busy === 'preview'">Reading {{ file?.name }}…</p>
+
+    <ng-container *ngIf="preview as p">
+      <div class="stats">
+        <app-stat label="Rows read" [value]="p.summary.rowsRead" [detail]="file?.name"></app-stat>
+        <app-stat
+          label="Rates that change"
+          [value]="p.summary.ratesChanged"
+          [detail]="p.summary.profilesChanged + ' on profiles, ' + p.summary.itemsChanged + ' on glass and hardware'"
+        ></app-stat>
+        <app-stat
+          class="errors"
+          [class.has-errors]="p.errors.length > 0"
+          label="Rows to correct"
+          [value]="p.errors.length"
+          [detail]="p.errors.length ? 'Nothing can be saved until they are right' : 'None'"
+        ></app-stat>
+      </div>
+
+      <div class="card-pad" *ngIf="p.errors.length">
+        <app-callout tone="danger">
+          Correct these rows in the file and upload it again. Nothing was saved.
+        </app-callout>
+        <ul class="row-errors">
+          <li *ngFor="let row of p.errors">
+            <span class="where">{{ row.sheet }}, row {{ row.row }}</span>
+            <span>{{ row.message }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <p class="card-pad muted note" *ngIf="!p.errors.length && !p.changes.length">
+        No rate in the file differs from the catalogue. There is nothing to apply.
+      </p>
+
+      <table class="table changes" *ngIf="p.changes.length">
+        <thead>
+          <tr>
+            <th scope="col">Item</th>
+            <th scope="col" class="hide-tablet">Sheet and row</th>
+            <th scope="col">Rate</th>
+            <th scope="col" class="right">Now</th>
+            <th scope="col" class="right">New</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let change of rows">
+            <td>
+              <span class="title"><bdi>{{ change.name || change.code }}</bdi></span>
+              <span class="faint tiny sub-line" *ngIf="change.name && change.code">{{ change.code }}</span>
+            </td>
+            <td class="muted small hide-tablet">{{ change.sheet }}, row {{ change.row }}</td>
+            <td class="muted small">{{ change.column }}</td>
+            <td class="right num muted">{{ change.from | inr }}</td>
+            <td class="right num new">{{ change.to | inr }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="table-foot" *ngIf="p.changes.length > firstRows">
+        <span>{{ showAll ? p.changes.length : firstRows }} of {{ p.changes.length }} changes shown</span>
+        <button type="button" class="btn btn-secondary btn-sm" *ngIf="!showAll" (click)="showAll = true">Show all</button>
+      </div>
+    </ng-container>
+  </section>
+
+  <section class="card" aria-labelledby="pf-step-3" *ngIf="preview as p">
+    <div class="card-head">
+      <div>
+        <h2 id="pf-step-3">3. Apply</h2>
+        <p class="muted small" *ngIf="canApply">
+          The catalogue takes the {{ p.summary.ratesChanged }} new {{ p.summary.ratesChanged === 1 ? 'rate' : 'rates' }}. New windows
+          are priced with them; quotations already made keep their prices.
+        </p>
+        <p class="muted small" *ngIf="!canApply">{{ p.errors.length ? 'Correct the file first.' : 'There is nothing to apply.' }}</p>
+      </div>
+      <div class="u-row apply-actions">
+        <button type="button" class="btn btn-secondary" [disabled]="!!busy" (click)="reset()">Discard</button>
+        <button type="button" class="btn btn-primary" [disabled]="!canApply || !!busy" (click)="apply()">
+          {{ busy === 'apply' ? 'Saving…' : 'Apply ' + p.summary.ratesChanged + (p.summary.ratesChanged === 1 ? ' rate' : ' rates') }}
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,21 @@
+// Layout only; colours, sizes and radii come from the tokens.
+:host { display: block; }
+.col { display: grid; gap: var(--s-4); max-width: 920px; }
+.card-head { flex-wrap: wrap; gap: var(--s-3); }
+h2 { margin: 0; font-size: var(--fs-16); }
+.card-head p { margin: 2px 0 0; }
+.note { margin: 0; }
+.stats { border-block: 1px solid var(--c-border); }
+.has-errors ::ng-deep .v { color: var(--c-danger); }
+.row-errors { list-style: none; margin: var(--s-3) 0 0; padding: 0; display: grid; gap: var(--s-2); }
+.row-errors li { display: grid; grid-template-columns: minmax(140px, auto) 1fr; gap: var(--s-3); font-size: var(--fs-13); }
+.where { color: var(--c-text-2); font-weight: var(--fw-medium); }
+.sub-line { display: block; }
+.new { font-weight: var(--fw-semibold); }
+.apply-actions { gap: var(--s-2); flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .row-errors li { grid-template-columns: 1fr; gap: 0; }
+  .card-head .btn, .apply-actions { width: 100%; }
+  .apply-actions .btn { flex: 1; }
+}

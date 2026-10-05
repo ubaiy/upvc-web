@@ -1,5 +1,6 @@
 <app-page-header title="Catalogue" subtitle="The materials and rates every quotation is priced from.">
   <ng-container ngProjectAs="[actions]">
+    <a class="btn btn-secondary" routerLink="/bulk-price-update">Price file</a>
     <button type="button" class="btn btn-secondary" *ngIf="tab === 'profile'" [disabled]="status !== 'ready' || !profiles.length" (click)="ratesOpen = true">
       Update rates
     </button>

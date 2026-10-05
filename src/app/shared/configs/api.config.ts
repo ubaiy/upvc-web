@@ -46,7 +46,6 @@ export const API_END_POINT = {
     list: 'bill/list',
     converToBill: 'bill/convert-to-bill',
     pdf: 'bill/pdf',
-    delete: 'bill/delete',
     cancel: 'bill/cancel',
   },
   paymentType: {
@@ -85,7 +84,6 @@ export const API_END_POINT = {
   costHead: {
     base: 'costhead',
     costHeadTypes: 'costhead-type',
-    costHeadData: 'costhead/data',
     costHeadList: 'costhead/list',
     costHeadAdd: 'costhead/add',
     costHeadUpdate: 'costhead/update',
@@ -104,8 +102,6 @@ export const API_END_POINT = {
     subQuotationDetail: 'quatation/show-product',
     casementTypes: 'product/casement-type',
     sliddingTypes: 'product/slidding-type',
-    pallaTypesOpenable: 'product/palla-type-openable',
-    pallaTypesSlidding: 'product/palla-type-slidding',
     pdf: 'quatation/pdf',
     manageProduct: 'quatation/manage-product',
     openningDirection: 'product/opening-direction',
@@ -132,8 +128,12 @@ export const API_END_POINT = {
   },
   bulkPriceUpdate: {
     get: 'setting/get-price',
-    post: 'setting/update-price',
     // A percentage or new rates per kg for every profile; `dry_run` previews.
     changeRates: 'setting/change-rates',
+  },
+  // The catalogue's rates as an Excel file, and the edited file back (`dry_run` previews).
+  priceSheet: {
+    download: 'price-sheet/download',
+    upload: 'price-sheet/upload',
   },
 };
