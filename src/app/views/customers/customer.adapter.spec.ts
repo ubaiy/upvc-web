@@ -12,6 +12,7 @@ import {
   toCustomerPayload,
   toCustomerRow,
   defaultAddresses,
+  addressErrors,
 } from './customer.adapter';
 
 const STATES: GstState[] = [
@@ -63,6 +64,16 @@ describe('customer adapter', () => {
     expect(row.stateName).toBe('Maharashtra');
     expect(row.gstin).toBe('');
     expect(toCustomerRow({ id: 1, name: 'A', is_dealer: 0 }, STATES).priceList).toBe('retail');
+  });
+
+  it('asks a new address for all of it, and a saved one for its city only once it is changed', () => {
+    expect(addressErrors(address({ address: '', city: '', zip_code: '' }))).withContext('an empty new block').toBeNull();
+    expect(addressErrors(address({ city: '', zip_code: '12' }))).toEqual({ city: true, zip_code: true });
+    expect(addressErrors(address({ zip_code: '999999', city: 'Navagam' }))).withContext('not in the directory: fine').toBeNull();
+    const old = address({ id: 7, city: '', zip_code: '' });
+    expect(addressErrors(old)).withContext('left as it was saved').toBeNull();
+    expect(addressErrors(old, true)).toEqual({ city: true });
+    expect(addressErrors(address({ id: 7, zip_code: '1234' }))).toEqual({ zip_code: true });
   });
 
   it('gives a list row the city and PIN code of the default address, and its state when the customer has none', () => {

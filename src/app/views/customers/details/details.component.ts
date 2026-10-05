@@ -33,7 +33,7 @@ import { CustomerService } from '../customer.service';
 
 /** A block that has anything in it needs the whole address; an empty one is fine. The rule is `addressErrors`. */
 function addressComplete(group: AbstractControl): ValidationErrors | null {
-  return addressErrors(group.value as AddressValue);
+  return addressErrors(group.value as AddressValue, group.dirty);
 }
 
 function gstin(control: AbstractControl): ValidationErrors | null {
@@ -213,6 +213,8 @@ export class DetailsComponent implements OnInit {
     order.forEach((item, place) => {
       groups[place].setValue(item.value);
       item.dirty ? groups[place].markAsDirty() : groups[place].markAsPristine();
+      // The rule for a saved address depends on whether it was changed.
+      groups[place].updateValueAndValidity();
     });
   }
 

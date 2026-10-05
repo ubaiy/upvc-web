@@ -153,16 +153,18 @@ const PIN_CODE = /^[1-9][0-9]{5}$/;
  * What an address block still needs, by field, or null when it is fine.
  * A block that has anything in it needs the whole address; an empty new one is fine.
  * An address saved before city and PIN code were asked for (T90) keeps working
- * without them. A city or PIN the directory does not know is accepted as typed.
+ * without them while it is left as it is; once it is `changed` it is sent, and the
+ * api does not take an address without a city. A city or PIN the directory does
+ * not know is accepted as typed.
  */
-export function addressErrors(value: AddressValue): Record<string, true> | null {
+export function addressErrors(value: AddressValue, changed = false): Record<string, true> | null {
   if (!value.id && isBlankAddress(value)) {
     return null;
   }
   const errors: Record<string, true> = {};
   const pin = value.zip_code.trim();
   if (!value.address.trim()) errors['address'] = true;
-  if (!value.city.trim() && !value.id) errors['city'] = true;
+  if (!value.city.trim() && (!value.id || changed)) errors['city'] = true;
   if (!value.state_code) errors['state_code'] = true;
   if (!(PIN_CODE.test(pin) || (!pin && value.id))) errors['zip_code'] = true;
   return Object.keys(errors).length ? errors : null;

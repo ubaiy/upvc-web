@@ -461,8 +461,9 @@ export class AddressFieldsComponent implements OnChanges, OnInit, OnDestroy {
     if (!control || control.value === value) {
       return;
     }
-    control.setValue(value);
+    // Marked first, as typing does: a rule of the form may depend on whether the address was changed.
     control.markAsDirty();
+    control.setValue(value);
   }
 
   /** The state follows the PIN or the city, unless the form keeps a state already chosen. */

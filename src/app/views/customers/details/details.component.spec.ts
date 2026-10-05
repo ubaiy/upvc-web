@@ -398,13 +398,22 @@ describe('DetailsComponent (customer page)', () => {
       expect(el().textContent).not.toContain('Enter the city.');
     });
 
-    it('saves its other lines when they change, city and PIN still empty', () => {
-      component.addresses.at(0).patchValue({ address_line2: 'Near the lake' });
-      component.addresses.at(0).markAsDirty();
+    it('once it is edited it asks for the city, which the api requires, and saves with the PIN still empty', () => {
+      const block = component.addresses.at(0);
+      // As typing does: the address is marked changed, then takes the value.
+      block.markAsDirty();
+      block.patchValue({ address_line2: 'Near the lake' });
+      component.submit();
+      fixture.detectChanges();
+      expect(service.editCustomer).not.toHaveBeenCalled();
+      expect(el().textContent).toContain('Enter the city.');
+      expect(el().textContent).not.toContain('Enter a 6-digit PIN code.');
+
+      block.patchValue({ city: 'Thane' });
       component.submit();
       const address: any = service.editCustomerAddress.calls.mostRecent().args[0];
       expect(address).toEqual(
-        jasmine.objectContaining({ id: 7, address_line2: 'Near the lake', city: '', zip_code: '', pincode: null, state: 'Maharashtra' })
+        jasmine.objectContaining({ id: 7, address_line2: 'Near the lake', city: 'Thane', zip_code: '', pincode: null, state: 'Maharashtra' })
       );
     });
 
