@@ -6,6 +6,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject } from 'rxjs';
 
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
+import { OwnRatesComponent } from '../../shared/access/own-rates.component';
 import { PRODUCT_NAME, documentTitle } from '../../shared/configs/product';
 import { AuthService } from '../../shared/services/auth.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
@@ -28,6 +29,7 @@ describe('browser tab title', () => {
       declarations: [ShellComponent, CommandPaletteComponent, BlankComponent],
       imports: [
         SharedComponentsModule,
+        OwnRatesComponent,
         RouterTestingModule.withRoutes([
           {
             path: '',

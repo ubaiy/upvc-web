@@ -5,6 +5,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { BehaviorSubject, of } from 'rxjs';
 
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
+import { OwnRatesComponent } from '../../shared/access/own-rates.component';
 import { ApiHttpService } from '../../shared/services/api-http.service';
 import { AuthService } from '../../shared/services/auth.service';
 import { RouteLoadingService } from '../../shared/services/route-loading.service';
@@ -99,6 +100,7 @@ describe('ShellComponent', () => {
       declarations: [ShellComponent, CommandPaletteComponent, BlankComponent],
       imports: [
         SharedComponentsModule,
+        OwnRatesComponent,
         RouterTestingModule.withRoutes([{ path: '**', component: BlankComponent }]),
       ],
       providers: [

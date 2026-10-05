@@ -18,6 +18,7 @@
         [routerLink]="step.link" [queryParams]="step.queryParams">
         {{ step.label }}<app-icon name="arrow-right"></app-icon>
       </a>
+      <app-own-rates *ngIf="i === 0"></app-own-rates>
       <ng-template #notYours><span class="muted small">Ask the owner of the account.</span></ng-template>
     </li>
   </ol>

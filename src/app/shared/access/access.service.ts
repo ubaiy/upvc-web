@@ -1,10 +1,10 @@
 import { Injectable, Injector } from '@angular/core';
-import { BehaviorSubject, Observable, catchError, forkJoin, map, of, shareReplay, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, forkJoin, map, of, shareReplay, switchMap, tap } from 'rxjs';
 
 import { quiet } from '../interceptors/request-options';
 import { ApiHttpService } from '../services/api-http.service';
 import { AuthService } from '../services/auth.service';
-import { AccessState, EMPTY_ACCESS, SubscriptionInfo, WriteGate, allows, gateMenu, has3d, isReadOnly, seesAmounts, writeGate } from './access.models';
+import { AccessState, EMPTY_ACCESS, Me, SubscriptionInfo, WriteGate, allows, gateMenu, has3d, isReadOnly, seesAmounts, writeGate } from './access.models';
 
 /**
  * Who the signed-in user is (role, abilities) and what the company's plan allows.
@@ -125,6 +125,33 @@ export class AccessService {
         this.subject.next({ ...this.state, subscription });
       }
     });
+  }
+
+  /**
+   * "These are my rates now" (api phase-56 G3). After the yes of the api GET me is read again, so
+   * every screen that shows the example-rates line drops it without a reload. When that second
+   * answer does not come, the mark of the first answer is kept instead.
+   */
+  confirmOwnRates(): Observable<AccessState> {
+    return this.api.post('company/starter-catalogue/confirm', {}, quiet()).pipe(
+      switchMap((res: any) =>
+        this.api.get('me', quiet()).pipe(
+          map((me: any) => (me?.data ?? null) as Me | null),
+          catchError(() => of(null)),
+          map((me) => me ?? this.withStarter(res?.data?.starter_catalogue ?? null))
+        )
+      ),
+      map((me) => {
+        const state = { ...this.state, me };
+        this.subject.next(state);
+        return state;
+      })
+    );
+  }
+
+  private withStarter(starter: unknown): Me | null {
+    const me = this.state.me;
+    return me && me.company ? { ...me, company: { ...me.company, starter_catalogue: starter } as Me['company'] } : me;
   }
 
   forget(): void {

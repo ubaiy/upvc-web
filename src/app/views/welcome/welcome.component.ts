@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 
 import { AccessService } from 'src/app/shared/access/access.service';
 import { AccessState } from 'src/app/shared/access/access.models';
+import { OwnRatesComponent } from 'src/app/shared/access/own-rates.component';
 import { EXAMPLE_RATES_TEXT, hasExampleRates, trialLine } from 'src/app/shared/access/starter-catalogue';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { PRODUCT_NAME } from 'src/app/shared/configs/product';
@@ -56,7 +57,7 @@ export function welcomeSteps(exampleRates: boolean): WelcomeStep[] {
 @Component({
   selector: 'app-welcome',
   standalone: true,
-  imports: [CommonModule, RouterModule, SharedComponentsModule],
+  imports: [CommonModule, RouterModule, SharedComponentsModule, OwnRatesComponent],
   templateUrl: './welcome.component.html',
   styleUrls: ['./welcome.component.scss'],
 })

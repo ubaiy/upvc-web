@@ -105,7 +105,7 @@
 
 // trial ending, payment due, read-only (card T117): one line above every page
 .plan-banner { border-radius: 0; padding-inline: var(--s-6); .btn { flex: none; } }
-@media (max-width: 640px) { .plan-banner { padding-inline: var(--s-4); } }
+@media (max-width: 640px) { .plan-banner { padding-inline: var(--s-4); } .example-rates { flex-wrap: wrap; .grow { flex-basis: calc(100% - 40px); } } }
 
 @media print {
   .side, .skip, .bar, .plan-banner { display: none; }

@@ -55,6 +55,7 @@ import { LoaderInterceptor } from 'src/app/shared/interceptors/loader.intercepto
 import { ProfileComponent } from './views/profile/profile.component';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
 import { SharedComponentsModule } from './shared/components/shared-components.module';
+import { OwnRatesComponent } from './shared/access/own-rates.component';
 const APP_CONTAINERS = [ShellComponent, CommandPaletteComponent];
 
 @NgModule({
@@ -95,6 +96,8 @@ const APP_CONTAINERS = [ShellComponent, CommandPaletteComponent];
     AlertModule,
     ProgressBarModule,
     SharedComponentsModule,
+    // "These are my rates now" in the example-rates line of the shell (card T146).
+    OwnRatesComponent,
   ],
   providers: [
     // One toast queue and one confirm dialog for the whole app, lazy modules included.

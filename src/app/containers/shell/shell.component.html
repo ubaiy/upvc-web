@@ -120,6 +120,7 @@
       <app-icon name="alert"></app-icon>
       <span class="grow">{{ line.text }}</span>
       <a class="btn btn-secondary btn-sm" [routerLink]="line.link">{{ line.label }}</a>
+      <app-own-rates></app-own-rates>
     </div>
     <div class="page" *ngIf="pageLoading"><app-page-skeleton></app-page-skeleton></div>
     <div class="page" [class.page-wide]="wide" [style.display]="pageLoading ? 'none' : null">
