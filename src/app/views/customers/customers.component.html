@@ -36,7 +36,7 @@
         <app-icon name="search"></app-icon>
         <input
           type="search"
-          placeholder="Search name, phone or GSTIN"
+          placeholder="Search name, phone, city or GSTIN"
           aria-label="Search customers"
           [(ngModel)]="search"
           (ngModelChange)="onSearch()"
@@ -51,7 +51,7 @@
         <tr>
           <th scope="col">Customer</th>
           <th scope="col">Phone</th>
-          <th scope="col" class="hide-tablet">State</th>
+          <th scope="col" class="hide-tablet">City and state</th>
           <th scope="col" class="hide-tablet">GSTIN</th>
           <th scope="col">Price list</th>
           <th scope="col"><span class="sr-only">Actions</span></th>
@@ -64,7 +64,13 @@
             <div class="faint tiny" *ngIf="customer.email">{{ customer.email }}</div>
           </td>
           <td class="muted num">{{ customer.phone }}</td>
-          <td class="muted hide-tablet">{{ customer.stateName || '—' }}</td>
+          <td class="muted hide-tablet" data-c="place">
+            <ng-container *ngIf="customer.place; else stateOnly">
+              <div>{{ customer.place }}</div>
+              <div class="faint tiny" *ngIf="customer.stateName">{{ customer.stateName }}</div>
+            </ng-container>
+            <ng-template #stateOnly>{{ customer.stateName || '—' }}</ng-template>
+          </td>
           <td class="muted num hide-tablet">{{ customer.gstin || '—' }}</td>
           <td>
             <span class="badge" [class.badge-accent]="customer.priceList === 'dealer'">{{

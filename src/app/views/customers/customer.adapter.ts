@@ -6,6 +6,8 @@
  * contract change is one edit in this file.
  */
 
+import { cityPin, pinOf } from 'src/app/shared/class/address-text';
+
 export interface GstState {
   code: string;
   name: string;
@@ -20,6 +22,8 @@ export interface CustomerRow {
   phone: string;
   email: string;
   gstin: string;
+  /** "Surat - 395007" of the default address; '' when the customer has none. */
+  place: string;
   stateName: string;
   priceList: PriceList;
 }
@@ -92,14 +96,31 @@ export function stateName(code: string | null | undefined, states: GstState[]): 
   return states.find((state) => state.code === code)?.name || '';
 }
 
-export function toCustomerRow(dto: any, states: GstState[]): CustomerRow {
+/** The default address of every customer, by customer id, from the rows of customer/address/list. */
+export function defaultAddresses(rows: any[] | null | undefined): Map<number, any> {
+  const byCustomer = new Map<number, any>();
+  [...(rows || [])]
+    .sort((a, b) => Number(b.is_default) - Number(a.is_default) || Number(a.id) - Number(b.id))
+    .forEach((row) => {
+      const customerId = Number(row.customer_id);
+      if (!byCustomer.has(customerId)) {
+        byCustomer.set(customerId, row);
+      }
+    });
+  return byCustomer;
+}
+
+/** `address` is the customer's default address, when the list of addresses could be read. */
+export function toCustomerRow(dto: any, states: GstState[], address?: any): CustomerRow {
   return {
     id: dto.id,
     name: dto.name || '',
     phone: dto.phone || '',
     email: dto.email || '',
     gstin: dto.gstin || '',
-    stateName: stateName(dto.state_code, states),
+    place: cityPin(address?.city, pinOf(address)),
+    // The customer's own state; without one, the state of the default address.
+    stateName: stateName(dto.state_code, states) || stateName(stateCodeFor(address?.state_code || address?.state, states), states),
     priceList: Number(dto.is_dealer) ? 'dealer' : 'retail',
   };
 }

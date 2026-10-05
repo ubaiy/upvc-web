@@ -16,6 +16,12 @@ const CUSTOMERS = [
   { id: 4, name: 'Modern Homes LLP', phone: '9834567892', email: '', is_dealer: 1, gstin: '24ABCDE1234F1Z5' },
 ];
 const STATES = { success: true, data: [{ code: '27', name: 'Maharashtra', abbreviation: 'MH' }] };
+const ADDRESSES = [
+  { id: 9, customer_id: 3, is_default: 0, city: 'Nashik', state: 'MH', pincode: '422010', zip_code: '422010' },
+  { id: 7, customer_id: 3, is_default: 1, city: 'Mumbai', state: 'MH', pincode: '400050', zip_code: '400050' },
+  // Saved before city and PIN code: the row then shows the state alone.
+  { id: 8, customer_id: 4, is_default: 1, city: null, state: 'MH', pincode: null, zip_code: null },
+];
 
 describe('CustomersComponent', () => {
   let fixture: ComponentFixture<CustomersComponent>;
@@ -25,7 +31,8 @@ describe('CustomersComponent', () => {
   const el = (): HTMLElement => fixture.nativeElement;
 
   beforeEach(() => {
-    service = jasmine.createSpyObj('CustomerService', ['getCustomerList', 'getStates', 'deleteCustomer']);
+    service = jasmine.createSpyObj('CustomerService', ['getCustomerList', 'getStates', 'getAllAddresses', 'deleteCustomer']);
+    service.getAllAddresses.and.returnValue(of({ success: true, data: ADDRESSES } as any));
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError']);
     service.getStates.and.returnValue(of(STATES as any));
     TestBed.configureTestingModule({
@@ -49,6 +56,27 @@ describe('CustomersComponent', () => {
     expect(el().querySelectorAll('.sk-row').length).toBe(6);
     expect(el().querySelector('[role="status"]')?.textContent).toContain('Loading customers');
     expect(el().querySelector('table')).toBeNull();
+  });
+
+  it('shows "City - PIN" of the default address above the state, and finds a customer by city or PIN (T90)', () => {
+    create(of({ success: true, data: CUSTOMERS }));
+    const cells = Array.from(el().querySelectorAll('[data-c="place"]')).map((cell) => (cell.textContent || '').replace(/\s+/g, ' ').trim());
+    expect(cells).toEqual(['Maharashtra', 'Mumbai - 400050Maharashtra']);
+    expect(el().querySelector('thead')?.textContent).toContain('City and state');
+
+    const component = fixture.componentInstance;
+    component.search = 'mumb';
+    expect(component.filtered.map((c) => c.name)).toEqual(['Sharma Residency']);
+    component.search = '400050';
+    expect(component.filtered.map((c) => c.name)).toEqual(['Sharma Residency']);
+  });
+
+  it('still lists the customers when their addresses cannot be read', () => {
+    service.getAllAddresses.and.returnValue(throwError(() => new Error('offline')));
+    create(of({ success: true, data: CUSTOMERS }));
+    expect(el().querySelectorAll('tbody tr').length).toBe(2);
+    const cells = Array.from(el().querySelectorAll('[data-c="place"]')).map((cell) => (cell.textContent || '').trim());
+    expect(cells).toEqual(['—', 'Maharashtra']);
   });
 
   it('lists customers A to Z with state, GSTIN and price list', () => {

@@ -5,7 +5,7 @@ import { Menu } from 'primeng/menu';
 import { catchError, forkJoin, of } from 'rxjs';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { UndoService } from 'src/app/shared/services/undo.service';
-import { CustomerRow, GstState, toCustomerRow } from './customer.adapter';
+import { CustomerRow, GstState, defaultAddresses, toCustomerRow } from './customer.adapter';
 import { CustomerService } from './customer.service';
 
 const PAGE_SIZE = 10;
@@ -42,15 +42,18 @@ export class CustomersComponent implements OnInit {
       list: this._dataService.getCustomerList(),
       // The state name is a nicety on this list; a failure there must not hide the customers.
       states: this._dataService.getStates().pipe(catchError(() => of({ success: false, data: [] as GstState[] }))),
+      // So is the city and PIN code of each customer: without them the list shows the state alone.
+      addresses: this._dataService.getAllAddresses().pipe(catchError(() => of({ success: false, data: [] as any[] }))),
     }).subscribe({
-      next: ({ list, states }) => {
+      next: ({ list, states, addresses }) => {
         if (!list.success) {
           this.state = 'error';
           return;
         }
         const stateList = (states.success && states.data) || [];
+        const byCustomer = defaultAddresses(addresses.success ? (addresses.data as any[]) : []);
         this.customers = (list.data || [])
-          .map((dto) => toCustomerRow(dto, stateList))
+          .map((dto) => toCustomerRow(dto, stateList, byCustomer.get(Number(dto.id))))
           .sort((a, b) => a.name.localeCompare(b.name));
         this.state = 'ready';
       },
@@ -64,7 +67,7 @@ export class CustomersComponent implements OnInit {
       return this.customers;
     }
     return this.customers.filter((customer) =>
-      [customer.name, customer.phone, customer.email, customer.gstin].some((value) =>
+      [customer.name, customer.phone, customer.email, customer.gstin, customer.place].some((value) =>
         value.toLowerCase().includes(text)
       )
     );

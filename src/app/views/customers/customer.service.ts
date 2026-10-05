@@ -6,6 +6,7 @@ import { IResponseDto } from '../../shared/model/common/response.model';
 import { API_END_POINT } from '../../shared/configs/api.config';
 import { ICustomerAdddressDto } from 'src/app/shared/model/customer/customerAddress.model';
 import { GstState } from './customer.adapter';
+import { quiet } from '../../shared/interceptors/request-options';
 @Injectable({
   providedIn: 'root',
 })
@@ -90,6 +91,11 @@ export class CustomerService {
   /** This customer's bills, cancelled ones included. */
   public getCustomerBills(customerId: number): Observable<IResponseDto<any[]>> {
     return this._apiHttpSerivce.get(`${API_END_POINT.bills.list}?status=all&customer_id=${customerId}`);
+  }
+
+  /** Every customer address in one call: the Customers list shows the city and PIN code of each default one. */
+  public getAllAddresses(): Observable<IResponseDto<ICustomerAdddressDto[]>> {
+    return this._apiHttpSerivce.get(API_END_POINT.customer_address.list, quiet());
   }
 
   /** GST state list: the same one the API uses to decide the tax split. */

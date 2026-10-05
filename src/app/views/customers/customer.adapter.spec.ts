@@ -11,6 +11,7 @@ import {
   toAddressValues,
   toCustomerPayload,
   toCustomerRow,
+  defaultAddresses,
 } from './customer.adapter';
 
 const STATES: GstState[] = [
@@ -62,6 +63,21 @@ describe('customer adapter', () => {
     expect(row.stateName).toBe('Maharashtra');
     expect(row.gstin).toBe('');
     expect(toCustomerRow({ id: 1, name: 'A', is_dealer: 0 }, STATES).priceList).toBe('retail');
+  });
+
+  it('gives a list row the city and PIN code of the default address, and its state when the customer has none', () => {
+    const byCustomer = defaultAddresses([
+      { id: 6, customer_id: 4, is_default: 0, city: 'Nashik', state: 'Maharashtra', pincode: '422010' },
+      { id: 5, customer_id: 4, is_default: 1, city: 'Surat', state: 'GJ', pincode: null, zip_code: '395007' },
+      { id: 9, customer_id: 7, is_default: 0, city: 'Pune', state: 'Maharashtra', pincode: '411001' },
+    ]);
+    expect(byCustomer.get(4).id).toBe(5);
+    expect(byCustomer.get(7).id).withContext('no default: the first address').toBe(9);
+    const row = toCustomerRow({ id: 4, name: 'Modern Homes LLP', is_dealer: 1 }, STATES, byCustomer.get(4));
+    expect(row.place).toBe('Surat - 395007');
+    expect(row.stateName).toBe('Gujarat');
+    expect(toCustomerRow({ id: 1, name: 'A', is_dealer: 0 }, STATES).place).toBe('');
+    expect(defaultAddresses(null).size).toBe(0);
   });
 
   it('puts the default address first', () => {
