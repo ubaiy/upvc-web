@@ -7,6 +7,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { Observable, Subject, of, throwError } from 'rxjs';
 
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
+import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 import { ToastService } from '../../shared/services/toast.service';
 import { JOB } from './production.adapter.spec';
 import { ProductionComponent } from './production.component';
@@ -34,7 +35,7 @@ describe('ProductionComponent', () => {
     saved = [];
     TestBed.configureTestingModule({
       declarations: [ProductionComponent],
-      imports: [RouterTestingModule, SharedComponentsModule],
+      imports: [RouterTestingModule, SharedComponentsModule, ConfirmDialogComponent],
       providers: [
         { provide: ProductionService, useValue: service },
         { provide: ToastService, useValue: toast },
@@ -112,6 +113,34 @@ describe('ProductionComponent', () => {
     expect(items[1]).toContain('bead deduction 10 mm');
     expect(items[1]).toContain('All windows');
     expect(text()).not.toContain('profile_id');
+  });
+
+  it("shows the api's own notes as it sends them, in place of the reworded warnings", () => {
+    create(
+      job({
+        warnings: [{ message: "No profile with role 'reinforcement' in the system.", windows: ['W1'] }],
+        notes: [
+          {
+            code: 'profile_role_missing',
+            text: 'No profile of the profile system is marked as steel reinforcement, so those pieces are listed without a profile code.',
+            windows: ['W1', 'W2', 'W3'],
+            where: { kind: 'product', field: 'role', value: 'reinforcement' },
+          },
+          { code: 'beads_missing', text: 'Some bead pieces are missing. Refresh the job to add them.', windows: ['W2'] },
+        ],
+      })
+    );
+    const items = Array.from(el().querySelectorAll('.warning-list li')).map((li) => (li.textContent || '').replace(/\s+/g, ' '));
+    expect(items.length).toBe(2);
+    expect(items[0]).toContain('No profile of the profile system is marked as steel reinforcement');
+    expect(items[0]).toContain('All windows');
+    expect(items[1]).toContain('Refresh the job to add them.W2');
+    expect(text()).not.toContain('in the catalogue');
+  });
+
+  it('keeps the page clear of notes when the api sends an empty list', () => {
+    create(job({ warnings: [{ message: 'Something raw', windows: ['W1'] }], notes: [] }));
+    expect(el().querySelector('.warnings')).toBeNull();
   });
 
   it('hides the warnings card when there are none', () => {
@@ -272,6 +301,14 @@ describe('ProductionComponent', () => {
     service.freeze.and.returnValue(job({ revision: 2, latest_revision: 2, number: 'Q-0003/P2' }));
     button('Refresh job').click();
     fixture.detectChanges();
+    // One tap does not replace the revision the workshop may be cutting from.
+    expect(service.freeze).not.toHaveBeenCalled();
+    const dialog = el().querySelector('app-confirm-dialog')!;
+    expect(dialog.textContent).toContain('Make revision 2 of Q-0003?');
+    expect(dialog.textContent).toContain('Keep revision 1');
+    (Array.from(dialog.querySelectorAll('button')) as HTMLButtonElement[]).find((b) => (b.textContent || '').includes('Refresh job'))!.click();
+    fixture.detectChanges();
+    expect(el().querySelector('app-confirm-dialog')).toBeNull();
     expect(service.freeze).toHaveBeenCalledWith('14', true);
     expect(text()).toContain('Job Q-0003/P2');
     expect(text()).toContain('Revision 2');

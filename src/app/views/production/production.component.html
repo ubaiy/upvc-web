@@ -73,7 +73,7 @@
 
   <app-callout tone="warn" class="gap" *ngIf="job.is_stale && isNewest">
     The quotation has changed since this job was frozen. These documents still show the frozen sizes.
-    <button action type="button" class="btn btn-secondary" [disabled]="freezing" (click)="freeze(true)">
+    <button action type="button" class="btn btn-secondary" [disabled]="freezing" (click)="askRefresh()">
       {{ freezing ? 'Refreshing…' : 'Refresh job' }}
     </button>
   </app-callout>
@@ -114,7 +114,7 @@
         class="btn btn-secondary"
         *ngIf="isNewest && !job.is_stale"
         [disabled]="freezing"
-        (click)="freeze(true)"
+        (click)="askRefresh()"
       >
         <app-icon name="refresh"></app-icon>{{ freezing ? 'Refreshing…' : 'Refresh job' }}
       </button>
@@ -320,3 +320,18 @@
     </table>
   </section>
 </ng-container>
+
+<!-- A new revision replaces the one the workshop may be cutting from: one small confirm (T84, m21). -->
+<app-confirm-dialog
+  *ngIf="refreshAsking && job as j"
+  [title]="'Make revision ' + (j.latest_revision + 1) + ' of ' + j.quotation.number + '?'"
+  [text]="
+    'The documents are worked out again from the quotation as it is now. Revision ' +
+    j.latest_revision +
+    ' stays in the list and can still be printed, but the workshop may already be cutting from it: tell them which one to use.'
+  "
+  confirmLabel="Refresh job"
+  [keepLabel]="'Keep revision ' + j.latest_revision"
+  (confirmed)="confirmRefresh()"
+  (closed)="refreshAsking = false"
+></app-confirm-dialog>

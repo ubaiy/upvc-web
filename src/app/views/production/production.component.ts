@@ -13,6 +13,7 @@ import {
   SHEET_PAGE_WIDTH,
   fileName,
   fitZoom,
+  noteLines,
   plainWarnings,
   previewPage,
   summarise,
@@ -116,6 +117,21 @@ export class ProductionComponent implements OnInit, OnDestroy {
   /** Reloads what was on screen: the same revision when one was open. */
   retry(): void {
     this.load(this.job && !this.isNewest ? this.job.revision : undefined);
+  }
+
+  /** True while "Refresh job" waits for a yes: the workshop may be cutting from the revision on screen. */
+  refreshAsking = false;
+
+  /** "Refresh job": a new revision is not made in one tap. */
+  askRefresh(): void {
+    if (!this.freezing) {
+      this.refreshAsking = true;
+    }
+  }
+
+  confirmRefresh(): void {
+    this.refreshAsking = false;
+    this.freeze(true);
   }
 
   /** Freezes the quotation, or with `refresh` makes a new revision from it as it is now. */
@@ -284,7 +300,10 @@ export class ProductionComponent implements OnInit, OnDestroy {
       case 'job':
         this.job = result.job;
         this.summary = summarise(result.job);
-        this.warnings = plainWarnings(result.job.warnings, result.job.window_count);
+        // The api's own lines when it sends them; the raw warnings reworded here only for an older api.
+        this.warnings = Array.isArray(result.job.notes)
+          ? noteLines(result.job.notes, result.job.window_count)
+          : plainWarnings(result.job.warnings, result.job.window_count);
         this.revisions = Array.from({ length: result.job.latest_revision || 1 }, (_, i) => i + 1).reverse();
         this.state = 'ready';
         break;

@@ -1,5 +1,5 @@
 import { IconName } from '../../shared/components/icon/icon-paths';
-import { DocumentFormat, DocumentType, JobResult, JobWarning, ProductionJob } from './production.model';
+import { DocumentFormat, DocumentType, JobNote, JobResult, JobWarning, ProductionJob } from './production.model';
 
 export { fileNameFromHeader } from '../../shared/class/download-file';
 
@@ -135,7 +135,25 @@ const RULE: Record<string, string> = {
 const words = (key: string, names: Record<string, string>) => names[key] || key.replace(/_/g, ' ');
 
 /**
- * The engine's warnings in plain language, one line per thing to check.
+ * "Check before cutting" as the api sends it: its sentence, unchanged, and
+ * the windows it is about. The api writes these lines so they point to no
+ * screen that does not exist.
+ */
+export function noteLines(notes: JobNote[] | null | undefined, windowCount = 0): PlainWarning[] {
+  return (notes || [])
+    .filter((note) => (note?.text || '').trim())
+    .map((note) => {
+      const codes = Array.isArray(note.windows) ? note.windows : [];
+      return {
+        text: note.text.trim(),
+        windows: windowCount > 1 && codes.length >= windowCount ? 'All windows' : codes.join(', '),
+      };
+    });
+}
+
+/**
+ * For a job from an api that sends no `notes`: the engine's raw warnings in
+ * plain language, one line per thing to check.
  * Every "rule missing" message of the same windows becomes one line that
  * names the standard values used. A message this does not know is shown as
  * the engine wrote it, so nothing is hidden.
@@ -178,7 +196,7 @@ export function plainWarnings(warnings: JobWarning[] | null | undefined, windowC
     lines.push({
       text:
         `${count} ${count === 1 ? 'value is' : 'values are'} missing from the profile system, ` +
-        `so standard values were used: ${group.values.join(', ')}. Enter the supplier's values in the catalogue.`,
+        `so standard values were used: ${group.values.join(', ')}. Check them against the supplier manual before cutting.`,
       windows: group.windows,
     });
   }

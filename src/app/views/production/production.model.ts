@@ -40,6 +40,17 @@ export interface JobWarning {
   windows: string[];
 }
 
+/**
+ * One line of "Check before cutting", worded by the api (phase 30 log,
+ * section 2). `where` names the api field behind the note, never a screen.
+ */
+export interface JobNote {
+  code: string;
+  text: string;
+  windows: string[];
+  where?: unknown;
+}
+
 export interface ProductionJob {
   id: number;
   quatation_id: number;
@@ -66,6 +77,8 @@ export interface ProductionJob {
     gasket_mm?: { glazing: number; sash: number };
   };
   warnings: JobWarning[];
+  /** The same things to check, in the api's own plain words. Shown as sent; `warnings` is the older raw form. */
+  notes?: JobNote[];
 }
 
 /** What a job call gave back: the job, or the api's reason for not giving one. */
