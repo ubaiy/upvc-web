@@ -20,6 +20,8 @@ export interface BillRow {
   quotationNumber: string;
   amount: number;
   cancelled: boolean;
+  /** Why it was cancelled, as typed in the Cancel dialog; '' when none was given. */
+  cancelReason: string;
 }
 
 function customerName(dto: any): string {
@@ -58,6 +60,7 @@ export function toBillRow(dto: any, quotations: any[] = []): BillRow {
     quotationNumber: source?.number || dto.quatation_number || '',
     amount: Number(dto.total ?? dto.totals?.total ?? source?.total ?? dto.grand_total ?? 0),
     cancelled: dto.status === 'cancelled' || !!dto.cancelled_at,
+    cancelReason: (dto.cancel_reason || '').toString().trim(),
   };
 }
 

@@ -58,6 +58,8 @@
           <td>
             <span class="title num">{{ bill.number }}</span>
             <span class="badge badge-danger bill-flag" *ngIf="bill.cancelled">Cancelled</span>
+            <!-- The reason typed when it was cancelled stays with the bill. -->
+            <span class="muted small bill-reason" *ngIf="bill.cancelled && bill.cancelReason">Reason: {{ bill.cancelReason }}</span>
           </td>
           <td class="muted small hide-tablet">{{ bill.date ? (bill.date | date : 'd MMM y') : '—' }}</td>
           <td>

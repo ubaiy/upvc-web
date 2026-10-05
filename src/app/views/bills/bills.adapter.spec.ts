@@ -23,6 +23,7 @@ describe('bills adapter', () => {
       quotationNumber: 'Q-0005',
       amount: 20050,
       cancelled: false,
+      cancelReason: '',
     });
   });
 
@@ -36,6 +37,7 @@ describe('bills adapter', () => {
         grand_total: 14159.58,
         quatation_id: 18,
         status: 'cancelled',
+        cancel_reason: ' Wrong window count ',
         customer_details: '{"name":"Amit Mehta"}',
       },
       QUOTATIONS
@@ -47,6 +49,8 @@ describe('bills adapter', () => {
     expect(row.quotationId).toBe(18);
     expect(row.customer).toBe('Amit Mehta');
     expect(row.cancelled).toBeTrue();
+    // The reason typed in the Cancel dialog stays with the bill (m13).
+    expect(row.cancelReason).toBe('Wrong window count');
   });
 
   it('shows the identity, with no link, when the quotation is not found', () => {

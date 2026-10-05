@@ -161,13 +161,14 @@ export class ListComponent implements OnInit {
       return;
     }
     this.cancelBusy = true;
+    const reason = this.cancelReason.trim();
     this._billService.cancelBill(bill.id, this.cancelReason).subscribe({
       next: (res) => {
         this.cancelBusy = false;
         if (res.success) {
           this.cancelling = null;
           this._toastService.showSuccess(`${bill.number} cancelled`);
-          this.bills = this.bills.map((row) => (row.id === bill.id ? { ...row, cancelled: true } : row));
+          this.bills = this.bills.map((row) => (row.id === bill.id ? { ...row, cancelled: true, cancelReason: reason } : row));
         } else {
           this._toastService.showError(res.message);
         }
