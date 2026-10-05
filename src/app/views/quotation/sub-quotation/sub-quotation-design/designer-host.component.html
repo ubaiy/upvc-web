@@ -14,7 +14,7 @@
         [ngModel]="label"
         (ngModelChange)="onLabel($event)"
       />
-      <div class="muted small dz-sub">
+      <div class="muted small dz-sub" *ngIf="quotationName">
         {{ quotationName }}<ng-container *ngIf="quotationNumber"> · {{ quotationNumber }}</ng-container> ·
         {{ position }}
       </div>
@@ -51,10 +51,10 @@
       </ng-container>
     </div>
 
-    <button type="button" class="btn dz-another" data-dz="save-another" [disabled]="!canSave" (click)="save(true)">
+    <button type="button" class="btn dz-another" data-dz="save-another" appWrite="quotations.write" [disabled]="!canSave" (click)="save(true)">
       Save and add another
     </button>
-    <button type="button" class="btn btn-primary" data-dz="save" [disabled]="!canSave" (click)="save(false)">
+    <button type="button" class="btn btn-primary" data-dz="save" appWrite="quotations.write" [disabled]="!canSave" (click)="save(false)">
       {{ saving ? 'Saving…' : 'Save window' }}
     </button>
   </header>
@@ -246,10 +246,11 @@
       <div class="float" role="toolbar" aria-label="View">
         <div class="seg view-switch" role="group" aria-label="2D drawing or 3D view">
           <button type="button" data-dz="view-2d" [attr.aria-pressed]="!view3d.on" (click)="show2d()">2D</button>
-          <button type="button" data-dz="view-3d" [attr.aria-pressed]="view3d.on" [disabled]="view3d.loading"
+          <button *appHas3d type="button" data-dz="view-3d" [attr.aria-pressed]="view3d.on" [disabled]="view3d.loading"
             title="See this window in 3D: turn it, open it, tap a pane to change it." (click)="show3d()">
             {{ view3d.loading ? 'Loading…' : '3D' }}
           </button>
+          <app-plan-lock label="3D" look="seg"></app-plan-lock>
         </div>
         <ng-container *ngIf="!view3d.on">
         <span class="sep"></span>
