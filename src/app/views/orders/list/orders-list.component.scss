@@ -89,8 +89,14 @@
 .job-meta { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2); margin-block-start: var(--s-1); }
 .job-next {
   justify-content: space-between;
+  gap: var(--s-1);
   min-height: 44px;
   margin: 0 var(--s-2) var(--s-2);
+  // A 166 px column leaves about 124 px: "Start production" and its arrow stay inside the button.
+  padding-inline: var(--s-2);
+  white-space: normal;
+  text-align: start;
+  line-height: 1.2;
 }
 
 // The stage tabs scroll sideways on a narrow screen: the shadow on the edge says so.
