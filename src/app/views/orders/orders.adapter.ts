@@ -1,4 +1,5 @@
 import { idOrNull, num, text } from '../payments/api-result';
+import { addressLine } from 'src/app/shared/class/address-text';
 import { toAccount } from '../payments/payments.adapter';
 import { ChargeLine, Order, OrderLine, OrderPage, OrderTab, StageCounts, StageKey, StageStep, TaxLine } from './orders.model';
 
@@ -126,16 +127,6 @@ function toLine(raw: any, index: number): OrderLine {
   };
 }
 
-function oneLine(address: any): string {
-  if (!address || typeof address !== 'object') {
-    return text(address);
-  }
-  return [address.address, address.address_line2, address.city, address.state, address.zip_code]
-    .map((part) => text(part).trim())
-    .filter(Boolean)
-    .join(', ');
-}
-
 export function toOrderPage(raw: any): OrderPage {
   const quotation = raw?.quatation;
   const job = raw?.production_job;
@@ -164,7 +155,8 @@ export function toOrderPage(raw: any): OrderPage {
     taxLines,
     charges,
     paymentTerm: text(raw?.payment_terms?.name || raw?.totals?.payment_term?.name),
-    address: oneLine(raw?.customer_address),
+    // "Rajkot - 360001", as the order confirmation prints it.
+    address: addressLine(raw?.customer_address),
   };
 }
 

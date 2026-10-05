@@ -79,7 +79,7 @@ describe('orders adapter', () => {
     expect(page.productionJob).toEqual({ number: 'Q-0003/P1', revision: 1, verified: false });
     expect(page.bill).toBeNull();
     expect(page.account?.balance).toBe(17728);
-    expect(page.address).toBe('Villa 14, Palm Street, Al Olaya District, Rajkot, Gujarat, 360001');
+    expect(page.address).toBe('Villa 14, Palm Street, Al Olaya District, Rajkot - 360001, Gujarat');
     expect(page.paymentTerm).toBe('50% Advance, 50% on Delivery');
     const billed = toOrderPage(rawOrderPage({ bill: { id: 3, number: 'INV/26-27/0002', bill_date: '2026-10-05', total: 35456 }, production_job: null }));
     expect(billed.bill).toEqual({ id: 3, number: 'INV/26-27/0002', date: '2026-10-05', total: 35456 });

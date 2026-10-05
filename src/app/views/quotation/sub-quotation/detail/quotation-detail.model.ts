@@ -7,6 +7,7 @@
  * figures the old screen showed, so the page still opens.
  */
 import { TotalsLine } from 'src/app/shared/components/totals/totals.component';
+import { addressLine } from 'src/app/shared/class/address-text';
 import { PaneType, WindowSpec } from 'src/app/shared/components/window-thumb/window-drawing';
 
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'billed';
@@ -41,7 +42,10 @@ export interface QuotationCustomer {
   initials: string;
   phone: string;
   email: string;
+  /** The site address on one line: "Villa 14, Godhra - 389001, Gujarat". */
   address: string;
+  /** The customer address row the site address was copied from, when it says. */
+  addressId: number | null;
 }
 
 export interface QuotationRevision {
@@ -225,35 +229,31 @@ export function initials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-/** The address is stored on the quotation as a JSON string. */
-function readAddress(raw: unknown): string {
+/** The address is stored on the quotation as a JSON string: a copy of the customer address row. */
+function readAddress(raw: unknown): any {
   let address: any = raw;
   if (typeof raw === 'string') {
     try {
       address = JSON.parse(raw);
     } catch {
-      return '';
+      return null;
     }
   }
-  if (!address || typeof address !== 'object') {
-    return '';
-  }
-  return [address.address, address.address_line2, address.city, address.state, address.zip_code]
-    .map(text)
-    .filter(Boolean)
-    .join(', ');
+  return address && typeof address === 'object' ? address : null;
 }
 
 function readCustomer(raw: any): QuotationCustomer {
   const customer = raw?.customer || {};
   const name = text(customer.name);
+  const address = readAddress(raw?.customer_address);
   return {
     id: customer.id ?? raw?.customer_id ?? null,
     name,
     initials: initials(name),
     phone: text(customer.phone),
     email: text(customer.email),
-    address: readAddress(raw?.customer_address),
+    address: addressLine(address),
+    addressId: Number(address?.id) || null,
   };
 }
 

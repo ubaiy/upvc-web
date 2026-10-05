@@ -8,7 +8,7 @@ describe('quotation-detail.model', () => {
     expect(view.name).toBe('Al-Rashid Villa Windows');
     expect(view.customer.name).toBe('Ahmed Al-Rashid');
     expect(view.customer.initials).toBe('AA');
-    expect(view.customer.address).toBe('Villa 14, Palm Street, Godhra, Gujarat, 389001');
+    expect(view.customer.address).withContext('City - PIN, as the PDF prints it').toBe('Villa 14, Palm Street, Godhra - 389001, Gujarat');
   });
 
   it('never shows the hash: without a number it falls back to "No. <id>"', () => {
