@@ -110,7 +110,7 @@ export interface PartsOptions {
 
 const CORNER_TURN_RAD = (20 * Math.PI) / 180;
 /** The band round a selected pane: its face width and how far it stands proud of the pane. */
-const RING_FACE_MM = 9;
+const RING_FACE_MM = 10;
 const RING_PROUD_MM = 2;
 /** From the back plate of a handle to the lever. */
 const HANDLE_NECK_MM = 26;
@@ -154,7 +154,8 @@ function addPick(
 ): void {
   if (poly.length < 3) return;
   const pts = poly.map((p) => up(ctx, p));
-  const band = boxSection(RING_FACE_MM, zFront - zBack + 2 * RING_PROUD_MM);
+  // A thin line on the face of the pane, not a block the depth of the sash: the pane must still read under it.
+  const band = boxSection(RING_FACE_MM, 2 * RING_PROUD_MM);
   const ring = joinGeo(sweepSection(pts, band, { closed: true, zOutside: zFront + RING_PROUD_MM, breaks: cornerBreaks(pts) }));
   const pick: PickPart = { leafId, groupId, slab: extrudePolygon(pts, zFront, zBack), ring };
   if (panelIndex !== undefined) pick.panelIndex = panelIndex;
