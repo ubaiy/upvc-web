@@ -177,6 +177,14 @@ export class DetailsComponent implements OnInit {
     this.addresses.push(this._addressGroup());
   }
 
+  /** By address id: the api's sentence when the saved PIN code belongs to another state. */
+  addressWarnings: Record<number, string> = {};
+
+  warningOf(index: number): string {
+    const id = (this.addresses.at(index).value as AddressValue).id;
+    return (id && this.addressWarnings[id]) || '';
+  }
+
   /** True while "Make default" is being saved for the address at this index. */
   defaultBusy: number | null = null;
 
@@ -374,6 +382,12 @@ export class DetailsComponent implements OnInit {
   private _fill(customer: any): void {
     this.form = this._initForm();
     const addresses = customer ? toAddressValues(customer, this.states) : [];
+    this.addressWarnings = {};
+    addresses.forEach((address) => {
+      if (address.id && address.warning) {
+        this.addressWarnings[address.id] = address.warning;
+      }
+    });
     if (customer) {
       this.customerName = customer.name || '';
       this.form.patchValue({

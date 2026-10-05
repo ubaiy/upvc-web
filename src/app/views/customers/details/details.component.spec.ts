@@ -183,6 +183,7 @@ describe('DetailsComponent (customer page)', () => {
         district: 'Surat',
         state: 'Gujarat',
         zip_code: '395007',
+        pincode: '395007',
       });
       expect(body.state_code).toBe('24');
     }));
@@ -402,7 +403,36 @@ describe('DetailsComponent (customer page)', () => {
       component.addresses.at(0).markAsDirty();
       component.submit();
       const address: any = service.editCustomerAddress.calls.mostRecent().args[0];
-      expect(address).toEqual(jasmine.objectContaining({ id: 7, address_line2: 'Near the lake', city: '', zip_code: '', state: 'Maharashtra' }));
+      expect(address).toEqual(
+        jasmine.objectContaining({ id: 7, address_line2: 'Near the lake', city: '', zip_code: '', pincode: null, state: 'Maharashtra' })
+      );
+    });
+
+    it('shows what the api says when the saved PIN code belongs to another state', () => {
+      service.getCustomerDetail.and.returnValue(
+        ok({
+          ...CUSTOMER,
+          addresses: [
+            {
+              id: 7,
+              address: 'B-203 Sunrise Towers',
+              is_default: 1,
+              city: 'Mumbai',
+              state: 'Gujarat',
+              state_code: '24',
+              pincode: '400050',
+              zip_code: '400050',
+              warnings: [
+                { code: 'state_mismatch', message: 'PIN code 400050 is in Maharashtra (Mumbai) in the PIN code directory; the state given is Gujarat.' },
+              ],
+            },
+          ],
+        })
+      );
+      component.load();
+      fixture.detectChanges();
+      expect(el().querySelector('[data-af="mismatch"]')?.textContent).toContain('PIN code 400050 is in Maharashtra (Mumbai)');
+      expect(component.form.valid).withContext('a warning, never a refusal').toBeTrue();
     });
 
     it('still refuses a PIN code that is not 6 digits', () => {

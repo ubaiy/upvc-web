@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, ElementRef, Input, OnDestroy, OnInit } from '@angular/core';
+import { Component, ElementRef, Input, OnChanges, OnDestroy, OnInit, SimpleChanges } from '@angular/core';
 import { AbstractControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { EMPTY, Subject, Subscription, concat, of, timer } from 'rxjs';
 import { catchError, debounceTime, map, switchMap } from 'rxjs/operators';
@@ -49,7 +49,7 @@ const SHORT_LIST = 6;
   templateUrl: './address-fields.component.html',
   styleUrls: ['./address-fields.component.scss'],
 })
-export class AddressFieldsComponent implements OnInit, OnDestroy {
+export class AddressFieldsComponent implements OnChanges, OnInit, OnDestroy {
   /** The address form group. It needs the PIN, city and state controls; district and area are used when present. */
   @Input() group!: FormGroup;
   @Input() states: AddressState[] = [];
@@ -73,8 +73,13 @@ export class AddressFieldsComponent implements OnInit, OnDestroy {
   @Input() stateCodes = false;
   /** A plain hint under State. */
   @Input() stateHint = '';
-  /** The api's own sentence when the PIN and the state disagree; replaces the one worked out here. */
+  /**
+   * The api's own sentence about the saved PIN and state, when they disagree.
+   * It is about what was saved: it goes once either field is changed.
+   */
   @Input() stateWarning = '';
+  /** The PIN and state the api's sentence was about. */
+  private warningFor = '';
 
   pinStatus: 'idle' | 'looking' | 'found' | 'unknown' | 'failed' = 'idle';
   /** The directory's answer for the PIN last looked up. */
@@ -101,6 +106,12 @@ export class AddressFieldsComponent implements OnInit, OnDestroy {
   private areasSub?: Subscription;
 
   constructor(private location: LocationService, private host: ElementRef<HTMLElement>) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['stateWarning'] || changes['group']) {
+      this.warningFor = this.pinAndState();
+    }
+  }
 
   ngOnInit(): void {
     this.subs.add(
@@ -153,6 +164,10 @@ export class AddressFieldsComponent implements OnInit, OnDestroy {
   /** A field is wrong when its own rule or the group's rule for it fails, once it was touched or the form submitted. */
   invalid(name: string): boolean {
     const control = this.control(name);
+    // While the PIN codes of the city just picked wait for a choice, an empty PIN is not yet a mistake.
+    if (name === this.pinName && this.choiceCity && !this.submitted && !this.value(name)) {
+      return false;
+    }
     return !!control && (control.invalid || !!this.group.errors?.[name]) && (control.touched || this.submitted);
   }
 
@@ -181,7 +196,7 @@ export class AddressFieldsComponent implements OnInit, OnDestroy {
 
   /** The PIN looked up belongs to another state than the one chosen. Said, never asked. */
   get mismatch(): string {
-    if (this.stateWarning) {
+    if (this.stateWarning && this.warningFor === this.pinAndState()) {
       return this.stateWarning;
     }
     const f = this.found;
@@ -421,6 +436,10 @@ export class AddressFieldsComponent implements OnInit, OnDestroy {
         this.choiceAreas.set(pin, result.localities.slice(0, 3).join(', '));
       }
     });
+  }
+
+  private pinAndState(): string {
+    return `${this.value(this.pinName)}|${this.value(this.stateName)}`;
   }
 
   private value(name: string): string {

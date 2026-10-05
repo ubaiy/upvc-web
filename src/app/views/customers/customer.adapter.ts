@@ -32,7 +32,10 @@ export interface AddressValue {
   /** Filled by the PIN code directory; empty for a city typed by hand. */
   district: string;
   state_code: string;
+  /** The PIN code. Sent as `pincode`, and as `zip_code` for readers of the old field. */
   zip_code: string;
+  /** The api's sentence when the saved PIN belongs to another state. Read only. */
+  warning?: string;
 }
 
 export interface CustomerFormValue {
@@ -111,9 +114,11 @@ export function toAddressValues(dto: any, states: GstState[]): AddressValue[] {
     address_line2: row.address_line2 || '',
     city: row.city || '',
     district: row.district || '',
+    warning: (Array.isArray(row.warnings) && row.warnings[0]?.message) || '',
     // An address saved since the PIN directory carries the code; older rows only the name.
     state_code: stateCodeFor(row.state_code, states) || stateCodeFor(row.state, states),
-    zip_code: row.zip_code || '',
+    // "pincode" is the 6-digit PIN; "zip_code" is what older rows hold.
+    zip_code: row.pincode || row.zip_code || '',
   }));
 }
 
@@ -144,6 +149,7 @@ export function toCustomerPayload(value: CustomerFormValue, states: GstState[], 
       district: first.district.trim() || null,
       state: stateName(first.state_code, states) || null,
       zip_code: first.zip_code.trim() || null,
+      pincode: first.zip_code.trim() || null,
     };
   }
   return payload;
@@ -166,6 +172,7 @@ export function toAddressPayload(
     district: address.district.trim() || null,
     state: stateName(address.state_code, states),
     zip_code: address.zip_code.trim(),
+    pincode: address.zip_code.trim() || null,
   };
 }
 

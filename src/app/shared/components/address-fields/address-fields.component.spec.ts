@@ -217,10 +217,17 @@ describe('AddressFieldsComponent', () => {
       expect(el('[data-af="mismatch"]')).toBeNull();
     }));
 
-    it('shows the sentence of the api when it sends one', () => {
-      host.warning = 'PIN code 400050 belongs to Maharashtra, the state chosen is Gujarat.';
+    it('shows the sentence of the api about the saved address, until the PIN or the state is changed', () => {
+      host.group.patchValue({ zip_code: '400050', state_code: '24' });
+      host.warning = 'PIN code 400050 is in Maharashtra (Mumbai) in the PIN code directory; the state given is Gujarat.';
       fixture.detectChanges();
-      expect(el('[data-af="mismatch"]').textContent).toContain('PIN code 400050 belongs to Maharashtra');
+      expect(el('[data-af="mismatch"]').textContent).toContain('PIN code 400050 is in Maharashtra (Mumbai)');
+
+      const select = el<HTMLSelectElement>('#addr-state-0');
+      select.value = '27';
+      select.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(el('[data-af="mismatch"]')).withContext('it was about what was saved').toBeNull();
     });
   });
 

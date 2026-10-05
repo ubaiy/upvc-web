@@ -88,7 +88,15 @@ describe('customer adapter', () => {
       is_dealer: 0,
       gstin: null,
       state_code: '24',
-      address: { address: '12 MG Road', address_line2: null, city: 'Dahod', district: 'Dahod', state: 'Gujarat', zip_code: '389151' },
+      address: {
+        address: '12 MG Road',
+        address_line2: null,
+        city: 'Dahod',
+        district: 'Dahod',
+        state: 'Gujarat',
+        zip_code: '389151',
+        pincode: '389151',
+      },
     });
   });
 
@@ -116,6 +124,7 @@ describe('customer adapter', () => {
       district: 'Dahod',
       state: 'Gujarat',
       zip_code: '389151',
+      pincode: '389151',
     });
     expect(toAddressPayload(address({ id: 9, district: '' }), 3, true, STATES).district).withContext('a city typed by hand').toBeNull();
   });

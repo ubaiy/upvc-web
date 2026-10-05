@@ -183,7 +183,13 @@
 
         <div class="form-grid">
           <!-- PIN code first: it fills the city and the state (T90). -->
-          <app-address-fields [group]="$any(group)" [states]="states" [idSuffix]="'-' + i" [submitted]="submitted">
+          <app-address-fields
+            [group]="$any(group)"
+            [states]="states"
+            [idSuffix]="'-' + i"
+            [submitted]="submitted"
+            [stateWarning]="warningOf(i)"
+          >
             <div class="field span-2">
               <label class="label" [for]="'addr-line-' + i">Address</label>
               <input
