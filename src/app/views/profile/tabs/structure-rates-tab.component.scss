@@ -1,0 +1,43 @@
+// Structure rates: groups of figures, each with its unit; a rate the api reports as missing is marked.
+.rates {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+
+  legend {
+    padding: 0;
+    font-size: var(--fs-14);
+    font-weight: var(--fw-semibold);
+  }
+
+  > .hint {
+    display: block;
+    margin-block: var(--s-1) var(--s-3);
+  }
+}
+
+.field.is-missing .input-group {
+  border-color: var(--c-warning, #b7791f);
+  background: var(--c-warning-soft, #fdf5e2);
+}
+
+.field.is-asked .input-group {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 1px;
+}
+
+.rate-missing {
+  color: var(--c-warning);
+}
+
+.add-glass {
+  margin-block-start: var(--s-4);
+  max-width: 360px;
+}
+
+.add-glass-row {
+  display: flex;
+  gap: var(--s-2);
+  margin-block-start: var(--s-1);
+}

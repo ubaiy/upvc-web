@@ -1,0 +1,87 @@
+<div class="settings-col stack-6">
+  <section class="card" aria-labelledby="h-srates">
+    <div class="card-head">
+      <div>
+        <h2 id="h-srates">Structure rates</h2>
+        <p>
+          What a 3D structure in a quotation (dome, cabin, bay, roof) is priced with. Rupees, before margin and GST.
+          Leave a box empty when you do not sell that part; 0 means it is free.
+        </p>
+      </div>
+    </div>
+
+    <div class="card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading structure rates">
+      <span class="skeleton" style="width: 30%"></span>
+      <span class="skeleton" style="width: 100%"></span>
+      <span class="skeleton" style="width: 65%"></span>
+    </div>
+
+    <div class="card-pad" *ngIf="state === 'error'">
+      <app-callout tone="warn">
+        We could not load the structure rates. {{ loadError }}
+        <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+      </app-callout>
+    </div>
+
+    <form class="card-pad stack-6" *ngIf="state === 'ready'" (ngSubmit)="save()" novalidate>
+      <!-- What the api says is not set: a structure that needs one of these gets no price. -->
+      <app-callout tone="warn" *ngIf="missingFields.length" data-rates="missing">
+        {{ missingFields.length === 1 ? 'One rate is' : missingFields.length + ' rates are' }} not set. A structure that needs
+        {{ missingFields.length === 1 ? 'it' : 'one of them' }} cannot be priced:
+        <ng-container *ngFor="let f of missingFields; let last = last">
+          <a [attr.href]="'#' + inputId(f.path)" (click)="$event.preventDefault(); focusField(f.path)">{{ f.label }}</a
+          ><ng-container *ngIf="!last">, </ng-container>
+        </ng-container>
+      </app-callout>
+
+      <fieldset class="rates" *ngFor="let g of groups" [attr.data-rates]="g.id">
+        <legend>{{ g.title }}</legend>
+        <p class="hint">{{ g.text }}</p>
+        <div class="form-grid">
+          <div class="field" *ngFor="let f of g.fields; trackBy: trackField" [class.is-missing]="isMissing(f)" [class.is-asked]="f.path === asked">
+            <label class="label" [attr.for]="inputId(f.path)">{{ f.label }}</label>
+            <div class="input-group" [class.is-invalid]="submitted && invalid(f)">
+              <span class="unit" *ngIf="f.money">₹</span>
+              <input
+                [id]="inputId(f.path)"
+                [name]="f.path"
+                type="number"
+                min="0"
+                [attr.max]="f.money ? null : 100"
+                step="0.01"
+                inputmode="decimal"
+                placeholder="Not set"
+                [(ngModel)]="f.value"
+                (ngModelChange)="dirty = true"
+                [attr.aria-invalid]="submitted && invalid(f)"
+                [attr.aria-describedby]="inputId(f.path) + '-note'"
+              />
+              <span class="unit">{{ f.unit }}</span>
+            </div>
+            <span class="error" [id]="inputId(f.path) + '-note'" *ngIf="submitted && invalid(f); else note">
+              {{ f.money ? 'Enter an amount of 0 or more.' : 'Enter a percentage from 0 to 100.' }}
+            </span>
+            <ng-template #note>
+              <span class="hint rate-missing" [id]="inputId(f.path) + '-note'" *ngIf="isMissing(f)">Not set: structures that need it get no price.</span>
+              <span class="hint" [id]="inputId(f.path) + '-note'" *ngIf="!isMissing(f) && f.hint">{{ f.hint }}</span>
+            </ng-template>
+          </div>
+        </div>
+        <div class="add-glass" *ngIf="g.id === 'glass'">
+          <label class="label" for="rate-new-glass">A glass with its own rate</label>
+          <div class="add-glass-row">
+            <input class="input" id="rate-new-glass" name="newGlass" type="text" maxlength="40" placeholder="Toughened 6" [(ngModel)]="newGlass" (keydown.enter)="$event.preventDefault(); addGlass()" />
+            <button type="button" class="btn btn-secondary" (click)="addGlass()" [disabled]="!newGlass.trim()">Add glass</button>
+          </div>
+        </div>
+      </fieldset>
+
+      <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
+
+      <div class="form-foot">
+        <button type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Save rates' }}</button>
+        <span class="hint" *ngIf="dirty && !saving">You have unsaved changes.</span>
+      </div>
+    </form>
+  </section>
+</div>

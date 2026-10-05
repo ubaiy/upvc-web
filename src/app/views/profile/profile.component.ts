@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 import { CompanyTabComponent } from './tabs/company-tab.component';
 import { DocumentsTabComponent } from './tabs/documents-tab.component';
 import { PricingTaxTabComponent } from './tabs/pricing-tax-tab.component';
+import { StructureRatesTabComponent } from './tabs/structure-rates-tab.component';
 import { TeamTabComponent } from './tabs/team-tab.component';
 import { YourProfileTabComponent } from './tabs/your-profile-tab.component';
 
@@ -21,6 +22,8 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'company', label: 'Company', component: CompanyTabComponent },
   { id: 'team', label: 'Team', component: TeamTabComponent },
   { id: 'pricing', label: 'Pricing and tax', component: PricingTaxTabComponent },
+  // What a 3D structure of a quotation is priced with (card T123).
+  { id: 'structure-rates', label: 'Structure rates', component: StructureRatesTabComponent },
   { id: 'documents', label: 'Documents', component: DocumentsTabComponent },
   { id: 'you', label: 'Your profile', component: YourProfileTabComponent },
 ];
