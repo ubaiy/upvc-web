@@ -1,0 +1,26 @@
+<app-page-header [title]="company ? 'Welcome, ' + company : 'Welcome to ' + product" subtitle="Three steps to your first right price."></app-page-header>
+
+<div class="stack-6 welcome">
+  <p class="trial" *ngIf="trial" role="status">
+    <app-icon name="clock"></app-icon>
+    <span class="grow">{{ trial }}</span>
+    <a *ngIf="can['settings.write']" class="small" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
+  </p>
+
+  <ol class="steps-list">
+    <li class="card step" *ngFor="let step of steps; let i = index">
+      <span class="number" aria-hidden="true">{{ i + 1 }}</span>
+      <div class="grow">
+        <h2>{{ step.title }}</h2>
+        <p class="muted">{{ step.text }}</p>
+      </div>
+      <a *ngIf="can[step.ability]; else notYours" class="btn" [class.btn-primary]="i === 0" [class.btn-secondary]="i !== 0"
+        [routerLink]="step.link" [queryParams]="step.queryParams">
+        {{ step.label }}<app-icon name="arrow-right"></app-icon>
+      </a>
+      <ng-template #notYours><span class="muted small">Ask the owner of the account.</span></ng-template>
+    </li>
+  </ol>
+
+  <p class="muted small">You can come back to this page at any time: the link "First steps" is at the foot of Home.</p>
+</div>

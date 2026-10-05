@@ -10,6 +10,7 @@ import { LocalStoreService } from '../../shared/services/local-storage.service';
 import { PRODUCT_NAME } from '../../shared/configs/product';
 import { AccessService } from '../../shared/access/access.service';
 import { PlanBanner, allows, bannerFor } from '../../shared/access/access.models';
+import { ExampleRatesBanner, exampleRatesBanner } from '../../shared/access/starter-catalogue';
 import { findNavItem, NAV_ITEMS, navFor, NavItem } from './nav';
 import { WorkspaceService } from './workspace.service';
 
@@ -42,6 +43,8 @@ export class ShellComponent implements OnInit, OnDestroy {
 
   /** Trial ending, payment due, read-only: one line above every page. */
   banner: PlanBanner | null = null;
+  /** A company made by sign-up prices with another fabricator's rates until it enters its own (card T140). */
+  exampleRates: ExampleRatesBanner | null = null;
   /** The Plan page is the owner's; another role is told to ask them. */
   canSeePlan = true;
   home = '/dashboard';
@@ -88,6 +91,7 @@ export class ShellComponent implements OnInit, OnDestroy {
       this.access.state$.subscribe((state) => {
         this.setItems(navFor((ability) => allows(state, ability)));
         this.banner = bannerFor(state.subscription);
+        this.exampleRates = exampleRatesBanner(state, this.router.url);
         this.canSeePlan = allows(state, 'billing.view');
       })
     );
@@ -193,6 +197,7 @@ export class ShellComponent implements OnInit, OnDestroy {
   private setUrl(url: string): void {
     this.active = findNavItem(url, this.items);
     this.wide = WIDE_PAGES.test(url.split(/[?#]/)[0]);
+    this.exampleRates = exampleRatesBanner(this.access.state, url);
   }
 
   private setUser(user: Partial<IUserDto> | null | undefined): void {

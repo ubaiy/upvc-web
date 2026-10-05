@@ -116,6 +116,11 @@
       <span class="grow">{{ line.text }}<ng-container *ngIf="!canSeePlan"> Ask the owner of the account.</ng-container></span>
       <a *ngIf="canSeePlan" class="btn btn-secondary btn-sm" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
     </div>
+    <div class="callout warn plan-banner example-rates" *ngIf="exampleRates as line" role="status">
+      <app-icon name="alert"></app-icon>
+      <span class="grow">{{ line.text }}</span>
+      <a class="btn btn-secondary btn-sm" [routerLink]="line.link">{{ line.label }}</a>
+    </div>
     <div class="page" *ngIf="pageLoading"><app-page-skeleton></app-page-skeleton></div>
     <div class="page" [class.page-wide]="wide" [style.display]="pageLoading ? 'none' : null">
       <router-outlet></router-outlet>
