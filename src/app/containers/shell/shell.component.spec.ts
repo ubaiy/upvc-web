@@ -10,7 +10,9 @@ import { AuthService } from '../../shared/services/auth.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
 import { QuotationListService } from '../../views/quotation/quotation-list.service';
 import { CommandPaletteComponent } from './command-palette.component';
-import { findNavItem, NAV_ITEMS, pathMatches } from './nav';
+import { AccessState, EMPTY_ACCESS } from '../../shared/access/access.models';
+import { AccessService } from '../../shared/access/access.service';
+import { findNavItem, NAV_ITEMS, navFor, pathMatches } from './nav';
 import { ShellComponent } from './shell.component';
 import { WorkspaceService } from './workspace.service';
 
@@ -59,7 +61,21 @@ describe('shell navigation', () => {
     expect(NAV_ITEMS.some((item) => 'tabs' in item)).toBeFalse();
     const places = (id: string) => NAV_ITEMS.find((item) => item.id === id)?.places?.map((place) => place.label);
     expect(places('catalogue')).toEqual(['Profiles', 'Colours', 'Glass', 'Hardware', 'Price file']);
-    expect(places('settings')).toEqual(['Company', 'Team', 'Pricing and tax', 'Documents', 'Your profile']);
+    expect(places('settings')).toEqual(['Company', 'Team', 'Plan', 'Pricing and tax', 'Documents', 'Your profile']);
+  });
+
+  it('gives a user the items and places their abilities open (card T117)', () => {
+    const menu = (abilities: string[]) => navFor((ability) => !ability || abilities.includes(ability));
+    const workshop = menu(['orders.view', 'production.view', 'production.write']);
+    expect(workshop.map((item) => item.label)).toEqual(['Orders', 'Settings']);
+    expect(workshop[1].places?.map((place) => place.label)).toEqual(['Your profile']);
+
+    const sales = menu(['quotations.view', 'quotations.write', 'orders.view', 'orders.write', 'production.view', 'production.write', 'payments.view', 'catalogue.view']);
+    expect(sales.map((item) => item.label)).toEqual(['Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Settings']);
+    expect(sales.find((item) => item.id === 'catalogue')?.places?.map((place) => place.label)).withContext('no price file for sales').toEqual(['Profiles', 'Colours', 'Glass', 'Hardware']);
+    expect(sales.find((item) => item.id === 'settings')?.places?.map((place) => place.label)).toEqual(['Your profile']);
+
+    expect(navFor(() => true)).toEqual(NAV_ITEMS);
   });
 });
 
@@ -69,6 +85,8 @@ describe('ShellComponent', () => {
   const user$ = new BehaviorSubject<any>({ name: 'Husain', last_name: 'Ezzi' });
   const workspace$ = new BehaviorSubject({ name: 'Hakimi Enterprise' });
   const auth = { user$, USER: 'User', logout: jasmine.createSpy('logout') };
+  const state$ = new BehaviorSubject<AccessState>(EMPTY_ACCESS);
+  const access = { state$, load: () => of(state$.value), can: () => true };
 
   const text = (selector: string) => fixture.nativeElement.querySelector(selector)?.textContent.trim();
   const settle = async () => {
@@ -86,6 +104,7 @@ describe('ShellComponent', () => {
       ],
       providers: [
         { provide: AuthService, useValue: auth },
+        { provide: AccessService, useValue: access },
         { provide: WorkspaceService, useValue: { workspace$, load: () => undefined } },
         { provide: LocalStoreService, useValue: { getItem: () => null } },
         // The search dialog looks records up; its own spec covers that.
@@ -171,6 +190,29 @@ describe('ShellComponent', () => {
       const name = (control.getAttribute('aria-label') || control.textContent || '').trim();
       expect(name).withContext(control.outerHTML.slice(0, 80)).not.toBe('');
     }
+  });
+
+  it('draws the menu of the role, and the line of the plan with the way to the Plan page for the owner only', () => {
+    const sub: any = { status: 'grace', read_only: false, days_left: 4, grace_ends_on: '2026-10-09', features: {} };
+    state$.next({ me: { abilities: ['orders.view', 'production.view'], role_name: 'Workshop' } as any, subscription: sub });
+    fixture.detectChanges();
+    const labels = () => [...fixture.nativeElement.querySelectorAll('nav.side a.item .t')].map((el: Element) => el.textContent?.trim());
+    expect(labels()).toEqual(['Orders', 'Settings']);
+    expect(fixture.nativeElement.querySelector('a.ws').getAttribute('href')).withContext('the company name leads to the first screen of the role').toBe('/orders');
+    expect(text('.plan-banner')).toContain('Payment is due. The account becomes read-only after 9 Oct 2026.');
+    expect(text('.plan-banner')).toContain('Ask the owner of the account.');
+    expect(fixture.nativeElement.querySelector('.plan-banner a')).toBeNull();
+
+    state$.next({ me: { abilities: ['quotations.view', 'billing.view'] } as any, subscription: { ...sub, status: 'locked', read_only: true } });
+    fixture.detectChanges();
+    expect(labels()).toEqual(['Home', 'Quotations', 'Customers', 'Bills', 'Settings']);
+    expect(fixture.nativeElement.querySelector('.plan-banner').classList).toContain('danger');
+    expect(fixture.nativeElement.querySelector('.plan-banner a').getAttribute('href')).toContain('/profile?tab=plan');
+
+    state$.next(EMPTY_ACCESS);
+    fixture.detectChanges();
+    expect(labels().length).toBe(8);
+    expect(fixture.nativeElement.querySelector('.plan-banner')).toBeNull();
   });
 
   it('falls back to the product name until the company has loaded', () => {

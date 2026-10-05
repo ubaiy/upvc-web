@@ -22,7 +22,8 @@ import { toBillRows } from '../../views/bills/bills.adapter';
 import { toOrders } from '../../views/orders/orders.adapter';
 import { toPaymentList } from '../../views/payments/payments.adapter';
 import { QuotationListService } from '../../views/quotation/quotation-list.service';
-import { NAV_ITEMS } from './nav';
+import { AccessService } from '../../shared/access/access.service';
+import { NAV_ITEMS, NavItem, navFor } from './nav';
 
 type Section = 'Pages' | 'Customers' | 'Quotations' | 'Orders' | 'Bills' | 'Receipts';
 
@@ -35,16 +36,17 @@ export interface Destination {
   link: string;
 }
 
-const PAGES: Destination[] = NAV_ITEMS.flatMap((item) => [
-  { section: 'Pages' as Section, label: item.label, icon: item.icon, link: item.link },
-  ...(item.places ?? []).map((place) => ({
-    section: 'Pages' as Section,
-    label: place.label,
-    detail: item.label,
-    icon: item.icon,
-    link: place.link,
-  })),
-]);
+const pagesOf = (items: NavItem[]): Destination[] =>
+  items.flatMap((item) => [
+    { section: 'Pages' as Section, label: item.label, icon: item.icon, link: item.link },
+    ...(item.places ?? []).map((place) => ({
+      section: 'Pages' as Section,
+      label: place.label,
+      detail: item.label,
+      icon: item.icon,
+      link: place.link,
+    })),
+  ]);
 
 /** Rows shown of each kind: the palette is for going to one thing, the lists are for browsing. */
 const MOST = 6;
@@ -137,11 +139,13 @@ export class CommandPaletteComponent implements AfterViewInit, OnDestroy {
 
   query = '';
   index = 0;
-  results: Destination[] = PAGES;
+  /** The pages of this user: those the abilities of GET me open (card T117). */
+  private readonly allPages: Destination[];
+  results: Destination[] = [];
   /** The search of the records: nothing asked, asked, or it could not be asked. */
   state: 'idle' | 'searching' | 'failed' = 'idle';
 
-  private pages: Destination[] = PAGES;
+  private pages: Destination[] = [];
   private readonly term$ = new Subject<string>();
   private readonly sub: Subscription;
   /** The customer, order, bill and payment lists, each read once while the palette is open. */
@@ -151,8 +155,12 @@ export class CommandPaletteComponent implements AfterViewInit, OnDestroy {
     private router: Router,
     private api: ApiHttpService,
     private quotations: QuotationListService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private access: AccessService
   ) {
+    this.allPages = pagesOf(navFor((ability) => this.access.can(ability), NAV_ITEMS));
+    this.pages = this.allPages;
+    this.results = this.allPages;
     this.sub = this.term$
       .pipe(
         debounceTime(250),
@@ -210,7 +218,7 @@ export class CommandPaletteComponent implements AfterViewInit, OnDestroy {
   search(value: string): void {
     this.query = value;
     const words = wordsOf(value);
-    this.pages = PAGES.filter((d) => {
+    this.pages = this.allPages.filter((d) => {
       const text = (d.label + ' ' + (d.detail ?? '')).toLowerCase();
       return words.every((word) => text.includes(word));
     });

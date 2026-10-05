@@ -7,7 +7,9 @@ import { IUserDto } from '../../shared/model/user.model';
 import { AuthService } from '../../shared/services/auth.service';
 import { LocalStoreService } from '../../shared/services/local-storage.service';
 import { PRODUCT_NAME } from '../../shared/configs/product';
-import { findNavItem, NAV_ITEMS, NavItem } from './nav';
+import { AccessService } from '../../shared/access/access.service';
+import { PlanBanner, allows, bannerFor } from '../../shared/access/access.models';
+import { findNavItem, NAV_ITEMS, navFor, NavItem } from './nav';
 import { WorkspaceService } from './workspace.service';
 
 /** The old window designer needs the full width. Card D1 replaces it with a full-screen designer. */
@@ -28,12 +30,20 @@ const WIDE_PAGES = /^\/quotation\/detail\/[^/]+\/(add|edit|super-system)(\/|$)/;
   styleUrls: ['./shell.component.scss'],
 })
 export class ShellComponent implements OnInit, OnDestroy {
-  readonly mainItems = NAV_ITEMS.filter((item) => !item.foot);
-  readonly footItems = NAV_ITEMS.filter((item) => item.foot);
+  /** The menu of this user: the items the abilities of GET me open (card T117). All of them until the answer is here. */
+  items: NavItem[] = NAV_ITEMS;
+  mainItems = NAV_ITEMS.filter((item) => !item.foot);
+  footItems = NAV_ITEMS.filter((item) => item.foot);
 
   /** Phone: the first four items sit in the bottom bar, the rest under "More". */
-  readonly barItems = NAV_ITEMS.slice(0, BAR_ITEMS);
-  readonly moreItems = NAV_ITEMS.slice(BAR_ITEMS);
+  barItems = NAV_ITEMS.slice(0, BAR_ITEMS);
+  moreItems = NAV_ITEMS.slice(BAR_ITEMS);
+
+  /** Trial ending, payment due, read-only: one line above every page. */
+  banner: PlanBanner | null = null;
+  /** The Plan page is the owner's; another role is told to ask them. */
+  canSeePlan = true;
+  home = '/dashboard';
 
   company = '';
   userName = '';
@@ -56,7 +66,8 @@ export class ShellComponent implements OnInit, OnDestroy {
     private router: Router,
     private auth: AuthService,
     private store: LocalStoreService,
-    private workspace: WorkspaceService
+    private workspace: WorkspaceService,
+    private access: AccessService
   ) {}
 
   ngOnInit(): void {
@@ -64,6 +75,15 @@ export class ShellComponent implements OnInit, OnDestroy {
       this.workspace.workspace$.subscribe((workspace) => (this.company = workspace.name))
     );
     this.workspace.load();
+
+    this.subscriptions.add(
+      this.access.state$.subscribe((state) => {
+        this.setItems(navFor((ability) => allows(state, ability)));
+        this.banner = bannerFor(state.subscription);
+        this.canSeePlan = allows(state, 'billing.view');
+      })
+    );
+    this.subscriptions.add(this.access.load().subscribe());
 
     this.subscriptions.add(
       // After a page reload the service is empty until the next sign-in; the stored user fills the gap.
@@ -151,8 +171,18 @@ export class ShellComponent implements OnInit, OnDestroy {
     }
   }
 
+  private setItems(items: NavItem[]): void {
+    this.items = items;
+    this.mainItems = items.filter((item) => !item.foot);
+    this.footItems = items.filter((item) => item.foot);
+    this.barItems = items.slice(0, BAR_ITEMS);
+    this.moreItems = items.slice(BAR_ITEMS);
+    this.home = items[0]?.link ?? '/dashboard';
+    this.active = findNavItem(this.router.url, items);
+  }
+
   private setUrl(url: string): void {
-    this.active = findNavItem(url);
+    this.active = findNavItem(url, this.items);
     this.wide = WIDE_PAGES.test(url.split(/[?#]/)[0]);
   }
 

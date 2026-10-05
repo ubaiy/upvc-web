@@ -6,6 +6,8 @@ import { Page404Component } from './views/pages/page404/page404.component';
 import { Page500Component } from './views/pages/page500/page500.component';
 import { AuthGuard } from './shared/guards/auth.guard';
 import { CompanyAreaGuard } from './views/admin/platform.guard';
+import { AbilityGuard } from './shared/access/ability.guard';
+import { NoAccessComponent } from './shared/access/no-access.component';
 import { ProfileComponent } from './views/profile/profile.component';
 import { ProfileResolver } from './views/profile/profile.resolver';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
@@ -31,12 +33,16 @@ const routes: Routes = [
       { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },
       {
         path: 'dashboard',
-        canActivate: [AuthGuard],
+        // A page needs one ability of GET me (card T117); a workshop user opens on Orders.
+        canActivate: [AuthGuard, AbilityGuard],
+        data: { ability: 'quotations.view' },
         loadChildren: () =>
           import('./views/dashboard/dashboard.module').then(
             (m) => m.DashboardModule
           ),
       },
+      // A page the role does not have: one plain line (card T117).
+      { path: 'no-access', component: NoAccessComponent, title: 'Not for your role' },
       {
         path: 'profile',
         canActivate: [AuthGuard],
@@ -45,6 +51,8 @@ const routes: Routes = [
       },
       {
         path: 'customers',
+        canActivate: [AbilityGuard],
+        data: { ability: 'quotations.view' },
         loadChildren: () =>
           import('./views/customers/customers.module').then(
             (m) => m.CustomersModule
@@ -53,22 +61,29 @@ const routes: Routes = [
       {
         path: 'bulk-price-update',
         component: BulkPriceUploadComponent,
-        data: { edit: true },
+        canActivate: [AbilityGuard],
+        data: { edit: true, ability: 'catalogue.write' },
         resolve: { data: BulkPriceUpdateResolver },
       },
       {
         path: 'bills',
+        canActivate: [AbilityGuard],
+        data: { ability: 'quotations.view' },
         loadChildren: () =>
           import('./views/bills/bills.module').then((m) => m.BillsModule),
       },
       {
         // Orders and payments (card T75).
         path: 'orders',
+        canActivate: [AbilityGuard],
+        data: { ability: 'orders.view' },
         loadChildren: () =>
           import('./views/orders/orders.module').then((m) => m.OrdersModule),
       },
       {
         path: 'payments',
+        canActivate: [AbilityGuard],
+        data: { ability: 'payments.view' },
         loadChildren: () =>
           import('./views/payments/payments.module').then(
             (m) => m.PaymentsModule
@@ -76,6 +91,8 @@ const routes: Routes = [
       },
       {
         path: 'quotation',
+        canActivate: [AbilityGuard],
+        data: { ability: 'quotations.view' },
         loadChildren: () =>
           import('./views/quotation/quotation.module').then(
             (m) => m.QuotationModule
@@ -84,6 +101,8 @@ const routes: Routes = [
       {
         // Production documents of one quotation: /production/:quotationId (card T69). No menu item; opened from the quotation page.
         path: 'production',
+        canActivate: [AbilityGuard],
+        data: { ability: 'production.view' },
         loadChildren: () =>
           import('./views/production/production.module').then(
             (m) => m.ProductionModule
@@ -91,6 +110,8 @@ const routes: Routes = [
       },
       {
         path: 'type-margin',
+        canActivate: [AbilityGuard],
+        data: { ability: 'prices.view_cost' },
         loadChildren: () =>
           import('./views/type-margin/type-margin.module').then(
             (m) => m.TypeMarginModule
@@ -98,11 +119,15 @@ const routes: Routes = [
       },
       {
         path: 'area',
+        canActivate: [AbilityGuard],
+        data: { ability: 'catalogue.view' },
         loadChildren: () =>
           import('./views/area/area.module').then((m) => m.AreaModule),
       },
       {
         path: 'payment-terms',
+        canActivate: [AbilityGuard],
+        data: { ability: 'catalogue.view' },
         loadChildren: () =>
           import('./views/payment-terms/payment-terms.module').then(
             (m) => m.PaymentTermsModule
@@ -110,6 +135,8 @@ const routes: Routes = [
       },
       {
         path: 'crm',
+        canActivate: [AbilityGuard],
+        data: { ability: 'quotations.view' },
         loadChildren: () =>
           import('./views/crm/crm.module').then((m) => m.CrmModule),
       },
@@ -119,6 +146,8 @@ const routes: Routes = [
       { path: 'structure-designer', redirectTo: 'quotation', pathMatch: 'full' },
       {
         path: 'masters',
+        canActivate: [AbilityGuard],
+        data: { ability: 'catalogue.view' },
         loadChildren: () =>
           import('./views/masters/masters.module').then((m) => m.MastersModule),
       },

@@ -2,7 +2,7 @@
 
 <div class="shell">
   <nav class="side" aria-label="Main">
-    <a class="ws" routerLink="/dashboard" [attr.aria-label]="companyName + ', home'" [attr.title]="companyName">
+    <a class="ws" [routerLink]="home" [attr.aria-label]="companyName + ', home'" [attr.title]="companyName">
       <span class="ws-mark"><app-icon name="window"></app-icon></span>
       <span class="ws-name t">{{ companyName }}</span>
     </a>
@@ -111,6 +111,11 @@
   </nav>
 
   <main class="main" id="main" tabindex="-1" #main>
+    <div class="callout plan-banner" *ngIf="banner as line" [class.warn]="line.tone === 'warn'" [class.danger]="line.tone === 'danger'" role="status">
+      <app-icon [name]="line.tone === 'info' ? 'clock' : line.tone === 'warn' ? 'alert' : 'lock'"></app-icon>
+      <span class="grow">{{ line.text }}<ng-container *ngIf="!canSeePlan"> Ask the owner of the account.</ng-container></span>
+      <a *ngIf="canSeePlan" class="btn btn-secondary btn-sm" routerLink="/profile" [queryParams]="{ tab: 'plan' }">See plans</a>
+    </div>
     <div class="page" [class.page-wide]="wide">
       <router-outlet></router-outlet>
     </div>

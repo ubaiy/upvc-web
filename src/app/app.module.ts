@@ -44,6 +44,7 @@ import { TokenInterceptor } from './shared/interceptors/token.interceptor';
 import { IconModule, IconSetService } from '@coreui/icons-angular';
 import { SharedCommonModule } from './shared/shared-common.module';
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
+import { AccessInterceptor } from './shared/access/access.interceptor';
 import { ConfirmationService, MessageService } from 'primeng/api';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
@@ -105,6 +106,8 @@ const APP_CONTAINERS = [ShellComponent, CommandPaletteComponent];
     Title,
     LoaderService,
     { provide: HTTP_INTERCEPTORS, useClass: LoaderInterceptor, multi: true },
+    // 402 (locked or suspended company) and 403 by role, said in one plain line everywhere (card T117).
+    { provide: HTTP_INTERCEPTORS, useClass: AccessInterceptor, multi: true },
   ],
   bootstrap: [AppComponent],
 })
