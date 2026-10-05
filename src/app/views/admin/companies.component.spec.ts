@@ -7,6 +7,7 @@ import { environment } from '../../../environments/environment';
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 import { BUSINESS, company } from './admin.testing';
 import { CompaniesComponent } from './companies.component';
+import { NewCompanyComponent } from './new-company.component';
 
 const URL = `${environment.API_URL}/admin/companies`;
 
@@ -33,7 +34,7 @@ describe('CompaniesComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       declarations: [CompaniesComponent],
-      imports: [HttpClientTestingModule, RouterTestingModule, FormsModule, SharedComponentsModule],
+      imports: [HttpClientTestingModule, RouterTestingModule, FormsModule, SharedComponentsModule, NewCompanyComponent],
     });
     fixture = TestBed.createComponent(CompaniesComponent);
     component = fixture.componentInstance;

@@ -1,5 +1,7 @@
 <app-page-header title="Companies" [subtitle]="subtitle"></app-page-header>
 
+<app-admin-new-company (created)="load()"></app-admin-new-company>
+
 <app-callout tone="warn" *ngIf="state === 'error'">
   {{ error }}
   <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>

@@ -8,6 +8,7 @@ import { AdminLayoutComponent } from './admin-layout.component';
 import { AdminRoutingModule } from './admin-routing.module';
 import { CompaniesComponent } from './companies.component';
 import { CompanyComponent } from './company.component';
+import { NewCompanyComponent } from './new-company.component';
 import { NotAllowedComponent } from './not-allowed.component';
 import { PlansComponent } from './plans.component';
 
@@ -18,7 +19,7 @@ import { PlansComponent } from './plans.component';
  * them every company route.
  */
 @NgModule({
-  imports: [CommonModule, FormsModule, DialogModule, SharedComponentsModule, AdminRoutingModule],
+  imports: [CommonModule, FormsModule, DialogModule, SharedComponentsModule, AdminRoutingModule, NewCompanyComponent],
   declarations: [AdminLayoutComponent, CompaniesComponent, CompanyComponent, NotAllowedComponent, PlansComponent],
 })
 export class AdminModule {}

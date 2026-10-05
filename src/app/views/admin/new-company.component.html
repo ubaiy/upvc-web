@@ -1,0 +1,87 @@
+<div class="toolbar" *ngIf="!open">
+  <span class="grow"></span>
+  <button type="button" class="btn btn-primary new-company" (click)="start()"><app-icon name="plus"></app-icon>New company</button>
+</div>
+
+<app-callout tone="success" *ngIf="made as c">
+  <a [routerLink]="['/admin/companies', c.id]">{{ c.name }}</a> is created{{ c.starter_catalogue ? ', with the example catalogue' : ', empty' }}.
+  <ng-container *ngIf="c.owner as owner">
+    Its owner signs in with {{ owner.email }}<ng-container *ngIf="owner.password; else noPassword">
+      and this password: <span class="password">{{ owner.password }}</span>. It is shown only now: copy it and pass it on.</ng-container>
+    <ng-template #noPassword>. No password was made: the owner uses "Forgot password?" on the sign-in page.</ng-template>
+  </ng-container>
+</app-callout>
+
+<section class="card" *ngIf="open" aria-labelledby="new-company-title">
+  <div class="card-head"><h2 id="new-company-title">New company</h2></div>
+
+  <form id="new-company" class="card-pad stack-4" *ngIf="step === 'form'" (ngSubmit)="next()" novalidate>
+    <div class="grid-2">
+      <div class="field">
+        <label class="label" for="nc-name">Company name</label>
+        <input class="input" id="nc-name" name="name" type="text" maxlength="120" [(ngModel)]="form.name" />
+      </div>
+      <div class="field">
+        <label class="label" for="nc-state">State</label>
+        <select class="select" id="nc-state" name="state" [(ngModel)]="form.state">
+          <option value="">Choose a state</option>
+          <option *ngFor="let state of states" [value]="state.code">{{ state.name }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="label" for="nc-owner">Owner's name</label>
+        <input class="input" id="nc-owner" name="ownerName" type="text" maxlength="120" [(ngModel)]="form.ownerName" />
+      </div>
+      <div class="field">
+        <label class="label" for="nc-email">Owner's e-mail</label>
+        <input class="input" id="nc-email" name="ownerEmail" type="email" autocomplete="off" [(ngModel)]="form.ownerEmail" />
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label class="label" for="nc-plan">Plan</label>
+        <select class="select" id="nc-plan" name="plan" [(ngModel)]="form.plan">
+          <option *ngFor="let plan of plans" [value]="plan.code">{{ plan.name }}, {{ plan.price | inr : 0 }} a month before GST</option>
+        </select>
+      </div>
+      <div class="field">
+        <label class="label" for="nc-days">Days of free trial</label>
+        <input class="input" id="nc-days" name="days" type="number" inputmode="numeric" min="1" max="365" [(ngModel)]="form.days" />
+      </div>
+    </div>
+    <fieldset class="field">
+      <legend class="label">Catalogue</legend>
+      <label class="choice">
+        <input type="radio" name="catalogue" value="classic_example" [(ngModel)]="form.catalogue" />
+        <span>With the example catalogue <span class="muted">(example profiles and rates; the owner can price a window on the first day and is told the rates are examples)</span></span>
+      </label>
+      <label class="choice">
+        <input type="radio" name="catalogue" value="none" [(ngModel)]="form.catalogue" />
+        <span>Empty <span class="muted">(no profiles, no rates)</span></span>
+      </label>
+    </fieldset>
+    <div class="field">
+      <label class="label" for="nc-note">Note (optional)</label>
+      <input class="input" id="nc-note" name="note" type="text" maxlength="250" [(ngModel)]="form.note" placeholder="Why, or who asked" />
+    </div>
+    <app-callout tone="danger" *ngIf="error">{{ error }}</app-callout>
+    <div class="foot">
+      <button type="button" class="btn btn-secondary" (click)="close()">Cancel</button>
+      <button type="submit" class="btn btn-primary">Continue</button>
+    </div>
+  </form>
+
+  <div class="card-pad stack-4" *ngIf="step === 'confirm'">
+    <p class="strong">Please check. This is what will happen:</p>
+    <ul class="will">
+      <li *ngFor="let line of willHappen">{{ line }}</li>
+    </ul>
+    <app-callout tone="danger" *ngIf="error">{{ error }}</app-callout>
+    <div class="foot">
+      <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="back()">Go back</button>
+      <button type="button" class="btn btn-primary create" [disabled]="busy" (click)="send()">{{ busy ? 'Working…' : 'Yes, create the company' }}</button>
+    </div>
+  </div>
+</section>

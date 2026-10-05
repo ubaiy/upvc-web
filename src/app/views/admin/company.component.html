@@ -196,7 +196,7 @@
   <form id="company-action" class="stack-4" *ngIf="action && step === 'form'" (ngSubmit)="next()" novalidate>
     <ng-container [ngSwitch]="action">
       <ng-container *ngSwitchCase="'activate'">
-        <p class="muted">Enter a payment you have received by hand. The company becomes active for the months paid.</p>
+        <p class="muted">Enter a payment you have received by hand. The company becomes active for the period paid.</p>
         <div class="field">
           <label class="label" for="act-plan">Plan</label>
           <select class="select" id="act-plan" name="plan" [(ngModel)]="form.plan">
