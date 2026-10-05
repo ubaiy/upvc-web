@@ -319,3 +319,41 @@
     min-height: 420px;
   }
 }
+
+/* 3D prototype (super system P0): a panel beside the 2D canvas. */
+.lab-3d-toggle {
+  min-height: 30px;
+  padding: 2px 14px;
+  border: 1px solid #b9c0c8;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #1f2933;
+  font-weight: 600;
+
+  &.active {
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+    color: #ffffff;
+  }
+
+  &:focus-visible {
+    outline: 2px solid #1d4ed8;
+    outline-offset: 2px;
+  }
+}
+
+.lab-3d {
+  flex: 1 1 46%;
+  min-width: 0;
+  overflow: auto;
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+.lab-3d-note {
+  margin: 0;
+  font-size: 13px;
+  color: #52606d;
+}

@@ -13,6 +13,16 @@
       <input type="checkbox" [(ngModel)]="readOnly" />
       read-only
     </label>
+    <button
+      type="button"
+      class="lab-3d-toggle"
+      data-lab="toggle-3d"
+      [class.active]="show3d"
+      [attr.aria-pressed]="show3d"
+      (click)="toggle3d()"
+    >
+      3D
+    </button>
   </header>
 
   <!-- Template picker: built-in presets + saved templates -->
@@ -112,6 +122,12 @@
         </span>
       </div>
     </div>
+
+    <section class="lab-3d" [hidden]="!show3d" aria-label="3D view" data-lab="view-3d">
+      <p class="lab-3d-note" *ngIf="loading3d" role="status">Loading 3D…</p>
+      <ng-container #view3d></ng-container>
+    </section>
+    <p class="lab-3d-note" *ngIf="view3dNote" role="status">{{ view3dNote }}</p>
 
     <aside class="lab-side">
       <div class="lab-tabs" role="tablist">

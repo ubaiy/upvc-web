@@ -17,8 +17,11 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ComponentRef,
+  OnDestroy,
   OnInit,
   ViewChild,
+  ViewContainerRef,
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import {
@@ -34,6 +37,8 @@ import {
 import { DesignCanvasComponent } from 'src/app/shared/design-canvas/design-canvas.component';
 import { DesignInspectorComponent } from 'src/app/shared/design-canvas/design-inspector.component';
 import { CanvasSelection, ViewFrom } from 'src/app/shared/design-canvas/canvas-view';
+// Type only: the 3D view (and three.js with it) is loaded when the 3D button is pressed.
+import type { Design3dComponent } from 'src/app/shared/design-3d/design-3d.component';
 import { DesignTemplateStore } from './design-template-store.service';
 import {
   LAB_COLORS,
@@ -59,8 +64,15 @@ interface SavedTemplate {
   styleUrls: ['./design-lab.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class DesignLabComponent implements OnInit {
+export class DesignLabComponent implements OnInit, OnDestroy {
   @ViewChild(DesignCanvasComponent) canvas?: DesignCanvasComponent;
+  @ViewChild('view3d', { read: ViewContainerRef, static: true }) view3dHost?: ViewContainerRef;
+
+  // --- 3D prototype (super system P0): lives only in this lab ------------
+  show3d = false;
+  loading3d = false;
+  view3dNote = '';
+  private view3d: ComponentRef<Design3dComponent> | null = null;
 
   readonly groups = PRESET_GROUPS;
   readonly glassOptions = LAB_GLASS;
@@ -107,6 +119,56 @@ export class DesignLabComponent implements OnInit {
     void this.reloadTemplates();
   }
 
+  ngOnDestroy(): void {
+    this.close3d();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 3D view, loaded on demand                                           */
+  /* ------------------------------------------------------------------ */
+
+  async toggle3d(): Promise<void> {
+    if (this.show3d) {
+      this.close3d();
+      return;
+    }
+    const startedAt = performance.now();
+    this.show3d = true;
+    this.loading3d = true;
+    this.view3dNote = '';
+    try {
+      const { Design3dComponent } = await import('src/app/shared/design-3d/design-3d.component');
+      if (this.show3d && this.view3dHost && !this.view3d) {
+        const ref = this.view3dHost.createComponent(Design3dComponent);
+        ref.setInput('startedAt', startedAt);
+        this.view3d = ref;
+        this.sync3d(this.current);
+        // Handle for the measuring script of the prototype log (dev lab only).
+        (window as unknown as { labView3d?: Design3dComponent }).labView3d = ref.instance;
+      }
+    } catch (err) {
+      this.show3d = false;
+      this.view3dNote = `3D could not be loaded: ${this.text(err)}`;
+    }
+    this.loading3d = false;
+    this.cdr.markForCheck();
+  }
+
+  private close3d(): void {
+    this.view3d?.destroy();
+    this.view3d = null;
+    this.show3d = false;
+    this.loading3d = false;
+    delete (window as unknown as { labView3d?: Design3dComponent }).labView3d;
+  }
+
+  /** The 3D view shows the same document as the canvas, nothing of its own. */
+  private sync3d(design: WindowDesign): void {
+    if (!this.view3d) return;
+    this.view3d.setInput('glassTint', this.glassTints[String(design.glazing.glassId)] ?? null);
+    this.view3d.setInput('design', design);
+  }
+
   presetsOf(group: PresetGroup): LabPreset[] {
     return LAB_PRESETS.filter((p) => p.group === group);
   }
@@ -121,6 +183,7 @@ export class DesignLabComponent implements OnInit {
     this.current = design;
     this.selection = null;
     this.refreshJson(design);
+    this.sync3d(design);
   }
 
   /** A built-in preset is a template too: it can be placed at any size. */
@@ -154,6 +217,7 @@ export class DesignLabComponent implements OnInit {
   onModelChange(next: WindowDesign): void {
     this.current = next;
     this.refreshJson(next);
+    this.sync3d(next);
   }
 
   onSelectionChange(sel: CanvasSelection | null): void {
