@@ -4,7 +4,7 @@
  */
 
 import Konva from 'konva';
-import { Id, RectMm, WindowDesign } from '../../design-model';
+import { Id, LeafNode, RectMm, WindowDesign } from '../../design-model';
 import {
   ViewFrom,
   ViewTransform,
@@ -67,6 +67,26 @@ export type Side = 'left' | 'right' | 'top' | 'bottom';
 /** Anything Konva nodes can be added to (the layer or a clip group). */
 export type Parent = Konva.Layer | Konva.Group;
 
+/**
+ * Visible face widths of the sash profiles, mm. `byId` holds the widths the
+ * catalogue gives for a sash profile id; a profile without one is drawn at
+ * the default of its kind (the same figures the 3D view uses).
+ */
+export interface SashFaces {
+  casementMm: number;
+  doorMm: number;
+  slidingMm: number;
+  meshMm: number;
+  byId?: Record<string, number>;
+}
+
+export const DEFAULT_SASH_FACES: SashFaces = {
+  casementMm: 48,
+  doorMm: 78,
+  slidingMm: 45,
+  meshMm: 28,
+};
+
 export interface RenderOpts {
   stageWPx: number;
   stageHPx: number;
@@ -74,8 +94,26 @@ export interface RenderOpts {
   profileColor: string;
   /** Glass colour for the document's glass type (default: clear blue). */
   glassTint?: string | null;
+  /** Colours of every glass, for panes glazed differently from the window. */
+  glassTints?: GlassTints | null;
+  /** Names of the glasses by id, for the tag on a pane with its own glass. */
+  glassLabels?: Record<string, string> | null;
+  sashFaces?: SashFaces | null;
+  /** Draw the key of the symbols under the drawing (the saved picture). */
+  legend?: boolean;
   /** Side the elevation is viewed from (default 'outside' = as modelled). */
   viewFrom?: ViewFrom;
+}
+
+/**
+ * How much is drawn. A drawing a few centimetres wide (a phone, a list
+ * thumbnail) keeps its frames, sashes, symbols and arrows and drops the
+ * small print, so lines never run into each other.
+ */
+export type Detail = 'full' | 'compact' | 'tiny';
+
+export function detailFor(shortSidePx: number): Detail {
+  return shortSidePx < 120 ? 'tiny' : shortSidePx < 250 ? 'compact' : 'full';
 }
 
 /** Everything a draw function needs for one redraw. */
@@ -87,6 +125,8 @@ export interface RenderCtx {
   flip: boolean;
   color: string;
   facePx: number;
+  detail: Detail;
+  sashFaces: SashFaces;
   px(mm: number): number;
   rect(r: RectMm): PxRect;
   pt(xMm: number, yMm: number): { x: number; y: number };
@@ -105,9 +145,53 @@ export function makeCtx(
     flip: view.mirrorWMm !== undefined,
     color: opts.profileColor || '#ffffff',
     facePx: Math.max(2, px(opts.frameFaceMm)),
+    detail: detailFor(px(Math.min(design.frame.widthMm, design.frame.heightMm))),
+    sashFaces: { ...DEFAULT_SASH_FACES, ...(opts.sashFaces ?? {}) },
     px,
     rect: (r) => rectPxFromMm(view, r),
     pt: (xMm, yMm) => pxFromMm(view, xMm, yMm),
+  };
+}
+
+export type SashKind = 'casement' | 'door' | 'sliding' | 'mesh';
+
+/**
+ * Face width of a leaf's sash on screen: the catalogue's width for its
+ * profile, else the default of its kind. Never thinner than 3 px (it must
+ * read as a frame, not a line) and never more than a quarter of the leaf.
+ */
+export function sashFacePx(
+  ctx: RenderCtx,
+  leaf: LeafNode | null,
+  kind: SashKind,
+  r: PxRect
+): number {
+  const f = ctx.sashFaces;
+  const own =
+    kind !== 'mesh' && leaf && leaf.sashId !== null && leaf.sashId !== undefined
+      ? f.byId?.[String(leaf.sashId)]
+      : undefined;
+  const mm =
+    own && own > 0
+      ? own
+      : kind === 'door'
+        ? f.doorMm
+        : kind === 'sliding'
+          ? f.slidingMm
+          : kind === 'mesh'
+            ? f.meshMm
+            : f.casementMm;
+  const min = kind === 'mesh' ? 2 : 3;
+  return Math.max(min, Math.min(ctx.px(mm), Math.min(r.w, r.h) * 0.25));
+}
+
+/** `r` shrunk by `d` on every side (never below 1 px). */
+export function insetPx(r: PxRect, d: number): PxRect {
+  return {
+    x: r.x + d,
+    y: r.y + d,
+    w: Math.max(1, r.w - 2 * d),
+    h: Math.max(1, r.h - 2 * d),
   };
 }
 

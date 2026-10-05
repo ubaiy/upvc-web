@@ -24,9 +24,42 @@ export type CanvasTool = 'split-x' | 'split-y';
 /** What is currently selected on the canvas. */
 export type CanvasSelection =
   | { type: 'frame' }
-  /** `panelIndex` is set when a panel of a multi-panel sliding leaf was hit. */
-  | { type: 'pane'; paneId: string; panelIndex?: number }
+  /**
+   * `panelIndex` is set when a panel of a multi-panel sliding leaf was hit.
+   * `paneIds` is set when SEVERAL panes are selected (shift-click or
+   * long-press): every selected pane, `paneId` (the one picked last) included.
+   */
+  | { type: 'pane'; paneId: string; panelIndex?: number; paneIds?: string[] }
   | { type: 'divider'; splitId: string; index: number };
+
+/** Every selected pane id ([] when the selection is not a pane). */
+export function selectedPaneIds(sel: CanvasSelection | null): string[] {
+  if (!sel || sel.type !== 'pane') return [];
+  return sel.paneIds && sel.paneIds.length ? sel.paneIds : [sel.paneId];
+}
+
+/**
+ * Add `paneId` to a pane selection, or take it out when it is already in
+ * it (shift-click, long-press). The pane picked last is the primary one.
+ */
+export function togglePaneInSelection(
+  sel: CanvasSelection | null,
+  paneId: string
+): CanvasSelection | null {
+  const ids = selectedPaneIds(sel);
+  if (!ids.includes(paneId)) {
+    const next = [...ids, paneId];
+    return next.length > 1
+      ? { type: 'pane', paneId, paneIds: next }
+      : { type: 'pane', paneId };
+  }
+  const rest = ids.filter((id) => id !== paneId);
+  if (!rest.length) return null;
+  const primary = rest[rest.length - 1];
+  return rest.length > 1
+    ? { type: 'pane', paneId: primary, paneIds: rest }
+    : { type: 'pane', paneId: primary };
+}
 
 /** mm → px: px = origin + mm · pxPerMm (mm space origin = frame outer corner). */
 export interface ViewTransform {
@@ -55,6 +88,20 @@ export type FrameCorner = 'nw' | 'ne' | 'sw' | 'se';
  */
 export const VIEW_MARGINS = { left: 64, right: 26, top: 26, bottom: 62 };
 
+export interface ViewMargins {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+/** On a small stage (a phone) the margins shrink so the window stays readable. */
+export const VIEW_MARGINS_COMPACT: ViewMargins = { left: 46, right: 12, top: 14, bottom: 46 };
+
+export function marginsFor(stageWPx: number, stageHPx: number): ViewMargins {
+  return stageWPx < 420 || stageHPx < 300 ? VIEW_MARGINS_COMPACT : VIEW_MARGINS;
+}
+
 export const ZOOM_MIN = 0.25;
 export const ZOOM_MAX = 4;
 
@@ -70,9 +117,10 @@ export function computeView(
   zoom: number,
   panXPx: number,
   panYPx: number,
-  mirror = false
+  mirror = false,
+  margins?: ViewMargins
 ): ViewTransform {
-  const m = VIEW_MARGINS;
+  const m = margins ?? marginsFor(stageWPx, stageHPx);
   const availW = Math.max(40, stageWPx - m.left - m.right);
   const availH = Math.max(40, stageHPx - m.top - m.bottom);
   const base = Math.min(availW / frameWMm, availH / frameHMm);
@@ -238,7 +286,7 @@ export function hitTest(
 /**
  * Which sliding panel of `leaf` (laid out in `rect`) is under `p`; null
  * for non-sliding or single-panel leaves. In an interlock overlap the
- * later panel wins (it is the one drawn in front).
+ * panel on the outer track wins (it is the one drawn in front).
  */
 export function slidePanelAt(
   leaf: LeafNode,
@@ -248,11 +296,10 @@ export function slidePanelAt(
   if (leaf.category !== 'Slidding' || !leaf.slide) return null;
   if (leaf.slide.panels.length < 2) return null;
   const x = p.xMm - rect.xMm;
-  const panels = slideLayout(leaf.slide, rect.wMm).panels;
-  for (let i = panels.length - 1; i >= 0; i--) {
-    if (x >= panels[i].xMm && x <= panels[i].xMm + panels[i].widthMm) {
-      return panels[i].index;
-    }
-  }
-  return null;
+  const under = slideLayout(leaf.slide, rect.wMm).panels.filter(
+    (panel) => x >= panel.xMm && x <= panel.xMm + panel.widthMm
+  );
+  if (!under.length) return null;
+  // Where two shutters overlap, the one on the outer track is in front.
+  return under.reduce((front, panel) => (panel.track < front.track ? panel : front)).index;
 }

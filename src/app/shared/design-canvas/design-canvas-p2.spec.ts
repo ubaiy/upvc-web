@@ -126,7 +126,10 @@ describe('DesignCanvasComponent — Phase 2-3', () => {
     expect(find('slide-arrow').length).toBe(2);
     expect(find('slide-interlock').length).toBe(3);
     // Mirrored track assignment from the model: outer panels on track 0.
-    expect(find('slide-panel').map((p) => p.getAttr('track'))).toEqual([0, 1, 1, 0]);
+    const byIndex = [...find('slide-panel')].sort(
+      (a, b) => a.getAttr('panelIndex') - b.getAttr('panelIndex')
+    );
+    expect(byIndex.map((p) => p.getAttr('track'))).toEqual([0, 1, 1, 0]);
   });
 
   it('sliding: clicking a panel selects it; double-click types its width (undoable)', () => {
@@ -185,7 +188,7 @@ describe('DesignCanvasComponent — Phase 2-3', () => {
 
   /* ---------------- opening symbols, inside / outside ---------------- */
 
-  it('tilt & turn draws a solid turn chevron and a dashed tilt chevron', () => {
+  it('tilt & turn draws two dashed triangles: turn at the hinge stile, tilt at the bottom rail', () => {
     create(
       setLeafSpec(singleFixed(), 'p1', {
         casementType: 'Openable',
@@ -194,8 +197,13 @@ describe('DesignCanvasComponent — Phase 2-3', () => {
     );
     const lines = find('opening-symbol');
     expect(lines.length).toBe(4);
-    expect(lines.filter((l) => l.getAttr('dashed')).length).toBe(2);
+    // Tilt and turn opens inward: both triangles are dashed.
+    expect(lines.filter((l) => l.getAttr('dashed')).length).toBe(4);
     expect(lines.filter((l) => l.getAttr('hingeSide') === 'left').length).toBe(2);
+    expect(lines.filter((l) => l.getAttr('motion') === 'tilt').map((l) => l.getAttr('hingeSide'))).toEqual([
+      'bottom',
+      'bottom',
+    ]);
     expect(find('handle-glyph')[0].getAttr('edge')).toBe('right');
   });
 
@@ -210,10 +218,11 @@ describe('DesignCanvasComponent — Phase 2-3', () => {
     expect(find('handle-glyph')[0].getAttr('edge')).toBe('left');
     expect(component.design).toBe(d);
 
-    // A door that opens out is solid from outside, dashed from inside.
+    // The line style says how the leaf opens, whichever side it is seen
+    // from: a door that opens out stays solid, so the key stays true.
     fixture.destroy();
     create(door({ leaves: 1, openingSide: 'Left', swing: 'Out' }), { viewFrom: 'inside' });
-    expect(find('door-swing')[0].getAttr('dashed')).toBeTrue();
+    expect(find('door-swing')[0].getAttr('dashed')).toBeFalse();
     expect(find('door-swing')[0].getAttr('hingeSide')).toBe('right');
   });
 

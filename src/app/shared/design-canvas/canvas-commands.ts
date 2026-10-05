@@ -108,6 +108,19 @@ export function resolveSelection(
   if (!sel || sel.type === 'frame') return sel;
   if (sel.type === 'pane') {
     const node = findNode(design.root, sel.paneId);
+    if (sel.paneIds) {
+      // Several panes: keep the ones that are still panes.
+      const live = sel.paneIds.filter((id) => {
+        const n = findNode(design.root, id);
+        return !!n && isLeaf(n);
+      });
+      if (live.length === sel.paneIds.length && node && isLeaf(node)) return sel;
+      if (!live.length) return null;
+      const primary = live.includes(sel.paneId) ? sel.paneId : live[live.length - 1];
+      return live.length > 1
+        ? { type: 'pane', paneId: primary, paneIds: live }
+        : { type: 'pane', paneId: primary };
+    }
     if (!node || !isLeaf(node)) return null;
     if (
       sel.panelIndex !== undefined &&

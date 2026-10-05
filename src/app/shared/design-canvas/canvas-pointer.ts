@@ -24,11 +24,17 @@ import {
   hitTest,
   mmFromPx,
   slidePanelAt,
+  togglePaneInSelection,
 } from './canvas-view';
+
+/** A finger held still this long on a pane adds it to the selection. */
+export const LONG_PRESS_MS = 550;
+const LONG_PRESS_SLOP_PX = 8;
 
 export class PointerController {
   private pointers = new Map<number, PosPx>();
   private pinch: { dist: number; midX: number; midY: number } | null = null;
+  private press: { timer: ReturnType<typeof setTimeout>; x: number; y: number } | null = null;
 
   constructor(
     private readonly host: CanvasHost,
@@ -49,6 +55,11 @@ export class PointerController {
     }
   }
 
+  private endPress(): void {
+    if (this.press) clearTimeout(this.press.timer);
+    this.press = null;
+  }
+
   private startPan(pos: PosPx): void {
     const h = this.host;
     h.drag = { kind: 'pan', startX: pos.x, startY: pos.y, panX0: h.panX, panY0: h.panY };
@@ -61,6 +72,7 @@ export class PointerController {
     this.pointers.set(e.pointerId, pos);
     this.capture(this.captureTarget(), e.pointerId);
 
+    this.endPress();
     if (this.pointers.size === 2) {
       // Two fingers: pinch zoom + pan; cancel any one-finger drag.
       const [a, b] = [...this.pointers.values()];
@@ -126,6 +138,29 @@ export class PointerController {
         const nl = lay.nodes.get(hit.paneId);
         const panel =
           nl && isLeaf(nl.node) ? slidePanelAt(nl.node, nl.rect, mm) : null;
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          // Shift-click: add the pane to the selection, or take it out.
+          h.setSelection(togglePaneInSelection(h.selection, hit.paneId));
+          h.render();
+          break;
+        }
+        if (e.pointerType !== 'mouse' && h.selection?.type === 'pane') {
+          // Long-press does the same on a touch screen. The tap itself
+          // selects this pane alone, so the earlier selection is kept aside.
+          const before = h.selection;
+          const paneId = hit.paneId;
+          this.press = {
+            x: pos.x,
+            y: pos.y,
+            timer: setTimeout(() => {
+              this.press = null;
+              const base =
+                before.paneId === paneId && !before.paneIds ? null : before;
+              h.setSelection(togglePaneInSelection(base, paneId) ?? { type: 'pane', paneId });
+              h.render();
+            }, LONG_PRESS_MS),
+          };
+        }
         h.setSelection(
           panel === null
             ? { type: 'pane', paneId: hit.paneId }
@@ -150,6 +185,12 @@ export class PointerController {
     const h = this.host;
     const pos = h.eventPos(e);
     if (this.pointers.has(e.pointerId)) this.pointers.set(e.pointerId, pos);
+    if (
+      this.press &&
+      Math.hypot(pos.x - this.press.x, pos.y - this.press.y) > LONG_PRESS_SLOP_PX
+    ) {
+      this.endPress();
+    }
 
     if (this.pinch && this.pointers.size >= 2) {
       const [a, b] = [...this.pointers.values()];
@@ -223,6 +264,7 @@ export class PointerController {
 
   up(e: PointerEvent): void {
     const h = this.host;
+    this.endPress();
     this.pointers.delete(e.pointerId);
     if (this.pointers.size < 2) this.pinch = null;
     const drag = h.drag;
@@ -245,6 +287,7 @@ export class PointerController {
 
   cancel(e: PointerEvent): void {
     const h = this.host;
+    this.endPress();
     this.pointers.delete(e.pointerId);
     this.pinch = null;
     h.drag = null;

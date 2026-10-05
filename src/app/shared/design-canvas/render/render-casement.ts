@@ -1,13 +1,18 @@
 /**
- * design-canvas renderer — openable casement and door symbology: sash
- * outline, egress chevrons (side-hung, top-hung, bottom-hung, tilt & turn),
- * hinge marks, handle glyph, the door swing arc and the door threshold.
+ * design-canvas renderer — an opening sash and its symbols: the sash frame
+ * inside the outer frame (two rectangles with the rebate gap between them),
+ * the opening triangle, hinge marks, the handle, the door swing arc and the
+ * door threshold.
  *
- * Conventions (documented in the phase-8 log):
- *  - A chevron's apex sits on the HINGE side. Solid = turn, dashed = tilt.
- *  - Model sides are as seen from OUTSIDE; the inside view mirrors them.
- *  - Door swing arc and chevron: solid when the leaf opens TOWARDS the
- *    viewer, dashed when it opens away (Out seen from outside = solid).
+ * THE CONVENTION (one, stated in the key under every drawing):
+ *  - the triangle's apex is on the HINGE side;
+ *  - a solid triangle opens OUTWARD, a dashed one opens INWARD;
+ *  - tilt and turn has two triangles: the turn one (apex on the hinge
+ *    stile) and the tilt one (apex on the bottom rail, where it is hinged
+ *    when tilted). Both are dashed: tilt and turn opens inward.
+ * A window casement opens outward (the model has no inward casement); a
+ * door follows its swing. Model sides are as seen from OUTSIDE; the inside
+ * view mirrors them and keeps the line style, so the key stays true.
  */
 
 import Konva from 'konva';
@@ -18,11 +23,17 @@ import {
   PxRect,
   RenderCtx,
   Side,
+  insetPx,
   opposite,
+  sashFacePx,
   screenSide,
+  shadeColor,
 } from './render-common';
+import { drawGlass, drawSashFrame } from './render-sash';
 
 const DASH = [6, 4];
+/** Height of a door lever above the floor. */
+const DOOR_HANDLE_MM = 1050;
 
 export function drawOpenableCasement(
   parent: Parent,
@@ -31,56 +42,61 @@ export function drawOpenableCasement(
   ctx: RenderCtx,
   isDoorLeaf: boolean
 ): void {
-  const inset = Math.max(
-    3,
-    Math.round(ctx.opts.frameFaceMm * ctx.view.pxPerMm * 0.55)
-  );
+  // The rebate gap: the dark line between the outer frame and the sash.
+  const gap = ctx.detail === 'tiny' ? 1 : Math.max(1.5, Math.min(3, ctx.px(4)));
   parent.add(
     new Konva.Rect({
-      x: r.x + inset,
-      y: r.y + inset,
-      width: r.w - 2 * inset,
-      height: r.h - 2 * inset,
-      stroke: '#555555',
-      strokeWidth: 3,
+      x: r.x,
+      y: r.y,
+      width: r.w,
+      height: r.h,
+      fill: shadeColor(ctx.color, -0.5),
       listening: false,
-      name: 'sash-outline',
+      name: 'sash-gap',
     })
   );
+  const sash = insetPx(r, gap);
+  const facePx = sashFacePx(ctx, leaf, isDoorLeaf ? 'door' : 'casement', sash);
+  const glass = drawSashFrame(parent, sash, facePx, ctx.color, {
+    name: 'sash-outline',
+    attrs: { paneId: leaf.id },
+  });
+  drawGlass(parent, leaf, glass, ctx);
 
   const dir = (leaf.opening?.direction || 'Left').toLowerCase();
   const hinges = leaf.opening?.hingesType === '3D Hinges' ? 3 : 2;
   if (dir.startsWith('tilt')) {
     const turnSide = screenSide(dir.includes('right') ? 'right' : 'left', ctx.flip);
-    drawEgress(parent, r, turnSide, false);
-    drawEgress(parent, r, 'top', true);
-    drawHandleGlyph(parent, r, opposite(turnSide), false);
-    drawHingeMarks(parent, r, turnSide, hinges);
+    drawEgress(parent, glass, turnSide, true, 'turn');
+    drawEgress(parent, glass, 'bottom', true, 'tilt');
+    drawHandleGlyph(parent, sash, facePx, opposite(turnSide), false, ctx);
+    drawHingeMarks(parent, sash, turnSide, hinges, ctx);
     return;
   }
   const modelSide: Side =
     dir === 'right' ? 'right' : dir === 'top' ? 'top' : dir === 'bottom' ? 'bottom' : 'left';
   const side = screenSide(modelSide, ctx.flip);
   if (isDoorLeaf) {
-    const towards = doorOpensTowardsViewer(ctx);
-    drawEgress(parent, r, side, !towards);
-    drawDoorSwing(parent, r, side, !towards, ctx.design.door?.swing ?? 'In');
-    drawHandleGlyph(parent, r, opposite(side), true);
-    drawHingeMarks(parent, r, side, 3);
+    const inward = (ctx.design.door?.swing ?? 'In') === 'In';
+    drawEgress(parent, glass, side, inward, 'turn');
+    drawDoorSwing(parent, r, side, inward, ctx.design.door?.swing ?? 'In', ctx);
+    drawHandleGlyph(parent, sash, facePx, opposite(side), true, ctx);
+    drawHingeMarks(parent, sash, side, 3, ctx);
     return;
   }
-  drawEgress(parent, r, side, false);
-  drawHandleGlyph(parent, r, opposite(side), false);
-  drawHingeMarks(parent, r, side, hinges);
+  drawEgress(parent, glass, side, false, 'turn');
+  drawHandleGlyph(parent, sash, facePx, opposite(side), false, ctx);
+  drawHingeMarks(parent, sash, side, hinges, ctx);
 }
 
-function doorOpensTowardsViewer(ctx: RenderCtx): boolean {
-  const out = (ctx.design.door?.swing ?? 'In') === 'Out';
-  return out === ((ctx.opts.viewFrom ?? 'outside') === 'outside');
-}
-
-/** Egress chevron: apex on the hinge side. */
-function drawEgress(parent: Parent, r: PxRect, side: Side, dashed: boolean): void {
+/** Opening triangle over the glass: apex on the hinge side. */
+function drawEgress(
+  parent: Parent,
+  r: PxRect,
+  side: Side,
+  dashed: boolean,
+  motion: 'turn' | 'tilt'
+): void {
   const { x, y, w, h } = r;
   const cx = x + w / 2;
   const cy = y + h / 2;
@@ -108,7 +124,7 @@ function drawEgress(parent: Parent, r: PxRect, side: Side, dashed: boolean): voi
       listening: false,
       name: 'opening-symbol',
     });
-    line.setAttrs({ hingeSide: side, dashed });
+    line.setAttrs({ hingeSide: side, dashed, motion });
     parent.add(line);
   }
 }
@@ -123,7 +139,8 @@ function drawDoorSwing(
   r: PxRect,
   hingeSide: Side,
   dashed: boolean,
-  swing: 'In' | 'Out'
+  swing: 'In' | 'Out',
+  ctx: RenderCtx
 ): void {
   const left = hingeSide !== 'right';
   const radius = Math.max(8, Math.min(r.w * 0.86, r.h * 0.45));
@@ -144,6 +161,7 @@ function drawDoorSwing(
   });
   arc.setAttrs({ hingeSide, dashed, swing });
   parent.add(arc);
+  if (ctx.detail === 'tiny' || radius < 44) return;
   parent.add(
     new Konva.Text({
       x: left ? cx + radius * 0.5 : cx - radius * 0.5 - 30,
@@ -160,36 +178,47 @@ function drawDoorSwing(
   );
 }
 
-/** Lever-bar handle centred on `edge`; a door lever sits on a backplate. */
-function drawHandleGlyph(parent: Parent, r: PxRect, edge: Side, door: boolean): void {
-  const { x, y, w, h } = r;
-  const len = Math.max(12, Math.min(22, Math.min(w, h) * 0.2));
-  const thick = 5;
-  const pad = 4;
-  // Door levers sit about 1 m above the floor: 45% up from the bottom.
-  const midY = door ? y + h * 0.55 : y + h / 2;
+/**
+ * Handle on the sash band of the LOCK side: at mid height on a window, at
+ * lever height above the floor on a door, mid span on a top or bottom rail.
+ */
+function drawHandleGlyph(
+  parent: Parent,
+  sash: PxRect,
+  facePx: number,
+  edge: Side,
+  door: boolean,
+  ctx: RenderCtx
+): void {
+  const { x, y, w, h } = sash;
+  const tiny = ctx.detail === 'tiny';
+  const len = Math.max(tiny ? 6 : 10, Math.min(24, Math.min(w, h) * 0.16));
+  const thick = Math.max(2, Math.min(5, facePx * 0.45));
+  const band = facePx / 2;
+  const leverY = Math.max(y + h * 0.3, y + h - ctx.px(DOOR_HANDLE_MM));
+  const midY = door ? leverY : y + h / 2;
   let rx: number, ry: number, rw: number, rh: number;
   switch (edge) {
     case 'right':
-      rx = x + w - pad - thick;
+      rx = x + w - band - thick / 2;
       ry = midY - len / 2;
       rw = thick;
       rh = len;
       break;
     case 'top':
       rx = x + w / 2 - len / 2;
-      ry = y + pad;
+      ry = y + band - thick / 2;
       rw = len;
       rh = thick;
       break;
     case 'bottom':
       rx = x + w / 2 - len / 2;
-      ry = y + h - pad - thick;
+      ry = y + h - band - thick / 2;
       rw = len;
       rh = thick;
       break;
     default:
-      rx = x + pad;
+      rx = x + band - thick / 2;
       ry = midY - len / 2;
       rw = thick;
       rh = len;
@@ -202,24 +231,24 @@ function drawHandleGlyph(parent: Parent, r: PxRect, edge: Side, door: boolean): 
     height: rh,
     fill: '#4a4f55',
     stroke: '#2b2e33',
-    strokeWidth: 1,
-    cornerRadius: 2,
+    strokeWidth: tiny ? 0.5 : 1,
+    cornerRadius: Math.min(2, thick / 2),
     listening: false,
     name: 'handle-glyph',
   });
   glyph.setAttr('edge', edge);
   parent.add(glyph);
   if (door && (edge === 'left' || edge === 'right')) {
-    const leverLen = Math.max(10, Math.min(20, w * 0.18));
+    const leverLen = Math.max(6, Math.min(20, w * 0.18));
     parent.add(
       new Konva.Rect({
         x: edge === 'right' ? rx - leverLen : rx + thick,
         y: ry + rh / 2 - 2,
         width: leverLen,
-        height: 4,
+        height: tiny ? 2 : 4,
         fill: '#4a4f55',
         stroke: '#2b2e33',
-        strokeWidth: 1,
+        strokeWidth: tiny ? 0.5 : 1,
         cornerRadius: 2,
         listening: false,
         name: 'door-lever',
@@ -228,47 +257,55 @@ function drawHandleGlyph(parent: Parent, r: PxRect, edge: Side, door: boolean): 
   }
 }
 
-/** Hinge knuckles flush on the hinge stile. */
-function drawHingeMarks(parent: Parent, r: PxRect, side: Side, count: number): void {
-  const { x, y, w, h } = r;
-  const barrelLen = Math.max(8, Math.min(16, Math.min(w, h) * 0.14));
-  const barrelW = Math.max(5, Math.min(9, Math.min(w, h) * 0.08));
+/** Hinge knuckles on the hinge side, across the gap between frame and sash. */
+function drawHingeMarks(
+  parent: Parent,
+  sash: PxRect,
+  side: Side,
+  count: number,
+  ctx: RenderCtx
+): void {
+  const { x, y, w, h } = sash;
+  const tiny = ctx.detail === 'tiny';
+  const barrelLen = Math.max(tiny ? 4 : 8, Math.min(16, Math.min(w, h) * 0.12));
+  const barrelW = Math.max(tiny ? 2 : 4, Math.min(7, Math.min(w, h) * 0.05));
   const alongIsX = side === 'top' || side === 'bottom';
   for (let i = 1; i <= count; i++) {
-    const f = i / (count + 1);
+    // Near the ends of the hinge side, where hinges are fitted.
+    const f = count === 1 ? 0.5 : 0.14 + (0.72 * (i - 1)) / (count - 1);
     let bcx: number, bcy: number;
     switch (side) {
       case 'right':
-        bcx = x + w - barrelW / 2;
+        bcx = x + w;
         bcy = y + h * f;
         break;
       case 'top':
         bcx = x + w * f;
-        bcy = y + barrelW / 2;
+        bcy = y;
         break;
       case 'bottom':
         bcx = x + w * f;
-        bcy = y + h - barrelW / 2;
+        bcy = y + h;
         break;
       default:
-        bcx = x + barrelW / 2;
+        bcx = x;
         bcy = y + h * f;
         break;
     }
-    parent.add(
-      new Konva.Rect({
-        x: bcx - (alongIsX ? barrelLen : barrelW) / 2,
-        y: bcy - (alongIsX ? barrelW : barrelLen) / 2,
-        width: alongIsX ? barrelLen : barrelW,
-        height: alongIsX ? barrelW : barrelLen,
-        fill: '#8a9097',
-        stroke: '#3a3d42',
-        strokeWidth: 1,
-        cornerRadius: barrelW / 2,
-        listening: false,
-        name: 'hinge-mark',
-      })
-    );
+    const mark = new Konva.Rect({
+      x: bcx - (alongIsX ? barrelLen : barrelW) / 2,
+      y: bcy - (alongIsX ? barrelW : barrelLen) / 2,
+      width: alongIsX ? barrelLen : barrelW,
+      height: alongIsX ? barrelW : barrelLen,
+      fill: '#8a9097',
+      stroke: '#3a3d42',
+      strokeWidth: tiny ? 0.5 : 1,
+      cornerRadius: barrelW / 2,
+      listening: false,
+      name: 'hinge-mark',
+    });
+    mark.setAttr('side', side);
+    parent.add(mark);
   }
 }
 

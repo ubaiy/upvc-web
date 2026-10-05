@@ -51,6 +51,7 @@ import {
   GlassTints,
   RenderGhost,
   RenderReadout,
+  SashFaces,
   glassTintFor,
   renderDesign,
 } from './canvas-renderer';
@@ -90,6 +91,10 @@ export class DesignCanvasComponent
   @Input() viewFrom: ViewFrom = 'outside';
   /** Glass colour per glass id (from the host's glass master data). */
   @Input() glassTints: GlassTints | null = null;
+  /** Glass name per glass id: the tag on a pane glazed differently. */
+  @Input() glassLabels: Record<string, string> | null = null;
+  /** Face widths of the sash profiles (catalogue data; defaults otherwise). */
+  @Input() sashFaces: SashFaces | null = null;
   /**
    * 'full' draws the built-in palette, toolbar and status bar. 'none' draws
    * the drawing only: the host page supplies its own tools and calls the
@@ -193,7 +198,9 @@ export class DesignCanvasComponent
       changes['readOnly'] ||
       changes['frameFaceMm'] ||
       changes['viewFrom'] ||
-      changes['glassTints']
+      changes['glassTints'] ||
+      changes['glassLabels'] ||
+      changes['sashFaces']
     ) {
       this.render();
     }
@@ -288,6 +295,9 @@ export class DesignCanvasComponent
         frameFaceMm: this.frameFaceMm,
         profileColor: d.frame.profileColor ?? '#ffffff',
         glassTint: glassTintFor(d.glazing.glassId, this.glassTints),
+        glassTints: this.glassTints,
+        glassLabels: this.glassLabels,
+        sashFaces: this.sashFaces,
         viewFrom: this.viewFrom,
       }
     );
@@ -496,6 +506,20 @@ export class DesignCanvasComponent
   /** Programmatic pane selection (host pages / tests). */
   selectPane(paneId: string | null): void {
     this.setSelection(paneId ? { type: 'pane', paneId } : null);
+    this.render();
+  }
+
+  /** Select several panes at once (what shift-click builds up). */
+  selectPanes(paneIds: string[]): void {
+    const ids = [...new Set(paneIds)];
+    const paneId = ids[ids.length - 1];
+    this.setSelection(
+      !ids.length
+        ? null
+        : ids.length === 1
+          ? { type: 'pane', paneId }
+          : { type: 'pane', paneId, paneIds: ids }
+    );
     this.render();
   }
 

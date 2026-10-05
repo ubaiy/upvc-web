@@ -141,14 +141,17 @@ describe('DesignCanvasComponent', () => {
     expect(layerFind('track-line').length).toBe(3);
     expect(layerFind('slide-arrow').length).toBe(3);
     expect(layerFind('fly-mesh').length).toBe(1);
-    const panelLabels = layerFind('slide-panel-label') as Konva.Text[];
-    expect(panelLabels.map((t) => t.text())).toEqual(['760', '760', '760']);
+    // Every shutter is a framed sash of its own, with a touch lock.
+    expect(layerFind('slide-sash-edge').length).toBe(3);
+    expect(layerFind('slide-handle').length).toBe(3);
   });
 
   it('renders a 2-sash casement with sash bands and two opening symbols', () => {
     create(twoSashOpenable());
     expect(layerFind('glass-pane').length).toBe(2);
-    expect(layerFind('sash-band').length).toBeGreaterThan(0);
+    // Each sash is a frame of its own inside the outer frame.
+    expect(layerFind('sash-outline-edge').length).toBe(2);
+    expect(layerFind('sash-gap').length).toBe(2);
     // Two openable sashes → two egress chevrons (2 lines each).
     expect(layerFind('opening-symbol').length).toBe(4);
     expect(layerFind('divider-bar').length).toBe(0); // sash split, no mullion

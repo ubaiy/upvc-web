@@ -5,9 +5,17 @@
  */
 
 import Konva from 'konva';
-import { Layout, PointMm, isLeaf } from '../../design-model';
-import { CanvasSelection } from '../canvas-view';
-import { COL, Parent, PxRect, RenderCtx, flatPx } from './render-common';
+import { Layout, PointMm, isLeaf, slideLayout } from '../../design-model';
+import { CanvasSelection, selectedPaneIds } from '../canvas-view';
+import {
+  COL,
+  Parent,
+  PxRect,
+  RenderCtx,
+  SashKind,
+  flatPx,
+  sashFacePx,
+} from './render-common';
 import { slidePanelRectPx } from './render-sliding';
 
 /** Ghost divider shown while a palette split tool hovers a pane. */
@@ -47,6 +55,25 @@ export function drawSelection(
   let rect: PxRect | null = null;
   if (selection.type === 'frame') {
     rect = frame;
+  } else if (selection.type === 'pane' && selectedPaneIds(selection).length > 1) {
+    // Several panes: each one highlighted, the one picked last more strongly.
+    for (const id of selectedPaneIds(selection)) {
+      const nl = lay.nodes.get(id);
+      if (!nl) continue;
+      const r = ctx.rect(nl.rect);
+      const hl = new Konva.Rect({
+        ...base,
+        x: r.x,
+        y: r.y,
+        width: Math.max(3, r.w),
+        height: Math.max(3, r.h),
+        fill: COL.select,
+        strokeWidth: id === selection.paneId ? 2.5 : 1.75,
+      });
+      hl.setAttrs({ paneId: id, primary: id === selection.paneId });
+      parent.add(hl);
+    }
+    return;
   } else if (selection.type === 'pane') {
     const nl = lay.nodes.get(selection.paneId);
     if (nl) {
@@ -98,6 +125,71 @@ export function drawSelection(
       fill: selection.type === 'frame' ? undefined : COL.select,
     })
   );
+}
+
+/**
+ * Sash and glass sizes of the selected leaf: the shutter of a slider that
+ * was picked, or the sash of an opening pane. Glass is the SIGHT size (what
+ * shows between the sash bands); the cut size comes from the cutting list.
+ */
+export function drawSelectionSizes(
+  parent: Parent,
+  lay: Layout,
+  ctx: RenderCtx,
+  selection: CanvasSelection | null
+): void {
+  if (!selection || selection.type !== 'pane' || selection.paneIds) return;
+  if (ctx.detail === 'tiny') return;
+  const nl = lay.nodes.get(selection.paneId);
+  if (!nl || !isLeaf(nl.node)) return;
+  const leaf = nl.node;
+  const r = ctx.rect(nl.rect);
+  const isDoor = !!ctx.design.door && ctx.design.productType === 'Door';
+  let at: PxRect = r;
+  let sashW = nl.rect.wMm;
+  const sashH = nl.rect.hMm;
+  let kind: SashKind;
+  if (leaf.category === 'Slidding' && leaf.slide) {
+    const index = selection.panelIndex ?? (leaf.slide.panels.length === 1 ? 0 : undefined);
+    if (index === undefined) return;
+    const panel = slideLayout(leaf.slide, nl.rect.wMm).panels[index];
+    const pr = slidePanelRectPx(leaf.slide, r, ctx, index);
+    if (!panel || !pr) return;
+    at = pr;
+    sashW = panel.widthMm;
+    kind = 'sliding';
+  } else if (leaf.casementType === 'Openable') {
+    kind = isDoor ? 'door' : 'casement';
+  } else {
+    return;
+  }
+  const faceMm = sashFacePx(ctx, leaf, kind, at) / ctx.view.pxPerMm;
+  const mm = (w: number, h: number): string => `${Math.round(w)} × ${Math.round(h)}`;
+  const text = new Konva.Text({
+    text: `Sash ${mm(sashW, sashH)}\nGlass ${mm(sashW - 2 * faceMm, sashH - 2 * faceMm)}`,
+    fontSize: ctx.detail === 'full' ? 11 : 9,
+    lineHeight: 1.25,
+    padding: 4,
+    fill: '#ffffff',
+    align: 'center',
+  });
+  const label = new Konva.Label({
+    x: at.x + at.w / 2 - text.width() / 2,
+    y: at.y + at.h * 0.68 - text.height() / 2,
+    listening: false,
+    name: 'leaf-sizes',
+  });
+  label.setAttrs({
+    paneId: leaf.id,
+    panelIndex: selection.panelIndex ?? null,
+    sashWMm: Math.round(sashW),
+    sashHMm: Math.round(sashH),
+    glassWMm: Math.round(sashW - 2 * faceMm),
+    glassHMm: Math.round(sashH - 2 * faceMm),
+  });
+  label.add(new Konva.Tag({ fill: '#111827', cornerRadius: 3, opacity: 0.88 }));
+  label.add(text);
+  parent.add(label);
 }
 
 export function drawGhost(

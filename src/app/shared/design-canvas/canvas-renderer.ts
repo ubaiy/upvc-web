@@ -6,10 +6,12 @@
  * converted to px through the ViewTransform) onto one Konva layer. This file
  * orders the passes; the drawing itself is in ./render:
  *   render-frame    rect + shaped frames, dimension lines
- *   render-leaf     glass (tint), glazing bars, pane labels
- *   render-casement opening symbols, hardware, door swing + threshold
- *   render-sliding  tracks, panels, interlocks, arrows, fly mesh
- *   render-overlay  selection, ghost, handles, readout, focus ring
+ *   render-sash     a sash frame, glass with its gasket, own-glass marks
+ *   render-leaf     one pane by what it is, pane labels
+ *   render-casement the opening sash, its symbols, door swing + threshold
+ *   render-sliding  shutters on their tracks, arrows, fly mesh
+ *   render-legend   the key of the symbols (the saved picture)
+ *   render-overlay  selection, sizes, ghost, handles, readout, focus ring
  *
  * The renderer attaches NO event handlers and holds NO state: the component
  * hit-tests pointer positions against the same layout (canvas-view.ts), so
@@ -28,6 +30,7 @@ import {
   walkLeaves,
 } from '../design-model';
 import { CanvasSelection, ViewTransform } from './canvas-view';
+import { drawingKey } from './drawing-key';
 import { drawDoorThreshold } from './render/render-casement';
 import {
   COL,
@@ -45,7 +48,8 @@ import {
   drawOuterFrame,
   drawShapedFrame,
 } from './render/render-frame';
-import { drawLeaf, drawLeafContent, drawPaneLabel } from './render/render-leaf';
+import { drawLeaf, drawPaneLabel } from './render/render-leaf';
+import { drawLegend } from './render/render-legend';
 import {
   RenderGhost,
   RenderReadout,
@@ -54,13 +58,16 @@ import {
   drawGhost,
   drawReadout,
   drawSelection,
+  drawSelectionSizes,
   drawViewBadge,
 } from './render/render-overlay';
 
 export { RenderGhost, RenderReadout } from './render/render-overlay';
 export {
+  DEFAULT_SASH_FACES,
   GlassTints,
   RenderOpts,
+  SashFaces,
   glassTintFor,
   shadeColor,
 } from './render/render-common';
@@ -139,9 +146,10 @@ export function renderDesign(
       : layer;
   if (inside !== layer) layer.add(inside);
 
-  // Sash bands around sashFramed regions (palla sashes), drawn before glass.
+  // Sash bands around sashFramed REGIONS (a palla that was divided again).
+  // A leaf draws its own sash, at its own face width.
   for (const [, nl] of lay.nodes) {
-    if (nl.node.sashFramed) {
+    if (nl.node.sashFramed && isSplit(nl.node)) {
       const r = ctx.rect(nl.rect);
       drawBevelBands(inside, r.x, r.y, r.w, r.h, ctx.facePx, ctx.color, 'sash-band');
     }
@@ -168,11 +176,7 @@ export function renderDesign(
       parent = clipGroup(ctx, clip.polygonMm, 'pane-clip');
       layer.add(parent);
     }
-    drawLeaf(parent, l.leaf, r, ctx);
-    drawLeafContent(parent, l.leaf, r, ctx, {
-      showLabel: showLabels,
-      isDoorLeaf: doorLeafIds.has(l.leaf.id),
-    });
+    drawLeaf(parent, l.leaf, r, ctx, { isDoorLeaf: doorLeafIds.has(l.leaf.id) });
     if (clip?.clipped) {
       layer.add(
         new Konva.Line({
@@ -210,7 +214,12 @@ export function renderDesign(
     if (doorNode) drawDoorThreshold(layer, doorNode.rect, ctx);
   }
 
+  if (opts.legend) {
+    drawLegend(layer, drawingKey(design, opts.glassLabels), opts.stageWPx, opts.stageHPx);
+  }
+
   drawSelection(layer, lay, ctx, ui.selection, frame, outline);
+  drawSelectionSizes(layer, lay, ctx, ui.selection);
   drawGhost(layer, lay, ctx, ui.ghost ?? null);
   if (ui.showFrameHandle) drawFrameHandles(layer, frame, ctx);
   if (ui.readout) drawReadout(layer, ctx, ui.readout);

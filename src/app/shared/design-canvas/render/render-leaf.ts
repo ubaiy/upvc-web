@@ -1,63 +1,62 @@
 /**
- * design-canvas renderer — one pane (leaf): glass with its tint, the
- * reflection, glazing bars, then the leaf's own content (sliding panels or
- * casement / door symbols) and the mm size label.
+ * design-canvas renderer — one pane (leaf), by what it is:
+ *  - fixed glass: the glass in the frame with its bead line, nothing else;
+ *  - an opening sash: the sash frame inside the outer frame and its symbols
+ *    (render-casement);
+ *  - a sliding leaf: its shutters on their tracks (render-sliding);
+ * and the mm size label.
  */
 
 import Konva from 'konva';
 import { LeafNode } from '../../design-model';
 import { drawOpenableCasement } from './render-casement';
-import { COL, Parent, PxRect, RenderCtx, shadeColor } from './render-common';
+import { COL, Parent, PxRect, RenderCtx, insetPx, shadeColor } from './render-common';
+import { drawGlass, drawSashFrame } from './render-sash';
 import { drawSlidingLeaf } from './render-sliding';
 
 export interface LeafDrawOpts {
-  showLabel: boolean;
-  /** Draw the label lower down (panes cut by a shaped head). */
-  labelInside?: boolean;
   /** Door leaves get door hardware and the swing arc. */
   isDoorLeaf?: boolean;
 }
+
+/** Depth of the glazing bead that holds fixed glass, mm. */
+const BEAD_MM = 18;
 
 export function drawLeaf(
   parent: Parent,
   leaf: LeafNode,
   r: PxRect,
-  ctx: RenderCtx
-): void {
-  const tint = ctx.opts.glassTint;
-  const glass = new Konva.Rect({
-    x: r.x,
-    y: r.y,
-    width: r.w,
-    height: r.h,
-    stroke: COL.stroke,
-    strokeWidth: 1,
-    listening: false,
-    name: 'glass-pane',
-    fillLinearGradientStartPoint: { x: 0, y: 0 },
-    fillLinearGradientEndPoint: { x: 0, y: r.h },
-    fillLinearGradientColorStops: tint
-      ? [0, shadeColor(tint, 0.55), 1, tint]
-      : [0, COL.glassTop, 1, COL.glassBottom],
-  });
-  glass.setAttrs({ paneId: leaf.id, glassTint: tint ?? '' });
-  parent.add(glass);
-  drawGlassReflection(parent, r);
-  drawGlazingBars(parent, r, ctx);
-}
-
-/** The leaf's symbols; drawn after the glass so they sit on top of it. */
-export function drawLeafContent(
-  parent: Parent,
-  leaf: LeafNode,
-  r: PxRect,
   ctx: RenderCtx,
-  o: LeafDrawOpts
+  o: LeafDrawOpts = {}
 ): void {
   if (leaf.category === 'Slidding' && leaf.slide) {
-    drawSlidingLeaf(parent, leaf.slide, r, ctx);
-  } else if (leaf.category === 'Casement' && leaf.casementType === 'Openable') {
+    drawSlidingLeaf(parent, leaf, leaf.slide, r, ctx);
+    return;
+  }
+  if (leaf.category === 'Casement' && leaf.casementType === 'Openable') {
     drawOpenableCasement(parent, leaf, r, ctx, !!o.isDoorLeaf);
+    return;
+  }
+  // Fixed glass. A fixed palla keeps the sash band it was drawn with.
+  const glass = leaf.sashFramed
+    ? drawSashFrame(parent, r, ctx.facePx, ctx.color, { name: 'sash-band' })
+    : r;
+  drawGlass(parent, leaf, glass, ctx);
+  const bead = Math.max(2, Math.min(ctx.px(BEAD_MM), Math.min(glass.w, glass.h) * 0.12));
+  if (ctx.detail !== 'tiny' && glass.w > 4 * bead && glass.h > 4 * bead) {
+    const b = insetPx(glass, bead);
+    parent.add(
+      new Konva.Rect({
+        x: b.x,
+        y: b.y,
+        width: b.w,
+        height: b.h,
+        stroke: shadeColor(COL.stroke, 0.35),
+        strokeWidth: 0.75,
+        listening: false,
+        name: 'bead-line',
+      })
+    );
   }
 }
 
@@ -69,18 +68,25 @@ export function drawPaneLabel(
   ctx: RenderCtx,
   inside: boolean
 ): void {
+  if (ctx.detail === 'tiny') return;
   const wMm = Math.round(r.w / ctx.view.pxPerMm);
   const hMm = Math.round(r.h / ctx.view.pxPerMm);
+  const compact = ctx.detail === 'compact';
   const label = new Konva.Text({
-    text: `${wMm} × ${hMm} mm`,
-    fontSize: 11,
+    text: compact ? `${wMm} × ${hMm}` : `${wMm} × ${hMm} mm`,
+    fontSize: compact ? 9 : 11,
     fill: COL.label,
     listening: false,
     name: 'pane-label',
   });
   const textW = label.width();
+  // A label wider than its pane would run into the neighbours: left out.
+  if (textW + 10 > r.w || label.height() + 14 > r.h) return;
   const lx = r.x + (r.w - textW) / 2;
-  const ly = inside ? r.y + r.h * 0.62 : r.y + 6;
+  // Below the top rail of a sash, so it sits on the glass.
+  const framed = leaf.category === 'Slidding' || leaf.casementType === 'Openable';
+  const rail = framed ? Math.min(ctx.px(64), r.h * 0.16) : 0;
+  const ly = inside ? r.y + r.h * 0.62 : r.y + 6 + rail;
   label.position({ x: lx, y: ly });
   label.setAttrs({ paneId: leaf.id, wMm, hMm });
   parent.add(
@@ -97,53 +103,4 @@ export function drawPaneLabel(
     })
   );
   parent.add(label);
-}
-
-function drawGlassReflection(parent: Parent, r: PxRect): void {
-  const { x, y, w, h } = r;
-  parent.add(
-    new Konva.Line({
-      points: [
-        x + w * 0.52, y,
-        x + w * 0.72, y,
-        x + w * 0.32, y + h,
-        x + w * 0.12, y + h,
-      ],
-      closed: true,
-      fill: 'rgba(255,255,255,0.28)',
-      listening: false,
-      name: 'glass-reflection',
-    })
-  );
-}
-
-/** Glazing / Georgian bars from the document's glazing spec. */
-function drawGlazingBars(parent: Parent, r: PxRect, ctx: RenderCtx): void {
-  const { x, y, w, h } = r;
-  const vBars = ctx.design.glazing.barsV;
-  const hBars = ctx.design.glazing.barsH;
-  const color = ctx.opts.profileColor;
-  const barPx = 3;
-  const fill = color && color !== '#ffffff' ? color : '#bfbfbf';
-  const bar = (bx: number, by: number, bw: number, bh: number): void => {
-    parent.add(
-      new Konva.Rect({
-        x: bx,
-        y: by,
-        width: bw,
-        height: bh,
-        fill,
-        stroke: '#777777',
-        strokeWidth: 0.5,
-        listening: false,
-        name: 'glazing-bar',
-      })
-    );
-  };
-  for (let i = 1; i <= vBars; i++) {
-    bar(x + (w / (vBars + 1)) * i - barPx / 2, y, barPx, h);
-  }
-  for (let j = 1; j <= hBars; j++) {
-    bar(x, y + (h / (hBars + 1)) * j - barPx / 2, w, barPx);
-  }
 }
