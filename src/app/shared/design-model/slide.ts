@@ -262,21 +262,45 @@ function replaceSlide(
 }
 
 /**
- * Equal panels seeded the legacy way: first half opens Left, second half
- * Right (odd counts give the middle panel to Left — 3 panels = L/L/R,
- * matching worked example A).
+ * The way panel `index` can travel. A shutter passes a neighbour only when
+ * that neighbour runs on another track, and never passes the jamb: the left
+ * end shutter opens to the right, the right end one to the left. A shutter
+ * free on both sides (the middle one of three on three tracks) opens Left.
+ */
+export function slideDirectionOf(
+  tracks: TrackType,
+  count: number,
+  index: number
+): 'Left' | 'Right' {
+  const own = trackOf(tracks, count, index);
+  const left = index > 0 && trackOf(tracks, count, index - 1) !== own;
+  const right = index < count - 1 && trackOf(tracks, count, index + 1) !== own;
+  if (left === right) return index === 0 && count > 1 ? 'Right' : 'Left';
+  return left ? 'Left' : 'Right';
+}
+
+/**
+ * Equal panels. With `tracks` each panel gets the direction it can really
+ * travel ({@link slideDirectionOf}): what a new slider is seeded with.
+ * Without it the legacy seeding is kept (first half Left, second half
+ * Right; 3 panels = L/L/R, worked example A).
  */
 export function equalPanels(
   count: number,
   daylightWMm: number,
-  interlockMm = 0
+  interlockMm = 0,
+  tracks?: TrackType
 ): SlidePanel[] {
   const widthMm = (daylightWMm + (count - 1) * interlockMm) / count;
   const panels: SlidePanel[] = [];
   for (let i = 0; i < count; i++) {
     panels.push({
       widthMm,
-      direction: i < Math.ceil(count / 2) ? 'Left' : 'Right',
+      direction: tracks
+        ? slideDirectionOf(tracks, count, i)
+        : i < Math.ceil(count / 2)
+          ? 'Left'
+          : 'Right',
     });
   }
   return panels;
@@ -308,7 +332,7 @@ export function setSlideTracks(
     const count = counts.reduce((best, c) =>
       Math.abs(c - panels.length) < Math.abs(best - panels.length) ? c : best
     );
-    panels = equalPanels(count, daylightWMm, opts?.interlockMm ?? cur.interlockMm ?? 0);
+    panels = equalPanels(count, daylightWMm, opts?.interlockMm ?? cur.interlockMm ?? 0, tracks);
   }
   const mesh = cur.mesh && MESH_TRACKS.includes(tracks);
   const slide: SlideSpec = { ...cur, tracks, mesh, panels };
@@ -331,7 +355,7 @@ export function setSlidePanelCount(
   const interlockMm = opts?.interlockMm ?? cur.interlockMm ?? 0;
   const slide: SlideSpec = {
     ...cur,
-    panels: equalPanels(count, daylightWMm, interlockMm),
+    panels: equalPanels(count, daylightWMm, interlockMm, cur.tracks),
   };
   if (opts?.interlockMm !== undefined) slide.interlockMm = opts.interlockMm;
   return withSlide(design, paneId, slide);

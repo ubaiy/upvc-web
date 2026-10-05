@@ -219,13 +219,15 @@ describe('slide operations', () => {
     expect(checkInvariants(to2)).toEqual([]);
   });
 
-  it('setSlidePanelCount seeds equal panels with legacy directions', () => {
+  it('setSlidePanelCount seeds equal panels that slide the way they can travel', () => {
     const d = setSlidePanelCount(d2400(), 'p1', 4, 2280);
     const s = slideOf(d);
     expect(s.panels.map((p) => p.widthMm)).toEqual([570, 570, 570, 570]);
-    expect(s.panels.map((p) => p.direction)).toEqual(['Left', 'Left', 'Right', 'Right']);
+    // 4 shutters on tracks [0, 1, 1, 0]: each passes the neighbour on the other track.
+    expect(s.panels.map((p) => p.direction)).toEqual(['Right', 'Left', 'Right', 'Left']);
+    // 3 shutters on 3 tracks: the ends open inward, the middle one opens Left.
     const d3 = setSlidePanelCount(d2400(), 'p1', 3, 2280);
-    expect(slideOf(d3).panels.map((p) => p.direction)).toEqual(['Left', 'Left', 'Right']);
+    expect(slideOf(d3).panels.map((p) => p.direction)).toEqual(['Right', 'Left', 'Left']);
     expect(checkInvariants(d)).toEqual([]);
   });
 

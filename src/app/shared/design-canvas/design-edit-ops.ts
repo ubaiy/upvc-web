@@ -155,7 +155,7 @@ export function setPaneKind(
       return setSlide(design, paneId, {
         tracks: '2 Track',
         mesh: false,
-        panels: equalPanels(2, leafWidthMm(design, paneId, opts)),
+        panels: equalPanels(2, leafWidthMm(design, paneId, opts), 0, '2 Track'),
       });
     case 'openable':
       return setLeafSpec(design, paneId, {
