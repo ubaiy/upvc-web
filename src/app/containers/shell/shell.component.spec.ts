@@ -20,7 +20,7 @@ class BlankComponent {}
 describe('shell navigation', () => {
   it('has the eight menu items, in the order of the job', () => {
     expect(NAV_ITEMS.map((item) => item.label)).toEqual([
-      'Home', 'Quotations', 'Orders', 'Customers', '3D structures', 'Bills', 'Outstanding', 'Catalogue', 'Settings',
+      'Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Settings',
     ]);
   });
 
@@ -101,7 +101,7 @@ describe('ShellComponent', () => {
   it('shows the company name, the menu items and the signed-in user', () => {
     expect(text('.ws-name')).toBe('Hakimi Enterprise');
     const labels = [...fixture.nativeElement.querySelectorAll('a.item .t')].map((el: Element) => el.textContent?.trim());
-    expect(labels).toEqual(['Home', 'Quotations', 'Orders', 'Customers', '3D structures', 'Bills', 'Outstanding', 'Catalogue', 'Settings']);
+    expect(labels).toEqual(['Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Settings']);
     expect(text('.who')).toBe('HE');
     expect(text('.account .item .t')).toBe('Husain Ezzi');
   });
@@ -155,7 +155,7 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
     expect(more.getAttribute('aria-expanded')).toBe('true');
     const sheet = [...bar.querySelectorAll('.sheet .menu-item')].map((el: Element) => el.textContent?.trim().replace(/\s+/g, ' '));
-    expect(sheet).toEqual(['3D structures', 'Bills', 'Outstanding', 'Catalogue', 'Settings', 'Search', 'Your profile Husain Ezzi', 'Sign out']);
+    expect(sheet).toEqual(['Bills', 'Outstanding', 'Catalogue', 'Settings', 'Search', 'Your profile Husain Ezzi', 'Sign out']);
 
     await router.navigateByUrl('/masters/glass');
     await settle();

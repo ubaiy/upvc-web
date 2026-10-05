@@ -15,8 +15,23 @@ export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expi
 /** The one primary button of the page. */
 export type PrimaryAction = 'send' | 'accept' | 'bill' | 'bill-pdf' | 'revise' | 'open-current' | null;
 
+/** Words for what the lines of a quotation are, by what it holds: windows, structures or both. */
+export const STRUCTURE_TYPE_LABEL: Record<string, string> = {
+  dome: 'Dome',
+  cabin: 'Cabin',
+  bay: 'Bay window',
+  pyramid: 'Pyramid roof',
+  'lean-to': 'Lean-to',
+  gable: 'Gable roof',
+};
+
 export interface QuotationLine {
   id: number;
+  /**
+   * A window or door drawn in the 2D designer, or a 3D structure (card T123).
+   * A structure line has no catalogue product: `product` is null on it.
+   */
+  kind: 'window' | 'structure';
   /** 1-based position; the designer's edit route takes it. */
   position: number;
   /** "Master bedroom", or "Window 2" when the line has no label yet. */
@@ -325,7 +340,54 @@ function styleName(line: any, spec: WindowSpec): string {
   return panes.some((pane) => pane !== 'fixed') ? 'Casement window' : 'Fixed window';
 }
 
+/** "Cabin", "Gable roof"; a type the web does not know is shown as the api sends it. */
+export function structureTypeLabel(type: unknown): string {
+  const key = text(type).toLowerCase();
+  if (!key || key === 'structure' || key === 'free') {
+    return '3D structure';
+  }
+  return STRUCTURE_TYPE_LABEL[key] || key.charAt(0).toUpperCase() + key.slice(1);
+}
+
+export function isStructureLine(line: any): boolean {
+  return text(line?.kind) === 'structure' || text(line?.product_type) === 'structure';
+}
+
+/**
+ * A 3D structure as a line: its picture, name, type, overall size, quantity
+ * and amount. There is no product and no stored window request on it.
+ */
+function readStructureLine(line: any, index: number, item: any): QuotationLine {
+  const structure = line?.structure || {};
+  const type = structureTypeLabel(structure.type);
+  const label = text(item?.label ?? line?.label);
+  const name = label || text(structure.name) || `${type} ${index + 1}`;
+  const overall = structure.overall || {};
+  const width = num(overall.widthMm) || num(line?.width);
+  const depth = num(overall.depthMm);
+  const height = num(overall.heightMm) || num(line?.height);
+  const size = [width, depth, height].filter((mm) => mm > 0).map((mm) => Math.round(mm));
+  const image = text(line?.image);
+  return {
+    id: line?.id,
+    kind: 'structure',
+    position: index + 1,
+    name,
+    label,
+    description: [type, size.length ? `${size.join(' × ')} mm` : ''].filter(Boolean).join(' · '),
+    quantity: num(item?.quantity ?? line?.quantity) || 1,
+    amount: num(item?.amount ?? line?.amount ?? line?.total),
+    ratePerSqFt: item?.rate_per_sq_ft ?? line?.rate_per_sq_ft ?? null,
+    image: image.startsWith('data:image/') || /^https?:\/\//.test(image) ? image : null,
+    spec: { w: width || 1200, h: height || 1200, cols: [{ f: 1, t: 'fixed' }] },
+    thumbLabel: `Picture of ${name}, ${type.toLowerCase()}`,
+  };
+}
+
 function readLine(line: any, index: number, item: any): QuotationLine {
+  if (isStructureLine(line)) {
+    return readStructureLine(line, index, item);
+  }
   const label = text(item?.label ?? line?.label);
   const kind = text(line?.product_type) || 'Window';
   const spec = readSpec(line);
@@ -339,6 +401,7 @@ function readLine(line: any, index: number, item: any): QuotationLine {
   const image = text(line?.image);
   return {
     id: line?.id,
+    kind: 'window',
     position: index + 1,
     name,
     label,

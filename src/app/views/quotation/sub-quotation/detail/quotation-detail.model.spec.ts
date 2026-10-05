@@ -2,6 +2,28 @@ import { pdfFileName, primaryAction, readDate, readSpec, toQuotationView } from 
 import { sampleQuotation } from './quotation-detail.testing';
 
 describe('quotation-detail.model', () => {
+  it('reads a 3D structure line, which has no product, without a window drawing or a missing word', () => {
+    const base = sampleQuotation();
+    const bare = { id: 78, kind: 'structure', product_id: null, product: null, product_type: 'structure', width: '3000', height: '1000', quantity: 1, total: 50000 };
+    const view = toQuotationView(
+      sampleQuotation({
+        quatation_product: [
+          base.quatation_product[0],
+          { ...bare, id: 77, label: null, image: null, structure: { type: 'lean-to', name: 'Verandah', overall: { widthMm: 3600, depthMm: 2500, heightMm: 2700 } } },
+          bare,
+        ],
+        totals: { ...base.totals, items: [base.totals.items[0], { id: 77, quantity: 1, amount: 61000, rate_per_sq_ft: 480 }] },
+      })
+    );
+    expect(view.lines.map((line) => line.kind)).toEqual(['window', 'structure', 'structure']);
+    expect(view.lines[1]).toEqual(
+      jasmine.objectContaining({ id: 77, name: 'Verandah', description: 'Lean-to · 3600 × 2500 × 2700 mm', quantity: 1, amount: 61000, ratePerSqFt: 480, image: null })
+    );
+    // Not even the structure object: the line still has a name, a size and an amount.
+    expect(view.lines[2]).toEqual(jasmine.objectContaining({ name: '3D structure 3', description: '3D structure · 3000 × 1000 mm', amount: 50000, ratePerSqFt: null }));
+    expect(JSON.stringify(view.lines)).not.toMatch(/undefined|NaN/);
+  });
+
   it('reads the number, the customer and the address stored as JSON text', () => {
     const view = toQuotationView(sampleQuotation());
     expect(view.number).toBe('Q-0003');

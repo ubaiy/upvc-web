@@ -36,7 +36,6 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'orders', label: 'Orders', icon: 'layers', link: '/orders', match: ['/orders'] },
   { id: 'customers', label: 'Customers', icon: 'users', link: '/customers', match: ['/customers'] },
   // The saved domes, cabins, bays and roofs, and the 3D designer they open in (card T114).
-  { id: 'structures', label: '3D structures', icon: 'building', link: '/structures', match: ['/structures', '/structure-designer'] },
   { id: 'bills', label: 'Bills', icon: 'receipt', link: '/bills', match: ['/bills'] },
   { id: 'outstanding', label: 'Outstanding', icon: 'rupee', link: '/payments/outstanding', match: ['/payments'] },
   {

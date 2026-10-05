@@ -24,7 +24,7 @@ import {
 import { lineMenu, LineMenuAction, pageMenu, PageMenuAction } from './detail/quotation-menus';
 
 /** What the user was doing when a sent quotation asked "Create revision?". */
-type ReviseIntent = { kind: 'none' | 'add' | 'summary' } | { kind: 'edit'; position: number };
+type ReviseIntent = { kind: 'none' | 'add' | 'add-structure' | 'summary' } | { kind: 'edit'; position: number };
 
 /**
  * The quotation page (card U4): windows on the left, customer and the Summary
@@ -167,8 +167,21 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     return ['/quotation/detail', this.id, 'add', (this.view?.lines.length || 0) + 1];
   }
 
+  /** The 3D structure designer, in this quotation: the shape cards. */
+  get addStructureLink(): any[] {
+    return ['/quotation/detail', this.id, 'structure'];
+  }
+
+  /** A window opens in the 2D designer, a structure in the 3D one. */
   editLink(line: QuotationLine): any[] {
-    return ['/quotation/detail', this.id, 'edit', line.id, line.position];
+    return line.kind === 'structure'
+      ? ['/quotation/detail', this.id, 'structure', line.id]
+      : ['/quotation/detail', this.id, 'edit', line.id, line.position];
+  }
+
+  /** "window", "structure": what the dialogs call the line they are about. */
+  lineWord(line: QuotationLine | null): string {
+    return line?.kind === 'structure' ? 'structure' : 'window';
   }
 
   trackLine(_: number, line: QuotationLine): number {
@@ -316,6 +329,15 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** "Add 3D structure": the same rules as a window; a sent quotation asks for a revision first. */
+  addStructure(): void {
+    if (this.view!.editable) {
+      this._router.navigate(this.addStructureLink);
+    } else if (this.view!.revisable) {
+      this.reviseIntent = { kind: 'add-structure' };
+    }
+  }
+
   duplicateLine(line: QuotationLine): void {
     this._run('line-' + line.id, this._dataService.duplicateLine(line.id), () => {
       this._toast.showSuccess(`${line.name} duplicated`);
@@ -452,9 +474,13 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
         const lines: any[] = revision?.totals?.items || revision?.quatation_product || [];
         if (intent.kind === 'add' && lines.length) {
           this._router.navigate([...base, 'add', lines.length + 1]);
+        } else if (intent.kind === 'add-structure') {
+          this._router.navigate([...base, 'structure']);
         } else if (intent.kind === 'edit' && lines[intent.position - 1]) {
-          // Same windows in the same order: open the one that was clicked.
-          this._router.navigate([...base, 'edit', lines[intent.position - 1].id, intent.position]);
+          // Same lines in the same order: open the one that was clicked, in its own designer.
+          const clicked = this.view?.lines[intent.position - 1];
+          const id = lines[intent.position - 1].id;
+          this._router.navigate(clicked?.kind === 'structure' ? [...base, 'structure', id] : [...base, 'edit', id, intent.position]);
         } else {
           this._afterLoad = intent.kind === 'summary' ? 'summary' : null;
           this._router.navigate(base);

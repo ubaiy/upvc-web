@@ -144,7 +144,7 @@
   <div class="split">
     <section class="card" aria-labelledby="h-items">
       <div class="card-head">
-        <h2 id="h-items">Windows and doors</h2>
+        <h2 id="h-items">Windows, doors and structures</h2>
         <span class="muted small" *ngIf="q.lines.length">
           {{ q.itemCount === 1 ? '1 item' : q.itemCount + ' items'
           }}<ng-container *ngIf="q.areaSqFt"> · {{ q.areaSqFt | number : '1.0-1' }} sq ft</ng-container>
@@ -155,16 +155,22 @@
       <app-empty-state
         *ngIf="empty"
         icon="window"
-        title="No windows yet"
+        title="Nothing in this quotation yet"
         [text]="
           q.editable
-            ? 'Draw the first window or door. The price is worked out as you draw.'
-            : 'This quotation has no windows or doors.'
+            ? 'Draw a window or door, or design a dome, cabin, bay or roof in 3D. The price is worked out as you draw.'
+            : 'This quotation has no windows, doors or structures.'
         "
       >
-        <button type="button" class="btn btn-primary" *ngIf="q.editable" (click)="addWindow()">
-          <app-icon name="plus"></app-icon>Add a window
-        </button>
+        <!-- Two things can be added, with the same weight: a window or door, and a 3D structure. -->
+        <div class="add-choice" *ngIf="q.editable">
+          <button type="button" class="btn btn-primary" data-q="add-window" (click)="addWindow()">
+            <app-icon name="plus"></app-icon>Add window
+          </button>
+          <button type="button" class="btn btn-primary" data-q="add-structure" (click)="addStructure()">
+            <app-icon name="plus"></app-icon>Add 3D structure
+          </button>
+        </div>
       </app-empty-state>
 
       <span class="sr-only" role="status" aria-live="polite">{{ moveNote }}</span>
@@ -189,7 +195,7 @@
           class="grip"
           cdkDragHandle
           aria-hidden="true"
-          title="Drag to move this window"
+          [title]="'Drag to move this ' + lineWord(line)"
           *ngIf="q.editable && q.lines.length > 1"
           (click)="$event.stopPropagation()"
         >
@@ -198,7 +204,9 @@
         <span class="thumb">
           <img *ngIf="line.image; else drawn" [src]="line.image" [alt]="line.thumbLabel" />
           <ng-template #drawn>
-            <app-window-thumb [spec]="line.spec" [width]="72" [height]="52" [label]="line.thumbLabel"></app-window-thumb>
+            <app-window-thumb *ngIf="line.kind === 'window'; else noPicture" [spec]="line.spec" [width]="72" [height]="52" [label]="line.thumbLabel"></app-window-thumb>
+            <!-- A structure saved on a device with no 3D has no picture: a sign stands in, never a window drawing. -->
+            <ng-template #noPicture><span class="thumb-3d" role="img" [attr.aria-label]="line.thumbLabel">3D</span></ng-template>
           </ng-template>
         </span>
         <div class="grow">
@@ -228,9 +236,14 @@
       </div>
       </div>
 
-      <button type="button" class="add-row" *ngIf="!empty && (q.editable || q.revisable)" (click)="addWindow()">
-        <app-icon name="plus"></app-icon>Add a window or door
-      </button>
+      <div class="add-rows" *ngIf="!empty && (q.editable || q.revisable)">
+        <button type="button" class="add-row" data-q="add-window" (click)="addWindow()">
+          <app-icon name="plus"></app-icon>Add window
+        </button>
+        <button type="button" class="add-row" data-q="add-structure" (click)="addStructure()">
+          <app-icon name="plus"></app-icon>Add 3D structure
+        </button>
+      </div>
     </section>
 
     <aside class="stack-4">
@@ -400,7 +413,7 @@
   <p-dialog
     closeAriaLabel="Close"
     (onShow)="focusDialog()"
-    [header]="lineToRename?.label ? 'Rename this window' : 'Name this window'"
+    [header]="(lineToRename?.label ? 'Rename this ' : 'Name this ') + lineWord(lineToRename)"
     [visible]="!!lineToRename"
     (visibleChange)="$event ? null : (lineToRename = null)"
     [modal]="true"
@@ -421,7 +434,7 @@
         aria-describedby="line-label-hint"
         [(ngModel)]="renameValue"
       />
-      <span class="hint" id="line-label-hint">Printed on the quotation above the window.</span>
+      <span class="hint" id="line-label-hint">Printed on the quotation above the {{ lineWord(lineToRename) }}.</span>
     </form>
     <ng-template pTemplate="footer">
       <p-button label="Cancel" [outlined]="true" (onClick)="lineToRename = null"></p-button>
@@ -432,7 +445,7 @@
   <p-dialog
     closeAriaLabel="Close"
     (onShow)="focusDialog()"
-    header="Delete this window?"
+    [header]="'Delete this ' + lineWord(lineToDelete) + '?'"
     [visible]="!!lineToDelete"
     (visibleChange)="$event ? null : (lineToDelete = null)"
     [modal]="true"
@@ -446,7 +459,7 @@
     <ng-template pTemplate="footer">
       <p-button label="Keep it" [outlined]="true" (onClick)="lineToDelete = null"></p-button>
       <p-button
-        label="Delete window"
+        [label]="'Delete ' + lineWord(lineToDelete)"
         severity="danger"
         [loading]="busy === 'delete-line'"
         (onClick)="confirmDeleteLine()"
@@ -468,7 +481,7 @@
     <p class="muted">
       “{{ q.name }}” (<bdi>{{ q.number }}</bdi
       >)<ng-container *ngIf="q.lines.length">
-        and its {{ q.lines.length === 1 ? 'window' : q.lines.length + ' windows' }}</ng-container
+        and its {{ q.lines.length === 1 ? 'item' : q.lines.length + ' items' }}</ng-container
       >, worth {{ q.total | inr }}, will be deleted. This cannot be undone.
     </p>
     <ng-template pTemplate="footer">

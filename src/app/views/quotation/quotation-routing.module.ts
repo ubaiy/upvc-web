@@ -60,6 +60,21 @@ const routes: Routes = [
     },
     data: { edit: true },
   },
+  {
+    // A 3D structure as a line of this quotation (card T123): the shape cards, then the designer.
+    // The designer and three.js are their own chunk, loaded only here.
+    path: 'detail/:id/structure',
+    title: '3D structure',
+    loadComponent: () =>
+      import('../structure-designer/structure-designer.component').then((m) => m.StructureDesignerComponent),
+  },
+  {
+    // "Edit" on a structure line: the designer opens with the document the api keeps for that line.
+    path: 'detail/:id/structure/:lineId',
+    title: '3D structure',
+    loadComponent: () =>
+      import('../structure-designer/structure-designer.component').then((m) => m.StructureDesignerComponent),
+  },
 ];
 
 @NgModule({

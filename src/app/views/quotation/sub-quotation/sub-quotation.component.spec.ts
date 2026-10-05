@@ -241,15 +241,58 @@ describe('SubQuotationComponent (quotation page)', () => {
     });
   }
 
-  it('gives a draft with no windows one button: "Add a window"', () => {
+  it('gives an empty draft two buttons of the same weight: "Add window" and "Add 3D structure"', () => {
     show({ quatation_product: [], totals: { ...sampleQuotation().totals, items: [], item_count: 0 } });
-    expect(text()).toContain('No windows yet');
+    expect(text()).toContain('Nothing in this quotation yet');
     const buttons = el().querySelectorAll('.btn-primary');
-    expect(buttons.length).toBe(1);
-    expect(buttons[0].textContent).toContain('Add a window');
+    expect(Array.from(buttons).map((b) => b.textContent?.trim())).toEqual(['Add window', 'Add 3D structure']);
     expect(primary()).toBeNull();
     (buttons[0] as HTMLButtonElement).click();
     expect(router.navigate).toHaveBeenCalledWith(['/quotation/detail', 14, 'add', 1]);
+    (buttons[1] as HTMLButtonElement).click();
+    expect(router.navigate).toHaveBeenCalledWith(['/quotation/detail', 14, 'structure']);
+  });
+
+  it('shows a 3D structure as a line beside the windows: picture, name, type, size, quantity, amount; never "undefined"', () => {
+    const base = sampleQuotation();
+    const structure = {
+      id: 77,
+      kind: 'structure',
+      product_id: null,
+      product: null,
+      product_type: 'structure',
+      pricing_method: 'structure_rates_v1',
+      width: '3600',
+      height: '2400',
+      quantity: 2,
+      total: 122469,
+      label: 'Balcony cabin',
+      image: 'data:image/png;base64,AAAA',
+      costhead_information: null,
+      structure: { type: 'cabin', name: 'Balcony cabin', overall: { widthMm: 3600, depthMm: 2400, heightMm: 2400 } },
+    };
+    show({
+      quatation_product: [base.quatation_product[0], structure],
+      totals: { ...base.totals, items: [base.totals.items[0], { id: 77, label: 'Balcony cabin', quantity: 2, amount: 146962.8, rate_per_sq_ft: 550.55 }], item_count: 2 },
+    });
+    const rows = el().querySelectorAll('.items .item');
+    expect(rows.length).toBe(2);
+    const row = (rows[1].textContent || '').replace(/\s+/g, ' ');
+    expect(row).toContain('Balcony cabin');
+    expect(row).toContain('Cabin · 3600 × 2400 × 2400 mm');
+    expect(row).toContain('Qty 2');
+    expect(row).toContain('₹1,46,962.80');
+    expect(rows[1].querySelector('img')?.getAttribute('alt')).toBe('Picture of Balcony cabin, cabin');
+    expect(text()).not.toMatch(/undefined|NaN/);
+    // It opens in the 3D designer, inside this quotation; a window still opens in the 2D one.
+    expect(rows[1].querySelector('a.name')?.getAttribute('href')).toBe('/quotation/detail/14/structure/77');
+    expect(rows[0].querySelector('a.name')?.getAttribute('href')).toContain('/quotation/detail/14/edit/19/1');
+    // The same menu as a window: edit, name, duplicate, move, delete.
+    expect(lineMenu(1).labels).toEqual(['Edit', 'Rename', 'Duplicate', 'Move up', 'Delete']);
+    // Both add buttons stay under the lines.
+    expect(Array.from(el().querySelectorAll('.add-rows .add-row')).map((b) => b.textContent?.trim())).toEqual(['Add window', 'Add 3D structure']);
+    (el().querySelector('[data-q="add-structure"]') as HTMLButtonElement).click();
+    expect(router.navigate).toHaveBeenCalledWith(['/quotation/detail', 14, 'structure']);
   });
 
   it('opens the send preview from "Send quotation", with no margin or tax question', () => {

@@ -111,23 +111,10 @@ const routes: Routes = [
         loadChildren: () =>
           import('./views/crm/crm.module').then((m) => m.CrmModule),
       },
-      {
-        // The saved 3D structures (card T114). No three.js here: that stays in the designer's chunk.
-        path: 'structures',
-        title: '3D structures',
-        loadComponent: () =>
-          import('./views/structures/structures-list.component').then(
-            (m) => m.StructuresListComponent
-          ),
-      },
-      {
-        // Design a dome, cabin, bay or roof in 3D (card T100). Opens from the list above.
-        path: 'structure-designer',
-        loadChildren: () =>
-          import('./views/structure-designer/structure-designer.module').then(
-            (m) => m.StructureDesignerModule
-          ),
-      },
+      // A 3D structure is designed inside a quotation and saved as one of its lines (card T123):
+      // quotation/detail/:id/structure. The old addresses of the separate area lead to the quotations.
+      { path: 'structures', redirectTo: 'quotation', pathMatch: 'full' },
+      { path: 'structure-designer', redirectTo: 'quotation', pathMatch: 'full' },
       {
         path: 'masters',
         loadChildren: () =>

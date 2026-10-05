@@ -346,3 +346,27 @@ button.name {
     min-width: 0;
   }
 }
+
+// Two things can be added to a quotation, with the same weight (card T123): side by side, and on a phone too.
+.add-rows {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  .add-row + .add-row {
+    border-inline-start: 1px solid var(--c-border);
+  }
+}
+
+.add-choice {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--s-3);
+}
+
+// A structure line without a picture.
+.thumb-3d {
+  font-weight: var(--fw-semibold);
+  color: var(--c-text-3);
+  letter-spacing: 0.04em;
+}

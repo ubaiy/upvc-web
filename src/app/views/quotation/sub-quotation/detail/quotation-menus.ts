@@ -62,7 +62,7 @@ export function lineMenu(view: QuotationView, line: QuotationLine, run: (action:
   const items: MenuItem[] = [entry('Edit', 'pencil', () => run('edit'))];
   if (view.editable) {
     items.push(
-      entry(line.label ? 'Rename' : 'Name this window', 'tag', () => run('rename')),
+      entry(line.label ? 'Rename' : line.kind === 'structure' ? 'Name this structure' : 'Name this window', 'tag', () => run('rename')),
       entry('Duplicate', 'copy', () => run('duplicate'))
     );
     // The order of the page is the order of the PDF and the bill. The first
