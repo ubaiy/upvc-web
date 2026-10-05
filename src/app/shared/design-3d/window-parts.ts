@@ -46,13 +46,14 @@ export type PartRole =
   | 'divider'
   | 'sash'
   | 'glass'
+  | 'gasket'
   | 'mesh'
   | 'glazing-bar'
   | 'rail'
   | 'threshold'
   | 'handle';
 
-export type PartMaterial = 'profile' | 'glass' | 'mesh' | 'hardware';
+export type PartMaterial = 'profile' | 'glass' | 'gasket' | 'mesh' | 'hardware';
 
 export interface MeshPart extends Geo {
   id: string;
@@ -203,10 +204,16 @@ function buildFrame(ctx: Ctx, section: ProfileSection, arcSegments: number): voi
 /* Panes                                                               */
 /* ------------------------------------------------------------------ */
 
-function glassSlab(ctx: Ctx, id: string, groupId: string | null, poly: PointMm[], zCentre: number): void {
+/** A glass and its gasket. `hiddenMm` = how far the glass edge sits inside the bar that holds it. */
+function glassSlab(ctx: Ctx, id: string, groupId: string | null, poly: PointMm[], zCentre: number, hiddenMm = 0): void {
   if (poly.length < 3) return;
   const t = S.glassThicknessMm / 2;
-  add(ctx, id, 'glass', 'glass', groupId, extrudePolygon(poly.map((p) => up(ctx, p)), zCentre + t, zCentre - t));
+  const pts = poly.map((p) => up(ctx, p));
+  add(ctx, id, 'glass', 'glass', groupId, extrudePolygon(pts, zCentre + t, zCentre - t));
+  const seal = boxSection(hiddenMm + S.gasket.showMm, 2 * (t + S.gasket.proudMm));
+  sweepSection(pts, seal, { closed: true, zOutside: zCentre + t + S.gasket.proudMm, breaks: cornerBreaks(pts) }).forEach((geo, i) =>
+    add(ctx, `${id}-gasket-${i}`, 'gasket', 'gasket', groupId, geo)
+  );
   const { barsH, barsV } = ctx.design.glazing;
   if (!barsH && !barsV) return;
   const box = boxOf(poly);
@@ -240,7 +247,7 @@ function sashWithGlass(
   const bars = sweepSection(pts, section, { closed: true, zOutside, breaks: cornerBreaks(pts) });
   bars.forEach((geo, i) => add(ctx, `${id}-sash-${i}`, 'sash', 'profile', groupId, geo));
   const glass = inset(poly, section.faceMm - S.glassBiteMm);
-  glassSlab(ctx, `${id}-glass`, groupId, glass, zOutside - section.depthMm / 2);
+  glassSlab(ctx, `${id}-glass`, groupId, glass, zOutside - section.depthMm / 2, S.glassBiteMm);
 }
 
 function doorLeafIds(design: WindowDesign): Set<string> {
@@ -275,7 +282,7 @@ function buildCasementLeaf(ctx: Ctx, leaf: LeafNode, pane: PointMm[], isDoor: bo
     poly = pane.map((p) => (Math.abs(p.yMm - bottom) < 1e-6 ? { xMm: p.xMm, yMm: floor } : p));
   }
   const size = isDoor ? S.doorSash : S.sash;
-  const section = rebatedSection(size.faceMm, size.depthMm);
+  const section = rebatedSection(size.faceMm, size.depthMm, S.chamferMm);
   const zOutside = -(S.casementFrameDepthMm - size.depthMm) / 2;
   const groupId = opens ? `open-${leaf.id}` : null;
   sashWithGlass(ctx, leaf.id, groupId, poly, section, zOutside);
@@ -330,7 +337,7 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
   if (!leaf.slide) return;
   const sl = slideLayout(leaf.slide, rect.wMm);
   const used = sl.panels.reduce((m, p) => Math.max(m, p.track + 1), 0);
-  const sash = boxSection(S.slidingSash.faceMm, S.slidingSash.depthMm);
+  const sash = boxSection(S.slidingSash.faceMm, S.slidingSash.depthMm, S.chamferMm);
   sl.panels.forEach((p, i) => {
     const zc = -trackCentreMm(p.track);
     const r: RectMm = { xMm: rect.xMm + p.xMm, yMm: rect.yMm, wMm: p.widthMm, hMm: rect.hMm };
@@ -354,7 +361,7 @@ function buildSlidingLeaf(ctx: Ctx, leaf: LeafNode, rect: RectMm, depthMm: numbe
   });
   if (sl.mesh) {
     const zc = -trackCentreMm(used);
-    const section = boxSection(S.meshSash.faceMm, S.meshSash.depthMm);
+    const section = boxSection(S.meshSash.faceMm, S.meshSash.depthMm, S.chamferMm);
     const poly = rectPoly({ xMm: rect.xMm + sl.mesh.xMm, yMm: rect.yMm, wMm: sl.mesh.widthMm, hMm: rect.hMm });
     const pts = poly.map((q) => up(ctx, q));
     sweepSection(pts, section, { closed: true, zOutside: zc + section.depthMm / 2 }).forEach((geo, i) =>
@@ -418,7 +425,7 @@ export function buildWindowParts(design: WindowDesign, opts?: PartsOptions): Win
   // A split that carries its own sash band (nested content inside one sash).
   lay.nodes.forEach((n) => {
     if (isLeaf(n.node) || !n.node.sashFramed) return;
-    const section = rebatedSection(S.sash.faceMm, S.sash.depthMm);
+    const section = rebatedSection(S.sash.faceMm, S.sash.depthMm, S.chamferMm);
     const pts = rectPoly(n.rect).map((p) => up(ctx, p));
     sweepSection(pts, section, { closed: true, zOutside: -(S.casementFrameDepthMm - section.depthMm) / 2 }).forEach((geo, i) =>
       add(ctx, `${n.node.id}-band-${i}`, 'sash', 'profile', null, geo)

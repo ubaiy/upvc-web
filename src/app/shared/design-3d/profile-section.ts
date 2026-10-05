@@ -23,39 +23,58 @@ export interface ProfileSection {
   outline: SectionPt[];
 }
 
-/** Plain rectangular bar. */
-export function boxSection(faceMm: number, depthMm: number): ProfileSection {
-  return {
-    faceMm,
-    depthMm,
-    outline: [
-      [0, 0],
-      [depthMm, 0],
-      [depthMm, faceMm],
-      [0, faceMm],
-    ],
-  };
+/** Plain rectangular bar; `chamferMm` eases its four long edges so they catch the light. */
+export function boxSection(faceMm: number, depthMm: number, chamferMm = 0): ProfileSection {
+  const c = chamferMm;
+  const outline: SectionPt[] = c
+    ? [
+        [c, 0],
+        [depthMm - c, 0],
+        [depthMm, c],
+        [depthMm, faceMm - c],
+        [depthMm - c, faceMm],
+        [c, faceMm],
+        [0, faceMm - c],
+        [0, c],
+      ]
+    : [
+        [0, 0],
+        [depthMm, 0],
+        [depthMm, faceMm],
+        [0, faceMm],
+      ];
+  return { faceMm, depthMm, outline };
 }
 
 /**
  * A bar with one rebate on the room side of its glass edge: the full depth
  * over `REBATE.solid` of the face, then a lip of `REBATE.lip` of the depth.
  */
-export function rebatedSection(faceMm: number, depthMm: number): ProfileSection {
+export function rebatedSection(faceMm: number, depthMm: number, chamferMm = 0): ProfileSection {
   const step = faceMm * REBATE.solid;
   const lip = depthMm * REBATE.lip;
-  return {
-    faceMm,
-    depthMm,
-    outline: [
-      [0, 0],
-      [depthMm, 0],
-      [depthMm, step],
-      [lip, step],
-      [lip, faceMm],
-      [0, faceMm],
-    ],
-  };
+  const c = chamferMm;
+  const outline: SectionPt[] = c
+    ? [
+        [c, 0],
+        [depthMm - c, 0],
+        [depthMm, c],
+        [depthMm, step],
+        [lip, step],
+        [lip, faceMm],
+        [c, faceMm],
+        [0, faceMm - c],
+        [0, c],
+      ]
+    : [
+        [0, 0],
+        [depthMm, 0],
+        [depthMm, step],
+        [lip, step],
+        [lip, faceMm],
+        [0, faceMm],
+      ];
+  return { faceMm, depthMm, outline };
 }
 
 const REBATE = { solid: 0.7, lip: 0.62 };
@@ -80,6 +99,10 @@ export const SECTION_DATA = {
   /** Fly-mesh shutter. */
   meshSash: { faceMm: 28, depthMm: 14 },
   meshThicknessMm: 1.5,
+  /** Eased edge of every profile bar. */
+  chamferMm: 1.5,
+  /** Dark gasket between a glass and its bar: how much of it shows, and how proud of the glass it stands. */
+  gasket: { showMm: 4, proudMm: 5 },
   glassThicknessMm: 6,
   /** How far a glass edge goes into the bar that holds it. */
   glassBiteMm: 4,
@@ -110,5 +133,6 @@ export function trackCentreMm(index: number): number {
 }
 
 export function frameSection(frameFaceMm: number, depthMm: number, sliding: boolean): ProfileSection {
-  return sliding ? boxSection(frameFaceMm, depthMm) : rebatedSection(frameFaceMm, depthMm);
+  const c = SECTION_DATA.chamferMm;
+  return sliding ? boxSection(frameFaceMm, depthMm, c) : rebatedSection(frameFaceMm, depthMm, c);
 }

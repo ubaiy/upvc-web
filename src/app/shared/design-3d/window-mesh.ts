@@ -34,21 +34,25 @@ export type WindowMaterials = Record<PartMaterial, MeshStandardMaterial> & {
 };
 
 /** Faces that meet at less than this are one surface (the facets of a curved bar). */
-const EDGE_ANGLE_DEG = 25;
+const EDGE_ANGLE_DEG = 60;
 
 export function createMaterials(): WindowMaterials {
   return {
-    profile: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.45, metalness: 0 }),
+    // uPVC: a little gloss, so the eased edges and the lights of the room show on it.
+    profile: new MeshStandardMaterial({ color: 0xffffff, roughness: 0.34, metalness: 0, envMapIntensity: 0.7 }),
     // Cheap glass: no transmission pass, so a phone pays for one blended layer only.
+    // It is see-through by opacity and reads as glass by the room it reflects.
     glass: new MeshStandardMaterial({
       color: 0xc4e4f1,
-      roughness: 0.05,
-      metalness: 0,
+      roughness: 0.03,
+      metalness: 0.1,
+      envMapIntensity: 2.2,
       transparent: true,
-      opacity: 0.32,
+      opacity: 0.36,
       depthWrite: false,
       side: DoubleSide,
     }),
+    gasket: new MeshStandardMaterial({ color: 0x17191c, roughness: 0.85, metalness: 0, envMapIntensity: 0.4 }),
     mesh: new MeshStandardMaterial({
       color: 0x3a4047,
       roughness: 0.9,
@@ -58,8 +62,9 @@ export function createMaterials(): WindowMaterials {
       depthWrite: false,
       side: DoubleSide,
     }),
-    hardware: new MeshStandardMaterial({ color: 0x6f777f, roughness: 0.5, metalness: 0.3 }),
-    edge: new LineBasicMaterial({ color: 0x55606b }),
+    // Brushed metal: handle and threshold.
+    hardware: new MeshStandardMaterial({ color: 0xc5c9ce, roughness: 0.3, metalness: 0.92, envMapIntensity: 1.1 }),
+    edge: new LineBasicMaterial({ color: 0x55606b, transparent: true, opacity: 0.55 }),
   };
 }
 

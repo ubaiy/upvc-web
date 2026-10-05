@@ -66,6 +66,35 @@ describe('design-3d window-parts', () => {
     }
   });
 
+  describe('one sash for every pane that opens', () => {
+    for (const p of LAB_PRESETS) {
+      it(`${p.key}`, () => {
+        const design = p.build();
+        const parts = buildWindowParts(design);
+        const opening = layout(design).leaves.filter((l) => l.leaf.category !== 'Slidding' && l.leaf.casementType === 'Openable');
+        const hinged = parts.groups.filter((g) => g.kind === 'hinge');
+        expect(hinged.map((g) => g.leafId)).toEqual(opening.map((l) => l.leaf.id));
+        for (const g of hinged) {
+          const own = parts.parts.filter((x) => x.groupId === g.id);
+          // Its own four bars, its own glass with a gasket, its own handle: all on its own hinge.
+          expect(own.filter((x) => x.role === 'sash').length).withContext(g.id).toBe(4);
+          expect(own.filter((x) => x.role === 'glass').length).withContext(g.id).toBe(1);
+          expect(own.filter((x) => x.role === 'gasket').length).withContext(g.id).toBe(4);
+          expect(own.filter((x) => x.role === 'handle').length).withContext(g.id).toBeGreaterThanOrEqual(2);
+          // The hinge line is on an edge of that sash, not of a neighbour.
+          const b = boundsOf(own.filter((x) => x.role === 'sash'));
+          const axis = g.axis[1] ? 0 : 1;
+          const onEdge = Math.min(Math.abs(g.pivot[axis] - b.min[axis]), Math.abs(g.pivot[axis] - b.max[axis]));
+          expect(onEdge).withContext(g.id).toBeLessThan(1e-6);
+        }
+        // Every glass of the window is there: one per pane, one per sliding shutter.
+        const shutters = layout(design).leaves.reduce((n, l) => n + (l.leaf.slide?.panels.length ?? 0), 0);
+        const panes = layout(design).leaves.filter((l) => !l.leaf.slide).length;
+        expect(partsOfRole(parts, 'glass').length).toBe(panes + shutters);
+      });
+    }
+  });
+
   it('a fixed window: four mitred frame members and one glass, in a box of frame size × depth', () => {
     const { design, parts } = build('single-fixed');
     const { widthMm, heightMm, shape } = design.frame;
