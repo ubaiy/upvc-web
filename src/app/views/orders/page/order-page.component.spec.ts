@@ -225,6 +225,32 @@ describe('OrderPageComponent', () => {
     expect(amounts).toContain('Round off₹0.49');
     expect(amounts).toContain('Total₹35,456.00');
     expect(amounts).not.toContain('Discount');
+    expect(amounts).not.toContain('Taxable value');
+  });
+
+  it('lists the charges its total includes, where the quotation prints them (T86)', async () => {
+    await create(
+      ok(
+        rawOrderPage({
+          subtotal: 28066.27,
+          taxable_value: 29566.27,
+          total_tax: 5321.92,
+          round_off: -0.19,
+          total: 35288,
+          totals: {
+            charges: [
+              { label: 'Transport', amount: 1500, taxable: true },
+              { label: 'Unloading', amount: 400, taxable: false },
+            ],
+            tax: { lines: [{ code: 'CGST', label: 'CGST 9%', amount: 2660.96 }, { code: 'SGST', label: 'SGST 9%', amount: 2660.96 }] },
+          },
+        })
+      )
+    );
+    const amounts = el().querySelector('.dl')!.textContent!.replace(/\s+/g, ' ');
+    expect(amounts).toMatch(/Subtotal\s*₹28,066.27\s*Transport\s*₹1,500.00\s*Taxable value\s*₹29,566.27\s*CGST 9%/);
+    expect(amounts).toMatch(/SGST 9%\s*₹2,660.96\s*Unloading \(not taxed\)\s*₹400.00\s*Round off/);
+    expect(amounts).toContain('Total₹35,288.00');
   });
 
   it('refreshes the head when a payment is recorded below', async () => {

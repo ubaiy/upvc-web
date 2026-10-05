@@ -71,6 +71,14 @@ export interface TaxLine {
   amount: number;
 }
 
+/** Transport, fitting or another charge the order took over from the quotation. The total includes it. */
+export interface ChargeLine {
+  label: string;
+  amount: number;
+  /** GST is charged on it: it is part of the taxable value. */
+  taxable: boolean;
+}
+
 /** `order/show`, and what create, update, stage and cancel return. */
 export interface OrderPage extends Order {
   quotation: { id: number; number: string; name: string; status: string } | null;
@@ -80,6 +88,8 @@ export interface OrderPage extends Order {
   lines: OrderLine[];
   /** CGST, SGST or IGST as the api lists them; empty when it lists none. */
   taxLines: TaxLine[];
+  /** The charge lines as the api froze them on the order; empty when there are none. */
+  charges: ChargeLine[];
   paymentTerm: string;
   /** The address stored on the order, on one line. */
   address: string;

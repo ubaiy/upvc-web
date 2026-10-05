@@ -48,6 +48,27 @@ describe('orders adapter', () => {
       })
     );
     expect(styled.lines.map((l) => l.name)).toEqual(['Window 1 · Casement', 'W2 · Sliding']);
+    // The catalogue stores the series misspelt; the order words it as the quotation page does.
+    const misspelt = toOrderPage(rawOrderPage({ order_product: [{ id: 1, label: 'Hall', product_information: [{ category: 'Slidding' }] }] }));
+    expect(misspelt.lines[0].name).toBe('Hall · Sliding');
+    // Charges the order took over from the quotation (T86): its total includes them, so the page lists them.
+    expect(page.charges).toEqual([]);
+    const charged = toOrderPage(
+      rawOrderPage({
+        totals: {
+          charges: [
+            { id: 7, kind: 'transport', label: 'Transport', amount: 1500, taxable: true },
+            { id: 8, kind: 'other', label: 'Unloading', amount: 400, taxable: false },
+            { id: 9, kind: 'other', label: ' ', amount: 50 },
+          ],
+        },
+      })
+    );
+    expect(charged.charges).toEqual([
+      { label: 'Transport', amount: 1500, taxable: true },
+      { label: 'Unloading', amount: 400, taxable: false },
+      { label: 'Other charge', amount: 50, taxable: true },
+    ]);
     expect(page.lines[0].size).toBe('1800 × 1200 mm');
     expect(page.lines[1].amount).toBe(21195.19);
     expect(page.taxLines).toEqual([

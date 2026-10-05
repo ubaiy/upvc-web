@@ -1,6 +1,6 @@
 import { idOrNull, num, text } from '../payments/api-result';
 import { toAccount } from '../payments/payments.adapter';
-import { Order, OrderLine, OrderPage, OrderTab, StageCounts, StageKey, StageStep, TaxLine } from './orders.model';
+import { ChargeLine, Order, OrderLine, OrderPage, OrderTab, StageCounts, StageKey, StageStep, TaxLine } from './orders.model';
 
 /**
  * Every api field name of the orders contract (phase 19 log, section 2) is
@@ -106,7 +106,9 @@ function styleOf(raw: any): string {
       parts = null;
     }
   }
-  return Array.isArray(parts) ? text(parts[0]?.category).trim() : '';
+  const style = Array.isArray(parts) ? text(parts[0]?.category).trim() : '';
+  // The catalogue's series is stored misspelt; the quotation page words it "Sliding" too.
+  return style === 'Slidding' ? 'Sliding' : style;
 }
 
 function toLine(raw: any, index: number): OrderLine {
@@ -141,6 +143,13 @@ export function toOrderPage(raw: any): OrderPage {
   const taxLines: TaxLine[] = Array.isArray(raw?.totals?.tax?.lines)
     ? raw.totals.tax.lines.map((line: any) => ({ label: text(line?.label) || text(line?.code), amount: num(line?.amount) }))
     : [];
+  const charges: ChargeLine[] = Array.isArray(raw?.totals?.charges)
+    ? raw.totals.charges.map((charge: any) => ({
+        label: text(charge?.label).trim() || 'Other charge',
+        amount: num(charge?.amount),
+        taxable: charge?.taxable !== false,
+      }))
+    : [];
   return {
     ...toOrder(raw),
     quotation: idOrNull(quotation?.id)
@@ -153,6 +162,7 @@ export function toOrderPage(raw: any): OrderPage {
     account: toAccount(raw?.account),
     lines: Array.isArray(raw?.order_product) ? raw.order_product.map(toLine) : [],
     taxLines,
+    charges,
     paymentTerm: text(raw?.payment_terms?.name || raw?.totals?.payment_term?.name),
     address: oneLine(raw?.customer_address),
   };

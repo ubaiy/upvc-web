@@ -301,6 +301,15 @@
           <ng-container *ngIf="o.discountAmount > 0">
             <dt>Discount</dt>
             <dd>{{ -o.discountAmount | inr }}</dd>
+          </ng-container>
+          <!-- Charges print where the quotation and its PDF print them: taxed ones above the taxable value, the others under the tax. -->
+          <ng-container *ngFor="let charge of o.charges">
+            <ng-container *ngIf="charge.taxable">
+              <dt>{{ charge.label }}</dt>
+              <dd>{{ charge.amount | inr }}</dd>
+            </ng-container>
+          </ng-container>
+          <ng-container *ngIf="o.discountAmount > 0 || hasTaxedCharge(o)">
             <dt>Taxable value</dt>
             <dd>{{ o.taxableValue | inr }}</dd>
           </ng-container>
@@ -311,6 +320,12 @@
           <ng-container *ngIf="!o.taxLines.length">
             <dt>GST</dt>
             <dd>{{ o.totalTax | inr }}</dd>
+          </ng-container>
+          <ng-container *ngFor="let charge of o.charges">
+            <ng-container *ngIf="!charge.taxable">
+              <dt>{{ charge.label }}<ng-container *ngIf="o.totalTax > 0"> (not taxed)</ng-container></dt>
+              <dd>{{ charge.amount | inr }}</dd>
+            </ng-container>
           </ng-container>
           <ng-container *ngIf="o.roundOff">
             <dt>Round off</dt>

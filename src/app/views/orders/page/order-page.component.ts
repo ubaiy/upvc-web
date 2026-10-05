@@ -106,6 +106,11 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     return !!order && (this.vehicle !== order.vehicleNumber || this.transporter !== order.transporter || this.notes !== order.notes);
   }
 
+  /** A charge with GST on it is inside the taxable value, so that line is shown under it. */
+  hasTaxedCharge(order: OrderPage): boolean {
+    return order.charges.some((charge) => charge.taxable);
+  }
+
   load(): void {
     this.state = 'loading';
     this.actionError = null;
