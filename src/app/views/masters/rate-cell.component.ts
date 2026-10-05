@@ -55,7 +55,7 @@ export type RateCellState = 'idle' | 'saving' | 'saved' | 'error';
         background: transparent; border: 1px solid transparent; border-radius: var(--r-sm);
       }
       input:hover { border-color: var(--c-border-strong); background: var(--c-surface); }
-      input:focus { outline: none; border-color: var(--c-accent); box-shadow: var(--focus-ring); background: var(--c-surface); }
+      input:focus { outline: none; border-color: var(--c-focus); box-shadow: var(--focus-ring); background: var(--c-surface); }
       .is-invalid input { border-color: var(--c-danger); background: var(--c-surface); }
       .is-busy input { color: var(--c-text-3); }
       .per { color: var(--c-text-3); font-size: var(--fs-12); min-width: 36px; text-align: start; }

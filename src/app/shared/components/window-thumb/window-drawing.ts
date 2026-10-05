@@ -129,7 +129,7 @@ export function drawWindow(spec: WindowSpec, gradientId: string, options: Window
       rect(hx, y + h / 2 - 14, sash * 0.5, 28, 'fill:var(--c-frame-line)', 2);
     }
     if (selected) {
-      rect(x - 1, y - 1, w + 2, h + 2, 'fill:var(--c-accent);fill-opacity:.10;stroke:var(--c-accent);stroke-width:2', 2);
+      rect(x - 1, y - 1, w + 2, h + 2, 'fill:var(--c-accent);fill-opacity:.18;stroke:var(--c-accent-text);stroke-width:2', 2);
     }
   };
 
