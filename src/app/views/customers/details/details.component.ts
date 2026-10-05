@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit } from '@angular/core';
 import {
   AbstractControl,
   FormArray,
@@ -8,7 +8,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { catchError, concat, forkJoin, Observable, of, switchMap, toArray } from 'rxjs';
+import { catchError, concat, forkJoin, Observable, of, Subscription, switchMap, toArray } from 'rxjs';
 import { Crumb } from 'src/app/shared/components/page-header/page-header.component';
 import { IResponseDto } from 'src/app/shared/model/common/response.model';
 import { ToastService } from 'src/app/shared/services/toast.service';
@@ -45,7 +45,7 @@ function gstin(control: AbstractControl): ValidationErrors | null {
   templateUrl: './details.component.html',
   styleUrls: ['./details.component.scss'],
 })
-export class DetailsComponent implements OnInit {
+export class DetailsComponent implements OnInit, OnDestroy {
   state: 'loading' | 'error' | 'ready' = 'loading';
   historyState: 'loading' | 'error' | 'ready' = 'loading';
   editable = false;
@@ -60,6 +60,12 @@ export class DetailsComponent implements OnInit {
   quotations: CustomerQuotationRow[] = [];
   bills: BillRow[] = [];
 
+  private _params?: Subscription;
+  private _loading?: Subscription;
+  private _history?: Subscription;
+  /** Counts the customers this page has shown: an answer that comes back for an earlier one is not put on the page. */
+  private _visit = 0;
+
   constructor(
     private _activeRoute: ActivatedRoute,
     private _router: Router,
@@ -71,10 +77,20 @@ export class DetailsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const id = Number(this._activeRoute.snapshot.params['id']);
-    this.editable = !!this._activeRoute.snapshot.data['edit'];
-    this.customerId = this.editable && id ? id : null;
-    this.load();
+    // From one customer straight to another (the search, a link) the page stays and only the id changes, so the id is followed.
+    this._params = this._activeRoute.paramMap.subscribe((params) => {
+      const id = Number(params.get('id'));
+      this.editable = !!this._activeRoute.snapshot.data['edit'];
+      this.customerId = this.editable && id ? id : null;
+      this._reset();
+      this.load();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this._params?.unsubscribe();
+    this._loading?.unsubscribe();
+    this._history?.unsubscribe();
   }
 
   get title(): string {
@@ -96,7 +112,8 @@ export class DetailsComponent implements OnInit {
 
   load(): void {
     this.state = 'loading';
-    forkJoin({
+    this._loading?.unsubscribe();
+    this._loading = forkJoin({
       states: this._dataService.getStates(),
       // The company's state only pre-selects the list; the form works without it.
       settings: this._dataService.getCompanySettings().pipe(catchError(() => of(null))),
@@ -123,7 +140,8 @@ export class DetailsComponent implements OnInit {
   loadHistory(): void {
     const id = this.customerId as number;
     this.historyState = 'loading';
-    forkJoin({
+    this._history?.unsubscribe();
+    this._history = forkJoin({
       // The API filters by customer, so only this customer's rows travel.
       quotations: this._dataService.getCustomerQuotations(id),
       bills: this._dataService.getCustomerBills(id),
@@ -184,8 +202,12 @@ export class DetailsComponent implements OnInit {
       return;
     }
     this.defaultBusy = index;
+    const visit = this._visit;
     this._dataService.makeDefaultAddress(id).subscribe({
       next: (res) => {
+        if (visit !== this._visit) {
+          return;
+        }
         this.defaultBusy = null;
         if (!res.success) {
           this._toastService.showError(res.message || 'Could not change the default address');
@@ -195,7 +217,9 @@ export class DetailsComponent implements OnInit {
         this._toastService.showSuccess('Default address changed');
       },
       error: (err) => {
-        this.defaultBusy = null;
+        if (visit === this._visit) {
+          this.defaultBusy = null;
+        }
         this._toastService.showError(err?.error?.message || 'Could not change the default address');
       },
     });
@@ -229,15 +253,21 @@ export class DetailsComponent implements OnInit {
       this.addresses.removeAt(index);
       return;
     }
+    const visit = this._visit;
     this._confirm.confirm(
       'Remove this address?',
       'Quotations already written to this address keep it.',
       'pi-exclamation-triangle',
       () => {
+        if (visit !== this._visit) {
+          return;
+        }
         this._dataService.deleteCustomerAddress(value.id as number).subscribe({
           next: (res) => {
             if (res.success) {
-              this.addresses.removeAt(index);
+              if (visit === this._visit) {
+                this.addresses.removeAt(index);
+              }
               this._toastService.showSuccess('Address removed');
             } else {
               this._toastService.showError(res.message);
@@ -305,6 +335,7 @@ export class DetailsComponent implements OnInit {
       : this._dataService.editCustomer({ ...payload, id: this.customerId });
 
     this.saving = true;
+    const visit = this._visit;
     save
       .pipe(
         switchMap((res) => {
@@ -326,9 +357,12 @@ export class DetailsComponent implements OnInit {
       )
       .subscribe({
         next: (id) => {
+          this._toastService.showSuccess(isNew ? `${value.name.trim()} added` : 'Customer saved');
+          if (visit !== this._visit) {
+            return;
+          }
           this.saving = false;
           this.form.markAsPristine();
-          this._toastService.showSuccess(isNew ? `${value.name.trim()} added` : 'Customer saved');
           if (isNew) {
             this._router.navigate(['/customers/edit', id]);
           } else {
@@ -337,7 +371,9 @@ export class DetailsComponent implements OnInit {
           }
         },
         error: (err) => {
-          this.saving = false;
+          if (visit === this._visit) {
+            this.saving = false;
+          }
           this._toastService.showError(err?.error?.message || 'Could not save the customer');
         },
       });
@@ -365,6 +401,21 @@ export class DetailsComponent implements OnInit {
       }
     });
     return calls;
+  }
+
+  /** Another customer (or none) is to be shown: nothing typed, asked or listed for the last one stays. */
+  private _reset(): void {
+    this._visit++;
+    this._history?.unsubscribe();
+    this.form = this._initForm();
+    this.customerName = '';
+    this.submitted = false;
+    this.saving = false;
+    this.defaultBusy = null;
+    this.addressWarnings = {};
+    this.quotations = [];
+    this.bills = [];
+    this.historyState = 'loading';
   }
 
   private _fill(customer: any): void {

@@ -1,8 +1,8 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { of, throwError } from 'rxjs';
+import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 import { AddressFieldsComponent } from 'src/app/shared/components/address-fields/address-fields.component';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { ConfirmationDialogService } from 'src/app/shared/services/confirmationdialog.service';
@@ -44,6 +44,13 @@ describe('DetailsComponent (customer page)', () => {
     fixture.detectChanges();
   }
   let router: Router;
+  /** The id in the address: `goTo` changes it while the page stays, as the router does. */
+  let params: BehaviorSubject<ParamMap>;
+  const idParams = (id?: number): ParamMap => convertToParamMap(id ? { id: String(id) } : {});
+  const goTo = (id: number): void => {
+    params.next(idParams(id));
+    fixture.detectChanges();
+  };
   const el = (): HTMLElement => fixture.nativeElement;
 
   function create(route: { id?: number; edit: boolean }): void {
@@ -97,7 +104,7 @@ describe('DetailsComponent (customer page)', () => {
         { provide: ConfirmationDialogService, useValue: jasmine.createSpyObj('ConfirmationDialogService', ['confirm']) },
         {
           provide: ActivatedRoute,
-          useValue: { snapshot: { params: { id: route.id }, data: { edit: route.edit } } },
+          useValue: { snapshot: { data: { edit: route.edit } }, paramMap: (params = new BehaviorSubject(idParams(route.id))) },
         },
       ],
     });
@@ -324,6 +331,80 @@ describe('DetailsComponent (customer page)', () => {
       fixture.detectChanges();
       expect(el().querySelector('.callout')?.textContent).toContain('quotations and bills');
       expect(el().querySelector('#cust-name')).not.toBeNull();
+    });
+  });
+
+  describe('from one customer straight to another: only the id in the address changes (T91)', () => {
+    const OTHER = { id: 4, name: 'Mehta Villa', phone: '9811122233', is_dealer: 1, addresses: [] };
+
+    beforeEach(() => {
+      create({ id: 3, edit: true });
+      service.getCustomerDetail.and.callFake((id: any) => ok(id === 4 ? OTHER : CUSTOMER));
+      service.getCustomerQuotations.and.callFake((id: any) =>
+        ok(id === 4 ? [{ id: 30, customer_id: 4, quatation_name: 'Mehta Villa Windows', quatation_identity: 'mv', number: 'Q-0030', total: 500 }] : [])
+      );
+      service.getCustomerBills.and.returnValue(ok([]));
+    });
+
+    it('shows the second customer: form, heading, history and links', () => {
+      goTo(4);
+      expect(service.getCustomerDetail.calls.mostRecent().args).toEqual([4]);
+      expect(service.getCustomerQuotations.calls.mostRecent().args).toEqual([4]);
+      expect(service.getCustomerBills.calls.mostRecent().args).toEqual([4]);
+      expect(el().querySelector('h1')?.textContent).toContain('Mehta Villa');
+      expect(component.form.value.name).toBe('Mehta Villa');
+      expect(component.form.value.price_list).toBe('dealer');
+      const text = el().textContent || '';
+      expect(text).toContain('Mehta Villa Windows');
+      expect(text).not.toContain('Sharma Flat Renovation');
+      expect(el().querySelector('a.payments-link')?.getAttribute('href')).toBe('/payments?customer=4');
+    });
+
+    it('saves to the customer on screen, not the one the page was opened with', () => {
+      goTo(4);
+      component.form.patchValue({ phone: '9800000000' });
+      component.submit();
+      expect(service.editCustomer.calls.mostRecent().args[0]).toEqual(jasmine.objectContaining({ id: 4, name: 'Mehta Villa' }));
+    });
+
+    it('leaves what was typed for the first customer behind: nothing unsaved, no messages', () => {
+      component.form.patchValue({ name: '' });
+      component.form.markAsDirty();
+      component.submit();
+      expect(component.submitted).toBeTrue();
+      goTo(4);
+      expect(component.form.dirty).toBeFalse();
+      expect(component.submitted).toBeFalse();
+      expect(component.canLeave()).toBe(true);
+      expect(component.form.value.name).toBe('Mehta Villa');
+    });
+
+    it('an answer for the first customer that comes back late is not shown over the second', () => {
+      const [slow, slowHistory] = [new Subject<any>(), new Subject<any>()];
+      service.getCustomerDetail.and.callFake((id: any) => (id === 3 ? slow : ok(OTHER)));
+      service.getCustomerQuotations.and.callFake((id: any) => (id === 3 ? slowHistory : ok([])));
+      goTo(3);
+      goTo(4);
+      expect(slow.observed).withContext('the first load is cancelled').toBeFalse();
+      expect(slowHistory.observed).withContext('the first history is cancelled').toBeFalse();
+      slow.next({ success: true, data: CUSTOMER });
+      slowHistory.next({ success: true, data: [{ id: 17, customer_id: 3, quatation_name: 'Sharma Flat Renovation' }] });
+      fixture.detectChanges();
+      expect(el().querySelector('h1')?.textContent).toContain('Mehta Villa');
+      expect(el().textContent).not.toContain('Sharma');
+    });
+
+    it('a "Make default" answered after the page moved on does not reorder the second customer', () => {
+      const answer = new Subject<any>();
+      service.makeDefaultAddress.and.returnValue(answer);
+      component.makeDefault(1);
+      service.getCustomerDetail.and.returnValue(
+        ok({ ...OTHER, addresses: [{ id: 21, address: 'One', is_default: 1, city: 'Surat', state: 'GJ', zip_code: '395007' }, { id: 22, address: 'Two', is_default: 0, city: 'Surat', state: 'GJ', zip_code: '395007' }] })
+      );
+      goTo(4);
+      answer.next({ success: true });
+      expect(component.addresses.at(0).value.id).toBe(21);
+      expect(component.defaultBusy).toBeNull();
     });
   });
 
