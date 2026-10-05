@@ -1,0 +1,53 @@
+// The list of saved 3D structures: one card a structure, its saved picture on top.
+
+:host { display: block; }
+
+.sl-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--s-4);
+  margin: 0; padding: 0; list-style: none;
+}
+
+.sl-card { display: flex; flex-direction: column; overflow: hidden; }
+
+.sl-open {
+  display: flex; flex-direction: column; gap: 2px; padding: 0 0 var(--s-3);
+  color: inherit; text-decoration: none;
+  &:hover { text-decoration: none; }
+  &:hover .sl-name { color: var(--c-accent-text); }
+  &:focus-visible { box-shadow: inset var(--focus-ring); outline: none; }
+}
+
+.sl-picture {
+  display: grid; place-items: center; aspect-ratio: 4 / 3; margin-block-end: var(--s-3);
+  border-block-end: 1px solid var(--c-border); background: var(--c-surface-2); color: var(--c-text-3);
+  img { width: 100%; height: 100%; object-fit: cover; display: block; }
+}
+
+.sl-name, .sl-facts { padding-inline: var(--s-4); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl-name { font-size: var(--fs-16); font-weight: var(--fw-semibold); }
+.sl-facts { color: var(--c-text-2); font-size: var(--fs-13); }
+.sl-size { font-variant-numeric: tabular-nums; }
+.faint { color: var(--c-text-3); }
+
+.sl-actions {
+  display: flex; flex-wrap: wrap; gap: var(--s-1); margin-block-start: auto;
+  padding: var(--s-2) var(--s-3); border-block-start: 1px solid var(--c-border);
+}
+.sl-danger { color: var(--c-danger); margin-inline-start: auto; }
+
+.sl-device { margin-block-start: var(--s-4); }
+
+.sl-backdrop {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: var(--s-4);
+  background: rgba(20, 24, 28, .4);
+}
+.dialog h2 { margin: 0; font-size: var(--fs-16); font-weight: var(--fw-semibold); overflow-wrap: anywhere; }
+.dialog p { margin: 0; color: var(--c-text-2); }
+.sl-label { display: block; margin-block-end: var(--s-1); font-size: var(--fs-13); font-weight: var(--fw-medium); }
+.sl-input { width: 100%; }
+.sl-problem { margin-block-start: var(--s-2) !important; color: var(--c-danger) !important; }
+
+@media (max-width: 640px) {
+  .sl-grid { grid-template-columns: minmax(0, 1fr); }
+  .sl-actions .btn { height: 40px; }
+}

@@ -1,0 +1,74 @@
+<app-page-header title="3D structures" subtitle="Domes, cabins, bays and conservatory roofs, designed in 3D.">
+  <!-- One primary button on the page: with nothing saved yet it moves into the empty state. -->
+  <a actions class="btn btn-primary" routerLink="/structure-designer" *ngIf="state !== 'ready' || rows.length" data-action="new">
+    <app-icon name="plus"></app-icon>New structure
+  </a>
+</app-page-header>
+
+<app-callout tone="warn" *ngIf="state === 'error'">
+  We could not read the saved structures.
+  <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+</app-callout>
+
+<section class="card" *ngIf="state === 'ready' && !rows.length">
+  <app-empty-state
+    icon="box"
+    title="No structures yet"
+    text="Choose a dome, a cabin, a bay or a roof, stretch it to size and save it. It appears here with its picture."
+  >
+    <a class="btn btn-primary" routerLink="/structure-designer" data-action="new"><app-icon name="plus"></app-icon>New structure</a>
+  </app-empty-state>
+</section>
+
+<ul class="sl-grid" *ngIf="state === 'ready' && rows.length">
+  <li class="card sl-card" *ngFor="let row of rows; trackBy: trackRow" [attr.data-id]="row.id">
+    <a class="sl-open" routerLink="/structure-designer" [queryParams]="{ id: row.id }" [attr.aria-label]="'Open ' + row.name">
+      <span class="sl-picture">
+        <img *ngIf="row.thumbnail as src; else noPicture" [src]="src" alt="" />
+        <ng-template #noPicture><app-icon name="box" [size]="32"></app-icon></ng-template>
+      </span>
+      <strong class="sl-name"><bdi>{{ row.name }}</bdi></strong>
+      <span class="sl-facts">{{ kindLabel(row) }}</span>
+      <span class="sl-facts sl-size">{{ row.overall.widthMm | number }} × {{ row.overall.depthMm | number }} × {{ row.overall.heightMm | number }} mm</span>
+      <span class="sl-facts faint">Saved {{ row.savedAt | date : 'd MMM y, HH:mm' }}</span>
+    </a>
+    <div class="sl-actions">
+      <a class="btn btn-secondary btn-sm" routerLink="/structure-designer" [queryParams]="{ id: row.id }">Open</a>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="duplicate(row)" data-action="duplicate">Duplicate</button>
+      <button type="button" class="btn btn-ghost btn-sm" (click)="askRename(row)" data-action="rename">Rename</button>
+      <button type="button" class="btn btn-ghost btn-sm sl-danger" (click)="askDelete(row)" data-action="delete">Delete</button>
+    </div>
+  </li>
+</ul>
+
+<p class="sl-device muted small" *ngIf="state === 'ready'">
+  Structures are saved on this device for now. To move one to another computer, open it and use Export JSON.
+</p>
+
+<div class="sl-backdrop" *ngIf="ask as a" (click)="cancel()" (keydown.escape)="cancel()">
+  <div class="dialog" role="dialog" aria-modal="true" [attr.aria-label]="a.kind === 'delete' ? 'Delete structure' : 'Rename structure'" (click)="$event.stopPropagation()">
+    <ng-container *ngIf="a.kind === 'delete'">
+      <div class="dialog-head"><h2>Delete "{{ a.row.name }}"?</h2></div>
+      <div class="dialog-body">
+        <p>It is removed from this device and cannot be brought back.</p>
+        <p class="sl-problem" *ngIf="problem" role="alert">{{ problem }}</p>
+      </div>
+      <div class="dialog-foot">
+        <button type="button" class="btn btn-secondary" (click)="cancel()">Keep it</button>
+        <button type="button" class="btn btn-danger" (click)="remove()" data-action="confirm-delete">Delete</button>
+      </div>
+    </ng-container>
+    <form *ngIf="a.kind === 'rename'" (ngSubmit)="rename()">
+      <div class="dialog-head"><h2>Rename structure</h2></div>
+      <div class="dialog-body">
+        <label class="sl-label" for="sl-name">Name</label>
+        <input id="sl-name" class="input sl-input" name="name" [(ngModel)]="nameDraft" maxlength="80" autocomplete="off" />
+        <p class="sl-problem" *ngIf="problem" role="alert">{{ problem }}</p>
+      </div>
+      <div class="dialog-foot">
+        <button type="button" class="btn btn-secondary" (click)="cancel()">Cancel</button>
+        <button type="submit" class="btn btn-primary" data-action="confirm-rename">Rename</button>
+      </div>
+    </form>
+  </div>
+</div>

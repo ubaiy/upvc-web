@@ -112,7 +112,16 @@ const routes: Routes = [
           import('./views/crm/crm.module').then((m) => m.CrmModule),
       },
       {
-        // Design a dome, cabin, bay or roof in 3D (card T100). No menu item yet.
+        // The saved 3D structures (card T114). No three.js here: that stays in the designer's chunk.
+        path: 'structures',
+        title: '3D structures',
+        loadComponent: () =>
+          import('./views/structures/structures-list.component').then(
+            (m) => m.StructuresListComponent
+          ),
+      },
+      {
+        // Design a dome, cabin, bay or roof in 3D (card T100). Opens from the list above.
         path: 'structure-designer',
         loadChildren: () =>
           import('./views/structure-designer/structure-designer.module').then(
