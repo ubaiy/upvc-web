@@ -71,15 +71,7 @@
       <h2 id="progress-title">Progress</h2>
       <form class="promised" (ngSubmit)="savePromised()">
         <label class="label" for="promised-date">Promised date</label>
-        <input
-          id="promised-date"
-          name="promised"
-          class="input"
-          type="date"
-          [min]="o.orderDate"
-          [(ngModel)]="promised"
-          [disabled]="o.cancelled || !!busy"
-        />
+        <app-date-field inputId="promised-date" name="promised" [min]="o.orderDate" [(ngModel)]="promised" [disabled]="o.cancelled || !!busy"></app-date-field>
         <button type="submit" class="btn btn-secondary" *ngIf="promisedChanged" [disabled]="!!busy">
           {{ isBusy('promised') ? 'Saving…' : 'Save date' }}
         </button>

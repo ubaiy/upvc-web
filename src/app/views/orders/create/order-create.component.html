@@ -51,17 +51,7 @@
 
       <div class="field">
         <label class="label" for="new-promised">Promised date (optional)</label>
-        <input
-          id="new-promised"
-          name="promised"
-          class="input date"
-          type="date"
-          [min]="today"
-          [class.is-invalid]="promisedMessage"
-          [(ngModel)]="promised"
-          [disabled]="saving"
-          aria-describedby="new-promised-help"
-        />
+        <app-date-field class="date" inputId="new-promised" name="promised" [min]="today" [invalid]="!!promisedMessage" [(ngModel)]="promised" [disabled]="saving" describedBy="new-promised-help"></app-date-field>
         <span id="new-promised-help">
           <span class="error" *ngIf="promisedMessage; else promisedHint">{{ promisedMessage }}</span>
           <ng-template #promisedHint

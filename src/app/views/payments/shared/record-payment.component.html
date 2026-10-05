@@ -98,18 +98,7 @@
       </div>
       <div class="field">
         <label class="label" for="pay-date">Date</label>
-        <input
-          id="pay-date"
-          name="date"
-          class="input"
-          type="date"
-          [max]="today"
-          [class.is-invalid]="submitted && dateMessage"
-          [(ngModel)]="date"
-          [disabled]="saving"
-          [attr.aria-invalid]="submitted && dateMessage ? 'true' : null"
-          aria-describedby="pay-date-help"
-        />
+        <app-date-field inputId="pay-date" name="date" [max]="today" [invalid]="submitted && !!dateMessage" [(ngModel)]="date" [disabled]="saving" describedBy="pay-date-help"></app-date-field>
         <span id="pay-date-help" class="error" *ngIf="submitted && dateMessage">{{ dateMessage }}</span>
       </div>
     </div>

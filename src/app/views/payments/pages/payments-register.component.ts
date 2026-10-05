@@ -38,11 +38,11 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
       </div>
       <div class="field">
         <label class="label" for="pay-from">From</label>
-        <input id="pay-from" class="input" type="date" [max]="to || today" [value]="from || ''" (change)="setDate('from', $any($event.target).value)" />
+        <app-date-field inputId="pay-from" [max]="to || today" [date]="from || ''" (dateChange)="setDate('from', $event)"></app-date-field>
       </div>
       <div class="field">
         <label class="label" for="pay-to">To</label>
-        <input id="pay-to" class="input" type="date" [min]="from || ''" [max]="today" [value]="to || ''" (change)="setDate('to', $any($event.target).value)" />
+        <app-date-field inputId="pay-to" [min]="from || ''" [max]="today" [date]="to || ''" (dateChange)="setDate('to', $event)"></app-date-field>
       </div>
       <div class="field">
         <label class="label" for="pay-mode">Paid by</label>

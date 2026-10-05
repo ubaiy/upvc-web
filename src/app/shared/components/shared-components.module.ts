@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import { InrPipe } from '../pipes/inr.pipe';
 import { BulkBarComponent } from './bulk-bar/bulk-bar.component';
 import { CalloutComponent } from './callout/callout.component';
+import { DateFieldComponent } from './date-field/date-field.component';
 import { EmptyStateComponent } from './empty-state/empty-state.component';
 import { IconComponent } from './icon/icon.component';
 import { PageHeaderComponent } from './page-header/page-header.component';
@@ -18,6 +19,7 @@ import { WindowThumbComponent } from './window-thumb/window-thumb.component';
 const COMPONENTS = [
   BulkBarComponent,
   CalloutComponent,
+  DateFieldComponent,
   EmptyStateComponent,
   IconComponent,
   PageHeaderComponent,
@@ -33,7 +35,7 @@ const COMPONENTS = [
  * The shared building blocks of the design system. Import this module into a
  * feature module to use <app-page-header>, <app-icon>, <app-stat>,
  * <app-empty-state>, <app-callout>, <app-totals>, <app-quote-status>,
- * <app-window-thumb>, <app-bulk-bar> and the `inr` pipe. (<app-undo-toast> is
+ * <app-window-thumb>, <app-bulk-bar>, <app-date-field> (every date, as dd/mm/yyyy) and the `inr` pipe. (<app-undo-toast> is
  * placed once, in AppComponent; screens call UndoService.) It also carries
  * TableLabelsDirective, which needs no markup: every `<table class="table">`
  * in the importing module becomes row cards on a phone.

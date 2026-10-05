@@ -214,11 +214,11 @@
         <div class="grid-2">
           <div class="field">
             <label class="label" for="act-paid">Received on</label>
-            <input class="input" id="act-paid" name="paidOn" type="date" [(ngModel)]="form.paidOn" />
+            <app-date-field inputId="act-paid" name="paidOn" [(ngModel)]="form.paidOn"></app-date-field>
           </div>
           <div class="field">
             <label class="label" for="act-from">Period starts on</label>
-            <input class="input" id="act-from" name="from" type="date" [(ngModel)]="form.from" aria-describedby="act-from-hint" />
+            <app-date-field inputId="act-from" name="from" [(ngModel)]="form.from" describedBy="act-from-hint"></app-date-field>
           </div>
         </div>
         <span class="hint" id="act-from-hint">

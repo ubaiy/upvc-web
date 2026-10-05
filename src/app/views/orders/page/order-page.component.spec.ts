@@ -158,9 +158,9 @@ describe('OrderPageComponent', () => {
 
   it('saves the promised date only when it was changed', async () => {
     await create();
-    expect((el().querySelector('#promised-date') as HTMLInputElement).value).toBe('2026-10-18');
+    expect((el().querySelector('#promised-date') as HTMLInputElement).value).toBe('18/10/2026');
     expect(button('Save date')).toBeUndefined();
-    type('promised-date', '2026-10-25');
+    type('promised-date', '25/10/2026');
     service.update.and.returnValue(ok(rawOrderPage({ promised_date: '2026-10-25' })));
     button('Save date')!.click();
     fixture.detectChanges();
@@ -382,7 +382,7 @@ describe('OrderPageComponent', () => {
 
   it('refuses a promised date before the order date in plain words, without asking the api', async () => {
     await create();
-    type('promised-date', '2026-10-01');
+    type('promised-date', '01/10/2026');
     button('Save date')!.click();
     fixture.detectChanges();
     expect(service.update).not.toHaveBeenCalled();
@@ -410,7 +410,7 @@ describe('OrderPageComponent', () => {
     for (const control of Array.from(el().querySelectorAll('button, a'))) {
       expect((control.getAttribute('aria-label') || control.textContent || '').trim()).not.toBe('');
     }
-    for (const control of Array.from(el().querySelectorAll('input, textarea'))) {
+    for (const control of Array.from(el().querySelectorAll('input:not([aria-hidden]), textarea'))) {
       expect(el().querySelector(`label[for="${control.id}"]`)).withContext(control.id).not.toBeNull();
     }
   });
@@ -442,7 +442,7 @@ describe('OrderPageComponent', () => {
       expect(service.show.calls.mostRecent().args).toEqual(['2']);
       expect(el().querySelector('h1')?.textContent).toContain('ORD/26-27/0002');
       expect((el().querySelector('#vehicle') as HTMLInputElement).value).toBe('MH 12 ZZ 9');
-      expect((el().querySelector('#promised-date') as HTMLInputElement).value).toBe('2026-11-01');
+      expect((el().querySelector('#promised-date') as HTMLInputElement).value).toBe('01/11/2026');
       expect(component.cancelling).toBeNull();
       expect(component.closing).toBeFalse();
     });

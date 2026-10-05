@@ -53,7 +53,7 @@ describe('RecordPaymentComponent (Record payment dialog)', () => {
   it('starts with the balance as the amount, cash, and today', async () => {
     await create(toAccount(rawAccount())!);
     expect(input('pay-amount').value).toBe('17728');
-    expect(input('pay-date').value).toBe(todayIso());
+    expect(input('pay-date').value).toBe(todayIso().split('-').reverse().join('/'));
     expect(el().querySelector('.mode[aria-pressed="true"]')?.textContent).toContain('Cash');
     expect(el().querySelector('h2')?.textContent).toContain('Record payment');
     expect(el().textContent).toContain('ORD/26-27/0001 · Ahmed Al-Rashid');
@@ -111,7 +111,7 @@ describe('RecordPaymentComponent (Record payment dialog)', () => {
     submit();
     expect(el().querySelector('#pay-amount-help .error')?.textContent).toContain('two decimals');
     type('pay-amount', '100');
-    type('pay-date', '2999-01-01');
+    type('pay-date', '01/01/2999');
     submit();
     expect(el().querySelector('#pay-date-help')?.textContent).toContain('cannot be in the future');
     expect(service.add).not.toHaveBeenCalled();
@@ -122,7 +122,7 @@ describe('RecordPaymentComponent (Record payment dialog)', () => {
     service.add.and.returnValue(of(saved()));
     submit();
     expect(service.add.calls.mostRecent().args[0].payment_date).toBe(todayIso());
-    type('pay-date', '2026-01-15');
+    type('pay-date', '15/01/2026');
     submit();
     expect(service.add.calls.mostRecent().args[0].payment_date).toBe('2026-01-15');
   });
@@ -195,7 +195,7 @@ describe('RecordPaymentComponent (Record payment dialog)', () => {
 
   it('names every field', async () => {
     await create(toAccount(rawAccount())!);
-    for (const control of Array.from(el().querySelectorAll('input'))) {
+    for (const control of Array.from(el().querySelectorAll('input:not([aria-hidden])'))) {
       expect(el().querySelector(`label[for="${control.id}"]`)).withContext(control.id).not.toBeNull();
     }
     expect(el().querySelector('[role="dialog"]')?.getAttribute('aria-labelledby')).toBe('pay-dialog-title');

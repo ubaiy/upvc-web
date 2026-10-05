@@ -7,7 +7,7 @@ h2 { margin: 0; font-size: var(--fs-16); }
 
 .progress-card { margin-block-end: var(--s-5); }
 .promised { display: flex; align-items: center; flex-wrap: wrap; gap: var(--s-2) var(--s-3); }
-.promised .input { width: 170px; }
+.promised app-date-field { width: 170px; }
 
 // The six stages in a row; a line joins them and fills up to the current one.
 .track {
@@ -110,7 +110,7 @@ a.link-row:hover, button.link-row:hover { background: var(--c-surface-2); text-d
 @media (max-width: 640px) {
   .next { min-width: 0; }
   .promised { width: 100%; }
-  .promised .input { flex: 1; width: auto; }
+  .promised app-date-field { flex: 1; width: auto; }
 
   // The stages run down the page, the line on the left.
   .track { grid-template-columns: minmax(0, 1fr); padding: var(--s-4); }

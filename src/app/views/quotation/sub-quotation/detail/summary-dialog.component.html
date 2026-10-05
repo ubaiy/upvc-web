@@ -132,7 +132,7 @@
 
     <div class="field">
       <label class="label" for="sum-valid">Valid until</label>
-      <input class="input" id="sum-valid" name="valid" type="date" [min]="today" [(ngModel)]="validUntil" />
+      <app-date-field inputId="sum-valid" name="valid" [min]="today" [(ngModel)]="validUntil"></app-date-field>
     </div>
 
     <label class="check">
