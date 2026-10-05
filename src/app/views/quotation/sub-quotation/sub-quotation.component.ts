@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
-import { Subscription } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { saveAs } from 'file-saver';
 
@@ -70,6 +70,7 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   readonly skeletonRows = [0, 1, 2];
   private _raw: any = null;
   private _subs = new Subscription();
+  private _loading?: Subscription;
   private _afterLoad: 'summary' | null = null;
 
   constructor(
@@ -82,9 +83,15 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this._subs.add(
       this._route.paramMap.subscribe((params) => {
+        // From one quotation straight to another the page stays: nothing asked or open on the last one is kept.
         this.id = Number(params.get('id'));
         this.view = null;
         this.actionError = '';
+        this.busy = '';
+        this.moveNote = '';
+        this.editRow = null;
+        this.sendOpen = this.summaryOpen = this.siteOpen = this.duplicateOpen = this.deleteOpen = this.billAsking = false;
+        this.reviseIntent = this.lineToDelete = this.lineToRename = null;
         this.load();
       })
     );
@@ -95,6 +102,7 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this._subs.unsubscribe();
+    this._loading?.unsubscribe();
   }
 
   get crumbs(): Crumb[] {
@@ -173,7 +181,8 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
       this.loading = true;
     }
     this.loadFailed = false;
-    this._dataService.getQuotation(this.id).subscribe({
+    this._loading?.unsubscribe();
+    this._loading = this._dataService.getQuotation(this.id).subscribe({
       next: (res) => {
         this.loading = false;
         if (!res?.success || !res.data) {
@@ -244,34 +253,25 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
 
   downloadPdf(): void {
     const view = this.view!;
-    this.busy = 'pdf';
-    this.actionError = '';
-    this._dataService
-      .getQuotationPdf(view.id)
-      .pipe(finalize(() => (this.busy = '')))
-      .subscribe({
-        next: (file) => saveAs(file.blob, file.fileName || pdfFileName(view)),
-        error: () => (this.actionError = 'We could not make the PDF. Try again.'),
-      });
+    this._download('pdf', this._dataService.getQuotationPdf(view.id), (file) => file.fileName || pdfFileName(view), 'We could not make the PDF. Try again.');
   }
 
   downloadBill(): void {
     const bill = this.view!.bill!;
-    this.busy = 'bill-pdf';
-    this.actionError = '';
-    this._dataService
-      .getBillPdf(bill.id)
-      .pipe(finalize(() => (this.busy = '')))
-      .subscribe({
-        next: (file) => saveAs(file.blob, file.fileName || 'Bill-' + bill.number.replace(/[^A-Za-z0-9]+/g, '-') + '.pdf'),
-        error: () => (this.actionError = 'We could not make the bill PDF. Try again.'),
-      });
+    this._download(
+      'bill-pdf',
+      this._dataService.getBillPdf(bill.id),
+      (file) => file.fileName || 'Bill-' + bill.number.replace(/[^A-Za-z0-9]+/g, '-') + '.pdf',
+      'We could not make the bill PDF. Try again.'
+    );
   }
 
   updatePrices(): void {
     const before = this.view!.total;
+    const shown = this.id;
     this._run('prices', this._dataService.updateQuotationPrices(this.id), () => {
-      this._dataService.getQuotation(this.id).subscribe({
+      this._loading?.unsubscribe();
+      this._loading = this._dataService.getQuotation(shown).subscribe({
         next: (res) => {
           if (res?.success && res.data) {
             this._show(res.data);
@@ -561,8 +561,14 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     }
     this.busy = key;
     this.actionError = '';
-    request.pipe(finalize(() => (this.busy = ''))).subscribe({
+    // An answer that comes back after the page went on to another quotation is not for this page.
+    const shown = this.id;
+    const moved = () => shown !== this.id;
+    request.pipe(finalize(() => moved() || (this.busy = ''))).subscribe({
       next: (res: any) => {
+        if (moved()) {
+          return;
+        }
         if (res?.success) {
           done(res.data);
         } else {
@@ -571,9 +577,24 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
         }
       },
       error: (err: any) => {
+        if (moved()) {
+          return;
+        }
         this.actionError = errorText(err, 'That did not work. Check your connection and try again.');
         failed?.();
       },
+    });
+  }
+
+  /** A PDF: the file that was asked for is handed over; the button and a failure belong to the quotation on screen. */
+  private _download(key: string, request: Observable<{ blob: Blob; fileName?: string | null }>, name: (file: any) => string, failure: string): void {
+    const shown = this.id;
+    const moved = () => shown !== this.id;
+    this.busy = key;
+    this.actionError = '';
+    request.pipe(finalize(() => moved() || (this.busy = ''))).subscribe({
+      next: (file) => saveAs(file.blob, name(file)),
+      error: () => moved() || (this.actionError = failure),
     });
   }
 }

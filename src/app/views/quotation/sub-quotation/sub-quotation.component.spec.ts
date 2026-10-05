@@ -67,6 +67,13 @@ describe('SubQuotationComponent (quotation page)', () => {
   let toast: jasmine.SpyObj<ToastService>;
   let router: Router;
   let query: BehaviorSubject<any>;
+  /** The id in the address: `goTo` changes it while the page stays, as the router does. */
+  let params: BehaviorSubject<any>;
+  const goTo = (id: number, response: any): void => {
+    service.getQuotation.and.returnValue(response);
+    params.next(convertToParamMap({ id: String(id) }));
+    fixture.detectChanges();
+  };
 
   const el = (): HTMLElement => fixture.nativeElement;
   const text = (): string => (el().textContent || '').replace(/\s+/g, ' ');
@@ -76,9 +83,8 @@ describe('SubQuotationComponent (quotation page)', () => {
   function create(response: any = ok(sampleQuotation()), queryParams: any = {}): void {
     service.getQuotation.and.returnValue(response);
     query = new BehaviorSubject(convertToParamMap(queryParams));
-    TestBed.overrideProvider(ActivatedRoute, {
-      useValue: { paramMap: of(convertToParamMap({ id: '14' })), queryParamMap: query },
-    });
+    params = new BehaviorSubject(convertToParamMap({ id: '14' }));
+    TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params, queryParamMap: query } });
     fixture = TestBed.createComponent(SubQuotationComponent);
     component = fixture.componentInstance;
     router = TestBed.inject(Router);
@@ -600,6 +606,72 @@ describe('SubQuotationComponent (quotation page)', () => {
     service.renameLine.and.returnValue(ok({}));
     component.saveRename();
     expect(service.renameLine).toHaveBeenCalledWith(20, 'Kitchen');
+  });
+
+  describe('from one quotation straight to another: only the id in the address changes (T91)', () => {
+    const other = () => sampleQuotation({ id: 15, number: 'Q-0015', quatation_name: 'Mehta Villa' });
+
+    it('shows the second quotation and closes what was open on the first', () => {
+      create();
+      component.deleteOpen = component.sendOpen = component.billAsking = true;
+      component.lineToRename = component.view!.lines[0];
+      goTo(15, ok(other()));
+      expect(service.getQuotation.calls.mostRecent().args).toEqual([15]);
+      expect(el().querySelector('h1')?.textContent).toContain('Mehta Villa');
+      expect(text()).toContain('Q-0015');
+      expect([component.deleteOpen, component.sendOpen, component.billAsking]).toEqual([false, false, false]);
+      expect(component.lineToRename).toBeNull();
+    });
+
+    it('a first quotation that answers late is not shown over the second', () => {
+      const slow = new Subject<any>();
+      create(slow);
+      goTo(15, ok(other()));
+      expect(slow.observed).withContext('the first load is cancelled').toBeFalse();
+      slow.next({ success: true, data: sampleQuotation() });
+      fixture.detectChanges();
+      expect(text()).toContain('Q-0015');
+      expect(text()).not.toContain('Q-0003');
+    });
+
+    it('a delete of the first quotation answered late does not take the second off the screen', () => {
+      create();
+      const answer = new Subject<any>();
+      service.removeQuotation.and.returnValue(answer);
+      component.confirmDelete();
+      expect(component.busy).toBe('delete');
+      goTo(15, ok(other()));
+      expect(component.busy).withContext('the second quotation is not held up by the first').toBe('');
+      (router.navigate as jasmine.Spy).calls.reset();
+      answer.next({ success: true, data: {} });
+      answer.complete();
+      expect(router.navigate).not.toHaveBeenCalled();
+      expect(toast.showSuccess).not.toHaveBeenCalledWith('Quotation deleted');
+    });
+
+    it('a refusal for the first quotation answered late is not shown on the second, and does not free its busy button', () => {
+      create();
+      const answer = new Subject<any>();
+      service.changeQuotationStatus.and.returnValue(answer);
+      component.setStatus('accepted', 'Marked as accepted');
+      goTo(15, ok(other()));
+      service.duplicateLine.and.returnValue(new Subject<any>());
+      component.duplicateLine(component.view!.lines[0]);
+      const busy = component.busy;
+      answer.next({ success: false, message: 'late refusal' });
+      answer.complete();
+      expect(component.actionError).toBe('');
+      expect(component.busy).toBe(busy);
+    });
+
+    it('a revision still opens with its Summary when that was asked for', () => {
+      show({ quatation_status: 'sent' });
+      service.reviseQuotation.and.returnValue(ok({ id: 15, number: 'Q-0003 R1', totals: { items: [] } }));
+      component.reviseIntent = { kind: 'summary' };
+      component.confirmRevise();
+      goTo(15, ok(sampleQuotation({ id: 15, number: 'Q-0003 R1', quatation_status: 'draft' })));
+      expect(component.summaryOpen).toBeTrue();
+    });
   });
 
   it('gives every button an accessible name', () => {
