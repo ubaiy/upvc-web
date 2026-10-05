@@ -50,6 +50,7 @@ import {
   serialize,
   toTemplateRequest,
 } from 'src/app/shared/design-model';
+import { quiet } from 'src/app/shared/interceptors/request-options';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { DesignTemplateStore } from '../../../design-lab/design-template-store.service';
 import { QuotationService } from '../../quotation.service';
@@ -226,7 +227,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
         switchMap(() => {
           const body = buildManageProductBody(this.effective, this.catalog, this.context());
           return this.quotations
-            .quotationManageProduct(body)
+            .quotationManageProduct(body, quiet('loader'))
             .pipe(catchError(() => of({ success: false, message: '' } as any)));
         })
       )
@@ -437,7 +438,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
     if (!stored) return;
     try {
       const body = buildManageProductBody(this.effective, this.catalog, this.context());
-      const res: any = await firstValueFrom(this.quotations.quotationManageProduct(body));
+      const res: any = await firstValueFrom(this.quotations.quotationManageProduct(body, quiet('loader')));
       if (!res?.success || this.changed) return;
       const today = Number(res.data.total) || 0;
       if (Math.abs(today - stored.cost) >= 0.01) {

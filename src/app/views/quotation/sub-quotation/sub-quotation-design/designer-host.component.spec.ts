@@ -9,6 +9,7 @@ import { ComponentFixture, TestBed, fakeAsync, flushMicrotasks, tick } from '@an
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
 import { of } from 'rxjs';
+import { SKIP_ERROR_TOAST, SKIP_LOADER } from 'src/app/shared/interceptors/request-options';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { DesignTemplateStore } from '../../../design-lab/design-template-store.service';
 import { QuotationService } from '../../quotation.service';
@@ -132,6 +133,17 @@ describe('DesignerHostComponent (the window designer screen)', () => {
     flushMicrotasks();
     expect(quotations.quotationManageProduct.calls.count()).toBe(before + 1);
     expect(saves().length).toBe(0);
+  }));
+
+  it('prices without the global overlay, which would take the click on Save made while the price is on its way', fakeAsync(() => {
+    open();
+    typeSize('dz-h', '1500', 'input');
+    tick(1000);
+    flushMicrotasks();
+    const priced = quotations.quotationManageProduct.calls.mostRecent().args as any[];
+    expect(priced[0].is_saved).toBeFalsy();
+    expect(priced[1].context.get(SKIP_LOADER)).toBeTrue();
+    expect(priced[1].context.get(SKIP_ERROR_TOAST)).toBeFalse();
   }));
 
   it('says the limits when a size cannot be used, and keeps the window as it was (m1)', fakeAsync(() => {

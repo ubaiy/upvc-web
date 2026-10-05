@@ -6,7 +6,7 @@ import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 import { IQuotationDetailDto } from 'src/app/shared/model/quotation/quotation-detail.model';
 import { IProductListDto } from 'src/app/shared/model/profile/productList.model';
 import { ISubQuotationDetailDto } from 'src/app/shared/model/quotation/sub-quotation-detail.model';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpHeaders } from '@angular/common/http';
 import { environment } from 'src/environments/environment';
 import { ISubQuotation } from 'src/app/shared/model/quotation/sub-quotation.model';
 import { IOpenDirectionDrpDto } from 'src/app/shared/model/quotation/open-directionDrp.model';
@@ -67,12 +67,19 @@ export class QuotationService {
     );
   }
 
+  /**
+   * Prices a window (is_saved false) or saves it. The designer passes
+   * quiet('loader') for a price: the global overlay would cover the screen
+   * and take the click on Save made while the price is on its way.
+   */
   public quotationManageProduct(
-    data: any
+    data: any,
+    options?: { context: HttpContext }
   ): Observable<IResponseDto<ISubQuotationDetailDto>> {
     return this._apiHttpService.post(
       API_END_POINT.quatation.manageProduct,
-      data
+      data,
+      options
     );
   }
 
