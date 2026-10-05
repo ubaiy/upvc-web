@@ -5,6 +5,7 @@ import { PageTitleStrategy, ShellComponent } from './containers';
 import { Page404Component } from './views/pages/page404/page404.component';
 import { Page500Component } from './views/pages/page500/page500.component';
 import { AuthGuard } from './shared/guards/auth.guard';
+import { CompanyAreaGuard } from './views/admin/platform.guard';
 import { ProfileComponent } from './views/profile/profile.component';
 import { ProfileResolver } from './views/profile/profile.resolver';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
@@ -21,7 +22,8 @@ const routes: Routes = [
     component: ShellComponent,
     // Nothing inside the shell is shown without a session. The guard sends the
     // visitor to sign in with ?returnUrl=, so they come back to this address.
-    canActivate: [AuthGuard],
+    // The platform admin (the product owner) has no company: every address of the shell leads them to /admin.
+    canActivate: [AuthGuard, CompanyAreaGuard],
     children: [
       // Menu entries of the shell. Catalogue and Settings are one page each
       // (cards U5 and U7), still served at their old addresses.
@@ -121,6 +123,13 @@ const routes: Routes = [
           import('./views/masters/masters.module').then((m) => m.MastersModule),
       },
     ],
+  },
+  {
+    // The platform admin's area (card T119): companies, plans, payments entered by hand. Its own guard
+    // lets in the platform admin only; a company's user is shown "not allowed".
+    path: 'admin',
+    loadChildren: () =>
+      import('./views/admin/admin.module').then((m) => m.AdminModule),
   },
   {
     path: 'auth',
