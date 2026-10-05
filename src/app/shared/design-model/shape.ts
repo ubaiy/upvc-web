@@ -13,7 +13,7 @@
 import { FRAME_MAX_MM, FRAME_MIN_MM } from './geometry';
 import { OpOptions, resizeFrame } from './operations';
 import { ClipOptions, clipPanesToShape } from './shape-geometry';
-import { DesignError, FrameShape, LeafNode, WindowDesign, walkLeaves } from './types';
+import { DesignError, FrameShape, LeafNode, WindowDesign } from './types';
 
 /** Problems with a shape at a given frame size (empty = valid). */
 export function checkShape(
@@ -112,19 +112,8 @@ export function setFrameShape(
 }
 
 /* ------------------------------------------------------------------ */
-/* What a pane cut by the shape can be                                 */
+/* Panes the shape cuts (how they can open: shaped-opening.ts)         */
 /* ------------------------------------------------------------------ */
-
-/**
- * Why a pane the frame shape cuts cannot open or slide. A sash is a
- * rectangle of four straight members; in a round, arched or sloped frame
- * it needs a rectangular opening made by a mullion and a transom. (A sash
- * that follows the curve is a bent-profile job this designer does not
- * draw or price.)
- */
-export const SHAPED_OPENING_PROBLEM =
-  'This pane is cut by the frame shape, so it cannot open or slide. ' +
-  'Add a mullion and a transom to make a rectangular opening first, or keep it fixed.';
 
 /** Ids of the panes whose glass the frame shape cuts (none in a rectangle). */
 export function panesCutByShape(
@@ -142,24 +131,4 @@ export function panesCutByShape(
 /** True for a pane that opens or slides (anything but fixed glass). */
 export function leafOpens(leaf: LeafNode): boolean {
   return leaf.category === 'Slidding' || leaf.casementType === 'Openable';
-}
-
-/**
- * Ids of the opening / sliding panes the shape cuts: what the designer
- * refuses to make, and what an older saved design is warned about.
- */
-export function shapedOpeningPanes(
-  design: WindowDesign,
-  opts?: ClipOptions
-): string[] {
-  if (design.frame.shape.kind === 'rect') return [];
-  let cut: Set<string>;
-  try {
-    cut = panesCutByShape(design, opts);
-  } catch {
-    return [];
-  }
-  return walkLeaves(design.root)
-    .filter((leaf) => cut.has(leaf.id) && leafOpens(leaf))
-    .map((leaf) => leaf.id);
 }

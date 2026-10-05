@@ -110,6 +110,13 @@ export interface OpeningSpec {
   direction: string | null;
   handleId: Id | null;
   hingesType: string | null;
+  /**
+   * A centre-pivot sash (a round or symmetric pane in a shaped frame): the
+   * axis it turns on. Kept beside `direction`, which stays a value the api
+   * knows, so the price payload does not change. Absent = hinged, which is
+   * what every older document means.
+   */
+  pivot?: 'horizontal' | 'vertical';
 }
 
 /**

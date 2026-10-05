@@ -18,6 +18,8 @@ export * from './door';
 export * from './shape';
 export * from './shape-geometry';
 export * from './shape-payload';
+export * from './shaped-opening';
+export * from './shaped-sash';
 export * from './template';
 export * from './glass';
 export * from './palla';
