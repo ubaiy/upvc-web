@@ -1,4 +1,3 @@
-import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Title } from '@angular/platform-browser';
@@ -29,7 +28,7 @@ describe('AuthLayoutComponent', () => {
   });
 
   it('draws the brand, one h1, the lead and the projected form', () => {
-    expect(el.querySelector('.brand')!.textContent).toContain(PRODUCT_NAME);
+    expect(el.querySelector('.brand')!.textContent).toContain('UPVC');
     expect(el.querySelectorAll('h1').length).toBe(1);
     expect(el.querySelector('h1')!.textContent).toBe('Welcome back');
     expect(el.querySelector('.auth-form p')!.textContent).toBe('Sign in to your workshop.');
@@ -37,7 +36,7 @@ describe('AuthLayoutComponent', () => {
   });
 
   it('sets the browser tab title', () => {
-    expect(TestBed.inject(Title).getTitle()).toBe('Sign in · ' + PRODUCT_NAME);
+    expect(TestBed.inject(Title).getTitle()).toBe('Sign in · UPVC');
   });
 
   it('shows the sample window with its price through the inr pipe', () => {

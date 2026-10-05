@@ -3,10 +3,9 @@
  * sidebar before the company name has loaded, and the pages outside the shell.
  * `src/index.html` cannot import it and repeats it in its <title>, shown
  * until the app starts: change both together.
- * "Framekar" is a working name (T108) and will change: change it here and in
- * the <title> of src/index.html, nowhere else.
+ * Open decision for the owner (design-system.md §1): "UPVC" is a placeholder.
  */
-export const PRODUCT_NAME = 'Framekar';
+export const PRODUCT_NAME = 'UPVC';
 
 /**
  * Browser tab title: "<page> · <owner>". Inside the shell the owner is the

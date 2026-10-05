@@ -1,4 +1,3 @@
-import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
@@ -52,7 +51,7 @@ describe('Password reset pages', () => {
       expect(el.querySelectorAll('.btn-primary').length).toBe(1);
       expect(el.querySelector('.btn-primary')!.textContent!.trim()).toBe('Send reset link');
       expect(el.querySelector('.back a')!.getAttribute('href')).toBe('/auth/login');
-      expect(TestBed.inject(Title).getTitle()).toBe('Forgot password · ' + PRODUCT_NAME);
+      expect(TestBed.inject(Title).getTitle()).toBe('Forgot password · UPVC');
     });
 
     it('sends nothing for an empty or malformed email', () => {
@@ -85,7 +84,7 @@ describe('Password reset pages', () => {
       component.form.setValue({ email: 'owner@example.com' });
       submit();
       expect(el.querySelector('form')).not.toBeNull();
-      expect(el.querySelector('[role="alert"]')!.textContent).toContain('We could not reach ' + PRODUCT_NAME);
+      expect(el.querySelector('[role="alert"]')!.textContent).toContain('We could not reach UPVC');
       expect(el.querySelector('[role="alert"] button')!.textContent).toContain('Try again');
       expect(messages.clear).toHaveBeenCalled();
     });
@@ -105,7 +104,7 @@ describe('Password reset pages', () => {
       expect(el.querySelector('h1')!.textContent).toBe('Set a new password');
       expect(el.textContent).toContain('owner@example.com');
       expect(el.querySelectorAll('.btn-primary').length).toBe(1);
-      expect(TestBed.inject(Title).getTitle()).toBe('Set a new password · ' + PRODUCT_NAME);
+      expect(TestBed.inject(Title).getTitle()).toBe('Set a new password · UPVC');
     });
 
     it('asks for a new link when the address carries no token', () => {

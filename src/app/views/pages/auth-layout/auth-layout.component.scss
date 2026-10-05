@@ -2,7 +2,7 @@
 // and .brand classes themselves come from scss/_design-system.scss.
 :host { display: block; }
 
-.ws-mark { width: 28px; height: 28px; display: block; flex: none; }
+.ws-mark { width: 28px; height: 28px; border-radius: 7px; background: var(--c-accent); color: var(--c-on-accent); display: grid; place-items: center; flex: none; }
 .brand { align-self: flex-start; }
 
 h1 { font-size: var(--fs-32); margin-block: var(--s-10) var(--s-2); }

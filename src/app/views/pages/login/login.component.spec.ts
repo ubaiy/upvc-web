@@ -1,4 +1,3 @@
-import { PRODUCT_NAME } from 'src/app/shared/configs/product';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
@@ -215,7 +214,7 @@ describe('LoginComponent', () => {
     fill('demo@upvc.local', 'Demo-Upvc-2026!');
     submit();
     const alert = el.querySelector('[role="alert"]')!;
-    expect(alert.textContent).toContain('We could not reach ' + PRODUCT_NAME);
+    expect(alert.textContent).toContain('We could not reach UPVC');
 
     auth.login.and.returnValue(of({ success: true } as any));
     (alert.querySelector('button') as HTMLButtonElement).click();
