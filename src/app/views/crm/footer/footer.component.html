@@ -28,17 +28,21 @@
       <tr>
         <td>{{ footer.name }}</td>
         <td>{{ footer.description }}</td>
-        <td><strong>No data to display</strong></td>
-        *
         <td>
           <p-button
             icon="pi pi-pencil"
+            aria-label="Edit"
             [routerLink]="['edit', footer.id]"
             styleClass="p-button-rounded p-button-text"
           ></p-button>
         </td>
       </tr>
-      <tr></tr>
+
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="3">No footers yet</td>
+      </tr>
     </ng-template>
   </p-table>
 </div>

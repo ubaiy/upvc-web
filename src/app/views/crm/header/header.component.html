@@ -35,17 +35,21 @@
       <tr>
         <td>{{ header.name }}</td>
         <td>{{ header.description }}</td>
-        <td><strong>No data to display</strong></td>
-        *
         <td>
           <p-button
             icon="pi pi-pencil"
+            aria-label="Edit"
             [routerLink]="['edit', header.id]"
             styleClass="p-button-rounded p-button-text"
           ></p-button>
         </td>
       </tr>
-      <tr></tr>
+
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="3">No headers yet</td>
+      </tr>
     </ng-template>
   </p-table>
 </div>
