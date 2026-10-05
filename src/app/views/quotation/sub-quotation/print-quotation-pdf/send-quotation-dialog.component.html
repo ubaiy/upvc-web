@@ -70,6 +70,7 @@
           class="btn btn-primary btn-block"
           [disabled]="!!sending"
           [attr.aria-busy]="sending === 'whatsapp'"
+          appWrite="quotations.write"
           (click)="send('whatsapp')"
         >
           <app-icon [name]="sending === 'whatsapp' ? 'loader' : 'send'"></app-icon>Send on WhatsApp
@@ -97,6 +98,7 @@
           class="btn btn-secondary btn-block"
           [disabled]="!!sending"
           [attr.aria-busy]="sending === 'email'"
+          appWrite="quotations.write"
           (click)="send('email')"
         >
           <app-icon [name]="sending === 'email' ? 'loader' : 'mail'"></app-icon>Send by email

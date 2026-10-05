@@ -11,7 +11,7 @@
       class="btn btn-secondary btn-icon btn-lg"
       aria-haspopup="menu"
       aria-label="More actions for this order"
-      *ngIf="!o.cancelled"
+      *ngIf="!o.cancelled && hasMenu(o)"
       [disabled]="!!busy"
       (click)="openMenu($event)"
     >
@@ -23,6 +23,7 @@
       class="btn btn-primary btn-lg next"
       *ngIf="o.nextStage as next"
       [disabled]="!!busy"
+      appWrite="production.write"
       (click)="advance()"
     >
       {{ isBusy('stage') ? 'Saving…' : next.action }}<app-icon name="arrow-right" [mirror]="true"></app-icon>
@@ -71,8 +72,8 @@
       <h2 id="progress-title">Progress</h2>
       <form class="promised" (ngSubmit)="savePromised()">
         <label class="label" for="promised-date">Promised date</label>
-        <app-date-field inputId="promised-date" name="promised" [min]="o.orderDate" [(ngModel)]="promised" [disabled]="o.cancelled || !!busy"></app-date-field>
-        <button type="submit" class="btn btn-secondary" *ngIf="promisedChanged" [disabled]="!!busy">
+        <app-date-field inputId="promised-date" name="promised" [min]="o.orderDate" [(ngModel)]="promised" [disabled]="o.cancelled || !!busy || !canEdit"></app-date-field>
+        <button type="submit" class="btn btn-secondary" *ngIf="promisedChanged" [disabled]="!!busy" appWrite="orders.write">
           {{ isBusy('promised') ? 'Saving…' : 'Save date' }}
         </button>
       </form>
@@ -152,19 +153,19 @@
         <form class="card-pad form-grid" (ngSubmit)="saveTransport()">
           <div class="field">
             <label class="label" for="vehicle">Vehicle number</label>
-            <input id="vehicle" name="vehicle" class="input" type="text" maxlength="40" autocomplete="off" [(ngModel)]="vehicle" [disabled]="o.cancelled || !!busy" />
+            <input id="vehicle" name="vehicle" class="input" type="text" maxlength="40" autocomplete="off" [(ngModel)]="vehicle" [disabled]="o.cancelled || !!busy || !canEdit" />
           </div>
           <div class="field">
             <label class="label" for="transporter">Transporter</label>
-            <input id="transporter" name="transporter" class="input" type="text" maxlength="100" autocomplete="off" [(ngModel)]="transporter" [disabled]="o.cancelled || !!busy" />
+            <input id="transporter" name="transporter" class="input" type="text" maxlength="100" autocomplete="off" [(ngModel)]="transporter" [disabled]="o.cancelled || !!busy || !canEdit" />
           </div>
           <div class="field span-2">
             <label class="label" for="order-notes">Note for delivery</label>
-            <textarea id="order-notes" name="notes" class="input notes" rows="2" maxlength="2000" [(ngModel)]="notes" [disabled]="o.cancelled || !!busy"></textarea>
+            <textarea id="order-notes" name="notes" class="input notes" rows="2" maxlength="2000" [(ngModel)]="notes" [disabled]="o.cancelled || !!busy || !canEdit"></textarea>
             <span class="hint">Printed on the customer's challan. Leave the vehicle blank to write it by hand.</span>
           </div>
           <div class="span-2" *ngIf="transportChanged">
-            <button type="submit" class="btn btn-secondary" [disabled]="!!busy">
+            <button type="submit" class="btn btn-secondary" [disabled]="!!busy" appWrite="orders.write">
               {{ isBusy('transport') ? 'Saving…' : 'Save delivery details' }}
             </button>
           </div>
@@ -186,10 +187,10 @@
             maxlength="2000"
             placeholder="Anything the workshop should know about this job"
             [(ngModel)]="workshopNote"
-            [disabled]="o.cancelled || !!busy"
+            [disabled]="o.cancelled || !!busy || !canEdit"
           ></textarea>
           <div *ngIf="workshopNoteChanged">
-            <button type="submit" class="btn btn-secondary" [disabled]="!!busy">
+            <button type="submit" class="btn btn-secondary" [disabled]="!!busy" appWrite="orders.write">
               {{ isBusy('workshop') ? 'Saving…' : 'Save note' }}
             </button>
           </div>
@@ -342,6 +343,7 @@
   text="Closing ends the job. The amount stays under Outstanding until it is paid; it is not written off."
   confirmLabel="Close order"
   keepLabel="Keep it open"
+  ability="production.write"
   (confirmed)="confirmClose()"
   (closed)="closing = false"
 >
@@ -363,6 +365,7 @@
   confirmLabel="Cancel order"
   keepLabel="Keep the order"
   [required]="true"
+  ability="orders.write"
   [busy]="dialog.busy"
   [error]="dialog.error"
   (confirmed)="cancel($event)"

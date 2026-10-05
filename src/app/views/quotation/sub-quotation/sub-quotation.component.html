@@ -506,6 +506,7 @@
 <!-- A bill is a tax invoice with a number that is never reused: one small confirm (T84). -->
 <app-confirm-dialog
   *ngIf="billAsking && view as q"
+  ability="bills.write"
   [title]="'Create the bill for ' + q.number + '?'"
   [text]="'This issues ' + billKind + ' with the next bill number. A bill cannot be deleted afterwards, only cancelled.'"
   confirmLabel="Create bill"

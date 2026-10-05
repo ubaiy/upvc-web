@@ -156,6 +156,7 @@
 <!-- The company state decides CGST and SGST or IGST on every bill: it is changed only on a yes (T84, M7). -->
 <app-confirm-dialog
   *ngIf="stateQuestion as q"
+  ability="settings.write"
   [title]="'Change the company state to ' + q.to + '?'"
   [text]="q.message"
   [confirmLabel]="'Change the state to ' + q.to"

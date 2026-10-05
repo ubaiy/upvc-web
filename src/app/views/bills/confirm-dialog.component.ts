@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { AfterViewInit, Component, ElementRef, EventEmitter, HostListener, Input, Output, ViewChild } from '@angular/core';
 
+import { WriteDirective } from '../../shared/access/write.directive';
 import { keepFocusInside } from '../payments/shared/focus-trap';
 
 /**
@@ -18,7 +19,7 @@ import { keepFocusInside } from '../payments/shared/focus-trap';
 @Component({
   selector: 'app-confirm-dialog',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, WriteDirective],
   template: `
     <div class="backdrop" (click)="close()"></div>
     <div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-text">
@@ -37,6 +38,7 @@ import { keepFocusInside } from '../payments/shared/focus-trap';
           class="btn btn-lg"
           [ngClass]="danger ? 'btn-danger' : 'btn-primary'"
           [disabled]="busy"
+          [appWrite]="ability"
           (click)="confirm()"
         >
           {{ busy ? 'Working…' : confirmLabel }}
@@ -57,6 +59,8 @@ import { keepFocusInside } from '../payments/shared/focus-trap';
   ],
 })
 export class ConfirmDialogComponent implements AfterViewInit {
+  /** What the confirmed action needs ("orders.write"): off in a read-only account, like the button that opened the dialog. */
+  @Input() ability: string | null = null;
   @Input() title = '';
   @Input() text = '';
   @Input() confirmLabel = 'Yes';

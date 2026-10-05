@@ -43,6 +43,6 @@
 
   <ng-template pTemplate="footer">
     <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
-    <p-button label="Duplicate" [loading]="saving" (onClick)="submit()"></p-button>
+    <p-button label="Duplicate" [loading]="saving" appWrite="quotations.write" (onClick)="submit()"></p-button>
   </ng-template>
 </p-dialog>

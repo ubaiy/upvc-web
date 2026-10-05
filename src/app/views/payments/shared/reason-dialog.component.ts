@@ -38,7 +38,7 @@ import { keepFocusInside } from './focus-trap';
       </div>
       <div class="dialog-foot">
         <button type="button" class="btn btn-secondary btn-lg" [disabled]="busy" (click)="close()">{{ keepLabel }}</button>
-        <button type="submit" class="btn btn-danger btn-lg" [disabled]="busy">
+        <button type="submit" class="btn btn-danger btn-lg" [disabled]="busy" [appWrite]="ability">
           {{ busy ? 'Working…' : confirmLabel }}
         </button>
       </div>
@@ -58,6 +58,8 @@ import { keepFocusInside } from './focus-trap';
   ],
 })
 export class ReasonDialogComponent implements AfterViewInit {
+  /** What the confirmed action needs ("orders.write"): off in a read-only account, like the button that opened the dialog. */
+  @Input() ability: string | null = null;
   @Input() title = '';
   @Input() text = '';
   @Input() label = 'Reason';

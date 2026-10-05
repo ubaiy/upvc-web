@@ -197,7 +197,7 @@
   <ng-template pTemplate="footer">
     <div class="dialog-foot">
       <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="close()">Cancel</button>
-      <button type="submit" form="invite-form" class="btn btn-primary" [disabled]="busy">{{ busy ? 'Inviting…' : 'Invite and get the link' }}</button>
+      <button type="submit" form="invite-form" class="btn btn-primary" [disabled]="busy" appWrite="team.manage">{{ busy ? 'Inviting…' : 'Invite and get the link' }}</button>
     </div>
   </ng-template>
 </p-dialog>
@@ -227,7 +227,7 @@
   <ng-template pTemplate="footer">
     <div class="dialog-foot">
       <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="close()">Cancel</button>
-      <button type="button" class="btn btn-primary save-role" [disabled]="busy" (click)="saveRole()">{{ busy ? 'Saving…' : 'Save role' }}</button>
+      <button type="button" class="btn btn-primary save-role" [disabled]="busy" appWrite="team.manage" (click)="saveRole()">{{ busy ? 'Saving…' : 'Save role' }}</button>
     </div>
   </ng-template>
 </p-dialog>
@@ -248,7 +248,7 @@
   <ng-template pTemplate="footer">
     <div class="dialog-foot">
       <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="close()">Cancel</button>
-      <button type="button" class="btn confirm-action" [class.btn-danger]="action === 'remove'" [class.btn-primary]="action !== 'remove'" [disabled]="busy" (click)="confirm()">
+      <button type="button" class="btn confirm-action" [class.btn-danger]="action === 'remove'" [class.btn-primary]="action !== 'remove'" [disabled]="busy" appWrite="team.manage" (click)="confirm()">
         {{ busy ? 'Working…' : confirmButton }}
       </button>
     </div>

@@ -51,11 +51,11 @@
 
     <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
 
-    <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true">Submit</button>
+    <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true" appWrite="quotations.write">Submit</button>
   </form>
 
   <ng-template pTemplate="footer">
     <p-button label="Cancel" [outlined]="true" [disabled]="copying" (onClick)="close()"></p-button>
-    <p-button label="Duplicate quotation" [loading]="copying" (onClick)="submit()"></p-button>
+    <p-button label="Duplicate quotation" [loading]="copying" appWrite="quotations.write" (onClick)="submit()"></p-button>
   </ng-template>
 </p-dialog>

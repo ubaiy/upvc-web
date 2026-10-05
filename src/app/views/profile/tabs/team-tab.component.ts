@@ -1,3 +1,4 @@
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -25,7 +26,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 @Component({
   selector: 'app-settings-team',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, DialogModule, SharedModule, SharedComponentsModule],
+  imports: [WriteDirective, CommonModule, FormsModule, RouterModule, DialogModule, SharedModule, SharedComponentsModule],
   templateUrl: './team-tab.component.html',
   styleUrls: ['../settings-tab.scss', './team-tab.component.scss'],
 })

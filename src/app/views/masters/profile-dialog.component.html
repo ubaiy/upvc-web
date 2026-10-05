@@ -127,6 +127,6 @@
 
   <ng-template pTemplate="footer">
     <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
-    <button pButton type="submit" form="profile-form" [label]="profile ? 'Save profile' : 'Add profile'" [loading]="saving"></button>
+    <button pButton type="submit" form="profile-form" appWrite="catalogue.write" [label]="profile ? 'Save profile' : 'Add profile'" [loading]="saving"></button>
   </ng-template>
 </p-dialog>

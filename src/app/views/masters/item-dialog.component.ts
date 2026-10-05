@@ -1,3 +1,4 @@
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -17,7 +18,7 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
 @Component({
   selector: 'app-item-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, SharedComponentsModule],
+  imports: [WriteDirective, CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, SharedComponentsModule],
   template: `
     <p-dialog
       [header]="title"
@@ -103,7 +104,7 @@ const MONEY = /^\d+(\.\d{1,2})?$/;
       </form>
       <ng-template pTemplate="footer">
         <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
-        <button pButton type="submit" form="item-form" [label]="item ? 'Save' : title" [loading]="saving"></button>
+        <button pButton type="submit" form="item-form" appWrite="catalogue.write" [label]="item ? 'Save' : title" [loading]="saving"></button>
       </ng-template>
     </p-dialog>
   `,

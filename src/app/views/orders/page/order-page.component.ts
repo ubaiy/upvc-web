@@ -4,6 +4,7 @@ import { MenuItem } from 'primeng/api';
 import { Menu } from 'primeng/menu';
 import { Subscription } from 'rxjs';
 
+import { AccessService } from '../../../shared/access/access.service';
 import { Crumb } from '../../../shared/components/page-header/page-header.component';
 import { ToastService } from '../../../shared/services/toast.service';
 import { UndoService } from '../../../shared/services/undo.service';
@@ -71,7 +72,8 @@ export class OrderPageComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private service: OrdersService,
     private toast: ToastService,
-    private undo: UndoService
+    private undo: UndoService,
+    private access: AccessService
   ) {}
 
   ngOnInit(): void {
@@ -98,6 +100,20 @@ export class OrderPageComponent implements OnInit, OnDestroy {
   /** "Al-Rashid Villa Windows · Ahmed Al-Rashid" */
   get subtitle(): string {
     return [this.order?.quotationName, this.order?.customerName].filter(Boolean).join(' · ');
+  }
+
+  /**
+   * May this user change the order (date, delivery details, notes) now? Not a role without
+   * `orders.write` (workshop, accounts) and not in a read-only account: the fields are then
+   * off, so nothing can be typed that could not be saved.
+   */
+  get canEdit(): boolean {
+    return this.access.canWrite('orders.write');
+  }
+
+  /** "More" has something in it: moving a stage back needs `production.write`, cancelling `orders.write`. */
+  hasMenu(order: OrderPage): boolean {
+    return (this.access.can('production.write') && earlierStages(order).length > 0) || (this.access.can('orders.write') && order.stage !== 'closed');
   }
 
   get promisedChanged(): boolean {
@@ -211,7 +227,7 @@ export class OrderPageComponent implements OnInit, OnDestroy {
       }
       items.push({ label: 'Cancel order', styleClass: 'danger', command: () => (this.cancelling = { busy: false, error: '' }) });
     }
-    this.menuItems = items;
+    this.menuItems = this.access.menu(items, (item) => (item.label === 'Cancel order' ? 'orders.write' : 'production.write'));
     this.moreMenu?.toggle(event);
   }
 
@@ -361,7 +377,7 @@ export class OrderPageComponent implements OnInit, OnDestroy {
 
   private save(what: string, changes: OrderUpdate, done: string): void {
     const order = this.order;
-    if (!order || this.busy) {
+    if (!order || this.busy || !this.canEdit) {
       return;
     }
     const shown = this.start(what);

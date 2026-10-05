@@ -115,7 +115,7 @@
 
   <div class="dialog-foot">
     <button type="button" class="btn btn-secondary btn-lg" [disabled]="saving" (click)="close()">Cancel</button>
-    <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving">
+    <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving" appWrite="payments.write">
       {{ saving ? 'Saving…' : isRefund ? 'Save refund' : 'Save payment' }}
     </button>
   </div>

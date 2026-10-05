@@ -82,7 +82,7 @@
 
       <div class="actions">
         <a class="btn btn-secondary btn-lg" [routerLink]="['/quotation/detail', q.id]">Back to the quotation</a>
-        <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving">
+        <button type="submit" class="btn btn-primary btn-lg" [disabled]="saving" appWrite="orders.write">
           {{ saving ? 'Creating…' : 'Create order' }}
         </button>
       </div>

@@ -347,6 +347,7 @@
 <!-- A new revision replaces the one the workshop may be cutting from: one small confirm (T84, m21). -->
 <app-confirm-dialog
   *ngIf="refreshAsking && job as j"
+  ability="production.write"
   [title]="'Make revision ' + (j.latest_revision + 1) + ' of ' + j.quotation.number + '?'"
   [text]="
     'The documents are worked out again from the quotation as it is now. Revision ' +

@@ -145,6 +145,6 @@
 
   <ng-template pTemplate="footer">
     <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
-    <p-button label="Save" [loading]="saving" [disabled]="loading" (onClick)="submit()"></p-button>
+    <p-button label="Save" [loading]="saving" [disabled]="loading" appWrite="quotations.write" (onClick)="submit()"></p-button>
   </ng-template>
 </p-dialog>

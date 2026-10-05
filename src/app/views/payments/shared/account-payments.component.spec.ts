@@ -6,6 +6,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { MenuModule } from 'primeng/menu';
 import { Subject, of, throwError } from 'rxjs';
 
+import { ACCESS_PARTS } from '../../../shared/access/write.directive';
 import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
 import { ToastService } from '../../../shared/services/toast.service';
 import { Result } from '../api-result';
@@ -75,7 +76,7 @@ describe('AccountPaymentsComponent (payments of a job)', () => {
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError', 'showInfo']);
     TestBed.configureTestingModule({
       declarations: [HostComponent, AccountPaymentsComponent, RecordPaymentComponent, ReasonDialogComponent, DocumentPreviewComponent],
-      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule],
+      imports: [...ACCESS_PARTS, RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule],
       providers: [
         { provide: PaymentsService, useValue: service },
         { provide: ToastService, useValue: toast },

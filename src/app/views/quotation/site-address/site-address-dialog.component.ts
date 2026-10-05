@@ -1,3 +1,4 @@
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output, ViewChild } from '@angular/core';
 import { ButtonModule } from 'primeng/button';
@@ -21,7 +22,7 @@ import { SiteAddressComponent } from './site-address.component';
 @Component({
   selector: 'app-site-address-dialog',
   standalone: true,
-  imports: [CommonModule, DialogModule, ButtonModule, SharedComponentsModule, SiteAddressComponent],
+  imports: [WriteDirective, CommonModule, DialogModule, ButtonModule, SharedComponentsModule, SiteAddressComponent],
   template: `
     <p-dialog
       closeAriaLabel="Close"
@@ -41,11 +42,11 @@ import { SiteAddressComponent } from './site-address.component';
         <app-site-address [customerId]="customerId" [selectedId]="addressId" [collapsed]="false"></app-site-address>
         <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
         <!-- Lets Enter submit the form; the visible buttons are in the dialog footer. -->
-        <button type="submit" hidden></button>
+        <button type="submit" hidden appWrite="quotations.write"></button>
       </form>
       <ng-template pTemplate="footer">
         <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
-        <p-button label="Use this address" [loading]="saving" (onClick)="submit()"></p-button>
+        <p-button label="Use this address" [loading]="saving" appWrite="quotations.write" (onClick)="submit()"></p-button>
       </ng-template>
     </p-dialog>
   `,

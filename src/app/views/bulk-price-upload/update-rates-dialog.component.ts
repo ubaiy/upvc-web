@@ -1,3 +1,4 @@
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -48,7 +49,7 @@ const FACTOR = [
 @Component({
   selector: 'app-update-rates-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, SharedComponentsModule],
+  imports: [WriteDirective, CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, SharedComponentsModule],
   templateUrl: './update-rates-dialog.component.html',
   styleUrls: ['./update-rates-dialog.component.scss'],
 })

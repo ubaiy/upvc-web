@@ -191,6 +191,7 @@
 
 <app-confirm-dialog
   *ngIf="closing as o"
+  ability="production.write"
   [title]="'Close ' + o.number + ' with ' + (o.balance | inr) + ' still to pay?'"
   text="Closing ends the job. The amount stays under Outstanding until it is paid; it is not written off."
   confirmLabel="Close order"

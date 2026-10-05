@@ -112,6 +112,7 @@
 <!-- The same words as every other delete in the app: "Keep it" and "Delete …". -->
 <app-confirm-dialog
   *ngIf="removing as row"
+  ability="catalogue.write"
   [title]="'Delete &quot;' + row.name + '&quot;?'"
   text="Quotations already made keep their terms. New quotations can no longer use this one."
   confirmLabel="Delete payment term"

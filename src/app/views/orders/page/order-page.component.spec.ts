@@ -7,6 +7,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { MenuModule } from 'primeng/menu';
 import { BehaviorSubject, Subject, of, throwError } from 'rxjs';
 
+import { ACCESS_PARTS } from '../../../shared/access/write.directive';
 import { SharedComponentsModule } from '../../../shared/components/shared-components.module';
 import { ToastService } from '../../../shared/services/toast.service';
 import { ConfirmDialogComponent } from '../../bills/confirm-dialog.component';
@@ -78,7 +79,7 @@ describe('OrderPageComponent', () => {
     undo = jasmine.createSpyObj('UndoService', ['offer']);
     TestBed.configureTestingModule({
       declarations: [OrderPageComponent, PaymentsStubComponent, ReasonDialogComponent, DocumentPreviewComponent],
-      imports: [RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule, ConfirmDialogComponent],
+      imports: [...ACCESS_PARTS, RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule, ConfirmDialogComponent],
       providers: [
         { provide: OrdersService, useValue: service },
         { provide: ToastService, useValue: toast },

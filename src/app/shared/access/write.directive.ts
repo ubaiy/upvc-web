@@ -26,7 +26,8 @@ import { AccessService } from './access.service';
  *
  *   <button appWrite="quotations.write" (click)="openNew()">New quotation</button>
  *
- * - the role has no such ability: the element is not shown, so nobody presses into a 403;
+ * - the role has no such ability: the element is not shown and takes no press (Enter in a
+ *   form presses its submit button even when hidden), so nobody ends in a 403;
  * - the account is read-only (locked or suspended): it stays in place but is off, says
  *   why in one line (the same line everywhere) and a press does nothing but say it again.
  *   The line across the top of the app leads to the Plan page.
@@ -48,11 +49,15 @@ export class WriteDirective implements OnInit, OnChanges, OnDestroy {
   constructor(private el: ElementRef<HTMLElement>, private renderer: Renderer2, private access: AccessService, private injector: Injector) {
     // In the capture phase, so it runs before the screen's own (click) and before routerLink.
     const onClick = (event: Event) => {
-      if (!this.gate.locked) {
+      if (!this.gate.locked && !this.gate.hidden) {
         return;
       }
       event.preventDefault();
       event.stopImmediatePropagation();
+      if (this.gate.hidden) {
+        // Not shown, so not pressed by hand: Enter in a form presses its submit button even when it is hidden.
+        return;
+      }
       // Asked for only now: a screen with a write button needs no message service until one is refused.
       this.injector.get(ToastService).showError(this.gate.reason);
     };

@@ -251,6 +251,7 @@
 
 <app-reason-dialog
   *ngIf="cancelling as entry"
+  ability="payments.write"
   [title]="'Cancel ' + entry.payment.number + '?'"
   [text]="
     'The entry for ' +

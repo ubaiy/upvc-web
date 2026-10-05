@@ -1,3 +1,4 @@
+import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -27,7 +28,7 @@ const SIZE = /^\d+(\.\d{1,4})?$/;
 @Component({
   selector: 'app-profile-dialog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, SharedComponentsModule],
+  imports: [WriteDirective, CommonModule, ReactiveFormsModule, DialogModule, ButtonModule, SharedComponentsModule],
   templateUrl: './profile-dialog.component.html',
 })
 export class ProfileDialogComponent implements OnChanges {
