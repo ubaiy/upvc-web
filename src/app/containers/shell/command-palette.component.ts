@@ -18,15 +18,18 @@ import { IconName } from '../../shared/components/icon/icon-paths';
 import { API_END_POINT } from '../../shared/configs/api.config';
 import { quiet } from '../../shared/interceptors/request-options';
 import { ApiHttpService } from '../../shared/services/api-http.service';
+import { toBillRows } from '../../views/bills/bills.adapter';
+import { toOrders } from '../../views/orders/orders.adapter';
+import { toPaymentList } from '../../views/payments/payments.adapter';
 import { QuotationListService } from '../../views/quotation/quotation-list.service';
 import { NAV_ITEMS } from './nav';
 
-type Section = 'Pages' | 'Customers' | 'Quotations';
+type Section = 'Pages' | 'Customers' | 'Quotations' | 'Orders' | 'Bills' | 'Receipts';
 
 export interface Destination {
   section: Section;
   label: string;
-  /** Beside the label: the menu a page belongs to, a customer's phone, a quotation's customer. */
+  /** Beside the label: the menu a page belongs to, a customer's phone, the customer of a quotation, order, bill or receipt. */
   detail?: string;
   icon: IconName;
   link: string;
@@ -50,9 +53,11 @@ const wordsOf = (value: string): string[] => value.toLowerCase().split(/\s+/).fi
 
 /**
  * Search behind the sidebar search box and Ctrl K. It finds the pages of the
- * app at once, and, from the second letter, customers by name or phone and
- * quotations by number, name or customer (the list endpoints; nothing is
- * worked out here). Type to narrow, arrow keys to move, Enter to open.
+ * app at once, and, from the second letter, customers by name or phone,
+ * quotations by number, name or customer, and orders, bills and receipts by
+ * number or customer (the list endpoints; nothing is worked out here). The
+ * customer, order, bill and receipt lists are read once while it is open.
+ * Type to narrow, arrow keys to move, Enter to open.
  */
 @Component({
   selector: 'app-command-palette',
@@ -65,12 +70,12 @@ const wordsOf = (value: string): string[] => value.toLowerCase().split(/\s+/).fi
           #input
           type="text"
           role="combobox"
-          aria-label="Search pages, customers and quotations"
+          aria-label="Search pages, customers, quotations, orders, bills and receipts"
           aria-controls="palette-list"
           aria-expanded="true"
           [attr.aria-activedescendant]="results.length ? 'palette-option-' + index : null"
           autocomplete="off"
-          placeholder="Search pages, customers, quotations"
+          placeholder="Search pages, customers, quotations, orders, bills"
           [value]="query"
           (input)="search(input.value)"
           (keydown)="onKey($event)"
@@ -98,9 +103,9 @@ const wordsOf = (value: string): string[] => value.toLowerCase().split(/\s+/).fi
             <span class="faint small detail" *ngIf="d.detail">{{ d.detail }}</span>
           </button>
         </ng-container>
-        <p class="none muted small" role="status" *ngIf="state === 'searching'">Looking for customers and quotations…</p>
+        <p class="none muted small" role="status" *ngIf="state === 'searching'">Looking for customers, quotations, orders, bills and receipts…</p>
         <p class="none muted small" role="status" *ngIf="state === 'failed'">
-          Customers and quotations could not be searched. Check the connection and type again.
+          Customers, quotations, orders, bills and receipts could not be searched. Check the connection and type again.
         </p>
         <p class="none muted small" role="status" *ngIf="state === 'idle' && !results.length">
           Nothing matches "{{ query }}".
@@ -133,14 +138,14 @@ export class CommandPaletteComponent implements AfterViewInit, OnDestroy {
   query = '';
   index = 0;
   results: Destination[] = PAGES;
-  /** The customer and quotation search: nothing asked, asked, or it could not be asked. */
+  /** The search of the records: nothing asked, asked, or it could not be asked. */
   state: 'idle' | 'searching' | 'failed' = 'idle';
 
   private pages: Destination[] = PAGES;
   private readonly term$ = new Subject<string>();
   private readonly sub: Subscription;
-  /** The customer list, read once while the palette is open. */
-  private customers$: Observable<any[]> | null = null;
+  /** The customer, order, bill and payment lists, each read once while the palette is open. */
+  private lists: Record<string, Observable<any> | null> = {};
 
   constructor(
     private router: Router,
@@ -153,11 +158,14 @@ export class CommandPaletteComponent implements AfterViewInit, OnDestroy {
         debounceTime(250),
         switchMap((term) =>
           forkJoin({
-            customers: this.customers(),
+            customers: this.list(API_END_POINT.customer.list),
+            orders: this.list('order/list?stage=all'),
+            bills: this.list(API_END_POINT.bills.list + '?status=all'),
+            payments: this.list('payment/list'),
             quotations: this.quotations.page({ status: 'all', search: term, page: 1, perPage: MOST }),
           }).pipe(
-            map(({ customers, quotations }) => [
-              ...matchCustomers(customers, term),
+            map(({ customers, orders, bills, payments, quotations }) => [
+              ...matchCustomers(Array.isArray(customers) ? customers : [], term),
               ...quotations.rows.slice(0, MOST).map(
                 (row): Destination => ({
                   section: 'Quotations',
@@ -167,9 +175,12 @@ export class CommandPaletteComponent implements AfterViewInit, OnDestroy {
                   link: `/quotation/detail/${row.id}`,
                 })
               ),
+              ...matchOrders(orders, term),
+              ...matchBills(bills, term),
+              ...matchReceipts(payments, term),
             ]),
             catchError(() => {
-              this.customers$ = null;
+              this.lists = {};
               return of(null);
             })
           )
@@ -241,18 +252,25 @@ export class CommandPaletteComponent implements AfterViewInit, OnDestroy {
     setTimeout(() => document.getElementById('palette-option-' + this.index)?.scrollIntoView?.({ block: 'nearest' }));
   }
 
-  private customers(): Observable<any[]> {
-    this.customers$ ??= this.api.get(API_END_POINT.customer.list, quiet()).pipe(
+  /** The data of one list endpoint, as the api gave it. */
+  private list(path: string): Observable<any> {
+    this.lists[path] ??= this.api.get(path, quiet()).pipe(
       map((res: any) => {
-        if (!res?.success || !Array.isArray(res.data)) {
-          throw new Error(res?.message || 'The customers could not be loaded.');
+        if (!res?.success || res.data === null || res.data === undefined) {
+          throw new Error(res?.message || 'The list could not be loaded.');
         }
-        return res.data as any[];
+        return res.data;
       }),
       shareReplay(1)
     );
-    return this.customers$;
+    return this.lists[path]!;
   }
+}
+
+/** True when every word typed is in one of the texts (a number, a name). */
+function hasEveryWord(term: string, texts: string[]): boolean {
+  const text = texts.join(' ').toLowerCase();
+  return wordsOf(term).every((word) => text.includes(word));
 }
 
 /** Customers whose name or phone has every word typed; a name that starts with the text comes first. */
@@ -277,5 +295,47 @@ export function matchCustomers(customers: any[], term: string): Destination[] {
       detail: String(customer.phone ?? ''),
       icon: 'users' as IconName,
       link: `/customers/edit/${customer.id}`,
+    }));
+}
+
+/** Orders whose number, quotation or customer has every word typed (`order/list`). */
+export function matchOrders(raw: any, term: string): Destination[] {
+  return toOrders(raw)
+    .filter((order) => hasEveryWord(term, [order.number, order.quotationNumber, order.quotationName, order.customerName]))
+    .slice(0, MOST)
+    .map((order) => ({
+      section: 'Orders' as Section,
+      label: order.quotationName ? `${order.number} · ${order.quotationName}` : order.number,
+      detail: order.customerName,
+      icon: 'layers' as IconName,
+      link: `/orders/${order.id}`,
+    }));
+}
+
+/** Bills whose number, quotation or customer has every word typed (`bill/list`). It opens the bill's payments. */
+export function matchBills(raw: any, term: string): Destination[] {
+  return toBillRows(Array.isArray(raw) ? raw : [])
+    .filter((bill) => hasEveryWord(term, [bill.number, bill.quotationNumber, bill.quotation, bill.customer]))
+    .slice(0, MOST)
+    .map((bill) => ({
+      section: 'Bills' as Section,
+      label: bill.cancelled ? `${bill.number} · cancelled` : bill.number,
+      detail: bill.customer,
+      icon: 'receipt' as IconName,
+      link: `/payments/bill/${bill.id}`,
+    }));
+}
+
+/** Receipts and refunds whose number or customer has every word typed (`payment/list`). It opens the order or bill it was paid against. */
+export function matchReceipts(raw: any, term: string): Destination[] {
+  return toPaymentList(raw)
+    .payments.filter((payment) => hasEveryWord(term, [payment.number, payment.customerName]))
+    .slice(0, MOST)
+    .map((payment) => ({
+      section: 'Receipts' as Section,
+      label: [payment.number, payment.orderNumber || payment.billNumber].filter(Boolean).join(' · ') + (payment.cancelled ? ' · cancelled' : ''),
+      detail: payment.customerName,
+      icon: 'rupee' as IconName,
+      link: payment.orderId ? `/orders/${payment.orderId}` : payment.billId ? `/payments/bill/${payment.billId}` : '/payments',
     }));
 }
