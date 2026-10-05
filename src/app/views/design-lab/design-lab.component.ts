@@ -74,6 +74,8 @@ export class DesignLabComponent implements OnInit, OnDestroy {
   view3dNote = '';
   /** Throwaway corner demo of the prototype (roadmap P0, item 5). */
   corner3d = false;
+  /** Result of "Measure": frames per second while the window turns once (for the phone test of the log). */
+  measure3d = '';
   private view3d: ComponentRef<Design3dComponent> | null = null;
 
   readonly groups = PRESET_GROUPS;
@@ -162,7 +164,20 @@ export class DesignLabComponent implements OnInit, OnDestroy {
     this.view3d?.setInput('cornerDemo', on);
   }
 
+  /** Turn the window once and say how fast it drew: the figure the go / no-go needs from a real phone. */
+  async measure3dTurn(): Promise<void> {
+    const view = this.view3d?.instance;
+    if (!view) return;
+    this.measure3d = 'measuring…';
+    const r = await view.benchmark(180);
+    this.measure3d = r
+      ? `${r.fps.toFixed(0)} frames a second (mean ${r.meanFrameMs.toFixed(1)} ms, worst ${r.worstFrameMs.toFixed(0)} ms)`
+      : '';
+    this.cdr.markForCheck();
+  }
+
   private close3d(): void {
+    this.measure3d = '';
     this.view3d?.destroy();
     this.view3d = null;
     this.show3d = false;

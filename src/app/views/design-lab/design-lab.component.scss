@@ -357,3 +357,21 @@
   font-size: 13px;
   color: #52606d;
 }
+
+.lab-3d-measure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 6px;
+  font-size: 13px;
+  color: #374151;
+
+  button {
+    min-height: 30px;
+    padding: 2px 12px;
+    border: 1px solid #b9c0c8;
+    border-radius: 4px;
+    background: #ffffff;
+    color: #1f2933;
+  }
+}
