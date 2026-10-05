@@ -83,7 +83,7 @@
         </thead>
         <tbody>
           <tr *ngFor="let user of team.users" [attr.data-user]="user.id">
-            <td class="title" data-label="Name">
+            <td class="title">
               {{ fullName(user) }} <span class="muted" *ngIf="user.is_you">(you)</span>
               <div class="muted small">{{ user.email }}</div>
             </td>

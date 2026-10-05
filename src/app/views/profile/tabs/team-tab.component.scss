@@ -14,13 +14,8 @@
 .roles { margin: 0; }
 .dialog-foot { display: flex; justify-content: flex-end; gap: var(--s-2); }
 
-// Phone: one person is a block, not a row of five columns.
+// Phone: the design system turns each person into a block (labels from data-label); only the buttons need help.
 @media (max-width: 640px) {
-  .table thead { display: none; }
-  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
-  .table tr { padding: var(--s-3) var(--s-4); border-block-end: 1px solid var(--c-border); }
-  .table td { padding: 2px 0; border: 0; text-align: start; }
-  .table td[data-label]:not(.title)::before { content: attr(data-label) ': '; color: var(--c-text-3); }
   .person-actions { justify-content: flex-start; flex-wrap: wrap; padding-block-start: var(--s-2); }
   .table td.title { min-width: 0; }
   .link-row { flex-wrap: wrap; }
