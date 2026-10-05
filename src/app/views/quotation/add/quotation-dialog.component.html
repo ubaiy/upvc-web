@@ -117,6 +117,12 @@
       </button>
     </ng-container>
 
+    <!-- Where the windows go. Its state decides the tax split; a saved address is used unless another is typed (T90). -->
+    <app-site-address
+      *ngIf="!editing && (mode === 'new' || selectedCustomerId)"
+      [customerId]="mode === 'existing' ? selectedCustomerId : null"
+    ></app-site-address>
+
     <div class="field">
       <label class="label" for="nq-name">Quotation name</label>
       <input

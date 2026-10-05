@@ -1,0 +1,27 @@
+// Layout only; colours, sizes and radii come from the tokens.
+:host { display: block; }
+
+.site { display: flex; flex-direction: column; gap: var(--s-2); }
+.site-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); min-height: var(--h-control-sm); }
+.site-toggle { color: var(--c-accent-text); margin-inline-end: calc(var(--s-3) * -1); }
+.site-now { margin: 0; }
+.site-sk { width: 70%; }
+
+.site-list { display: flex; flex-direction: column; gap: var(--s-2); }
+.site-option {
+  display: flex; align-items: center; gap: var(--s-3);
+  min-height: 44px; padding: var(--s-2) var(--s-3); margin: 0;
+  border: 1px solid var(--c-border-strong); border-radius: var(--r-sm);
+  background: var(--c-surface); cursor: pointer;
+}
+.site-option:hover { background: var(--c-surface-2); }
+.site-option.is-on { border-color: var(--c-accent); background: var(--c-accent-soft); }
+.site-option:focus-within { box-shadow: var(--focus-ring); }
+.site-option input { flex: none; width: 18px; height: 18px; margin: 0; accent-color: var(--c-accent); }
+.site-lines, .site-place { display: block; }
+
+.site-new { margin-block-start: var(--s-2); }
+// In a narrow dialog the two columns have no room.
+@media (max-width: 640px) {
+  .site-new { grid-template-columns: minmax(0, 1fr); }
+}

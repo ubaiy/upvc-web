@@ -1,0 +1,78 @@
+<div class="site" [attr.aria-busy]="state === 'loading'">
+  <div class="site-head">
+    <span class="label" [id]="uid + '-label'">Site address</span>
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm site-toggle"
+      data-site="toggle"
+      *ngIf="collapsed && state === 'ready' && !open"
+      [attr.aria-describedby]="uid + '-now'"
+      (click)="open = true"
+    >
+      {{ options.length ? 'Change' : 'Add site address' }}
+    </button>
+  </div>
+
+  <span class="skeleton site-sk" *ngIf="state === 'loading'" aria-label="Loading addresses"></span>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load this customer’s addresses. The quotation will use the default one.
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <ng-container *ngIf="state === 'ready'">
+    <!-- Closed: what the quotation will be written to, on one line. -->
+    <p class="muted small site-now" data-site="now" [id]="uid + '-now'" *ngIf="!expanded">
+      <ng-container *ngIf="chosen as address; else none">
+        {{ address.lines }}<ng-container *ngIf="address.lines && address.place">, </ng-container>{{ address.place }}
+      </ng-container>
+      <ng-template #none>
+        {{ customerId ? 'This customer has no address yet. The state of the site decides CGST + SGST or IGST.' : 'Optional. It can be added later.' }}
+      </ng-template>
+    </p>
+
+    <ng-container *ngIf="expanded">
+      <div class="site-list" role="radiogroup" *ngIf="options.length" [attr.aria-labelledby]="uid + '-label'">
+        <label class="site-option" *ngFor="let option of options; trackBy: trackById" [class.is-on]="choice === option.id">
+          <input type="radio" [name]="uid" [checked]="choice === option.id" (change)="choose(option.id)" />
+          <span class="grow">
+            <span class="site-lines">{{ option.lines || option.place }}</span>
+            <span class="muted small site-place" *ngIf="option.lines && option.place">{{ option.place }}</span>
+          </span>
+          <span class="badge plain" *ngIf="option.isDefault">Default</span>
+        </label>
+        <label class="site-option" [class.is-on]="choice === 'new'">
+          <input type="radio" data-site="new" [name]="uid" [checked]="choice === 'new'" (change)="choose('new')" />
+          <span class="grow site-lines">Another address</span>
+        </label>
+      </div>
+
+      <div class="form-grid site-new" *ngIf="typing" [formGroup]="form">
+        <!-- PIN code first: it fills the city and the state, and the state decides the tax. -->
+        <app-address-fields [group]="form" [states]="states" [idPrefix]="uid" [submitted]="submitted">
+          <div class="field span-2">
+            <label class="label" [for]="uid + '-line'">Address</label>
+            <input
+              class="input"
+              type="text"
+              formControlName="address"
+              autocomplete="off"
+              [id]="uid + '-line'"
+              [class.is-invalid]="submitted && form.errors?.['address']"
+              [attr.aria-invalid]="submitted && !!form.errors?.['address']"
+              [attr.aria-describedby]="submitted && form.errors?.['address'] ? uid + '-line-e' : null"
+            />
+            <span class="error" [id]="uid + '-line-e'" *ngIf="submitted && form.errors?.['address']"
+              >Enter the house or flat number and street.</span
+            >
+          </div>
+          <div class="field span-2">
+            <label class="label" [for]="uid + '-line2'">Area or landmark (optional)</label>
+            <input class="input" type="text" formControlName="address_line2" autocomplete="off" [id]="uid + '-line2'" />
+          </div>
+        </app-address-fields>
+        <span class="hint span-2" *ngIf="customerId">It is saved to the customer, so the next quotation can use it.</span>
+      </div>
+    </ng-container>
+  </ng-container>
+</div>

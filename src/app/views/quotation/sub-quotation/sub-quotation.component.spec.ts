@@ -1,6 +1,7 @@
 import { DragDropModule } from '@angular/cdk/drag-drop';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -23,6 +24,16 @@ class SummaryStubComponent {
   @Input() quotation: any = null;
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<any>();
+}
+
+@Component({ selector: 'app-site-address-dialog', template: '' })
+class SiteStubComponent {
+  @Input() visible = false;
+  @Input() quotationId: number | null = null;
+  @Input() customerId: number | null = null;
+  @Input() addressId: number | null = null;
+  @Output() closed = new EventEmitter<void>();
+  @Output() saved = new EventEmitter<void>();
 }
 
 @Component({ selector: 'app-send-quotation-dialog', template: '' })
@@ -115,6 +126,7 @@ describe('SubQuotationComponent (quotation page)', () => {
       declarations: [
         SubQuotationComponent,
         SummaryStubComponent,
+        SiteStubComponent,
         SendStubComponent,
         DuplicateStubComponent,
         EditStubComponent,
@@ -318,6 +330,49 @@ describe('SubQuotationComponent (quotation page)', () => {
     fixture.detectChanges();
     expect(el().querySelector('app-confirm-dialog [data-q="bill-warnings"]')).toBeNull();
     expect(el().querySelector('app-confirm-dialog')?.textContent).toContain('This issues a tax invoice');
+  });
+
+  describe('site address (T90)', () => {
+    const site = (): SiteStubComponent => fixture.debugElement.query(By.directive(SiteStubComponent)).componentInstance;
+
+    it('shows the address as "City - PIN" and lets a draft change it; the page loads again for the new tax split', () => {
+      const raw = sampleQuotation();
+      raw.customer_address = JSON.stringify({ id: 5, address: 'Villa 14, Palm Street', city: 'Godhra', state: 'Gujarat', pincode: '389001', zip_code: '389001' });
+      create(ok(raw));
+      expect(el().querySelector('[data-q="site-address"]')?.textContent).toContain('Villa 14, Palm Street, Godhra - 389001, Gujarat');
+
+      const change = el().querySelector('[data-q="change-site"]') as HTMLButtonElement;
+      expect(change.textContent).toContain('Change');
+      change.click();
+      fixture.detectChanges();
+      expect(site().visible).toBeTrue();
+      expect(site().quotationId).toBe(14);
+      expect(site().customerId).toBe(2);
+      expect(site().addressId).toBe(5);
+
+      service.getQuotation.calls.reset();
+      site().saved.emit();
+      fixture.detectChanges();
+      expect(site().visible).toBeFalse();
+      expect(service.getQuotation).toHaveBeenCalledTimes(1);
+      expect(toast.showSuccess).toHaveBeenCalledWith('Site address changed');
+    });
+
+    it('offers to add one when the quotation has none', () => {
+      const raw = sampleQuotation();
+      raw.customer_address = null;
+      create(ok(raw));
+      expect(el().querySelector('[data-q="site-address"]')?.textContent).toContain('No site address yet.');
+      expect(el().querySelector('[data-q="change-site"]')?.textContent).toContain('Add');
+    });
+
+    it('does not offer the change once the quotation is sent', () => {
+      const raw = sampleQuotation();
+      raw.status = 'sent';
+      create(ok(raw));
+      expect(el().querySelector('[data-q="site-address"]')).not.toBeNull();
+      expect(el().querySelector('[data-q="change-site"]')).toBeNull();
+    });
   });
 
   it('says which state decides the tax and why, and what the site address would give (M2)', () => {

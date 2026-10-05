@@ -83,7 +83,7 @@ export function stateCodeFor(value: string | null | undefined, states: GstState[
   }
   const match = states.find(
     (state) =>
-      state.code === text || state.name.toLowerCase() === text || state.abbreviation.toLowerCase() === text
+      state.code === text || state.name.toLowerCase() === text || (state.abbreviation || '').toLowerCase() === text
   );
   return match ? match.code : '';
 }
@@ -124,6 +124,27 @@ export function toAddressValues(dto: any, states: GstState[]): AddressValue[] {
 
 export function isBlankAddress(address: AddressValue): boolean {
   return !address.address.trim() && !address.city.trim() && !address.zip_code.trim();
+}
+
+const PIN_CODE = /^[1-9][0-9]{5}$/;
+
+/**
+ * What an address block still needs, by field, or null when it is fine.
+ * A block that has anything in it needs the whole address; an empty new one is fine.
+ * An address saved before city and PIN code were asked for (T90) keeps working
+ * without them. A city or PIN the directory does not know is accepted as typed.
+ */
+export function addressErrors(value: AddressValue): Record<string, true> | null {
+  if (!value.id && isBlankAddress(value)) {
+    return null;
+  }
+  const errors: Record<string, true> = {};
+  const pin = value.zip_code.trim();
+  if (!value.address.trim()) errors['address'] = true;
+  if (!value.city.trim() && !value.id) errors['city'] = true;
+  if (!value.state_code) errors['state_code'] = true;
+  if (!(PIN_CODE.test(pin) || (!pin && value.id))) errors['zip_code'] = true;
+  return Object.keys(errors).length ? errors : null;
 }
 
 /**

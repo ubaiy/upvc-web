@@ -58,6 +58,8 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   menuItems: MenuItem[] = [];
   sendOpen = false;
   summaryOpen = false;
+  /** "Change" beside the site address. */
+  siteOpen = false;
   duplicateOpen = false;
   deleteOpen = false;
   reviseIntent: ReviseIntent | null = null;
@@ -404,6 +406,13 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
     if (raw?.totals) {
       this._toast.showSuccess('Summary updated');
     }
+  }
+
+  /** The site address changed: the totals come again, because its state decides the tax split. */
+  onSiteSaved(): void {
+    this.siteOpen = false;
+    this.load(true);
+    this._toast.showSuccess('Site address changed');
   }
 
   onSent(): void {

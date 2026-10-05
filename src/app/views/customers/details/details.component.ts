@@ -11,7 +11,6 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { catchError, concat, forkJoin, Observable, of, switchMap, toArray } from 'rxjs';
 import { Crumb } from 'src/app/shared/components/page-header/page-header.component';
 import { IResponseDto } from 'src/app/shared/model/common/response.model';
-import { PIN_PATTERN } from 'src/app/shared/services/location.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { ConfirmationDialogService } from '../../../shared/services/confirmationdialog.service';
 import { BillRow, billsOf, toBillRows } from '../../bills/bills.adapter';
@@ -20,6 +19,7 @@ import {
   CustomerFormValue,
   CustomerQuotationRow,
   GstState,
+  addressErrors,
   gstinStateCode,
   isBlankAddress,
   isValidGstin,
@@ -31,23 +31,9 @@ import {
 } from '../customer.adapter';
 import { CustomerService } from '../customer.service';
 
-/**
- * A block that has anything in it needs the whole address; an empty one is fine.
- * An address saved before city and PIN code were asked for (T90) keeps working
- * without them. A city or PIN the directory does not know is accepted as typed.
- */
+/** A block that has anything in it needs the whole address; an empty one is fine. The rule is `addressErrors`. */
 function addressComplete(group: AbstractControl): ValidationErrors | null {
-  const value = group.value as AddressValue;
-  if (!value.id && isBlankAddress(value)) {
-    return null;
-  }
-  const errors: ValidationErrors = {};
-  if (!value.address.trim()) errors['address'] = true;
-  const pin = value.zip_code.trim();
-  if (!value.city.trim() && !value.id) errors['city'] = true;
-  if (!value.state_code) errors['state_code'] = true;
-  if (!(PIN_PATTERN.test(pin) || (!pin && value.id))) errors['zip_code'] = true;
-  return Object.keys(errors).length ? errors : null;
+  return addressErrors(group.value as AddressValue);
 }
 
 function gstin(control: AbstractControl): ValidationErrors | null {

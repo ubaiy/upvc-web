@@ -2,10 +2,11 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, ViewC
 import { FormBuilder, FormGroup } from '@angular/forms';
 import { Dropdown } from 'primeng/dropdown';
 import { Observable, of, throwError } from 'rxjs';
-import { finalize, switchMap } from 'rxjs/operators';
+import { finalize, map, switchMap } from 'rxjs/operators';
 
 import { QuotationService } from '../quotation.service';
 import { defaultQuotationName, errorText, QuotationRow } from '../quotation-list.model';
+import { SiteAddressComponent } from '../site-address/site-address.component';
 
 export interface CustomerOption {
   id: number;
@@ -60,6 +61,8 @@ export class QuotationDialogComponent implements OnChanges {
   @Output() saved = new EventEmitter<number>();
 
   @ViewChild('customerDropdown') customerDropdown?: Dropdown;
+  /** The site address of a new quotation; absent while editing and until a customer is chosen. */
+  @ViewChild(SiteAddressComponent) site?: SiteAddressComponent;
 
   form: FormGroup;
   customers: CustomerOption[] = [];
@@ -91,6 +94,11 @@ export class QuotationDialogComponent implements OnChanges {
       this._fillMargin();
     });
     this.form.controls['customer_name'].valueChanges.subscribe(() => this._fillName());
+  }
+
+  /** The customer picked from the list, for the site address choices. */
+  get selectedCustomerId(): number | null {
+    return Number(this.form.controls['customer_id'].value) || null;
   }
 
   get editing(): boolean {
@@ -225,14 +233,23 @@ export class QuotationDialogComponent implements OnChanges {
   submit(): void {
     this.submitted = true;
     this.saveError = '';
-    if (this.saving || this.customerError || this.newNameError || this.phoneError || this.quotationNameError) {
+    // Asked first, so a half-typed site address shows its messages with the others.
+    const siteProblem = !!this.site?.hasProblem();
+    if (this.saving || siteProblem || this.customerError || this.newNameError || this.phoneError || this.quotationNameError) {
       return;
     }
+    // A new customer takes the typed address with it (its first, so its default);
+    // for an existing one the address chosen, or typed and saved to the customer, is sent by id.
+    const site = this.mode === 'existing' ? this.site : undefined;
     this.saving = true;
     this._customerId()
       .pipe(
-        switchMap((customerId) => {
+        switchMap((customerId) => (site ? site.resolve(customerId) : of(null)).pipe(map((addressId) => ({ customerId, addressId })))),
+        switchMap(({ customerId, addressId }) => {
           const body: any = { customer_id: customerId, quatation_name: this._value('quatation_name').trim() };
+          if (addressId && !this.quotation) {
+            body.customer_address_id = addressId;
+          }
           // Left out, the API applies the customer's own price list.
           const marginId = Number(this._value('order_type_margin_id'));
           if (!this.quotation && marginId) {
@@ -261,7 +278,7 @@ export class QuotationDialogComponent implements OnChanges {
       return of(Number(this._value('customer_id')));
     }
     return this._dataService
-      .addCustomerInline({ name: this._newName(), phone: normalisePhone(this._value('customer_phone')) })
+      .addCustomerInline(this._newCustomer())
       .pipe(
         switchMap((res) => {
           if (!res?.success || !res.data?.id) {
@@ -276,6 +293,14 @@ export class QuotationDialogComponent implements OnChanges {
           return of(added.id);
         })
       );
+  }
+
+  /** Name and phone; with the site address typed in the dialog, and its state, when there is one. */
+  private _newCustomer(): { name: string; phone: string; state_code?: string; address?: any } {
+    const customer = { name: this._newName(), phone: normalisePhone(this._value('customer_phone')) };
+    const address = this.site?.newAddressPayload();
+    const stateCode = this.site?.newAddress()?.state_code;
+    return address ? { ...customer, ...(stateCode ? { state_code: stateCode } : {}), address } : customer;
   }
 
   private _newName(): string {

@@ -243,11 +243,20 @@
             <div class="muted small" *ngIf="q.customer.phone"><bdi>{{ q.customer.phone }}</bdi></div>
           </div>
         </div>
-        <p class="muted small side-gap" *ngIf="q.customer.address">{{ q.customer.address }}</p>
-        <p class="muted small side-gap" *ngIf="!q.customer.address && q.customer.id">
-          No site address yet.
-          <a [routerLink]="['/customers/edit', q.customer.id]">Add it to the customer</a>
-        </p>
+        <!-- The site address, "City - PIN" as the PDF prints it; its state decides the place of supply. -->
+        <div class="site-line side-gap" *ngIf="q.customer.address || q.customer.id">
+          <p class="muted small grow" data-q="site-address">{{ q.customer.address || 'No site address yet.' }}</p>
+          <button
+            type="button"
+            class="link"
+            data-q="change-site"
+            *ngIf="q.editable && q.customer.id"
+            [attr.aria-label]="q.customer.address ? 'Change the site address' : 'Add a site address'"
+            (click)="siteOpen = true"
+          >
+            {{ q.customer.address ? 'Change' : 'Add' }}
+          </button>
+        </div>
       </section>
 
       <section class="card card-pad" aria-labelledby="h-total">
@@ -333,6 +342,15 @@
     (closed)="summaryOpen = false"
     (saved)="onSummarySaved($event)"
   ></app-summary-dialog>
+
+  <app-site-address-dialog
+    [visible]="siteOpen"
+    [quotationId]="q.id"
+    [customerId]="q.customer.id"
+    [addressId]="q.customer.addressId"
+    (closed)="siteOpen = false"
+    (saved)="onSiteSaved()"
+  ></app-site-address-dialog>
 
   <app-send-quotation-dialog
     [visible]="sendOpen"

@@ -211,6 +211,17 @@ button.name {
   font-weight: var(--fw-semibold);
 }
 
+// The site address with "Change" beside it.
+.site-line {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+
+  p {
+    margin: 0;
+  }
+}
+
 // "Retail margin 20% · 50% advance" with "Change" beside it.
 .terms {
   display: flex;

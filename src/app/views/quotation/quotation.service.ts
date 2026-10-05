@@ -169,6 +169,9 @@ export class QuotationService {
   public addCustomerInline(data: {
     name: string;
     phone: string;
+    /** With a site address typed in the dialog: its state, and the address as the customer's first. */
+    state_code?: string;
+    address?: any;
   }): Observable<IResponseDto<any>> {
     return this._apiHttpService.post(API_END_POINT.customer.add, data);
   }
@@ -197,6 +200,30 @@ export class QuotationService {
   /** The GST states, for the "Place of supply" list: the same list the API decides the tax split with. */
   public getGstStates(): Observable<IResponseDto<{ code: string; name: string }[]>> {
     return this._apiHttpService.get('gst/states', quiet());
+  }
+
+  /** The saved addresses of one customer, for the site address of a quotation. */
+  public getCustomerAddresses(customerId: number): Observable<IResponseDto<any[]>> {
+    return this._apiHttpService.get(`${API_END_POINT.customer_address.list}?customer_id=${customerId}`, quiet());
+  }
+
+  /** A site address typed on a quotation: it is saved to the customer. The form shows a refusal itself. */
+  public addCustomerAddress(body: any): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(API_END_POINT.customer_address.add, body, quiet());
+  }
+
+  /** The fabricator's own state code, which a new site address starts in; '' when it is not set. */
+  public getCompanyState(): Observable<string> {
+    return this._apiHttpService.get('company/settings', quiet()).pipe(map((res: any) => (res?.data?.state_code ? String(res.data.state_code) : '')));
+  }
+
+  /** Changes the site address of a quotation; the api then works out the place of supply again. */
+  public setSiteAddress(quotationId: number, customerId: number, addressId: number): Observable<IResponseDto<any>> {
+    return this._apiHttpService.post(
+      `${API_END_POINT.quatation.edit}/${quotationId}`,
+      { id: quotationId, customer_id: customerId, customer_address_id: addressId },
+      quiet()
+    );
   }
 
   /** Customers for the picker in "Duplicate". */

@@ -42,6 +42,8 @@ import { SubQuotationDesignComponent } from './sub-quotation/sub-quotation-desig
 import { ButtonModule } from '@coreui/angular';
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
+import { SiteAddressComponent } from './site-address/site-address.component';
+import { SiteAddressDialogComponent } from './site-address/site-address-dialog.component';
 @NgModule({
   declarations: [
     QuotationComponent,
@@ -59,6 +61,9 @@ import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
     DragDropModule,
     SharedComponentsModule,
     ConfirmDialogComponent,
+    // The site address of a quotation: PIN code first (card T90).
+    SiteAddressComponent,
+    SiteAddressDialogComponent,
     CardModule,
     NavModule,
     IconModule,
