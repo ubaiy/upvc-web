@@ -11,11 +11,13 @@ import {
   JobSummary,
   PlainWarning,
   SHEET_PAGE_WIDTH,
+  StructureRow,
   fileName,
   fitZoom,
   noteLines,
   plainWarnings,
   previewPage,
+  structureRows,
   summarise,
 } from './production.adapter';
 import { DocumentFormat, DocumentType, JobResult, ProductionJob } from './production.model';
@@ -43,6 +45,8 @@ export class ProductionComponent implements OnInit, OnDestroy {
   job: ProductionJob | null = null;
   summary: JobSummary | null = null;
   warnings: PlainWarning[] = [];
+  /** The 3D structures of the job; empty when it has none. */
+  structures: StructureRow[] = [];
   /** Newest first. */
   revisions: number[] = [];
   errorMessage = '';
@@ -325,6 +329,7 @@ export class ProductionComponent implements OnInit, OnDestroy {
         this.job = result.job;
         this.summary = summarise(result.job);
         // The api's own lines when it sends them; the raw warnings reworded here only for an older api.
+        this.structures = structureRows(result.job.structures);
         this.warnings = Array.isArray(result.job.notes)
           ? noteLines(result.job.notes, result.job.window_count)
           : plainWarnings(result.job.warnings, result.job.window_count);

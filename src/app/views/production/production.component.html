@@ -94,7 +94,9 @@
         >
         · Revision {{ job.revision }} ·
         {{ job.window_count }} {{ job.window_count === 1 ? 'window' : 'windows' }},
-        {{ job.unit_count }} {{ job.unit_count === 1 ? 'unit' : 'units' }}
+        {{ job.unit_count }} {{ job.unit_count === 1 ? 'unit' : 'units' }}<ng-container *ngIf="structures.length"
+          >, {{ structures.length }} {{ structures.length === 1 ? '3D structure' : '3D structures' }}</ng-container
+        >
       </p>
       <p class="muted small" *ngIf="isNewest && !job.is_stale">
         Refresh takes the quotation as it is now and makes a new revision. Older revisions stay printable.
@@ -189,6 +191,27 @@
       </div>
     </div>
     <iframe class="preview-frame" sandbox="" [src]="open.src" [title]="open.doc.title + ' preview'"></iframe>
+  </section>
+
+  <section class="card warnings" *ngIf="structures.length" aria-labelledby="structures-title" data-q="job-structures">
+    <div class="card-head">
+      <h2 id="structures-title">3D structures</h2>
+      <span class="muted small">{{ structures.length }} {{ structures.length === 1 ? 'structure' : 'structures' }}</span>
+    </div>
+    <ul class="warning-list">
+      <li *ngFor="let structure of structures">
+        <app-icon name="box"></app-icon>
+        <div>
+          <p>
+            <bdi class="num" *ngIf="structure.code">{{ structure.code }} · </bdi><bdi>{{ structure.name }}</bdi> · Qty {{ structure.quantity }}
+          </p>
+          <p class="muted small" *ngIf="structure.size || structure.detail">
+            {{ structure.size }}<ng-container *ngIf="structure.size && structure.detail"> · </ng-container>{{ structure.detail }}
+          </p>
+          <p class="muted small" *ngIf="structure.note">{{ structure.note }}</p>
+        </div>
+      </li>
+    </ul>
   </section>
 
   <section class="card warnings" *ngIf="warnings.length" aria-labelledby="warnings-title">

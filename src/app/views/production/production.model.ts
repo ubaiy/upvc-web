@@ -69,6 +69,8 @@ export interface ProductionJob {
   job?: { frozen_by?: string | null };
   window_count: number;
   unit_count: number;
+  /** The 3D structures of the quotation (card T123): geometric sizes, not cut sizes. Absent from an older api. */
+  structures?: JobStructure[];
   totals: {
     profiles: ProfileTotal[];
     reinforcement: ProfileTotal[];
@@ -79,6 +81,21 @@ export interface ProductionJob {
   warnings: JobWarning[];
   /** The same things to check, in the api's own plain words. Shown as sent; `warnings` is the older raw form. */
   notes?: JobNote[];
+}
+
+/** A 3D structure on the job, as the api lists it. */
+export interface JobStructure {
+  line_id: number;
+  code?: string | null;
+  name?: string | null;
+  label?: string | null;
+  type?: string | null;
+  quantity?: number | null;
+  overall?: { widthMm?: number; depthMm?: number; heightMm?: number } | null;
+  /** The api's own sentence on what these sizes are. */
+  note?: string | null;
+  panel_count?: number | null;
+  glass_area_sq_m?: number | null;
 }
 
 /** What a job call gave back: the job, or the api's reason for not giving one. */

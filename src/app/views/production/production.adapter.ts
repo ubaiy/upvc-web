@@ -1,5 +1,6 @@
 import { IconName } from '../../shared/components/icon/icon-paths';
-import { DocumentFormat, DocumentType, JobNote, JobResult, JobWarning, ProductionJob } from './production.model';
+import { structureTypeLabel } from '../quotation/sub-quotation/detail/quotation-detail.model';
+import { DocumentFormat, DocumentType, JobNote, JobResult, JobStructure, JobWarning, ProductionJob } from './production.model';
 
 export { fileNameFromHeader } from '../../shared/class/download-file';
 
@@ -97,6 +98,45 @@ export function summarise(job: ProductionJob): JobSummary {
     glassPanes: sum(totals.glass, (row) => row.panes),
     hardwareItems: (totals.hardware || []).length,
   };
+}
+
+/** A 3D structure as the page lists it: what it is, how big, how many. */
+export interface StructureRow {
+  id: number;
+  /** "S2" */
+  code: string;
+  /** "Balcony cabin · Cabin" */
+  name: string;
+  /** "3600 × 2400 × 2700 mm (width × depth × height)", or empty. */
+  size: string;
+  /** "20 panels · 41.04 sq m of glass", or empty. */
+  detail: string;
+  quantity: number;
+  note: string;
+}
+
+/**
+ * The 3D structures of a job (card T123). The workshop documents are made
+ * for windows; a structure is listed here with what the api says about it.
+ */
+export function structureRows(structures: JobStructure[] | null | undefined): StructureRow[] {
+  return (Array.isArray(structures) ? structures : []).map((raw, index) => {
+    const type = structureTypeLabel(raw?.type);
+    const own = String(raw?.label || raw?.name || '').trim();
+    const overall = raw?.overall || {};
+    const size = [overall.widthMm, overall.depthMm, overall.heightMm].map((mm) => Math.round(Number(mm) || 0));
+    const panels = Number(raw?.panel_count) || 0;
+    const glass = Number(raw?.glass_area_sq_m) || 0;
+    return {
+      id: Number(raw?.line_id) || index,
+      code: String(raw?.code || '').trim(),
+      name: own ? [own, type !== own ? type : ''].filter(Boolean).join(' · ') : `${type} ${index + 1}`,
+      size: size.every((mm) => mm > 0) ? `${size.join(' × ')} mm (width × depth × height)` : '',
+      detail: [panels ? `${panels} ${panels === 1 ? 'panel' : 'panels'}` : '', glass ? `${glass} sq m of glass` : ''].filter(Boolean).join(' · '),
+      quantity: Number(raw?.quantity) || 1,
+      note: String(raw?.note || '').trim(),
+    };
+  });
 }
 
 /** A warning in workshop words. */

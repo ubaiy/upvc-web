@@ -120,6 +120,9 @@
     color: var(--c-warning);
     margin-block-start: 2px;
   }
+
+  // A 3D structure is listed, not warned about.
+  [data-q='job-structures'] & app-icon { color: var(--c-text-2); }
 }
 
 .summary-tabs {

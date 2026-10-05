@@ -4,6 +4,7 @@ import {
   fileNameFromHeader,
   plainWarnings,
   previewPage,
+  structureRows,
   summarise,
   toJobResult,
 } from './production.adapter';
@@ -169,6 +170,44 @@ describe('production adapter', () => {
       expect(plainWarnings([{ message: 'Something to check.', windows: ['W1'] }], 1)[0].windows).toBe('W1');
       expect(plainWarnings(null)).toEqual([]);
       expect(plainWarnings([{ message: '  ', windows: [] }])).toEqual([]);
+    });
+  });
+
+  describe('3D structures of a job (T123)', () => {
+    it('lists each with its code, name, type, overall size, panels and the note the api sends', () => {
+      const rows = structureRows([
+        {
+          line_id: 161,
+          code: 'S2',
+          name: 'Balcony cabin',
+          type: 'cabin',
+          label: null,
+          quantity: 1,
+          overall: { widthMm: 3600, depthMm: 2400, heightMm: 2700 },
+          note: 'Geometric sizes, not workshop cut sizes.',
+          panel_count: 20,
+          glass_area_sq_m: 41.04,
+        },
+        { line_id: 162, type: null, name: null, quantity: null, overall: null },
+      ]);
+      expect(rows).toEqual([
+        {
+          id: 161,
+          code: 'S2',
+          name: 'Balcony cabin · Cabin',
+          size: '3600 × 2400 × 2700 mm (width × depth × height)',
+          detail: '20 panels · 41.04 sq m of glass',
+          quantity: 1,
+          note: 'Geometric sizes, not workshop cut sizes.',
+        },
+        { id: 162, code: '', name: '3D structure 2', size: '', detail: '', quantity: 1, note: '' },
+      ]);
+    });
+
+    it('is empty for a job of windows only and for an older api', () => {
+      expect(structureRows(undefined)).toEqual([]);
+      expect(structureRows(null)).toEqual([]);
+      expect(structureRows([])).toEqual([]);
     });
   });
 });
