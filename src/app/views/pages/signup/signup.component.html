@@ -1,0 +1,168 @@
+<app-auth-layout
+  [heading]="view === 'closed' ? 'We are onboarding fabricators in small batches' : view === 'check_email' ? 'Check your e-mail' : 'Start your free trial'"
+  [lead]="view === 'closed' ? 'Leave your number and we will call you.' : view === 'form' ? 'Create your company and price your first window today. No card needed.' : undefined"
+  pageTitle="Start a free trial"
+>
+  <!-- The api has not yet said whether sign-up is open: the outline of the form, no ring. -->
+  <div class="stack-4 signup" *ngIf="view === 'asking'" aria-busy="true" aria-label="Loading">
+    <div class="skeleton" style="height: 40px"></div>
+    <div class="skeleton" style="height: 40px"></div>
+    <div class="skeleton" style="height: 40px"></div>
+  </div>
+
+  <form class="stack-4 signup" *ngIf="view === 'form'" (ngSubmit)="submit()" novalidate>
+    <app-callout *ngIf="error" tone="danger" class="signup-error">
+      {{ error.text }}
+      <button *ngIf="error.retry" action type="button" class="btn btn-secondary btn-sm" (click)="submit()">Try again</button>
+    </app-callout>
+
+    <div class="field">
+      <label class="label" for="signup_company_name">Company name</label>
+      <input class="input" id="signup_company_name" name="company_name" type="text" autocomplete="organization" maxlength="150" autofocus
+        [(ngModel)]="model.company_name" (ngModelChange)="changed('company_name')" (blur)="leave('company_name')"
+        [class.is-invalid]="!!errorOf('company_name')" [attr.aria-invalid]="errorOf('company_name') ? 'true' : null"
+        [attr.aria-describedby]="errorOf('company_name') ? 'signup_company_name_error' : null" />
+      <span class="error" id="signup_company_name_error" *ngIf="errorOf('company_name') as line">{{ line }}</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="signup_name">Your name</label>
+      <input class="input" id="signup_name" name="name" type="text" autocomplete="name" maxlength="100"
+        [(ngModel)]="model.name" (ngModelChange)="changed('name')" (blur)="leave('name')"
+        [class.is-invalid]="!!errorOf('name')" [attr.aria-invalid]="errorOf('name') ? 'true' : null"
+        [attr.aria-describedby]="errorOf('name') ? 'signup_name_error' : null" />
+      <span class="error" id="signup_name_error" *ngIf="errorOf('name') as line">{{ line }}</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="signup_email">E-mail</label>
+      <input class="input" id="signup_email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="150"
+        [(ngModel)]="model.email" (ngModelChange)="changed('email')" (blur)="leave('email')"
+        [class.is-invalid]="!!errorOf('email')" [attr.aria-invalid]="errorOf('email') ? 'true' : null"
+        aria-describedby="signup_email_note" />
+      <span class="error" id="signup_email_note" *ngIf="errorOf('email') as line; else emailHint">{{ line }}</span>
+      <ng-template #emailHint><span class="hint" id="signup_email_note">You sign in with this address.</span></ng-template>
+    </div>
+
+    <div class="field">
+      <label class="label" for="signup_mobile">Mobile</label>
+      <div class="input-group" [class.is-invalid]="!!errorOf('mobile')">
+        <span class="unit" aria-hidden="true">+91</span>
+        <input id="signup_mobile" name="mobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="16" placeholder="98765 43210"
+          [(ngModel)]="model.mobile" (ngModelChange)="changed('mobile')" (blur)="leave('mobile')"
+          aria-label="Mobile, 10 digits, India +91"
+          [attr.aria-invalid]="errorOf('mobile') ? 'true' : null"
+          [attr.aria-describedby]="errorOf('mobile') ? 'signup_mobile_error' : null" />
+      </div>
+      <span class="error" id="signup_mobile_error" *ngIf="errorOf('mobile') as line">{{ line }}</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="signup_state_code">State</label>
+      <select class="input select" id="signup_state_code" name="state_code" autocomplete="address-level1"
+        [(ngModel)]="model.state_code" (ngModelChange)="changed('state_code')" (blur)="leave('state_code')"
+        [class.is-invalid]="!!errorOf('state_code')" [attr.aria-invalid]="errorOf('state_code') ? 'true' : null"
+        [attr.aria-describedby]="errorOf('state_code') ? 'signup_state_code_error' : null">
+        <option value="" disabled>Choose your state</option>
+        <option *ngFor="let state of states" [value]="state.code">{{ state.name }}</option>
+      </select>
+      <span class="error" id="signup_state_code_error" *ngIf="errorOf('state_code') as line">{{ line }}</span>
+    </div>
+
+    <div class="field">
+      <label class="label" for="signup_gstin">GSTIN <span class="muted optional">(optional)</span></label>
+      <input class="input gstin" id="signup_gstin" name="gstin" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="15"
+        [ngModel]="model.gstin" (ngModelChange)="onGstin($event)" (blur)="onGstinLeave()"
+        [class.is-invalid]="!!errorOf('gstin')" [attr.aria-invalid]="errorOf('gstin') ? 'true' : null"
+        aria-describedby="signup_gstin_note" />
+      <span class="error" id="signup_gstin_note" *ngIf="errorOf('gstin') as line; else gstinHint">{{ line }}</span>
+      <ng-template #gstinHint><span class="hint" id="signup_gstin_note">15 characters. You can add it later in Settings.</span></ng-template>
+    </div>
+
+    <div class="field">
+      <label class="label" for="signup_password">Password</label>
+      <div class="input-group" [class.is-invalid]="!!errorOf('password')">
+        <input id="signup_password" name="password" [type]="showPassword ? 'text' : 'password'" autocomplete="new-password"
+          [(ngModel)]="model.password" (ngModelChange)="changed('password')" (blur)="leave('password')"
+          [attr.aria-invalid]="errorOf('password') ? 'true' : null" aria-describedby="signup_password_note" />
+        <button type="button" class="btn btn-ghost btn-icon btn-sm" (click)="showPassword = !showPassword"
+          [attr.aria-label]="showPassword ? 'Hide password' : 'Show password'" [attr.aria-pressed]="showPassword">
+          <app-icon [name]="showPassword ? 'eye-off' : 'eye'"></app-icon>
+        </button>
+      </div>
+      <span class="error" id="signup_password_note" *ngIf="errorOf('password') as line; else passwordHint">{{ line }}</span>
+      <ng-template #passwordHint>
+        <span class="hint rule" id="signup_password_note" [class.met]="model.password.length >= passwordMin">
+          <app-icon [name]="model.password.length >= passwordMin ? 'circle-check' : 'circle'"></app-icon>
+          At least {{ passwordMin }} characters
+        </span>
+      </ng-template>
+    </div>
+
+    <!-- The honeypot: off the screen, out of the tab order and hidden from screen readers. Only a bot fills it. -->
+    <div class="hp" aria-hidden="true">
+      <label for="signup_website">Website</label>
+      <input id="signup_website" name="website" type="text" tabindex="-1" autocomplete="off" [(ngModel)]="model.website" />
+    </div>
+
+    <div class="field">
+      <label class="check terms" for="signup_accept_terms">
+        <input id="signup_accept_terms" name="accept_terms" type="checkbox"
+          [(ngModel)]="model.accept_terms" (ngModelChange)="changed('accept_terms')"
+          [attr.aria-invalid]="errorOf('accept_terms') ? 'true' : null"
+          [attr.aria-describedby]="errorOf('accept_terms') ? 'signup_accept_terms_error' : null" />
+        <span>I accept the <a routerLink="/auth/terms" target="_blank" rel="noopener">terms of use</a></span>
+      </label>
+      <span class="error" id="signup_accept_terms_error" *ngIf="errorOf('accept_terms') as line">{{ line }}</span>
+    </div>
+
+    <button class="btn btn-primary btn-lg btn-block" type="submit" [disabled]="busy" [attr.aria-busy]="busy">
+      {{ busy ? 'Creating your company…' : 'Start free trial' }}
+    </button>
+  </form>
+
+  <!-- Sign-up is closed on this install (the default). Nothing here pretends to send anything. -->
+  <div class="stack-4 signup closed" *ngIf="view === 'closed'">
+    <ng-container *ngIf="hasWhatsapp; else noNumber">
+      <div class="field">
+        <label class="label" for="lead_name">Your name</label>
+        <input class="input" id="lead_name" name="lead_name" type="text" autocomplete="name" [(ngModel)]="lead.name" />
+      </div>
+      <div class="field">
+        <label class="label" for="lead_mobile">Mobile</label>
+        <div class="input-group">
+          <span class="unit" aria-hidden="true">+91</span>
+          <input id="lead_mobile" name="lead_mobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="16" [(ngModel)]="lead.mobile" aria-label="Mobile, 10 digits, India +91" />
+        </div>
+      </div>
+      <div class="field">
+        <label class="label" for="lead_city">City</label>
+        <input class="input" id="lead_city" name="lead_city" type="text" autocomplete="address-level2" [(ngModel)]="lead.city" />
+      </div>
+      <a class="btn btn-primary btn-lg btn-block" [href]="whatsapp" target="_blank" rel="noopener">
+        <app-icon name="send"></app-icon>Send on WhatsApp
+      </a>
+      <p class="muted small">
+        This opens WhatsApp with your details written as a message to us. Nothing is sent until you press send there.
+      </p>
+    </ng-container>
+    <ng-template #noNumber>
+      <app-callout tone="info" icon="phone">
+        <ng-container *ngIf="contact.length; else noContact">Call or write to us and we will set up your company with you.</ng-container>
+        <ng-template #noContact>
+          If someone from our team sent you this link, reply to them with your name, mobile number and city. We will call you.
+        </ng-template>
+      </app-callout>
+    </ng-template>
+    <ul class="contact" *ngIf="contact.length">
+      <li *ngFor="let line of contact">{{ line }}</li>
+    </ul>
+  </div>
+
+  <div class="stack-4 signup" *ngIf="view === 'check_email'">
+    <app-callout tone="success" icon="mail">{{ checkEmail }}</app-callout>
+    <a class="btn btn-primary btn-lg btn-block" routerLink="/auth/login" [queryParams]="{ email: model.email }">Go to sign in</a>
+  </div>
+
+  <p class="muted small back" *ngIf="view !== 'asking'">Already have an account? <a routerLink="/auth/login">Sign in</a></p>
+</app-auth-layout>

@@ -82,11 +82,11 @@ describe('LoginComponent', () => {
     expect(document.activeElement).toBe(el.querySelector('#loginPassword'));
   });
 
-  it('links to the forgot-password page, and to no sign-up page while there is none (M10)', () => {
+  it('links to the forgot-password page and to the sign-up page (M10, T140)', () => {
     create();
     const links = Array.from(el.querySelectorAll('a')).map((a) => a.getAttribute('href'));
-    expect(links).toEqual(['/auth/forgot-password']);
-    expect(el.textContent).not.toContain('free trial');
+    expect(links).toEqual(['/auth/forgot-password', '/auth/signup']);
+    expect(el.textContent).toContain('New here? Start a free trial');
   });
 
   it('reaches Password before "Forgot password?" with the Tab key (m18)', () => {

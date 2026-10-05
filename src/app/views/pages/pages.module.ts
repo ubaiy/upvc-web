@@ -7,6 +7,8 @@ import { AuthLayoutComponent } from './auth-layout/auth-layout.component';
 import { LoginComponent } from './login/login.component';
 import { ForgotPasswordComponent } from './login/forgot-password/forgot-password.component';
 import { ResetPasswordComponent } from './login/reset-password/reset-password.component';
+import { SignupComponent } from './signup/signup.component';
+import { TermsComponent } from './signup/terms.component';
 import { Page404Component } from './page404/page404.component';
 import { Page500Component } from './page500/page500.component';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
@@ -17,6 +19,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
     LoginComponent,
     ForgotPasswordComponent,
     ResetPasswordComponent,
+    SignupComponent,
+    TermsComponent,
     Page404Component,
     Page500Component,
   ],
@@ -29,6 +33,9 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
       { path: 'forgot-password', component: ForgotPasswordComponent, data: { title: 'Forgot password' } },
       // The reset email links here: /auth/reset-password?token=…&email=… (ACCOUNT_RESET_URL in the API).
       { path: 'reset-password', component: ResetPasswordComponent, data: { title: 'Set a new password' } },
+      // Sign-up (card T140); /signup of the app leads here. The terms page is a placeholder.
+      { path: 'signup', component: SignupComponent, title: 'Start a free trial' },
+      { path: 'terms', component: TermsComponent, title: 'Terms of use' },
     ]),
     // SharedCommonModule is deliberately not imported: it provides MessageService,
     // and a second copy in this lazy module would cut these pages off from the

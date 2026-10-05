@@ -1,0 +1,23 @@
+.signup { margin-block-start: var(--s-8); }
+
+// The show/hide button sits inside the field's border, as on sign-in.
+.input-group { padding-inline-end: var(--s-1); }
+.input-group .unit { font-size: var(--fs-14); color: var(--c-text-2); }
+
+.optional { font-weight: var(--fw-regular, 400); }
+.gstin { letter-spacing: .04em; font-variant-numeric: tabular-nums; }
+
+.rule { display: inline-flex; align-items: center; gap: 6px; }
+.rule.met { color: var(--c-success); }
+
+// A phone: the line of the terms may wrap; the box stays at the first line.
+.terms { align-items: flex-start; }
+.terms input { margin-block-start: 3px; flex: none; }
+
+// The honeypot. Not display:none (a bot may skip that), but nowhere a person can reach.
+.hp { position: absolute; inset-inline-start: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+.contact { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
+.back { margin-block-start: var(--s-6); }
+
+.skeleton { border-radius: var(--r-sm); background: var(--c-border); opacity: .6; }

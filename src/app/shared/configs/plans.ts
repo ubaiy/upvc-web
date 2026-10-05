@@ -10,6 +10,11 @@ export const PLAN_CONTACT = {
   heading: 'Contact us to activate',
   /** TO FILL IN: who to call or write to. */
   lines: ['Phone / WhatsApp: (to be added)', 'E-mail: (to be added)'] as string[],
+  /**
+   * TO FILL IN: the WhatsApp number with the country code, digits only ('919876543210').
+   * Empty: no WhatsApp link is drawn anywhere (the closed sign-up page, card T140).
+   */
+  whatsapp: '',
   /** TO FILL IN: bank account and UPI id for the payment. Empty until known. */
   payment: [] as string[],
 };
