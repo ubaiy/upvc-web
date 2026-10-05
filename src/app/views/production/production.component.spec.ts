@@ -4,7 +4,7 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
-import { Observable, Subject, of, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, Subject, of, throwError } from 'rxjs';
 
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
@@ -365,6 +365,66 @@ describe('ProductionComponent', () => {
     for (const control of controls) {
       expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
+  });
+  describe('from the job of one quotation straight to the job of another: only the id in the address changes (T91)', () => {
+    let params: BehaviorSubject<any>;
+    const other = (): Observable<JobResult> => job({ number: 'Q-0009/P1', quotation: { ...JOB.quotation, number: 'Q-0009' } });
+
+    beforeEach(() => {
+      params = new BehaviorSubject(convertToParamMap({ quotationId: '14' }));
+      TestBed.overrideProvider(ActivatedRoute, { useValue: { paramMap: params } });
+    });
+
+    function goTo(quotationId: string, result: Observable<JobResult>): void {
+      service.getJob.and.returnValue(result);
+      params.next(convertToParamMap({ quotationId }));
+      fixture.detectChanges();
+    }
+
+    it('shows the second job and nothing asked on the first', () => {
+      create(job());
+      fixture.componentInstance.refreshAsking = true;
+      goTo('20', other());
+      expect(service.getJob.calls.mostRecent().args).toEqual(['20', undefined]);
+      expect(text()).toContain('Job Q-0009/P1');
+      expect(text()).not.toContain('Q-0003/P1');
+      expect(fixture.componentInstance.refreshAsking).toBeFalse();
+    });
+
+    it('a first job that answers late is not shown over the second', () => {
+      const slow = new Subject<JobResult>();
+      create(slow);
+      goTo('20', other());
+      expect(slow.observed).withContext('the first load is cancelled').toBeFalse();
+      slow.next({ kind: 'job', job: JOB });
+      fixture.detectChanges();
+      expect(text()).toContain('Job Q-0009/P1');
+    });
+
+    it('a freeze of the first quotation answered late is not shown as the job of the second', () => {
+      create(of({ kind: 'no-job' } as JobResult));
+      const answer = new Subject<JobResult>();
+      service.freeze.and.returnValue(answer);
+      fixture.componentInstance.freeze();
+      goTo('20', other());
+      expect(fixture.componentInstance.freezing).withContext('the second job is not held up by the first').toBeFalse();
+      answer.next({ kind: 'job', job: JOB });
+      fixture.detectChanges();
+      expect(text()).toContain('Job Q-0009/P1');
+      expect(toast.showSuccess).not.toHaveBeenCalled();
+    });
+
+    it('a document of the first job that fails late says nothing on the second', () => {
+      create(job());
+      const answer = new Subject<any>();
+      service.getDocument.and.returnValue(answer);
+      fixture.componentInstance.download('cutting-list' as any, 'pdf', 'Cutting list');
+      goTo('20', other());
+      expect(fixture.componentInstance.busy).toBeNull();
+      answer.error(new Error('late'));
+      fixture.detectChanges();
+      expect(fixture.componentInstance.actionError).toBeNull();
+    });
   });
 });
 

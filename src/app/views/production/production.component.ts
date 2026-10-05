@@ -62,6 +62,7 @@ export class ProductionComponent implements OnInit, OnDestroy {
   readonly placeholders = [0, 1, 2, 3];
 
   private params?: Subscription;
+  private loading?: Subscription;
 
   constructor(
     private route: ActivatedRoute,
@@ -73,13 +74,19 @@ export class ProductionComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.params = this.route.paramMap.subscribe((params) => {
+      // From one quotation's job straight to another's the page stays: nothing of the last job is kept.
       this.quotationId = params.get('quotationId') || '';
+      this.job = null;
+      this.busy = null;
+      this.freezing = false;
+      this.refreshAsking = false;
       this.load();
     });
   }
 
   ngOnDestroy(): void {
     this.params?.unsubscribe();
+    this.loading?.unsubscribe();
     this.closePreview();
   }
 
@@ -108,7 +115,8 @@ export class ProductionComponent implements OnInit, OnDestroy {
     this.state = 'loading';
     this.actionError = null;
     this.closePreview();
-    this.service.getJob(this.quotationId, revision).subscribe({
+    this.loading?.unsubscribe();
+    this.loading = this.service.getJob(this.quotationId, revision).subscribe({
       next: (result) => this.show(result),
       error: () => this.fail('We could not load the production job. Check your connection.'),
     });
@@ -141,8 +149,12 @@ export class ProductionComponent implements OnInit, OnDestroy {
     }
     this.freezing = true;
     this.actionError = null;
-    this.service.freeze(this.quotationId, refresh).subscribe({
+    const shown = this.quotationId;
+    this.service.freeze(shown, refresh).subscribe({
       next: (result) => {
+        if (this.moved(shown)) {
+          return;
+        }
         this.freezing = false;
         if (result.kind === 'refused') {
           this.actionError = { message: result.message, retry: () => this.freeze(refresh) };
@@ -155,6 +167,9 @@ export class ProductionComponent implements OnInit, OnDestroy {
         }
       },
       error: () => {
+        if (this.moved(shown)) {
+          return;
+        }
         this.freezing = false;
         this.actionError = {
           message: 'We could not freeze the job. Check your connection.',
@@ -180,13 +195,16 @@ export class ProductionComponent implements OnInit, OnDestroy {
     if (!job || this.busy) {
       return;
     }
-    this.start(type, format);
+    const shown = this.start(type, format);
     this.service.getDocument(this.quotationId, type, format, job.revision, true).subscribe({
       next: (file) => {
-        this.busy = null;
+        // The file that was asked for is still handed over; the buttons belong to the job now on screen.
+        if (!this.moved(shown)) {
+          this.busy = null;
+        }
         this.save(file.blob, file.fileName || fileName(job, type, format));
       },
-      error: (error) => this.failed(error, `${title} could not be downloaded.`, () => this.download(type, format, title)),
+      error: (error) => this.failed(shown, error, `${title} could not be downloaded.`, () => this.download(type, format, title)),
     });
   }
 
@@ -196,14 +214,17 @@ export class ProductionComponent implements OnInit, OnDestroy {
     if (!job || this.busy) {
       return;
     }
-    this.start(doc.type, 'share');
+    const shown = this.start(doc.type, 'share');
     this.service.getDocument(this.quotationId, doc.type, 'pdf', job.revision, true).subscribe({
       next: (file) => {
+        if (this.moved(shown)) {
+          return;
+        }
         this.busy = null;
         const name = file.fileName || fileName(job, doc.type, 'pdf');
         this.shareFile(new File([file.blob], name, { type: 'application/pdf' }), `${doc.title} ${job.number}`);
       },
-      error: (error) => this.failed(error, `${doc.title} could not be shared.`, () => this.share(doc)),
+      error: (error) => this.failed(shown, error, `${doc.title} could not be shared.`, () => this.share(doc)),
     });
   }
 
@@ -212,16 +233,19 @@ export class ProductionComponent implements OnInit, OnDestroy {
     if (!job || this.busy) {
       return;
     }
-    this.start(doc.type, 'preview');
+    const shown = this.start(doc.type, 'preview');
     this.service.getDocument(this.quotationId, doc.type, 'html', job.revision).subscribe({
       next: (file) => {
         file.blob.text().then((html) => {
+          if (this.moved(shown)) {
+            return;
+          }
           this.busy = null;
           this.drawPreview(doc, html, false);
           setTimeout(() => this.previewCard?.nativeElement.scrollIntoView?.({ behavior: 'smooth', block: 'start' }));
         });
       },
-      error: (error) => this.failed(error, `${doc.title} could not be opened.`, () => this.openPreview(doc)),
+      error: (error) => this.failed(shown, error, `${doc.title} could not be opened.`, () => this.openPreview(doc)),
     });
   }
 
@@ -325,12 +349,22 @@ export class ProductionComponent implements OnInit, OnDestroy {
     this.state = 'error';
   }
 
-  private start(type: DocumentType | 'pack', action: string): void {
+  /** Marks the action as running and returns the quotation it was started on, for `moved`. */
+  private start(type: DocumentType | 'pack', action: string): string {
     this.busy = `${type}:${action}`;
     this.actionError = null;
+    return this.quotationId;
   }
 
-  private failed(error: any, fallback: string, retry: () => void): void {
+  /** True when the page went on to another quotation while an answer was awaited: that answer is not for this page. */
+  private moved(shown: string): boolean {
+    return shown !== this.quotationId;
+  }
+
+  private failed(shown: string, error: any, fallback: string, retry: () => void): void {
+    if (this.moved(shown)) {
+      return;
+    }
     this.busy = null;
     // An Error carries the api's own reason; anything else is the connection.
     const reason = error instanceof Error && error.message ? error.message : 'Check your connection.';
