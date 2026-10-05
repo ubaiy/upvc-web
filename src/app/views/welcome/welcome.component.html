@@ -8,7 +8,7 @@
   </p>
 
   <ol class="steps-list">
-    <li class="card step" *ngFor="let step of steps; let i = index">
+    <li class="card first-step" *ngFor="let step of steps; let i = index">
       <span class="number" aria-hidden="true">{{ i + 1 }}</span>
       <div class="grow">
         <h2>{{ step.title }}</h2>

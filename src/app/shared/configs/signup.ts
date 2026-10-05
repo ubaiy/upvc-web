@@ -6,11 +6,10 @@
 export const TERMS_VERSION = '2026-10-draft';
 
 /**
- * The page asks the api once, when it opens, whether sign-up is open (an empty POST signup: a closed
- * install answers 403 `signup_closed` before it looks at anything), so that nobody fills the form in vain.
- * API GAP: there is no "is sign-up open" route, and this question counts on the api's limiter
- * (3 an hour for an IP). The answer is kept for the browser tab. Set to false to ask nothing
- * before the first real submit.
+ * The page asks GET signup/state when it opens, so that nobody fills the form of a closed install in vain.
+ * FALLBACK for an api without that route (404): an empty POST signup (a closed install answers 403
+ * `signup_closed` before it looks at anything). That question counts on the api's limiter (3 an hour
+ * for an IP); set this to false to ask nothing by POST before the first real submit.
  */
 export const SIGNUP_ASK_ON_OPEN = true;
 

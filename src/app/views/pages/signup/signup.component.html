@@ -1,6 +1,6 @@
 <app-auth-layout
   [heading]="view === 'closed' ? 'We are onboarding fabricators in small batches' : view === 'check_email' ? 'Check your e-mail' : 'Start your free trial'"
-  [lead]="view === 'closed' ? 'Leave your number and we will call you.' : view === 'form' ? 'Create your company and price your first window today. No card needed.' : undefined"
+  [lead]="view === 'closed' ? 'Leave your number and we will call you.' : view === 'form' ? formLead : undefined"
   pageTitle="Start a free trial"
 >
   <!-- The api has not yet said whether sign-up is open: the outline of the form, no ring. -->
@@ -93,8 +93,7 @@
       <span class="error" id="signup_password_note" *ngIf="errorOf('password') as line; else passwordHint">{{ line }}</span>
       <ng-template #passwordHint>
         <span class="hint rule" id="signup_password_note" [class.met]="model.password.length >= passwordMin">
-          <app-icon [name]="model.password.length >= passwordMin ? 'circle-check' : 'circle'"></app-icon>
-          At least {{ passwordMin }} characters
+          <app-icon name="check" *ngIf="model.password.length >= passwordMin"></app-icon>At least {{ passwordMin }} characters
         </span>
       </ng-template>
     </div>
@@ -148,9 +147,9 @@
     </ng-container>
     <ng-template #noNumber>
       <app-callout tone="info" icon="phone">
-        <ng-container *ngIf="contact.length; else noContact">Call or write to us and we will set up your company with you.</ng-container>
+        <ng-container *ngIf="contact.length; else noContact">We are not taking sign-ups on this page yet. Call or write to us and we will set up your company with you.</ng-container>
         <ng-template #noContact>
-          If someone from our team sent you this link, reply to them with your name, mobile number and city. We will call you.
+          We are not taking sign-ups on this page yet. If someone from our team sent you this link, reply to them with your name, mobile number and city and we will call you.
         </ng-template>
       </app-callout>
     </ng-template>

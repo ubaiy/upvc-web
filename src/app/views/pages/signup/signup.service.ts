@@ -4,7 +4,7 @@ import { Observable, catchError, map, of } from 'rxjs';
 
 import { AccessService } from 'src/app/shared/access/access.service';
 import { PRODUCT_NAME } from 'src/app/shared/configs/product';
-import { TERMS_VERSION } from 'src/app/shared/configs/signup';
+import { SIGNUP_ASK_ON_OPEN, TERMS_VERSION } from 'src/app/shared/configs/signup';
 import { quiet } from 'src/app/shared/interceptors/request-options';
 import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 import { AuthService } from 'src/app/shared/services/auth.service';
@@ -38,6 +38,12 @@ export type SignupOutcome =
   | { kind: 'refused'; text: string; retry: boolean };
 
 export type SignupState = 'open' | 'closed' | 'unknown';
+
+/** What the page knows when it opens. `trialDays`: the length of the trial as the api says it, `null` when not said. */
+export interface SignupOpening {
+  state: SignupState;
+  trialDays: number | null;
+}
 
 /** The api's request for the form: trimmed, mobile as 10 digits, GSTIN in capitals, the password typed once. */
 export function signupBody(form: SignupForm): Record<string, unknown> {
@@ -117,11 +123,35 @@ export class SignupService {
   constructor(private api: ApiHttpService, private auth: AuthService, private access: AccessService) {}
 
   /**
-   * Is sign-up open? An empty POST signup: a closed install answers 403 signup_closed before it reads
-   * anything, an open one answers 422 (nothing is made). Asked once for a browser tab.
-   * Any other answer (429, no connection) is "unknown": the form is shown and the submit tells.
+   * Is sign-up open? GET signup/state (public, outside the sign-up limiter) answers
+   * { open, verify_email, trial_days, plan: { name } }. An api without that route (404) is asked the old
+   * way when SIGNUP_ASK_ON_OPEN is on. Anything else (no connection) is "unknown": the form is shown
+   * and the submit tells.
    */
-  ask(): Observable<SignupState> {
+  ask(): Observable<SignupOpening> {
+    return this.api.get('signup/state', quiet()).pipe(
+      map((res: any): SignupOpening => {
+        const data = res?.data;
+        if (!data || typeof data.open !== 'boolean') {
+          return { state: 'unknown', trialDays: null };
+        }
+        const days = Number(data.trial_days);
+        return { state: data.open ? 'open' : 'closed', trialDays: data.trial_days != null && isFinite(days) && days > 0 ? days : null };
+      }),
+      catchError((err: HttpErrorResponse) =>
+        err?.status === 404 && SIGNUP_ASK_ON_OPEN
+          ? this.askByPost().pipe(map((state): SignupOpening => ({ state, trialDays: null })))
+          : of<SignupOpening>({ state: 'unknown', trialDays: null })
+      )
+    );
+  }
+
+  /**
+   * The fallback: an empty POST signup. A closed install answers 403 signup_closed before it reads
+   * anything, an open one answers 422 (nothing is made). It counts on the api's limiter (3 an hour
+   * for an IP), so the answer is kept for the browser tab.
+   */
+  private askByPost(): Observable<SignupState> {
     const known = this.remembered();
     if (known) {
       return of(known);

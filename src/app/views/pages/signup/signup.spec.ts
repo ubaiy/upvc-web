@@ -18,6 +18,7 @@ import { contactLines, SignupComponent, whatsappLink } from './signup.component'
 import { SignupForm, SignupOutcome, SignupService, signupBody, waitWords } from './signup.service';
 
 const URL = `${environment.API_URL}/signup`;
+const STATE_URL = `${environment.API_URL}/signup/state`;
 
 const GOOD: SignupForm = {
   company_name: ' Shree Windows ',
@@ -172,8 +173,10 @@ describe('Sign-up: each answer of the api (T140)', () => {
     const { outcome, request } = send();
     request.flush({ success: false, code: 'signup_closed', message: 'Sign-up is closed.' }, { status: 403, statusText: 'Forbidden' });
     expect(outcome()).toEqual({ kind: 'closed' });
+    // an api without GET signup/state: the fallback does not ask a second time
     let state = '';
-    service.ask().subscribe((s) => (state = s));
+    service.ask().subscribe((s) => (state = s.state));
+    http.expectOne(STATE_URL).flush({ message: 'Not found' }, { status: 404, statusText: 'Not Found' });
     http.expectNone(URL);
     expect(state).toBe('closed');
   });
@@ -215,19 +218,47 @@ describe('Sign-up: each answer of the api (T140)', () => {
     expect((a.outcome() as any).text).toContain('Check your internet connection');
   });
 
-  it('the question on opening: an empty POST; 403 signup_closed = closed, 422 = open, anything else = not known', () => {
+  it('the question on opening: GET signup/state says open or closed and the days of the trial; no POST is made', () => {
+    const got: any[] = [];
+    service.ask().subscribe((o) => got.push(o));
+    const first = http.expectOne(STATE_URL);
+    expect(first.request.method).toBe('GET');
+    first.flush({ success: true, data: { open: true, verify_email: false, trial_days: 30, plan: { name: 'Growth' } } });
+    service.ask().subscribe((o) => got.push(o));
+    http.expectOne(STATE_URL).flush({ success: true, data: { open: false, verify_email: false, trial_days: 14, plan: { name: 'Growth' } } });
+    service.ask().subscribe((o) => got.push(o));
+    http.expectOne(STATE_URL).flush({ success: true, data: { open: true } });
+    // an answer that does not say, and no connection: not known, the form is shown
+    service.ask().subscribe((o) => got.push(o));
+    http.expectOne(STATE_URL).flush({ success: true, data: {} });
+    service.ask().subscribe((o) => got.push(o));
+    http.expectOne(STATE_URL).error(new ProgressEvent('error'), { status: 0 });
+    http.expectNone(URL);
+    expect(got).toEqual([
+      { state: 'open', trialDays: 30 },
+      { state: 'closed', trialDays: 14 },
+      { state: 'open', trialDays: null },
+      { state: 'unknown', trialDays: null },
+      { state: 'unknown', trialDays: null },
+    ]);
+  });
+
+  it('the fallback for an api without that route (404): an empty POST; 403 signup_closed = closed, 422 = open, anything else = not known; kept for the tab', () => {
     const states: string[] = [];
-    service.ask().subscribe((s) => states.push(s));
+    const ask = () => {
+      service.ask().subscribe((o) => states.push(o.state));
+      http.expectOne(STATE_URL).flush({ message: 'Not found' }, { status: 404, statusText: 'Not Found' });
+    };
+    ask();
     const first = http.expectOne(URL);
     expect(first.request.body).toEqual({});
     first.flush({ message: 'x', errors: { company_name: ['required'] } }, { status: 422, statusText: 'Unprocessable' });
-    // asked once for the tab
-    service.ask().subscribe((s) => states.push(s));
+    ask();
     http.expectNone(URL);
     sessionStorage.removeItem('signup-state');
-    service.ask().subscribe((s) => states.push(s));
+    ask();
     http.expectOne(URL).flush({ message: 'Too Many Attempts.' }, { status: 429, statusText: 'Too Many' });
-    service.ask().subscribe((s) => states.push(s));
+    ask();
     http.expectOne(URL).flush({ success: false, code: 'signup_closed' }, { status: 403, statusText: 'Forbidden' });
     expect(states).toEqual(['open', 'open', 'unknown', 'closed']);
   });
@@ -238,10 +269,10 @@ describe('Sign-up page (T140)', () => {
   let auth: jasmine.SpyObj<AuthService>;
   let subject: { next: (o: any) => void; complete: () => void; subscribe: any };
 
-  async function open(state: 'open' | 'closed' | 'unknown') {
+  async function open(state: 'open' | 'closed' | 'unknown', trialDays: number | null = null) {
     subject = new Subject<SignupOutcome>() as any;
     signup = jasmine.createSpyObj<SignupService>('SignupService', ['ask', 'signUp']);
-    signup.ask.and.returnValue(of(state));
+    signup.ask.and.returnValue(of({ state, trialDays }));
     signup.signUp.and.returnValue(subject as any);
     auth = jasmine.createSpyObj<AuthService>('AuthService', ['getToken']);
     auth.getToken.and.returnValue('');
@@ -270,6 +301,26 @@ describe('Sign-up page (T140)', () => {
     expect(honeypot.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(el.querySelector('a[href*="/auth/login"]')).not.toBeNull();
     expect(el.querySelector('a[href*="/auth/terms"]')).not.toBeNull();
+  });
+
+  it('the days of the trial come from the api; not said, no number is named', async () => {
+    const { el } = await open('open', 30);
+    expect(el.textContent).toContain('Free for 30 days. No card needed.');
+    TestBed.resetTestingModule();
+    const other = await open('open');
+    expect(other.el.textContent).toContain('No card needed.');
+    expect(other.el.textContent).not.toMatch(/Free for d+ days/);
+  });
+
+  it('the password rule reads as a hint: a tick when met, no control in front of it', async () => {
+    const { fixture, page, el } = await open('open');
+    const hint = () => el.querySelector('#signup_password_note')!;
+    expect(hint().textContent?.trim()).toBe('At least 8 characters');
+    expect(hint().querySelector('app-icon')).toBeNull();
+    page.model.password = 'a-long-password-1';
+    fixture.detectChanges();
+    expect(hint().querySelector('app-icon')).not.toBeNull();
+    expect(hint().classList).toContain('met');
   });
 
   it('a wrong field: nothing is sent and each field says why', async () => {
@@ -382,7 +433,7 @@ describe('Sign-up page (T140)', () => {
 
   it('someone who is signed in is sent into the app', () => {
     signup = jasmine.createSpyObj<SignupService>('SignupService', ['ask', 'signUp']);
-    signup.ask.and.returnValue(of('open'));
+    signup.ask.and.returnValue(of({ state: 'open', trialDays: null }));
     auth = jasmine.createSpyObj<AuthService>('AuthService', ['getToken']);
     auth.getToken.and.returnValue('tok');
     TestBed.configureTestingModule({

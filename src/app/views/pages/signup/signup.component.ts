@@ -5,7 +5,7 @@ import { finalize } from 'rxjs';
 
 import { PLAN_CONTACT } from 'src/app/shared/configs/plans';
 import { PRODUCT_NAME } from 'src/app/shared/configs/product';
-import { GST_STATES, SIGNUP_ASK_ON_OPEN } from 'src/app/shared/configs/signup';
+import { GST_STATES } from 'src/app/shared/configs/signup';
 import { AuthService } from 'src/app/shared/services/auth.service';
 import { PASSWORD_MIN, cleanGstin, cleanMobile, gstinError, mobileError, passwordError } from './signup-rules';
 import { SignupForm, SignupService } from './signup.service';
@@ -71,6 +71,9 @@ export class SignupComponent implements OnInit {
     website: '',
   };
 
+  /** The length of the trial as the api says it; not said, the page names no number. */
+  trialDays: number | null = null;
+
   submitted = false;
   busy = false;
   showPassword = false;
@@ -101,11 +104,10 @@ export class SignupComponent implements OnInit {
       this.router.navigateByUrl('/');
       return;
     }
-    if (!SIGNUP_ASK_ON_OPEN) {
-      this.view = 'form';
-      return;
-    }
-    this.signup.ask().subscribe((state) => (this.view = state === 'closed' ? 'closed' : 'form'));
+    this.signup.ask().subscribe((opening) => {
+      this.trialDays = opening.trialDays;
+      this.view = opening.state === 'closed' ? 'closed' : 'form';
+    });
   }
 
   /** The line under a field, or '' when the field is right or not yet worth a remark. */
@@ -174,6 +176,12 @@ export class SignupComponent implements OnInit {
     if (!this.model.state_code && this.states.some((s) => s.code === code)) {
       this.model.state_code = code;
     }
+  }
+
+  /** Under the heading of the form. */
+  get formLead(): string {
+    const free = this.trialDays ? `Free for ${this.trialDays} days. No card needed.` : 'No card needed.';
+    return `Create your company and price your first window today. ${free}`;
   }
 
   get whatsapp(): string {
