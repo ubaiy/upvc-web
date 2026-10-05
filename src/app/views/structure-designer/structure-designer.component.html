@@ -35,19 +35,25 @@
 <!-- The designer. -->
 <div class="sd sd--design" *ngIf="structure as s" [attr.data-sheet]="sheet" [class.is-sheet-open]="sheetOpen">
   <div class="sd-top">
-    <button type="button" class="sd-btn" (click)="close()" title="Back to the shapes">‹ Shapes</button>
+    <button type="button" class="sd-btn" (click)="close()" title="Back to the shapes" aria-label="Back to the shapes">‹<span class="sd-w"> Shapes</span></button>
     <input class="sd-name" [value]="s.name" (change)="rename($any($event.target).value)" aria-label="Name of the structure" maxlength="80" />
     <span class="sd-group">
-      <button type="button" class="sd-btn" (click)="undo()" [disabled]="!history?.canUndo" title="Undo (Ctrl+Z)">Undo</button>
-      <button type="button" class="sd-btn" (click)="redo()" [disabled]="!history?.canRedo" title="Redo (Ctrl+Y)">Redo</button>
-      <button type="button" class="sd-btn" (click)="reset()" title="Back to the default size and panels">Reset</button>
+      <button type="button" class="sd-btn" (click)="undo()" [disabled]="!history?.canUndo" title="Undo (Ctrl+Z)" aria-label="Undo"><span class="sd-w">Undo</span><span class="sd-n" aria-hidden="true">↶</span></button>
+      <button type="button" class="sd-btn" (click)="redo()" [disabled]="!history?.canRedo" title="Redo (Ctrl+Y)" aria-label="Redo"><span class="sd-w">Redo</span><span class="sd-n" aria-hidden="true">↷</span></button>
+      <button type="button" class="sd-btn sd-w" (click)="reset()" title="Back to the default size and panels">Reset</button>
     </span>
     <span class="sd-spacer"></span>
     <span class="sd-group">
       <button type="button" class="sd-btn sd-btn--primary" (click)="save()">Save</button>
       <span class="sd-menu">
-        <button type="button" class="sd-btn" (click)="openList = !openList" [attr.aria-expanded]="openList">Open</button>
+        <button type="button" class="sd-btn" (click)="openList = !openList" [attr.aria-expanded]="openList" aria-label="Open, export and more"><span class="sd-w">Open</span><span class="sd-n" aria-hidden="true">⋯</span></button>
         <div class="sd-menu__list" *ngIf="openList">
+          <!-- On a phone the bar keeps one row: what does not fit is here. -->
+          <div class="sd-menu__more sd-n">
+            <button type="button" class="sd-btn" (click)="reset(); openList = false">Reset</button>
+            <button type="button" class="sd-btn" (click)="exportJson(); openList = false">Export JSON</button>
+            <button type="button" class="sd-btn" (click)="exportPicture(); openList = false">Export picture</button>
+          </div>
           <p class="sd-muted" *ngIf="!saved.length">Nothing saved yet.</p>
           <div class="sd-menu__item" *ngFor="let row of saved">
             <button type="button" (click)="load(row)">{{ row.name }}<small>{{ row.savedAt | date : 'd MMM, HH:mm' }}</small></button>
@@ -56,13 +62,15 @@
           <button type="button" class="sd-btn" (click)="chooseFile()">Open a JSON file</button>
         </div>
       </span>
-      <button type="button" class="sd-btn" (click)="exportJson()">Export JSON</button>
-      <button type="button" class="sd-btn" (click)="exportPicture()">Export picture</button>
+      <button type="button" class="sd-btn sd-w" (click)="exportJson()">Export JSON</button>
+      <button type="button" class="sd-btn sd-w" (click)="exportPicture()">Export picture</button>
     </span>
   </div>
 
-  <div class="sd-body">
-    <aside class="sd-panel sd-left">
+  <!-- The 3D view is the page; the two panels lie over it and fold away. -->
+  <div class="sd-body" [class.is-left-open]="leftOpen" [class.is-right-open]="rightOpen">
+    <aside class="sd-panel sd-left" aria-label="Shape">
+      <button type="button" class="sd-fold" (click)="togglePanel('left', false)" title="Hide this panel" aria-label="Hide the shape panel">‹</button>
       <section class="sd-sec sd-sec--shape" *ngIf="def">
         <h2>{{ def.label }}</h2>
         <div class="sd-field" *ngFor="let p of visibleParams; trackBy: trackKey" [attr.data-param]="p.key">
@@ -107,7 +115,7 @@
         <div class="sd-swatches">
           <button type="button" *ngFor="let c of profileColours" [style.background]="c.value" [class.is-on]="s.appearance.profileColour === c.value" (click)="setColour(c.value)" [title]="c.label" [attr.aria-label]="'Profile colour ' + c.label"></button>
         </div>
-        <h3>Glass tint</h3>
+        <h3>Glass tint, whole structure</h3>
         <div class="sd-swatches">
           <button type="button" *ngFor="let c of glassTints" [style.background]="c.value" [class.is-on]="s.appearance.glassTint === c.value" (click)="setTint(c.value)" [title]="c.label" [attr.aria-label]="'Glass tint ' + c.label"></button>
         </div>
@@ -131,6 +139,8 @@
           </span>
         </ng-container>
       </div>
+      <button type="button" class="sd-btn sd-unfold sd-unfold--left" (click)="togglePanel('left', true)" [attr.aria-expanded]="leftOpen">Shape ›</button>
+      <button type="button" class="sd-btn sd-unfold sd-unfold--right" (click)="togglePanel('right', true)" [attr.aria-expanded]="rightOpen">‹ Selection and parts<i *ngIf="selectedFaces.length || selectedBar"></i></button>
       <div class="sd-views">
         <div class="sd-seg" role="group" aria-label="View">
           <button type="button" *ngFor="let v of views" (click)="setView(v.key)" [attr.data-view]="v.key">{{ v.label }}</button>
@@ -142,7 +152,8 @@
       <p class="sd-toast" *ngIf="message" role="status">{{ message }}</p>
     </div>
 
-    <aside class="sd-panel sd-right">
+    <aside class="sd-panel sd-right" aria-label="Selection and parts">
+      <button type="button" class="sd-fold" (click)="togglePanel('right', false)" title="Hide this panel" aria-label="Hide the selection and parts panel">›</button>
       <section class="sd-sec sd-sec--panel">
         <h2>Selection</h2>
         <p class="sd-muted" *ngIf="!faceInfo && !barInfo">Tap a panel or a bar in the 3D view. Shift + tap adds panels.</p>
@@ -156,6 +167,14 @@
           <div class="sd-fills" role="group" aria-label="Panel type">
             <button type="button" *ngFor="let k of fillKeys" [class.is-on]="f.fill === k" (click)="setFill(k)" [attr.data-fill]="k">{{ fillLabel[k] }}</button>
           </div>
+          <ng-container *ngIf="f.glazed">
+            <h3>Glass tint of {{ selectedFaces.length === 1 ? 'this panel' : 'these ' + selectedFaces.length + ' panels' }}</h3>
+            <div class="sd-swatches" data-tint="face">
+              <button type="button" *ngFor="let c of glassTints" [style.background]="c.value" [class.is-on]="f.tint === c.value" (click)="setFaceTint(c.value)" [title]="c.label" [attr.aria-label]="'Glass tint ' + c.label + ' for the selection'"></button>
+              <button type="button" class="sd-btn" (click)="setFaceTint(null)" [disabled]="!f.ownTint" title="Back to the tint of the whole structure">As the structure</button>
+            </div>
+            <p class="sd-muted sd-small" *ngIf="f.tint === null">The selected panels have different tints.</p>
+          </ng-container>
           <div class="sd-row">
             <button type="button" class="sd-btn" (click)="selectGroup()" data-action="group">Select all of: {{ f.group }}</button>
             <button type="button" class="sd-btn" (click)="clearSelection()">Clear</button>

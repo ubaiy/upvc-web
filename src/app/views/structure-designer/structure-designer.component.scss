@@ -271,7 +271,28 @@ input:focus-visible {
   user-select: none;
 }
 
+// Inside the shell the designer takes the whole content area (the component measures it).
+:host(.sd-fill) .sd--design {
+  position: fixed;
+  z-index: 1;
+  left: var(--sd-x, 0);
+  top: var(--sd-y, 0);
+  width: var(--sd-w, 100vw);
+  height: var(--sd-h, 100vh);
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+// Shown on a wide bar only (.sd-w) or on a phone's one-row bar only (.sd-n).
+.sd-n {
+  display: none;
+}
+
 .sd-top {
+  position: relative;
+  z-index: 8;
+  background: var(--sd-surface);
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -330,6 +351,14 @@ input:focus-visible {
   box-shadow: var(--shadow-pop, 0 8px 24px rgba(20, 24, 28, 0.1));
 }
 
+.sd-menu__more {
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--sd-border);
+}
+
 .sd-menu__item {
   display: flex;
   align-items: center;
@@ -358,9 +387,9 @@ input:focus-visible {
 }
 
 .sd-body {
+  position: relative;
   flex: 1;
-  display: grid;
-  grid-template-columns: 272px minmax(0, 1fr) 340px;
+  display: flex;
   min-height: 0;
 }
 
@@ -370,12 +399,101 @@ input:focus-visible {
   background: var(--sd-surface);
 }
 
-.sd-left {
-  border-right: 1px solid var(--sd-border);
+// Fold a panel away (in the panel) and bring it back (on the 3D view).
+.sd-fold {
+  position: sticky;
+  z-index: 2;
+  top: 8px;
+  float: right;
+  width: 30px;
+  height: 30px;
+  margin: 8px 8px 0 0;
+  border: 1px solid var(--sd-border);
+  border-radius: 6px;
+  background: var(--sd-surface);
+  color: var(--sd-text-2);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--sd-surface-2);
+    color: var(--sd-text);
+  }
 }
 
-.sd-right {
-  border-left: 1px solid var(--sd-border);
+.sd-unfold {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  box-shadow: 0 1px 4px rgba(20, 24, 28, 0.12);
+
+  i {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-left: 6px;
+    border-radius: 50%;
+    background: var(--sd-accent);
+  }
+}
+
+.sd-unfold--left {
+  left: 10px;
+}
+
+.sd-unfold--right {
+  right: 10px;
+}
+
+// A wide window: the 3D view is the whole body; the panels are cards lying over it.
+// Widths here are the COVER numbers of the component (panel + its two 10 px gaps).
+@media (min-width: 1100px) {
+  .sd-panel {
+    position: absolute;
+    z-index: 6;
+    top: 10px;
+    bottom: 10px;
+    display: none;
+    border: 1px solid var(--sd-border);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.93);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(20, 24, 28, 0.14);
+  }
+
+  .sd-left {
+    left: 10px;
+    width: 248px;
+  }
+
+  .sd-right {
+    right: 10px;
+    width: 304px;
+  }
+
+  .is-left-open .sd-left,
+  .is-right-open .sd-right {
+    display: block;
+  }
+
+  .is-left-open .sd-unfold--left,
+  .is-right-open .sd-unfold--right {
+    display: none;
+  }
+
+  .sd-views {
+    left: 100px;
+  }
+
+  .is-left-open .sd-views,
+  .is-left-open .sd-hint {
+    left: 268px;
+  }
+
+  .is-right-open .sd-hint {
+    right: 324px;
+  }
 }
 
 .sd-sec {
@@ -498,16 +616,29 @@ input:focus-visible {
     &.is-on {
       box-shadow: 0 0 0 2px var(--sd-surface), 0 0 0 4px var(--sd-accent);
     }
+
+    // "As the structure": a word, not a colour.
+    &.sd-btn {
+      width: auto;
+      border-radius: 6px;
+    }
   }
+}
+
+.sd-small {
+  margin-top: 4px;
+  font-size: 12px;
 }
 
 // --- the 3D stage ---
 
 .sd-stage {
   position: relative;
+  flex: 1;
   min-width: 0;
   min-height: 0;
-  background: #eef1f1;
+  // The colours of the scene's backdrop, for the moment before the first frame.
+  background: linear-gradient(#e3eaf1, #c6d1db 55%, #9ba8b5);
   overflow: hidden;
   container-type: inline-size;
 }
@@ -799,6 +930,11 @@ button.sd-dim:hover {
     }
   }
 
+  .sd-fold,
+  .sd-unfold {
+    display: none;
+  }
+
   .sd-tabs {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -850,20 +986,35 @@ button.sd-dim:hover {
     font-size: 21px;
   }
 
+  // One row, whatever the phone: words become signs and the rest moves into the ⋯ menu.
   .sd-top {
+    flex-wrap: nowrap;
     gap: 6px;
     padding: 6px;
 
     .sd-btn {
-      height: 34px;
+      height: 36px;
+      min-width: 36px;
       padding: 0 9px;
     }
+  }
+
+  .sd-w {
+    display: none;
+  }
+
+  span.sd-n {
+    display: inline;
+  }
+
+  .sd-menu__more {
+    display: flex;
   }
 
   .sd-name {
     flex: 1;
     width: auto;
-    min-width: 90px;
+    min-width: 60px;
   }
 
   .sd-spacer {

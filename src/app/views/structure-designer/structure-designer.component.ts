@@ -31,6 +31,7 @@ import {
   fillKey,
   FillKey,
   groupFaceIds,
+  isGlazed,
   History,
   Joint,
   jointLengthMm,
@@ -46,6 +47,7 @@ import {
   serializeStructure,
   setAppearance,
   setFaceFill,
+  setFaceGlassTint,
   SHAPE_LABEL,
   Structure,
   summarize,
@@ -56,9 +58,16 @@ import {
 import { environment } from '../../../environments/environment';
 import { SavedStructure, StructureStoreService } from './structure-store.service';
 import { PickTarget } from './three/structure-mesh';
-import { LabelPosition, OrbitBenchmark, StructureScene, ViewPreset, webglAvailable } from './three/structure-scene';
+import { LabelPosition, OrbitBenchmark, StructureScene, ViewInsets, ViewPreset, webglAvailable } from './three/structure-scene';
 
 type Sheet = 'shape' | 'panel' | 'parts';
+
+/** From this width the panels lie over the 3D view; under it they are one bottom sheet. */
+const OVERLAY_FROM_PX = 1100;
+/** From this width both panels start open. */
+const OPEN_FROM_PX = 1200;
+/** What an open panel and the toolbars cover of the 3D view, CSS px (structure-designer.component.scss). */
+const COVER = { left: 268, right: 324, top: 56, bottom: 30 };
 
 const PROFILE_COLOURS = [
   { value: '#f4f4f1', label: 'White' },
@@ -86,7 +95,7 @@ const GLASS_TINTS = [
 })
 export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   readonly templates = TEMPLATES;
-  readonly fillKeys: FillKey[] = ['fixed', 'casement', 'top-hung', 'door', 'panel', 'open'];
+  readonly fillKeys: FillKey[] = ['fixed', 'casement', 'top-hung', 'door', 'sliding', 'panel', 'open'];
   readonly fillLabel = FILL_LABEL;
   readonly shapeLabel = SHAPE_LABEL;
   readonly profileColours = PROFILE_COLOURS;
@@ -109,7 +118,10 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   selectedFaces: string[] = [];
   selectedBar: string | null = null;
   sheet: Sheet = 'shape';
-  sheetOpen = true;
+  /** The bottom sheet of a narrow window, and the two panels of a wide one: folded away until there is room. */
+  sheetOpen = false;
+  leftOpen = window.innerWidth >= OPEN_FROM_PX;
+  rightOpen = window.innerWidth >= OPEN_FROM_PX;
   editingDim: string | null = null;
   dimDraft = '';
   saved: SavedStructure[] = [];
@@ -121,6 +133,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   private scene: StructureScene | null = null;
   private canvasEl: HTMLCanvasElement | null = null;
   private observer: ResizeObserver | null = null;
+  private shellObserver: ResizeObserver | null = null;
   /** The document before a slider or handle gesture began; the gesture is one undo step. */
   private gestureBase: Structure | null = null;
   private messageTimer = 0;
@@ -143,7 +156,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     private readonly cdr: ChangeDetectorRef,
     private readonly zone: NgZone,
     private readonly store: StructureStoreService,
-    private readonly route: ActivatedRoute
+    private readonly route: ActivatedRoute,
+    private readonly host: ElementRef<HTMLElement>
   ) {
     this.saved = this.store.list();
     const kind = this.route.snapshot.queryParamMap.get('kind');
@@ -158,9 +172,65 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   ngAfterViewInit(): void {
     if (!this.structure && this.webgl) setTimeout(() => this.drawThumbnails(), 30);
+    const main = this.host.nativeElement.closest('main');
+    if (main && typeof ResizeObserver !== 'undefined') {
+      this.shellObserver = new ResizeObserver(() => this.fillContentArea());
+      this.shellObserver.observe(main);
+    }
+    this.fillContentArea();
+  }
+
+  /**
+   * The designer takes the whole content area of the shell (beside the menu,
+   * above the phone's tab bar), not the padded column a page of forms gets.
+   * The start screen stays an ordinary page.
+   */
+  private fillContentArea(): void {
+    const host = this.host.nativeElement;
+    const main = host.closest('main');
+    const on = !!main && !!this.structure;
+    host.classList.toggle('sd-fill', on);
+    if (!main || !on) return;
+    const area = main.getBoundingClientRect();
+    const top = Math.max(0, (host.parentElement ?? main).getBoundingClientRect().top);
+    host.style.setProperty('--sd-x', `${Math.round(area.left)}px`);
+    host.style.setProperty('--sd-y', `${Math.round(top)}px`);
+    host.style.setProperty('--sd-w', `${Math.round(area.width)}px`);
+    // The room the shell keeps free under the content (the phone's tab bar) is its own bottom padding.
+    let reserved = 0;
+    for (let el = main.parentElement; el && el !== document.body; el = el.parentElement) reserved += parseFloat(getComputedStyle(el).paddingBottom) || 0;
+    host.style.setProperty('--sd-h', `${Math.round(window.innerHeight - reserved - top)}px`);
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.fillContentArea();
+    this.pushInsets(false);
+  }
+
+  /** Tell the scene what the open panels cover, so Fit centres the structure in what is left. */
+  private pushInsets(refit: boolean): void {
+    const wide = window.innerWidth >= OVERLAY_FROM_PX;
+    const insets: ViewInsets = {
+      left: wide && this.leftOpen ? COVER.left : 0,
+      right: wide && this.rightOpen ? COVER.right : 0,
+      top: COVER.top,
+      bottom: wide ? COVER.bottom : 0,
+    };
+    this.zone.runOutsideAngular(() => this.scene?.setInsets(insets, refit));
+  }
+
+  /** Fold a panel away or bring it back; the structure is fitted again to the free part of the view. */
+  togglePanel(side: 'left' | 'right', open: boolean): void {
+    if (side === 'left') this.leftOpen = open;
+    else this.rightOpen = open;
+    this.pushInsets(true);
+    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void {
+    this.shellObserver?.disconnect();
+    this.host.nativeElement.classList.remove('sd-fill');
     this.dropScene();
     window.clearTimeout(this.messageTimer);
     const w = window as unknown as Record<string, unknown>;
@@ -206,6 +276,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.gestureBase = null;
     this.sheet = 'shape';
     this.openList = false;
+    this.fillContentArea();
     this.refresh(true);
   }
 
@@ -216,6 +287,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.summary = null;
     this.dims = [];
     this.saved = this.store.list();
+    this.fillContentArea();
     this.cdr.markForCheck();
     if (this.webgl) setTimeout(() => this.drawThumbnails(), 30);
   }
@@ -239,6 +311,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     size();
     this.observer = new ResizeObserver(size);
     this.observer.observe(host);
+    this.pushInsets(false);
     if (this.structure) {
       scene.setStructure(this.structure, this.dims, true);
       scene.setSelection(this.selectedFaces, this.selectedBar);
@@ -405,6 +478,11 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     if (this.selectedFaces.length || this.selectedBar) {
       this.sheet = 'panel';
       this.sheetOpen = true;
+      // What is selected is changed in the right panel: it comes forward, the view stays as it is.
+      if (!this.rightOpen) {
+        this.rightOpen = true;
+        this.pushInsets(false);
+      }
     }
     this.zone.runOutsideAngular(() => this.scene?.setSelection(this.selectedFaces, this.selectedBar));
     this.cdr.markForCheck();
@@ -431,7 +509,20 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     return this.structure?.joints.find((j) => j.id === this.selectedBar) ?? null;
   }
 
-  get faceInfo(): { title: string; shape: string; size: string; area: string; fill: FillKey | null; group: string } | null {
+  get faceInfo(): {
+    title: string;
+    shape: string;
+    size: string;
+    area: string;
+    fill: FillKey | null;
+    group: string;
+    /** Some selected panel has glass. */
+    glazed: boolean;
+    /** The tint the selected glass is drawn with; null when the panels differ. */
+    tint: string | null;
+    /** Some selected panel has a tint of its own. */
+    ownTint: boolean;
+  } | null {
     const s = this.structure;
     const first = this.face;
     if (!s || !first) return null;
@@ -439,7 +530,11 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     const fills = new Set(chosen.map((f) => fillKey(f)));
     const area = chosen.reduce((sum, f) => sum + faceAreaSqMm(f), 0) / 1e6;
     const size = panelSize(first);
+    const tints = new Set(chosen.filter(isGlazed).map((f) => f.glassTint ?? s.appearance.glassTint));
     return {
+      glazed: tints.size > 0,
+      tint: tints.size === 1 ? [...tints][0] : null,
+      ownTint: chosen.some((f) => !!f.glassTint),
       title: chosen.length === 1 ? first.label : `${chosen.length} panels`,
       shape: chosen.length === 1 ? SHAPE_LABEL[size.shape] : chosen.every((f) => f.group === first.group) ? first.groupLabel : 'Several groups',
       size: chosen.length === 1 ? `${size.text} mm` : '',
@@ -477,6 +572,16 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   setTint(glassTint: string): void {
     this.history?.push(setAppearance(this.history.present, { glassTint }));
+    this.refresh();
+  }
+
+  /** A tint for the glass of the selected panels only; null = the tint of the structure again. */
+  setFaceTint(tint: string | null): void {
+    const h = this.history;
+    if (!h || !this.selectedFaces.length) return;
+    const next = setFaceGlassTint(h.present, this.selectedFaces, tint);
+    if (next === h.present) return;
+    h.push(next);
     this.refresh();
   }
 

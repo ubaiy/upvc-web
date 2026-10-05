@@ -135,7 +135,7 @@ describe('StructureDesignerComponent', () => {
     inner().pick({ kind: 'face', id: 'front-1' }, false);
     fixture.detectChanges();
     expect(c.faceInfo).toEqual(jasmine.objectContaining({ title: 'Front wall, panel 1', shape: 'Rectangle', size: '675 × 2400 mm', fill: 'fixed' }));
-    expect(el.querySelectorAll('.sd-fills button').length).toBe(6);
+    expect(el.querySelectorAll('.sd-fills button').length).toBe(7);
     el.querySelector<HTMLElement>('.sd-fills [data-fill="casement"]')?.click();
     fixture.detectChanges();
     expect(fillKey(c.structure!.faces.find((f) => f.id === 'front-1')!)).toBe('casement');
@@ -181,6 +181,50 @@ describe('StructureDesignerComponent', () => {
     fixture.detectChanges();
     el.querySelector<HTMLElement>('.sd-sec--parts .sd-table tbody tr')?.click();
     expect(c.selectedFaces.length).toBe(12);
+  });
+
+  it('a glass tint can be given to the selected panels only, and taken back', async () => {
+    await make({ kind: 'cabin' });
+    inner().pick({ kind: 'face', id: 'front-1' }, false);
+    inner().pick({ kind: 'face', id: 'front-2' }, true);
+    fixture.detectChanges();
+    const swatches = el.querySelectorAll<HTMLElement>('[data-tint="face"] button');
+    expect(swatches.length).toBe(c.glassTints.length + 1);
+    expect(c.faceInfo).toEqual(jasmine.objectContaining({ glazed: true, tint: '#9fc4cf', ownTint: false }));
+    swatches[3].click(); // bronze
+    fixture.detectChanges();
+    const tintOf = (id: string): string | undefined => c.structure!.faces.find((f) => f.id === id)!.glassTint;
+    expect([tintOf('front-1'), tintOf('front-2'), tintOf('front-3')]).toEqual(['#b89f7a', '#b89f7a', undefined]);
+    expect(c.structure!.appearance.glassTint).toBe('#9fc4cf');
+    expect(c.faceInfo).toEqual(jasmine.objectContaining({ tint: '#b89f7a', ownTint: true }));
+    // It stays through a resize; "As the structure" takes it off again.
+    c.commit({ height: 2700 });
+    expect(tintOf('front-1')).toBe('#b89f7a');
+    c.setFaceTint(null);
+    expect(tintOf('front-1')).toBeUndefined();
+    // A solid panel has no glass to tint.
+    c.selectFaces(['front-1']);
+    c.setFill('panel');
+    expect(c.faceInfo?.glazed).toBeFalse();
+  });
+
+  it('the panels fold away and come back; a selection brings its panel forward', async () => {
+    await make({ kind: 'dome' });
+    c.togglePanel('left', false);
+    c.togglePanel('right', false);
+    fixture.detectChanges();
+    const body = el.querySelector('.sd-body')!;
+    expect(body.classList.contains('is-left-open') || body.classList.contains('is-right-open')).toBeFalse();
+    el.querySelector<HTMLElement>('.sd-unfold--left')?.click();
+    fixture.detectChanges();
+    expect(c.leftOpen).toBeTrue();
+    inner().pick({ kind: 'face', id: c.structure!.faces[0].id }, false);
+    expect(c.rightOpen).toBeTrue();
+    // One row on a phone: what the bar drops is in the menu.
+    c.openList = true;
+    inner().cdr.markForCheck();
+    fixture.detectChanges();
+    expect(el.querySelectorAll('.sd-menu__more button').length).toBe(3);
   });
 
   it('profile colour and glass tint apply to the whole structure; reset goes back to the defaults', async () => {
