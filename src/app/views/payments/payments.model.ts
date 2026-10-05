@@ -55,9 +55,23 @@ export interface Payment {
   recordedBy: string;
 }
 
+/** Money in and out of one mode or one day, as `payment/list` sums it (phase 30 log, section 7). */
+export interface PaymentSum {
+  /** "cash", or `2026-10-05`. */
+  key: string;
+  /** "Cash"; empty for a day. */
+  label: string;
+  received: number;
+  refunded: number;
+  netReceived: number;
+  count: number;
+}
+
 export interface PaymentList {
   payments: Payment[];
   totals: { received: number; refunded: number; netReceived: number };
+  /** The day book: what the listed entries come to by mode and by day. Cancelled entries are not counted. */
+  summary: { count: number; byMode: PaymentSum[]; byDay: PaymentSum[] };
   /** Filled only when the list was asked for one order or one bill. */
   account: Account | null;
 }
@@ -67,6 +81,10 @@ export interface PaymentScope {
   orderId?: number | null;
   billId?: number | null;
   customerId?: number | null;
+  /** The register's filters: dates as `YYYY-MM-DD`, both inclusive, and one mode. */
+  from?: string | null;
+  to?: string | null;
+  mode?: PaymentMode | null;
 }
 
 export interface NewPayment {

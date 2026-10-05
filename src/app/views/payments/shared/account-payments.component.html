@@ -95,8 +95,54 @@
       </button>
     </app-empty-state>
 
+    <!-- The day book of the register: what the entries below come to, by mode and by day, as the api sums them. -->
+    <div class="daybook" *ngIf="!isJob && payments.length && (summary.byMode.length || summary.byDay.length)">
+      <div class="by-mode" role="group" aria-label="Received by mode of payment">
+        <app-stat
+          *ngFor="let sum of summary.byMode"
+          [label]="sum.label || sum.key"
+          [value]="sum.netReceived | inr"
+          [detail]="
+            sum.refunded > 0
+              ? (sum.received | inr) + ' in, ' + (sum.refunded | inr) + ' refunded'
+              : sum.count + (sum.count === 1 ? ' entry' : ' entries')
+          "
+        ></app-stat>
+      </div>
+      <details class="by-day" *ngIf="summary.byDay.length" [attr.open]="summary.byDay.length <= 7 ? '' : null">
+        <summary>Day totals ({{ summary.byDay.length }} {{ summary.byDay.length === 1 ? 'day' : 'days' }})</summary>
+        <table class="table table-keep">
+          <thead>
+            <tr>
+              <th scope="col">Day</th>
+              <th scope="col" class="right hide-narrow">Entries</th>
+              <th scope="col" class="right">Received</th>
+              <th scope="col" class="right hide-narrow">Refunded</th>
+              <th scope="col" class="right">Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let day of summary.byDay">
+              <td>{{ day.key | date : 'EEE, d MMM y' }}</td>
+              <td class="right num hide-narrow">{{ day.count }}</td>
+              <td class="right num">{{ day.received | inr }}</td>
+              <td class="right num hide-narrow">{{ day.refunded | inr }}</td>
+              <td class="right num">{{ day.netReceived | inr }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </div>
+
     <app-empty-state
-      *ngIf="!payments.length && !isJob"
+      *ngIf="!payments.length && !isJob && filtered"
+      icon="search"
+      title="No payment matches"
+      text="Nothing was received or refunded for this period, mode and customer. Widen the dates or clear a filter."
+    ></app-empty-state>
+
+    <app-empty-state
+      *ngIf="!payments.length && !isJob && !filtered"
       icon="rupee"
       title="No payments yet"
       text="A payment is recorded from an order or a bill. Open one and press Record payment; the receipt appears here."

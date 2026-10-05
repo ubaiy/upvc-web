@@ -11,6 +11,7 @@ import {
   PaymentList,
   PaymentMode,
   PaymentScope,
+  PaymentSum,
 } from './payments.model';
 
 /**
@@ -99,8 +100,26 @@ export function toPaymentList(raw: any): PaymentList {
   return {
     payments: Array.isArray(raw?.payments) ? raw.payments.map(toPayment) : [],
     totals: { received: num(totals.received), refunded: num(totals.refunded), netReceived: num(totals.net_received) },
+    summary: {
+      count: num(raw?.summary?.count),
+      byMode: toSums(raw?.summary?.by_mode, 'mode', 'mode_label'),
+      byDay: toSums(raw?.summary?.by_day, 'date', ''),
+    },
     account: toAccount(raw?.account),
   };
+}
+
+function toSums(rows: any, key: string, label: string): PaymentSum[] {
+  return Array.isArray(rows)
+    ? rows.map((row) => ({
+        key: text(row?.[key]),
+        label: label ? text(row?.[label]) : '',
+        received: num(row?.received),
+        refunded: num(row?.refunded),
+        netReceived: num(row?.net_received),
+        count: num(row?.count),
+      }))
+    : [];
 }
 
 /** `payment/add`, `payment/show` and `payment/cancel` return the payment with its `account`. */
@@ -115,7 +134,21 @@ export function scopeQuery(scope: PaymentScope): string {
   if (scope.billId) {
     return `?bill_id=${scope.billId}`;
   }
-  return scope.customerId ? `?customer_id=${scope.customerId}` : '';
+  // The register: a customer, a period and a mode, any of them.
+  const parts: string[] = [];
+  if (scope.customerId) {
+    parts.push(`customer_id=${scope.customerId}`);
+  }
+  if (scope.from) {
+    parts.push(`from=${encodeURIComponent(scope.from)}`);
+  }
+  if (scope.to) {
+    parts.push(`to=${encodeURIComponent(scope.to)}`);
+  }
+  if (scope.mode) {
+    parts.push(`mode=${scope.mode}`);
+  }
+  return parts.length ? `?${parts.join('&')}` : '';
 }
 
 function bucketFigures(raw: any, keys: string[]): Record<string, number> {

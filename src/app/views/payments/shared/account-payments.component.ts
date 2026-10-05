@@ -5,7 +5,7 @@ import { Menu } from 'primeng/menu';
 import { ToastService } from '../../../shared/services/toast.service';
 import { httpMessage } from '../api-result';
 import { documentError, documentName, saveBlob, shareOrSave } from '../document-file';
-import { Account, Payment, PaymentKind, PaymentList, PaymentScope } from '../payments.model';
+import { Account, Payment, PaymentKind, PaymentList, PaymentMode, PaymentScope } from '../payments.model';
 import { PaymentsService, SavedPayment } from '../payments.service';
 
 type State = 'loading' | 'error' | 'ready';
@@ -25,6 +25,10 @@ export class AccountPaymentsComponent implements OnChanges {
   @Input() orderId: number | null = null;
   @Input() billId: number | null = null;
   @Input() customerId: number | null = null;
+  /** The register's filters: a period (`YYYY-MM-DD`, both days included) and a mode. */
+  @Input() from: string | null = null;
+  @Input() to: string | null = null;
+  @Input() mode: PaymentMode | null = null;
   @Input() heading = 'Payments';
   /** True where "Record payment" is the page's one primary button. */
   @Input() primaryAction = false;
@@ -42,6 +46,7 @@ export class AccountPaymentsComponent implements OnChanges {
   errorMessage = '';
   payments: Payment[] = [];
   totals: PaymentList['totals'] = { received: 0, refunded: 0, netReceived: 0 };
+  summary: PaymentList['summary'] = { count: 0, byMode: [], byDay: [] };
   account: Account | null = null;
 
   dialog: PaymentKind | null = null;
@@ -61,13 +66,18 @@ export class AccountPaymentsComponent implements OnChanges {
   constructor(private service: PaymentsService, private toast: ToastService, private host: ElementRef<HTMLElement>) {}
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['orderId'] || changes['billId'] || changes['customerId']) {
+    if (changes['orderId'] || changes['billId'] || changes['customerId'] || changes['from'] || changes['to'] || changes['mode']) {
       this.load();
     }
   }
 
   get scope(): PaymentScope {
-    return { orderId: this.orderId, billId: this.billId, customerId: this.customerId };
+    return { orderId: this.orderId, billId: this.billId, customerId: this.customerId, from: this.from, to: this.to, mode: this.mode };
+  }
+
+  /** A period, a mode or a customer narrows the register. */
+  get filtered(): boolean {
+    return !this.isJob && !!(this.from || this.to || this.mode || this.customerId);
   }
 
   /** One job is shown: the account figures and "Record payment" apply. */
@@ -228,6 +238,7 @@ export class AccountPaymentsComponent implements OnChanges {
         }
         this.payments = result.data.payments;
         this.totals = result.data.totals;
+        this.summary = result.data.summary;
         this.account = result.data.account;
         this.state = 'ready';
         if (!silent) {

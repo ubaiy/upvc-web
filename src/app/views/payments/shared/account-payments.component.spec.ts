@@ -87,7 +87,7 @@ describe('AccountPaymentsComponent (payments of a job)', () => {
     create(new Subject());
     expect(el().querySelectorAll('.sk-row').length).toBe(3);
     expect(el().querySelector('[role="status"]')?.textContent).toContain('Loading payments');
-    expect(service.list).toHaveBeenCalledWith({ orderId: 1, billId: null, customerId: null });
+    expect(service.list).toHaveBeenCalledWith(jasmine.objectContaining({ orderId: 1, billId: null, customerId: null }));
   });
 
   it('shows an inline error with "Try again"', () => {
@@ -255,7 +255,7 @@ describe('AccountPaymentsComponent (payments of a job)', () => {
       h.orderId = null;
       h.customerId = 2;
     });
-    expect(service.list).toHaveBeenCalledWith({ orderId: null, billId: null, customerId: 2 });
+    expect(service.list).toHaveBeenCalledWith(jasmine.objectContaining({ orderId: null, billId: null, customerId: 2 }));
     expect(el().querySelector('app-stat')).toBeNull();
     expect(button('Record payment')).toBeUndefined();
     expect(el().querySelector('thead')?.textContent).toContain('Customer');
