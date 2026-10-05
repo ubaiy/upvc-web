@@ -88,6 +88,23 @@ export function shutterColor(profile: string): string {
   return shadeColor(hex, luma < 90 ? 0.22 : -0.17);
 }
 
+/** The colour of a fly-mesh shutter: a clear step past the glass shutters, so its slim members read as another sash. */
+export function meshSashColor(profile: string): string {
+  const hex = shadeColor(profile, 0);
+  const n = parseInt(hex.slice(1), 16);
+  const luma = (((n >> 16) & 255) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000;
+  if (luma > 200) return '#9aa6b4';
+  return shadeColor(hex, luma < 90 ? 0.45 : -0.36);
+}
+
+export interface ShutterOpts extends SashOpts {
+  thin?: boolean;
+  /** The members' colour as given (a mesh shutter), not the shade off `color`. */
+  tone?: string;
+  /** Nothing inside the four members: what is behind the shutter stays in view. */
+  hollow?: boolean;
+}
+
 /**
  * A sliding shutter: two stiles and two rails of `facePx`, each a piece of
  * its own with its outline, so the mitre at every corner and both edges of
@@ -99,21 +116,21 @@ export function drawShutterSash(
   r: PxRect,
   facePx: number,
   color: string,
-  o: SashOpts & { thin?: boolean }
+  o: ShutterOpts
 ): PxRect {
-  const base = shutterColor(color);
+  const base = o.tone ?? shutterColor(color);
   const f = Math.max(1, Math.min(facePx, r.w / 2, r.h / 2));
   const edge = new Konva.Rect({
     x: r.x,
     y: r.y,
     width: r.w,
     height: r.h,
-    fill: base,
+    ...(o.hollow ? {} : { fill: base }),
     stroke: COL.stroke,
     strokeWidth: 1.5,
     listening: false,
     name: `${o.name}-edge`,
-    ...(o.shadow
+    ...(o.shadow && !o.hollow
       ? { shadowColor: '#000000', shadowBlur: 7, shadowOpacity: 0.38, shadowOffset: { x: 0, y: 1 } }
       : {}),
   });

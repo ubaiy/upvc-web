@@ -198,8 +198,8 @@ describe('drawing clarity: sliding windows', () => {
 
   it('the fly mesh is a shutter of its own: slim frame, fine hatch, named with its track', () => {
     for (const [tracks, panels, text] of [
-      ['3 Track', 3, 'FLY MESH · track 3'],
-      ['2.5 Track', 2, 'FLY MESH · half track'],
+      ['3 Track', 3, 'Fly mesh · track 3'],
+      ['2.5 Track', 2, 'Fly mesh · half track'],
     ] as [TrackType, number, string][]) {
       const d = slider(tracks, panels, true);
       const layer = draw(d);
@@ -207,12 +207,14 @@ describe('drawing clarity: sliding windows', () => {
       expect(mesh.length).toBe(1);
       expect(all(layer, 'fly-mesh-hatch').length).toBe(1);
       expect(all(layer, 'fly-mesh-label')[0].getAttr('caption')).toBe(text);
-      // Its frame is slimmer than a glass shutter's and sits inside that shutter's bands.
-      const frame = all(layer, 'fly-mesh-frame')[0] as Konva.Rect;
+      // Its members are slimmer than a glass shutter's; it is the size of that shutter (slider-sash.spec.ts).
+      const frame = all(layer, 'fly-mesh-sash-edge')[0] as Konva.Rect;
       const first = all(layer, 'slide-sash-edge').find((e) => e.getAttr('panelIndex') === 0) as Konva.Rect;
       const glass = all(layer, 'glass-pane')[0] as Konva.Rect;
-      expect(frame.strokeWidth()).toBeLessThan((first.width() - glass.width()) / 2);
-      expect(frame.x()).toBeGreaterThan(first.x());
+      const member = all(layer, 'fly-mesh-sash-member')[0];
+      expect(member.getAttr('facePx')).toBeLessThan((first.width() - glass.width()) / 2);
+      expect(frame.x()).toBeCloseTo(first.x(), 3);
+      expect(frame.width()).toBeCloseTo(first.width(), 3);
       // Parked on the other side when asked, and mirrored with the view.
       const left = mesh[0].getAttr('xPx') as number;
       const right = all(draw(setSlideMesh(d, 'p1', true, 'Right')), 'fly-mesh')[0].getAttr('xPx') as number;

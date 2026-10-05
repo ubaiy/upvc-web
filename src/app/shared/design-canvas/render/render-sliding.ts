@@ -13,11 +13,13 @@
  *  - a moving shutter carries an arrow in the direction it travels and a
  *    touch lock on the stile it is pulled by (the one it leaves behind);
  *    a fixed one says FIXED;
- *  - the fly mesh is a shutter of its own: a slimmer, lighter frame with a
- *    fine hatch, named with its track (the innermost one), drawn where it
- *    is parked, inside the bands of the glass shutter it is parked with so
- *    both shutters can be seen;
- *  - the tracks are thin lines on the sill, one per track.
+ *  - the fly mesh is one more sash, in ADDITION to the glass shutters (which
+ *    close the whole opening): as tall and as wide as the glass shutter it
+ *    is parked over, four slim mitred members in a tone of their own, a fine
+ *    hatch that lets the glass shutter behind show, its own pull handle and
+ *    travel arrow, named with its track. On a 3 or 4 track the innermost
+ *    track is the mesh's own, so the glass shutters are drawn on the others;
+ *  - the tracks are thin lines on the sill, one per track, the mesh's dashed.
  */
 
 import Konva from 'konva';
@@ -37,7 +39,7 @@ import {
   sashFacePx,
   shadeColor,
 } from './render-common';
-import { drawGlass, drawShutterSash } from './render-sash';
+import { drawGlass, drawShutterSash, meshSashColor } from './render-sash';
 
 /** One shutter as drawn. */
 interface ShutterPx {
@@ -49,13 +51,32 @@ interface ShutterPx {
   rect: PxRect;
 }
 
+/** The fly-mesh shutter as drawn: the size of the glass shutter it is parked over. */
+interface MeshPx {
+  rect: PxRect;
+  /** The glass shutter behind it. */
+  over: number;
+  slidesRight: boolean;
+}
+
 interface SlidePx {
   layout: SlideLayout;
   facePx: number;
   /** The gap of the track pocket shown between a shutter and the outer frame. */
   revealPx: number;
   shutters: ShutterPx[];
-  mesh: PxRect | null;
+  mesh: MeshPx | null;
+}
+
+/**
+ * Tracks the glass shutters run on. A fly mesh on a 3 or 4 track takes the
+ * innermost track for itself, so the glass has one track less (when its
+ * shutters fit on them, two a track); the half track of a 2.5 track is extra.
+ */
+export function glassTrackCount(slide: SlideSpec): number {
+  const all = TRACK_COUNTS[slide.tracks];
+  if (!slide.mesh || slide.tracks === '2.5 Track' || all < 3) return all;
+  return slide.panels.length <= 2 * (all - 1) ? all - 1 : all;
 }
 
 /** Pocket reveal round the shutters: enough to read as a gap, never a band. */
@@ -84,16 +105,25 @@ function slidePx(
   // by at least one stile, half taken from each side of the joint.
   const lapPx = Math.max(0, facePx - sl.overlapMm * ppm) / 2;
   const revealPx = revealFor(facePx, ctx);
+  // The model's mirrored assignment, over the tracks left to the glass.
+  const glassTracks = glassTrackCount(slide);
+  const trackAt = (i: number): number =>
+    glassTracks === TRACK_COUNTS[slide.tracks]
+      ? sl.panels[i].track
+      : n <= glassTracks
+        ? i
+        : Math.min(i, n - 1 - i, glassTracks - 1);
   const shutters = sl.panels.map((p): ShutterPx => {
-    const lapsBefore = p.index > 0 && sl.panels[p.index - 1].track !== p.track;
-    const lapsAfter = p.index < n - 1 && sl.panels[p.index + 1].track !== p.track;
+    const track = trackAt(p.index);
+    const lapsBefore = p.index > 0 && trackAt(p.index - 1) !== track;
+    const lapsAfter = p.index < n - 1 && trackAt(p.index + 1) !== track;
     const x0 = p.xMm * ppm - (lapsBefore ? lapPx : 0);
     const x1 = (p.xMm + p.widthMm) * ppm + (lapsAfter ? lapPx : 0);
     const left = Math.max(revealPx, x0);
     const right = Math.min(r.w - revealPx, x1);
     return {
       index: p.index,
-      track: p.track,
+      track,
       fixed: p.fixed,
       slidesRight: (p.direction === 'Right') !== ctx.flip,
       rect: {
@@ -104,11 +134,13 @@ function slidePx(
       },
     };
   });
-  let mesh: PxRect | null = null;
-  if (sl.mesh) {
-    const mx = sl.mesh.xMm * ppm;
-    const mw = sl.mesh.widthMm * ppm;
-    mesh = { x: r.x + (ctx.flip ? r.w - mx - mw : mx), y: r.y, w: mw, h: r.h };
+  let mesh: MeshPx | null = null;
+  if (sl.mesh && n > 0) {
+    // A full sash on its own track, parked over the end glass shutter: it
+    // travels away from the jamb it stands against.
+    const left = sl.mesh.position === 'Left';
+    const parked = shutters[left ? 0 : n - 1];
+    mesh = { rect: parked.rect, over: parked.index, slidesRight: left !== ctx.flip };
   }
   return { layout: sl, facePx, revealPx, shutters, mesh };
 }
@@ -186,7 +218,10 @@ export function drawSlidingLeaf(
     drawInterlock(parent, a, b, s.facePx);
   }
 
-  if (s.mesh) drawFlyMesh(parent, s.mesh, s.facePx + s.revealPx, ctx, slide, trackCount);
+  if (s.mesh) {
+    const ownTrack = slide.tracks === '2.5 Track' || glassTrackCount(slide) < trackCount;
+    drawFlyMesh(parent, s.mesh, s.facePx, ctx, slide, trackCount, ownTrack);
+  }
 
   for (const sh of s.shutters) {
     const glass = insetPx(sh.rect, s.facePx);
@@ -209,7 +244,7 @@ function drawTracks(
 ): void {
   const room = Math.max(3, ctx.facePx - 2);
   const gap = Math.max(1.5, Math.min(4, room / (trackCount + 1)));
-  const line = (t: number, name: string, half: boolean): void => {
+  const line = (t: number, name: string, half: boolean, mesh = false): void => {
     const y = r.y + r.h + gap * (t + 1);
     const w = half ? r.w / 2 : r.w;
     const x = half && (slide.meshPosition === 'Right') !== ctx.flip ? r.x + r.w - w : r.x;
@@ -218,15 +253,20 @@ function drawTracks(
         points: [x, y, x + w, y],
         stroke: '#6b7280',
         strokeWidth: ctx.detail === 'tiny' ? 0.5 : 1,
-        dash: half ? [4, 3] : [],
+        dash: mesh ? [4, 3] : [],
         listening: false,
         name,
       })
     );
   };
-  for (let t = 0; t < trackCount; t++) line(t, 'track-line', false);
+  // The innermost track of a 3 or 4 track with a mesh is the mesh's own.
+  const glassTracks = glassTrackCount(slide);
+  for (let t = 0; t < trackCount; t++) {
+    if (t < glassTracks) line(t, 'track-line', false);
+    else line(t, 'track-line-mesh', false, true);
+  }
   // 2.5 track: the mesh runs on a half track of its own.
-  if (slide.tracks === '2.5 Track') line(trackCount, 'track-line-mesh', true);
+  if (slide.tracks === '2.5 Track') line(trackCount, 'track-line-mesh', true, true);
 }
 
 /**
@@ -342,29 +382,37 @@ function drawTrackBadge(parent: Parent, glass: PxRect, text: string, track: numb
 }
 
 /**
- * The fly-mesh shutter where it is parked: a slim light frame, a fine
- * hatch, its name and its track. It is drawn inside the bands of the glass
- * shutter it is parked with, so both frames can be seen.
+ * The fly-mesh shutter where it is parked: one more sash over the glass
+ * shutter behind it, of that shutter's size. Four slim mitred members in
+ * the mesh tone, a fine hatch the glass shutter shows through, its name and
+ * track, a pull handle on the stile it leaves behind and its travel arrow.
  */
 function drawFlyMesh(
   parent: Parent,
-  at: PxRect,
-  sashFace: number,
+  m: MeshPx,
+  glassFace: number,
   ctx: RenderCtx,
   slide: SlideSpec,
-  trackCount: number
+  trackCount: number,
+  ownTrack: boolean
 ): void {
+  const at = m.rect;
   if (at.w <= 4 || at.h <= 4) return;
   const tiny = ctx.detail === 'tiny';
-  const r = insetPx(at, Math.max(1, sashFace - 1));
-  const facePx = sashFacePx(ctx, null, 'mesh', r);
+  // Slimmer than a glass sash, whatever the scale.
+  const facePx = Math.max(1.5, Math.min(sashFacePx(ctx, null, 'mesh', at), glassFace * 0.66));
   const mesh = new Konva.Group({ listening: false, name: 'fly-mesh' });
-  mesh.setAttrs({ xPx: at.x, track: trackCount - 1 });
-  const light = shadeColor(ctx.color === '#ffffff' ? '#eef1f4' : ctx.color, 0.35);
+  mesh.setAttrs({
+    xPx: at.x,
+    track: slide.tracks === '2.5 Track' ? trackCount : trackCount - 1,
+    ownTrack,
+    over: m.over,
+    slidesRight: m.slidesRight,
+  });
+  const g = insetPx(at, facePx);
   mesh.add(
-    new Konva.Rect({ x: r.x, y: r.y, width: r.w, height: r.h, fill: 'rgba(125, 135, 146, 0.16)', listening: false })
+    new Konva.Rect({ x: g.x, y: g.y, width: g.w, height: g.h, fill: 'rgba(110, 122, 136, 0.13)', listening: false })
   );
-  const g = insetPx(r, facePx);
   const step = tiny ? 4 : 5;
   mesh.add(
     new Konva.Shape({
@@ -372,7 +420,7 @@ function drawFlyMesh(
       name: 'fly-mesh-hatch',
       stroke: COL.mesh,
       strokeWidth: 0.5,
-      opacity: 0.75,
+      opacity: 0.6,
       sceneFunc: (c, shape) => {
         c.beginPath();
         for (let x = g.x + step; x < g.x + g.w; x += step) {
@@ -387,41 +435,71 @@ function drawFlyMesh(
       },
     })
   );
-  // The slim frame: a light band with a fine outline on both edges.
-  mesh.add(
-    new Konva.Rect({
-      x: r.x + facePx / 2,
-      y: r.y + facePx / 2,
-      width: Math.max(1, r.w - facePx),
-      height: Math.max(1, r.h - facePx),
-      stroke: light,
-      strokeWidth: facePx,
-      listening: false,
-      name: 'fly-mesh-frame',
-    })
-  );
-  for (const edge of [r, g]) {
-    mesh.add(
-      new Konva.Rect({
-        x: edge.x,
-        y: edge.y,
-        width: edge.w,
-        height: edge.h,
-        stroke: '#7b8591',
-        strokeWidth: 0.75,
-        listening: false,
-      })
-    );
-  }
-  if (!tiny && g.w >= 34) {
-    const label = new Konva.Label({ x: g.x + 3, y: g.y + 3, listening: false, name: 'fly-mesh-label' });
-    label.add(new Konva.Tag({ fill: '#ffffff', cornerRadius: 3, opacity: 0.9, stroke: '#7b8591', strokeWidth: 0.75 }));
+  drawShutterSash(mesh, at, facePx, ctx.color, {
+    name: 'fly-mesh-sash',
+    tone: meshSashColor(ctx.color),
+    hollow: true,
+    thin: tiny,
+    attrs: { over: m.over },
+  });
+
+  // What is inside the glass shutter's members: room for the name and the arrow.
+  const inner = insetPx(at, glassFace);
+  let labelBottom = inner.y;
+  if (!tiny && inner.w >= 34) {
+    const label = new Konva.Label({ x: inner.x + 3, y: inner.y + 3, listening: false, name: 'fly-mesh-label' });
+    label.add(new Konva.Tag({ fill: '#ffffff', cornerRadius: 3, opacity: 0.92, stroke: '#5b6673', strokeWidth: 0.75 }));
     // Its own track: the half track of a 2.5 track, else the innermost one.
     const track = slide.tracks === '2.5 Track' ? 'half track' : `track ${trackCount}`;
-    const text = g.w >= 118 ? `FLY MESH · ${track}` : g.w >= 62 ? 'FLY MESH' : 'MESH';
-    label.add(new Konva.Text({ text, fontSize: 9, fontStyle: 'bold', padding: 3, fill: '#374151' }));
+    const text = inner.w >= 112 ? `Fly mesh · ${track}` : inner.w >= 58 ? 'Fly mesh' : 'Mesh';
+    const caption = new Konva.Text({ text, fontSize: 9, fontStyle: 'bold', padding: 3, fill: '#374151' });
+    label.add(caption);
     label.setAttr('caption', text);
     mesh.add(label);
+    labelBottom = inner.y + 3 + caption.height();
   }
+
+  // Its travel, above the glass shutter's own arrow: dashed, in the mesh colour.
+  const margin = Math.max(3, inner.w * 0.2);
+  const xL = inner.x + margin;
+  const xR = inner.x + inner.w - margin;
+  const cy = Math.max(labelBottom + 9, inner.y + inner.h * 0.27);
+  if (xR - xL >= 6 && cy < inner.y + inner.h / 2 - 8) {
+    const head = ctx.detail === 'full' ? 8 : ctx.detail === 'compact' ? 6 : 4;
+    const arrow = new Konva.Arrow({
+      points: m.slidesRight ? [xL, cy, xR, cy] : [xR, cy, xL, cy],
+      stroke: '#4b5563',
+      fill: '#4b5563',
+      strokeWidth: ctx.detail === 'full' ? 1.5 : 1,
+      dash: [6, 4],
+      pointerLength: head,
+      pointerWidth: head,
+      listening: false,
+      name: 'fly-mesh-arrow',
+    });
+    arrow.setAttr('pointsRight', m.slidesRight);
+    mesh.add(arrow);
+  }
+
+  // Its pull, on its own stile, under the touch lock of the glass shutter behind.
+  const onLeft = m.slidesRight;
+  const w = Math.max(2, Math.min(4.5, facePx * 0.5));
+  const h = Math.max(6, Math.min(22, at.h * 0.09));
+  const lockH = Math.max(7, Math.min(26, at.h * 0.11));
+  const cx = onLeft ? at.x + facePx / 2 : at.x + at.w - facePx / 2;
+  const pull = new Konva.Rect({
+    x: cx - w / 2,
+    y: at.y + at.h / 2 + lockH / 2 + Math.max(3, h * 0.35),
+    width: w,
+    height: h,
+    fill: '#f8fafc',
+    stroke: '#2b2e33',
+    strokeWidth: 0.75,
+    cornerRadius: w / 2,
+    listening: false,
+    name: 'fly-mesh-handle',
+  });
+  pull.setAttr('edge', onLeft ? 'left' : 'right');
+  mesh.add(pull);
   parent.add(mesh);
 }

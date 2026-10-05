@@ -138,7 +138,9 @@ describe('DesignCanvasComponent', () => {
   it('renders a 3-track sliding leaf: panels, tracks, arrows and fly mesh', () => {
     create(slidingThreeTrackMesh());
     expect(layerFind('slide-panel').length).toBe(3);
-    expect(layerFind('track-line').length).toBe(3);
+    // Two tracks of glass and the mesh's own (T111).
+    expect(layerFind('track-line').length).toBe(2);
+    expect(layerFind('track-line-mesh').length).toBe(1);
     expect(layerFind('slide-arrow').length).toBe(3);
     expect(layerFind('fly-mesh').length).toBe(1);
     // Every shutter is a framed sash of its own, with a touch lock.

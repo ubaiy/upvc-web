@@ -3,7 +3,16 @@
 // front shutter's stile over the one behind. These specs pin the renderer's
 // output for the desktop drawing, the phone drawing and the saved picture.
 import Konva from 'konva';
-import { TrackType, WindowDesign, createDesign, createLeaf, equalPanels, layout, setSlide } from '../design-model';
+import {
+  TrackType,
+  WindowDesign,
+  createDesign,
+  createLeaf,
+  equalPanels,
+  layout,
+  setSlide,
+  setSlideMesh,
+} from '../design-model';
 import { PICTURE_HEIGHT_PX, PICTURE_WIDTH_PX } from './canvas-export';
 import { renderDesign } from './canvas-renderer';
 import { computeView } from './canvas-view';
@@ -12,16 +21,16 @@ const FACE = 60;
 const FRAME_COLOUR = '#ffffff';
 let stage: Konva.Stage | null = null;
 
-function slider(tracks: TrackType, panels: number, mesh: boolean): WindowDesign {
+function slider(tracks: TrackType, panels: number, mesh: boolean, widthMm = 1500): WindowDesign {
   const d = createDesign({
-    frame: { widthMm: 1500, heightMm: 1200 },
+    frame: { widthMm, heightMm: 1200 },
     glazing: { glassId: 1 },
     root: createLeaf('p1', {}),
   });
-  return setSlide(d, 'p1', { tracks, mesh, panels: equalPanels(panels, 1500 - 2 * FACE, 0, tracks) });
+  return setSlide(d, 'p1', { tracks, mesh, panels: equalPanels(panels, widthMm - 2 * FACE, 0, tracks) });
 }
 
-function draw(design: WindowDesign, w: number, h: number, legend = false): Konva.Layer {
+function draw(design: WindowDesign, w: number, h: number, legend = false, inside = false): Konva.Layer {
   stage?.destroy();
   stage = new Konva.Stage({ container: document.createElement('div'), width: w, height: h, listening: false });
   const layer = new Konva.Layer({ listening: false });
@@ -30,9 +39,16 @@ function draw(design: WindowDesign, w: number, h: number, legend = false): Konva
     layer,
     design,
     layout(design, { frameFaceMm: FACE }),
-    computeView(w, h, design.frame.widthMm, design.frame.heightMm, 1, 0, 0),
+    computeView(w, h, design.frame.widthMm, design.frame.heightMm, 1, 0, 0, inside),
     { selection: null, showFrameHandle: false },
-    { stageWPx: w, stageHPx: h, frameFaceMm: FACE, profileColor: FRAME_COLOUR, legend }
+    {
+      stageWPx: w,
+      stageHPx: h,
+      frameFaceMm: FACE,
+      profileColor: FRAME_COLOUR,
+      legend,
+      viewFrom: inside ? 'inside' : 'outside',
+    }
   );
   return layer;
 }
@@ -128,8 +144,14 @@ describe('sliding shutters are complete sashes (T110)', () => {
           const right = hidden(e.x + e.w - face, e.x + e.w);
           // A stile is either in full view or wholly behind the front shutter's stile...
           for (const h of [left, right]) expect(h < 0.5 || h > face - 0.5).toBeTrue();
-          // ...and never both: its far stile and most of both rails are in view.
-          expect(left < 0.5 || right < 0.5).toBeTrue();
+          // ...and never both: its far stile and most of both rails are in view. Only a shutter
+          // that stands behind a neighbour on each side (the middle one of three on two tracks of
+          // glass, T111) has both stiles behind theirs; its rails stay in view.
+          const track = edge.getAttr('track') as number;
+          const behindBoth =
+            edges.filter((o) => Math.abs(o.getAttr('panelIndex') - index) === 1 && o.getAttr('track') < track)
+              .length === 2;
+          if (!behindBoth) expect(left < 0.5 || right < 0.5).toBeTrue();
           expect(hidden(e.x, e.x + e.w)).toBeLessThan(e.w * 0.5);
         }
 
@@ -147,13 +169,143 @@ describe('sliding shutters are complete sashes (T110)', () => {
       });
     }
   }
+});
 
-  it('the mesh shutter still sits inside the bands of the glass shutter it is parked with', () => {
-    const layer = draw(slider('3 Track', 3, true), 900, 640);
-    const frame = box(all(layer, 'fly-mesh-frame')[0]);
-    const first = box(all(layer, 'slide-sash-edge').find((e) => e.getAttr('panelIndex') === 0) as Konva.Node);
-    expect(frame.x).toBeGreaterThan(first.x);
-    expect(frame.y).toBeGreaterThan(first.y);
-    expect(frame.y + frame.h).toBeLessThan(first.y + first.h);
+// The fly mesh is one more sash, in addition to the glass shutters (card T111):
+// the glass closes the whole opening and the mesh slides over one shutter on a
+// track of its own.
+describe('the fly-mesh shutter is a full sash on its own track (T111)', () => {
+  const WINDOWS: { name: string; tracks: TrackType; panels: number; glassTracks: number[]; lines: number; label: string }[] = [
+    { name: '2.5 track, 2 panels', tracks: '2.5 Track', panels: 2, glassTracks: [0, 1], lines: 2, label: 'Fly mesh · half track' },
+    { name: '3 track, 3 panels', tracks: '3 Track', panels: 3, glassTracks: [0, 1, 0], lines: 2, label: 'Fly mesh · track 3' },
+    { name: '3 track, 4 panels', tracks: '3 Track', panels: 4, glassTracks: [0, 1, 1, 0], lines: 2, label: 'Fly mesh · track 3' },
+    { name: '4 track, 4 panels', tracks: '4 Track', panels: 4, glassTracks: [0, 1, 1, 0], lines: 3, label: 'Fly mesh · track 4' },
+  ];
+  const STAGES: { name: string; w: number; h: number; legend: boolean }[] = [
+    { name: 'the designer', w: 900, h: 640, legend: false },
+    { name: 'a phone (390 wide)', w: 374, h: 320, legend: false },
+    { name: 'the saved picture', w: PICTURE_WIDTH_PX, h: PICTURE_HEIGHT_PX, legend: true },
+  ];
+
+  for (const win of WINDOWS) {
+    for (const st of STAGES) {
+      it(`${win.name} on ${st.name}: glass in every shutter, the mesh a sash over the first`, () => {
+        const layer = draw(slider(win.tracks, win.panels, true), st.w, st.h, st.legend);
+        const opening = box(all(layer, 'slide-opening')[0]);
+        const edges = [...(all(layer, 'slide-sash-edge') as Konva.Rect[])].sort(
+          (a, b) => a.getAttr('panelIndex') - b.getAttr('panelIndex')
+        );
+        const glasses = [...all(layer, 'glass-pane'), ...all(layer, 'slide-glass')].map(box);
+
+        // The glass shutters close the whole opening: one per panel, each with its glass,
+        // from jamb to jamb with no gap between neighbours.
+        expect(edges.length).toBe(win.panels);
+        expect(glasses.length).toBe(win.panels);
+        expect(edges[0].x() - opening.x).toBeLessThan(4);
+        const last = edges[win.panels - 1];
+        expect(opening.x + opening.w - (last.x() + last.width())).toBeLessThan(4);
+        for (let k = 0; k < win.panels - 1; k++) {
+          expect(edges[k].x() + edges[k].width()).toBeGreaterThanOrEqual(edges[k + 1].x() - 0.5);
+        }
+        // The glass runs on the tracks the mesh leaves it.
+        expect(edges.map((e) => e.getAttr('track'))).toEqual(win.glassTracks);
+
+        // One mesh sash, exactly the size of the glass shutter it is parked over.
+        const meshEdges = all(layer, 'fly-mesh-sash-edge');
+        expect(meshEdges.length).toBe(1);
+        const m = box(meshEdges[0]);
+        const first = box(edges[0]);
+        expect(meshEdges[0].getAttr('over')).toBe(0);
+        expect(m.x).toBeCloseTo(first.x, 3);
+        expect(m.y).toBeCloseTo(first.y, 3);
+        expect(m.w).toBeCloseTo(first.w, 3);
+        expect(m.h).toBeCloseTo(first.h, 3);
+        // It hides nothing: the glass shutter and its glass behind it stay in view.
+        expect((meshEdges[0] as Konva.Rect).fill()).toBeFalsy();
+        const under = glasses.find((g) => g.x > m.x && g.x + g.w < m.x + m.w) as Box;
+        expect(under).toBeDefined();
+
+        // Four mitred, outlined members of its own, slimmer than a glass sash, in another tone.
+        const glassMembers = (all(layer, 'slide-sash-member') as Konva.Line[]).filter(
+          (x) => x.getAttr('panelIndex') === 0
+        );
+        const glassFace = glassMembers[0].getAttr('facePx') as number;
+        const members = all(layer, 'fly-mesh-sash-member') as Konva.Line[];
+        expect(members.map((x) => x.getAttr('member')).sort()).toEqual(['bottom', 'left', 'right', 'top']);
+        for (const piece of members) {
+          expect(piece.points().length).toBe(8);
+          expect(piece.closed()).toBeTrue();
+          expect(piece.stroke()).toBeTruthy();
+          expect(piece.getAttr('facePx')).toBeLessThan(glassFace);
+          expect(piece.fill()).not.toBe(FRAME_COLOUR);
+          for (const g of glassMembers) expect(piece.fill()).not.toBe(g.fill());
+        }
+        expect(all(layer, 'fly-mesh-hatch').length).toBe(1);
+        expect((all(layer, 'fly-mesh-hatch')[0] as Konva.Shape).opacity()).toBeLessThan(1);
+
+        // Its own pull on its own stile, on the side it leaves behind, clear of the glass shutter's lock.
+        const pulls = all(layer, 'fly-mesh-handle');
+        expect(pulls.length).toBe(1);
+        const pull = box(pulls[0]);
+        expect(pulls[0].getAttr('edge')).toBe('left');
+        expect(pull.x).toBeGreaterThanOrEqual(m.x);
+        expect(pull.x + pull.w).toBeLessThanOrEqual(m.x + (members[0].getAttr('facePx') as number) + 0.01);
+        const lock = all(layer, 'slide-handle').find((h) => h.getAttr('panelIndex') === 0);
+        if (lock) expect(pull.y).toBeGreaterThan(lock.y() + lock.height());
+
+        // Its travel arrow inside it, away from the jamb it is parked at.
+        const arrows = all(layer, 'fly-mesh-arrow') as Konva.Arrow[];
+        expect(arrows.length).toBe(1);
+        expect(arrows[0].getAttr('pointsRight')).toBeTrue();
+        const pts = arrows[0].points();
+        for (const x of [pts[0], pts[2]]) {
+          expect(x).toBeGreaterThan(m.x);
+          expect(x).toBeLessThan(m.x + m.w);
+        }
+        expect(pts[1]).toBeGreaterThan(m.y);
+        expect(pts[1]).toBeLessThan(m.y + m.h / 2);
+
+        // The sill: one line per glass track and one, dashed, for the mesh.
+        expect(all(layer, 'track-line').length).toBe(win.lines);
+        const meshLines = all(layer, 'track-line-mesh') as Konva.Line[];
+        expect(meshLines.length).toBe(1);
+        expect(meshLines[0].dash().length).toBeGreaterThan(0);
+        expect(all(layer, 'fly-mesh')[0].getAttr('ownTrack')).toBeTrue();
+      });
+    }
+  }
+
+  it('is named with its track where there is room for the words', () => {
+    for (const win of WINDOWS) {
+      const layer = draw(slider(win.tracks, win.panels, true, 2400), 900, 640);
+      expect(all(layer, 'fly-mesh-label')[0].getAttr('caption')).toBe(win.label);
+    }
+  });
+
+  it('parked right, or seen from inside, it covers the other end shutter and travels the other way', () => {
+    const d = slider('3 Track', 3, true);
+    // One at a time: a new drawing takes the stage of the one before.
+    const views = [() => draw(setSlideMesh(d, 'p1', true, 'Right'), 900, 640), () => draw(d, 900, 640, false, true)];
+    for (const view of views) {
+      const layer = view();
+      const edges = all(layer, 'slide-sash-edge') as Konva.Rect[];
+      const rightmost = edges.reduce((a, b) => (b.x() > a.x() ? b : a));
+      const m = box(all(layer, 'fly-mesh-sash-edge')[0]);
+      expect(m.x).toBeCloseTo(rightmost.x(), 3);
+      expect(m.w).toBeCloseTo(rightmost.width(), 3);
+      expect(all(layer, 'fly-mesh-arrow')[0].getAttr('pointsRight')).toBeFalse();
+      expect(all(layer, 'fly-mesh-handle')[0].getAttr('edge')).toBe('right');
+    }
+  });
+
+  it('without a mesh a 3 track keeps its three glass tracks; five shutters need them all', () => {
+    const plain = draw(slider('3 Track', 3, false), 900, 640);
+    expect(all(plain, 'track-line').length).toBe(3);
+    expect(all(plain, 'track-line-mesh').length).toBe(0);
+    expect(all(plain, 'fly-mesh').length).toBe(0);
+    // Five glass shutters do not fit on two tracks: the mesh shares the innermost one.
+    const five = draw(slider('3 Track', 5, true), 900, 640);
+    expect(all(five, 'track-line').length).toBe(3);
+    expect(all(five, 'fly-mesh')[0].getAttr('ownTrack')).toBeFalse();
   });
 });
