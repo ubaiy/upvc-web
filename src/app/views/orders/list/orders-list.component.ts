@@ -3,6 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { Subscription, catchError, forkJoin, of } from 'rxjs';
 
 import { UndoService } from '../../../shared/services/undo.service';
+import { AccessService } from '../../../shared/access/access.service';
 import { Result, httpMessage } from '../../payments/api-result';
 import { BoardColumn, TABS, inTab, matchesOrder, paymentBadge, toBoard } from '../orders.adapter';
 import { Order, OrderTab, StageCounts, StageKey } from '../orders.model';
@@ -50,8 +51,14 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     private service: OrdersService,
     private route: ActivatedRoute,
     private router: Router,
-    private undo: UndoService
+    private undo: UndoService,
+    private access: AccessService
   ) {}
+
+  /** The total and the balance: not for a role that sees neither quotations nor payments (workshop). */
+  get showMoney(): boolean {
+    return this.access.seesAmounts;
+  }
 
   ngOnInit(): void {
     // The view and the tab live in the address, so a reload or a shared link opens the same thing.

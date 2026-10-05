@@ -36,6 +36,8 @@ function formatDay(iso: string): string {
 })
 export class OrderPageComponent implements OnInit, OnDestroy {
   @ViewChild('moreMenu') moreMenu?: Menu;
+  /** The payments panel; not on the page for a role without `payments.view`. */
+  @ViewChild('payments') paymentsPanel?: { focusPanel(): void };
 
   state: State = 'loading';
   errorMessage = '';
@@ -109,6 +111,21 @@ export class OrderPageComponent implements OnInit, OnDestroy {
    */
   get canEdit(): boolean {
     return this.access.canWrite('orders.write');
+  }
+
+  /** Line amounts, the totals and the balance: not for a role that sees neither quotations nor payments (workshop). */
+  get showMoney(): boolean {
+    return this.access.seesAmounts;
+  }
+
+  /** The payments of the job are read with `payments.view`; without it the panel would only show the api's refusal. */
+  get showPayments(): boolean {
+    return this.access.can('payments.view');
+  }
+
+  /** The quotation and the customer open only for a role with `quotations.view`; otherwise they are plain words. */
+  get canOpenQuotation(): boolean {
+    return this.access.can('quotations.view');
   }
 
   /** "More" has something in it: moving a stage back needs `production.write`, cancelling `orders.write`. */
@@ -209,6 +226,10 @@ export class OrderPageComponent implements OnInit, OnDestroy {
   /** The note for the workshop: kept on the order, never printed for the customer. */
   saveWorkshopNote(): void {
     this.save('workshop', { workshop_note: this.workshopNote.trim() }, 'Workshop note saved');
+  }
+
+  focusPayments(): void {
+    this.paymentsPanel?.focusPanel();
   }
 
   openMenu(event: Event): void {

@@ -169,6 +169,16 @@ export interface WriteGate {
   reason: string;
 }
 
+/**
+ * May this user see what the customer pays: line amounts, totals, what was received and
+ * what is still to pay (card T143)? Anyone who can open the quotation or the payments. The
+ * workshop has neither: it works from sizes, stages and dates, so the order screens leave
+ * the amounts out for it although the api still sends them. Not known yet: nothing is hidden.
+ */
+export function seesAmounts(state: AccessState): boolean {
+  return !state.me || allows(state, 'quotations.view') || allows(state, 'payments.view');
+}
+
 export function writeGate(state: AccessState, ability: string | null | undefined): WriteGate {
   if (!allows(state, ability)) {
     return { hidden: true, locked: false, reason: '' };

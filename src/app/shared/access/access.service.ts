@@ -4,7 +4,7 @@ import { BehaviorSubject, Observable, catchError, forkJoin, map, of, shareReplay
 import { quiet } from '../interceptors/request-options';
 import { ApiHttpService } from '../services/api-http.service';
 import { AuthService } from '../services/auth.service';
-import { AccessState, EMPTY_ACCESS, SubscriptionInfo, WriteGate, allows, gateMenu, has3d, isReadOnly, writeGate } from './access.models';
+import { AccessState, EMPTY_ACCESS, SubscriptionInfo, WriteGate, allows, gateMenu, has3d, isReadOnly, seesAmounts, writeGate } from './access.models';
 
 /**
  * Who the signed-in user is (role, abilities) and what the company's plan allows.
@@ -53,6 +53,11 @@ export class AccessService {
 
   get has3d(): boolean {
     return has3d(this.state);
+  }
+
+  /** Selling amounts (totals, balance) are for a role that can open quotations or payments; not for the workshop. */
+  get seesAmounts(): boolean {
+    return seesAmounts(this.state);
   }
 
   get readOnly(): boolean {

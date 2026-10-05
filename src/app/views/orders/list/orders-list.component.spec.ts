@@ -1,6 +1,9 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { CanDirective } from 'src/app/shared/access/can.directive';
 import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
+import { AccessState, seesAmounts } from 'src/app/shared/access/access.models';
+import { AccessService } from 'src/app/shared/access/access.service';
+import { me, subscription } from 'src/app/shared/access/access.spec';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -24,6 +27,23 @@ const COUNTS = { all: 3, confirmed: 1, in_production: 0, ready: 1, dispatched: 0
 const ok = <T>(data: T) => of({ ok: true as const, data, message: '' });
 
 describe('OrdersListComponent', () => {
+  /** Signed in as a role: the abilities of GET me (card T143). */
+  function signedInAs(abilities: string[]): void {
+    const state$ = new BehaviorSubject<AccessState>({ me: me(abilities), subscription: subscription() });
+    TestBed.overrideProvider(AccessService, {
+      useValue: {
+        state$,
+        get state() {
+          return state$.value;
+        },
+        can: (ability: string) => abilities.includes(ability),
+        get seesAmounts() {
+          return seesAmounts(state$.value);
+        },
+      },
+    });
+  }
+
   let fixture: ComponentFixture<OrdersListComponent>;
   let component: OrdersListComponent;
   let service: jasmine.SpyObj<OrdersService>;
@@ -66,6 +86,32 @@ describe('OrdersListComponent', () => {
         { provide: UndoService, useValue: undo },
       ],
     });
+  });
+
+  it('workshop (no quotations.view, no payments.view): no total, no balance, the payment status stays (T143)', () => {
+    signedInAs(['orders.view', 'production.view', 'production.write']);
+    create();
+    const heads = Array.from(el().querySelectorAll('th')).map((th) => th.textContent!.trim());
+    expect(heads).toEqual(['Order', 'Customer', 'Stage', 'Promised', 'Payment']);
+    el().querySelectorAll('tbody tr').forEach((row) => expect(row.querySelectorAll('td').length).toBe(heads.length));
+    expect(el().textContent).not.toContain('₹');
+    expect(el().textContent).toContain('Unpaid');
+    expect(el().textContent).not.toMatch(/undefined|NaN/);
+  });
+
+  it('sales: the total and the balance are there (T143)', () => {
+    signedInAs(['quotations.view', 'quotations.write', 'orders.view', 'orders.write', 'production.view', 'production.write', 'payments.view', 'catalogue.view']);
+    create();
+    const heads = Array.from(el().querySelectorAll('th')).map((th) => th.textContent!.trim());
+    expect(heads).toEqual(['Order', 'Customer', 'Stage', 'Promised', 'Total', 'Balance']);
+    expect(el().textContent).toContain('₹58,807.00');
+  });
+
+  it('the board counts items, not windows: an order can hold a 3D structure (T143)', () => {
+    create(undefined, { view: 'board' });
+    const card = el().querySelector('.job')!;
+    expect(card.textContent).toMatch(/\d+\s+items?/);
+    expect(card.textContent).not.toMatch(/windows?/);
   });
 
   it('shows skeleton rows while the orders load', () => {

@@ -7,7 +7,7 @@ import { RouterTestingModule } from '@angular/router/testing';
 import { MenuModule } from 'primeng/menu';
 import { BehaviorSubject, of } from 'rxjs';
 
-import { AccessState, allows, gateMenu, readOnlyReason, writeGate } from '../../shared/access/access.models';
+import { AccessState, allows, gateMenu, readOnlyReason, seesAmounts, writeGate } from '../../shared/access/access.models';
 import { AccessService } from '../../shared/access/access.service';
 import { me, subscription } from '../../shared/access/access.spec';
 import { ACCESS_PARTS } from '../../shared/access/write.directive';
@@ -49,6 +49,9 @@ function accessOf(state: AccessState) {
       return state$.value;
     },
     can: (ability: string) => allows(state$.value, ability),
+    get seesAmounts() {
+      return seesAmounts(state$.value);
+    },
     gate: (ability: string) => writeGate(state$.value, ability),
     canWrite: (ability: string) => {
       const gate = writeGate(state$.value, ability);
@@ -154,6 +157,57 @@ describe('Order page: who may press what (card T143)', () => {
     expect(menuLabels(el).every((label) => label.endsWith('(off)'))).toBeTrue();
     // The challan is a read: it stays.
     expect(off(byText(el, 'Download PDF'))).toBeFalse();
+  });
+});
+
+describe('Order page: what each role sees of money (card T143)', () => {
+  async function open(state: AccessState): Promise<HTMLElement> {
+    const service = jasmine.createSpyObj('OrdersService', ['show', 'setStage', 'update', 'cancel', 'challan']);
+    service.show.and.returnValue(of({ ok: true as const, data: toOrderPage(rawOrderPage()), message: '' }));
+    TestBed.configureTestingModule({
+      declarations: [OrderPageComponent, PaymentsStubComponent, ReasonDialogComponent, DocumentPreviewComponent],
+      imports: [...ACCESS_PARTS, RouterTestingModule, NoopAnimationsModule, FormsModule, MenuModule, SharedComponentsModule, ConfirmDialogComponent],
+      providers: [
+        { provide: OrdersService, useValue: service },
+        { provide: ToastService, useValue: jasmine.createSpyObj('ToastService', ['showSuccess', 'showError', 'showInfo']) },
+        { provide: UndoService, useValue: jasmine.createSpyObj('UndoService', ['offer']) },
+        { provide: AccessService, useValue: accessOf(state) },
+        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: '1' })) } },
+      ],
+    });
+    const fixture = TestBed.createComponent(OrderPageComponent);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    return fixture.nativeElement;
+  }
+  const heads = (el: HTMLElement) => Array.from(el.querySelectorAll('th')).map((th) => th.textContent!.trim());
+  const links = (el: HTMLElement) => Array.from(el.querySelectorAll('a')).map((a) => a.getAttribute('href') || '');
+
+  for (const role of ['owner', 'sales', 'accounts']) {
+    it(`${role}: line amounts, the Amounts card and the payments of the job`, async () => {
+      const el = await open(as(role));
+      expect(heads(el)).toContain('Amount');
+      expect(el.querySelector('#amounts-title')).not.toBeNull();
+      expect(el.querySelector('app-account-payments')).not.toBeNull();
+      expect(el.textContent).toContain('₹');
+      expect(links(el).some((href) => href.includes('/quotation/detail/'))).toBeTrue();
+    });
+  }
+
+  it('workshop: no amount anywhere, no empty column, no payments panel, no link it cannot open', async () => {
+    const el = await open(as('workshop'));
+    expect(heads(el)).not.toContain('Amount');
+    expect(heads(el).every((head) => head.length > 0)).toBeTrue();
+    el.querySelectorAll('tbody tr').forEach((row) => expect(row.querySelectorAll('td').length).toBe(heads(el).length));
+    expect(el.querySelector('#amounts-title')).toBeNull();
+    // payment/list needs payments.view: the panel would only show the api's refusal
+    expect(el.querySelector('app-account-payments')).toBeNull();
+    expect(el.textContent).not.toContain('₹');
+    expect(el.textContent).not.toMatch(/undefined|NaN/);
+    expect(links(el).some((href) => href.includes('/quotation/detail/') || href.includes('/customers/') || href.includes('/payments/'))).toBeFalse();
+    // the stage and the payment status stay: they are not amounts
+    expect(el.textContent).toContain('Progress');
   });
 });
 

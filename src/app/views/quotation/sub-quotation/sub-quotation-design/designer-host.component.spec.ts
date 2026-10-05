@@ -16,6 +16,10 @@ import { QuotationService } from '../../quotation.service';
 import { Designer3dView, NO_CHUNK_NOTE, NO_WEBGL_NOTE, View3dChunk } from './designer-3d';
 import { DesignerCatalogService } from './designer-catalog.service';
 import { DesignerHostComponent } from './designer-host.component';
+import { AccessState } from 'src/app/shared/access/access.models';
+import { AccessService } from 'src/app/shared/access/access.service';
+import { me, subscription } from 'src/app/shared/access/access.spec';
+import { BehaviorSubject } from 'rxjs';
 import { PICTURE_HEIGHT_PX, PICTURE_WIDTH_PX, designPicture } from 'src/app/shared/design-canvas/canvas-export';
 import { pngSize } from 'src/app/shared/design-canvas/canvas-export.spec';
 import { walkLeaves } from 'src/app/shared/design-model';
@@ -208,6 +212,43 @@ describe('DesignerHostComponent (the window designer screen)', () => {
     tick(400);
     flushMicrotasks();
   }));
+
+  describe('Price details by role (T143)', () => {
+    function signedInAs(abilities: string[]): void {
+      const state$ = new BehaviorSubject<AccessState>({ me: me(abilities), subscription: subscription({ features: { feature_3d: true } }) });
+      TestBed.overrideProvider(AccessService, {
+        useValue: {
+          state$,
+          get state() {
+            return state$.value;
+          },
+          can: (ability: string) => abilities.includes(ability),
+          has3d: true,
+        },
+      });
+    }
+
+    it('sales (no prices.view_cost): no "Price details" button and no panel; the price of the window stays', fakeAsync(() => {
+      signedInAs(['quotations.view', 'quotations.write', 'orders.view', 'catalogue.view']);
+      open();
+      expect(el().querySelector('[data-dz="details"]')).toBeNull();
+      component.detailsOpen = true;
+      fixture.detectChanges();
+      expect(el().querySelector('[data-dz="details-panel"]')).toBeNull();
+      expect(el().textContent).not.toMatch(/\bCost\b|Margin/);
+      expect(el().textContent).toContain('₹');
+      tick(400);
+      flushMicrotasks();
+    }));
+
+    it('owner (prices.view_cost): the "Price details" button is there', fakeAsync(() => {
+      signedInAs(['quotations.view', 'quotations.write', 'prices.view_cost', 'catalogue.view']);
+      open();
+      expect(el().querySelector('[data-dz="details"]')).not.toBeNull();
+      tick(400);
+      flushMicrotasks();
+    }));
+  });
 
   describe('2D | 3D (T113)', () => {
     const press3d = (): void => {

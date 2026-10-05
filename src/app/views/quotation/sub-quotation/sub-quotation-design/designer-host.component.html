@@ -340,7 +340,8 @@
         </div>
       </div>
 
-      <div class="panel-foot">
+      <!-- Price details are the cost of each part and the margin: only for a role with prices.view_cost (card T143). -->
+      <div class="panel-foot" *appCan="'prices.view_cost'">
         <button type="button" class="dz-details-link" data-dz="details" (click)="detailsOpen = true"
           [disabled]="!price.lines.length">
           <span>Price details</span>
@@ -349,7 +350,7 @@
       </div>
 
       <!-- Price details: slides over the properties, the drawing stays in view -->
-      <div class="details" *ngIf="detailsOpen" role="dialog" aria-label="Price details" data-dz="details-panel">
+      <div class="details" *ngIf="detailsOpen && price.lines.length" role="dialog" aria-label="Price details" data-dz="details-panel">
         <div class="details-head">
           <b class="grow">Price details</b>
           <button type="button" class="btn btn-ghost btn-icon btn-sm" aria-label="Close price details" (click)="detailsOpen = false">

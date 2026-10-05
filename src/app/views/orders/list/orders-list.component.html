@@ -79,8 +79,8 @@
             <th scope="col">Customer</th>
             <th scope="col">Stage</th>
             <th scope="col" class="hide-tablet">Promised</th>
-            <th scope="col" class="right hide-tablet">Total</th>
-            <th scope="col" class="right">Balance</th>
+            <th scope="col" class="right hide-tablet" *ngIf="showMoney">Total</th>
+            <th scope="col" class="right">{{ showMoney ? 'Balance' : 'Payment' }}</th>
           </tr>
         </thead>
         <tbody>
@@ -100,9 +100,10 @@
               <span class="badge badge-danger late" *ngIf="order.isOverdue && !order.cancelled">Overdue</span>
             </td>
             <td class="muted small hide-tablet">{{ order.promisedDate ? (order.promisedDate | date : 'd MMM y') : 'Not set' }}</td>
-            <td class="right num hide-tablet">{{ order.total | inr }}</td>
+            <td class="right num hide-tablet" *ngIf="showMoney">{{ order.total | inr }}</td>
             <td class="right">
-              <span class="num">{{ order.balance | inr }}</span>
+              <span class="num" *ngIf="showMoney">{{ order.balance | inr }}</span>
+              <span class="muted" *ngIf="!showMoney && order.cancelled">–</span>
               <span class="badge sub-badge" [ngClass]="badge(order).tone" *ngIf="!order.cancelled">{{ badge(order).label }}</span>
             </td>
           </tr>
@@ -159,9 +160,10 @@
             <span class="job-customer"
               ><bdi>{{ order.customerName || 'Customer' }}</bdi></span
             >
+            <!-- The list does not say what the items are (a window, a door, a 3D structure), so they are counted as items. -->
             <span class="muted small"
               ><bdi>{{ order.quotationName || order.quotationNumber }}</bdi> · {{ order.totalQuantity }}
-              {{ order.totalQuantity === 1 ? 'window' : 'windows' }}</span
+              {{ order.totalQuantity === 1 ? 'item' : 'items' }}</span
             >
             <span class="job-meta">
               <span class="badge badge-danger" *ngIf="order.isOverdue">Overdue</span>
@@ -170,7 +172,7 @@
             </span>
             <span class="job-meta">
               <span class="badge" [ngClass]="badge(order).tone">{{ badge(order).label }}</span>
-              <span class="small num" *ngIf="order.balance > 0">{{ order.balance | inr }} to pay</span>
+              <span class="small num" *ngIf="showMoney && order.balance > 0">{{ order.balance | inr }} to pay</span>
             </span>
           </a>
           <button
@@ -192,14 +194,14 @@
 <app-confirm-dialog
   *ngIf="closing as o"
   ability="production.write"
-  [title]="'Close ' + o.number + ' with ' + (o.balance | inr) + ' still to pay?'"
+  [title]="showMoney ? 'Close ' + o.number + ' with ' + (o.balance | inr) + ' still to pay?' : 'Close ' + o.number + '? It is not fully paid yet.'"
   text="Closing ends the job. The amount stays under Outstanding until it is paid; it is not written off."
   confirmLabel="Close order"
   keepLabel="Keep it open"
   (confirmed)="confirmClose()"
   (closed)="closing = null"
 >
-  <dl class="dl">
+  <dl class="dl" *ngIf="showMoney">
     <dt>Order total</dt>
     <dd>{{ o.total | inr }}</dd>
     <dt>Received</dt>

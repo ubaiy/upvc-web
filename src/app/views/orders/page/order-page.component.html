@@ -107,7 +107,7 @@
               <th scope="col">{{ o.hasStructures ? 'Item' : 'Window' }}</th>
               <th scope="col" class="hide-tablet">HSN</th>
               <th scope="col" class="right">Qty</th>
-              <th scope="col" class="right">Amount</th>
+              <th scope="col" class="right" *ngIf="showMoney">Amount</th>
             </tr>
           </thead>
           <tbody>
@@ -120,7 +120,7 @@
               </td>
               <td class="muted small hide-tablet">{{ line.hsn || '–' }}</td>
               <td class="right num">{{ line.quantity }}</td>
-              <td class="right num">{{ line.amount | inr }}</td>
+              <td class="right num" *ngIf="showMoney">{{ line.amount | inr }}</td>
             </tr>
           </tbody>
         </table>
@@ -205,14 +205,14 @@
         (closed)="challanPreview = null"
       ></app-document-preview>
 
-      <app-account-payments #payments [orderId]="o.id" (changed)="refresh()"></app-account-payments>
+      <app-account-payments #payments *ngIf="showPayments" [orderId]="o.id" (changed)="refresh()"></app-account-payments>
     </div>
 
     <aside class="side">
       <section class="card card-pad" aria-labelledby="customer-title">
         <h2 id="customer-title">Customer</h2>
         <p class="who">
-          <a *ngIf="o.customerId; else customerText" [routerLink]="['/customers/edit', o.customerId]"
+          <a *ngIf="o.customerId && canOpenQuotation; else customerText" [routerLink]="['/customers/edit', o.customerId]"
             ><bdi>{{ o.customerName || 'Customer' }}</bdi></a
           >
           <ng-template #customerText
@@ -231,7 +231,7 @@
         <div class="card-head"><h2 id="links-title">This job</h2></div>
         <ul class="links">
           <li>
-            <a *ngIf="o.quotationId; else noQuotation" class="link-row" [routerLink]="['/quotation/detail', o.quotationId]">
+            <a *ngIf="o.quotationId && canOpenQuotation; else noQuotation" class="link-row" [routerLink]="['/quotation/detail', o.quotationId]">
               <app-icon name="file"></app-icon>
               <span class="grow"
                 ><span class="link-title">Quotation</span
@@ -241,7 +241,18 @@
               >
               <app-icon name="chev-right" [mirror]="true"></app-icon>
             </a>
-            <ng-template #noQuotation><span class="link-row muted">No quotation</span></ng-template>
+            <ng-template #noQuotation>
+              <span class="link-row" *ngIf="o.quotationId; else noneQuotation">
+                <app-icon name="file"></app-icon>
+                <span class="grow"
+                  ><span class="link-title">Quotation</span
+                  ><span class="muted small"
+                    ><bdi>{{ o.quotationNumber }}</bdi></span
+                  ></span
+                >
+              </span>
+              <ng-template #noneQuotation><span class="link-row muted">No quotation</span></ng-template>
+            </ng-template>
           </li>
           <li *ngIf="o.quotationId">
             <a class="link-row" [routerLink]="['/production', o.quotationId]">
@@ -256,7 +267,11 @@
             </a>
           </li>
           <li>
-            <a *ngIf="o.bill as bill; else noBill" class="link-row" [routerLink]="['/payments/bill', bill.id]">
+            <span class="link-row" *ngIf="o.bill && !showPayments">
+              <app-icon name="receipt"></app-icon>
+              <span class="grow"><span class="link-title">Bill</span><span class="muted small num">{{ o.bill.number }}</span></span>
+            </span>
+            <a *ngIf="showPayments && o.bill as bill; else noBill" class="link-row" [routerLink]="['/payments/bill', bill.id]">
               <app-icon name="receipt"></app-icon>
               <span class="grow"
                 ><span class="link-title">Bill</span
@@ -265,7 +280,7 @@
               <app-icon name="chev-right" [mirror]="true"></app-icon>
             </a>
             <ng-template #noBill>
-              <span class="link-row">
+              <span class="link-row" *ngIf="!o.bill">
                 <app-icon name="receipt"></app-icon>
                 <span class="grow"
                   ><span class="link-title">Bill</span
@@ -274,8 +289,8 @@
               </span>
             </ng-template>
           </li>
-          <li>
-            <button type="button" class="link-row" (click)="payments.focusPanel()">
+          <li *ngIf="showPayments">
+            <button type="button" class="link-row" (click)="focusPayments()">
               <app-icon name="rupee"></app-icon>
               <span class="grow"
                 ><span class="link-title">Payments</span
@@ -287,7 +302,7 @@
         </ul>
       </section>
 
-      <section class="card card-pad" aria-labelledby="amounts-title">
+      <section class="card card-pad" aria-labelledby="amounts-title" *ngIf="showMoney">
         <h2 id="amounts-title">Amounts</h2>
         <dl class="dl">
           <dt>Subtotal</dt>
@@ -339,7 +354,7 @@
 
 <app-confirm-dialog
   *ngIf="closing && order as o"
-  [title]="'Close ' + o.number + ' with ' + (o.balance | inr) + ' still to pay?'"
+  [title]="showMoney ? 'Close ' + o.number + ' with ' + (o.balance | inr) + ' still to pay?' : 'Close ' + o.number + '? It is not fully paid yet.'"
   text="Closing ends the job. The amount stays under Outstanding until it is paid; it is not written off."
   confirmLabel="Close order"
   keepLabel="Keep it open"
@@ -347,7 +362,7 @@
   (confirmed)="confirmClose()"
   (closed)="closing = false"
 >
-  <dl class="dl owed">
+  <dl class="dl owed" *ngIf="showMoney">
     <dt>Order total</dt>
     <dd>{{ o.total | inr }}</dd>
     <dt>Received</dt>
