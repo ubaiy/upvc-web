@@ -1,4 +1,4 @@
-<p-progressSpinner [hidden]="!loading"></p-progressSpinner>
+<div class="app-loader" [hidden]="!loading" role="status" aria-label="Loading"><span class="app-loader__bar"></span><i class="app-loader__ring"></i></div>
 <p-toast position="bottom-center" [life]="5000"></p-toast>
 <app-undo-toast></app-undo-toast>
 <p-confirmDialog rejectButtonStyleClass="p-button-outlined"></p-confirmDialog>

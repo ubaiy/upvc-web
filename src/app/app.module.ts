@@ -50,7 +50,6 @@ import { ConfirmDialogModule } from 'primeng/confirmdialog';
 import { ProgressBarModule } from 'primeng/progressbar';
 import { LoaderService } from 'src/app/shared/services/loader.service';
 import { LoaderInterceptor } from 'src/app/shared/interceptors/loader.interceptor';
-import { ProgressSpinnerModule } from 'primeng/progressspinner';
 import { ProfileComponent } from './views/profile/profile.component';
 import { BulkPriceUploadComponent } from './views/bulk-price-upload/bulk-price-upload.component';
 import { SharedComponentsModule } from './shared/components/shared-components.module';
@@ -91,7 +90,6 @@ const APP_CONTAINERS = [ShellComponent, CommandPaletteComponent];
     HttpClientModule,
     AlertModule,
     ProgressBarModule,
-    ProgressSpinnerModule,
     SharedComponentsModule,
   ],
   providers: [

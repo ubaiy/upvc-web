@@ -30,7 +30,7 @@ describe('AppComponent', () => {
   it('shows the loading overlay only while a request is open', fakeAsync(() => {
     const fixture = TestBed.createComponent(AppComponent);
     const loader = TestBed.inject(LoaderService);
-    const spinner = () => fixture.nativeElement.querySelector('p-progressSpinner') as HTMLElement;
+    const spinner = () => fixture.nativeElement.querySelector('.app-loader') as HTMLElement;
     fixture.detectChanges();
     tick();
     fixture.detectChanges();
