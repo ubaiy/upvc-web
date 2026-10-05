@@ -1,6 +1,7 @@
 // The app's one loader: a thin bar under the top edge at once, and a small
 // ring in the middle only when a request takes longer than a moment. The
-// page is not dimmed; clicks are held while a request is open, as before.
+// page is not dimmed and stays usable: the layer takes no clicks (a press
+// made while a request was open used to be lost without a word).
 .app-loader {
   position: fixed;
   inset: 0;
@@ -8,6 +9,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  pointer-events: none;
 
   &[hidden] {
     display: none;
