@@ -53,6 +53,11 @@ export interface Payment {
   period_to: string;
   recorded_by: number;
   created_at: string;
+  /** Entered by mistake and voided (phase-56 G5 d): the row stays, the totals leave it out. */
+  void?: boolean;
+  voided_at?: string | null;
+  voided_by?: number | null;
+  void_reason?: string | null;
 }
 
 export type PaymentMode = 'upi' | 'bank' | 'cash';
@@ -79,8 +84,37 @@ export interface AdminCompany {
   payments?: Payment[];
   /** Only in the answer to "create company": the password is given once. */
   owner?: { email: string; password: string | null };
-  /** Only in the answer to "activate". */
+  /** Only in the answer to "activate" and to "void a payment". */
   payment?: Payment;
+  /** As stored (phase-56 G5 a); `null`: none. Absent in the answer of an older api. */
+  seats_override?: number | null;
+  features_override?: FeatureMap | null;
+  /** `classic_example`, `own_rates` or null. */
+  starter_catalogue?: string | null;
+  /** Void rows are left out of these. */
+  payments_total_paise?: number;
+  payments_total?: number;
+  payments_count?: number;
+  payments_void_count?: number;
+  /** Only in the answer to "void a payment": the plan, status and paid day went back to what they were before it. */
+  subscription_restored?: boolean;
+}
+
+/** The override map as the api stores it; `undefined` when the answer does not carry it (an older api). */
+export function storedFeatureOverride(company: AdminCompany | null | undefined): FeatureMap | null | undefined {
+  if (company && 'features_override' in company) {
+    return company.features_override ?? null;
+  }
+  const subscription = company?.subscription as (Subscription & { features_override?: FeatureMap | null }) | undefined;
+  return subscription && 'features_override' in subscription ? subscription.features_override ?? null : undefined;
+}
+
+export function whole(value: unknown): boolean {
+  return value !== null && value !== '' && Number.isInteger(Number(value));
+}
+
+export function monthsText(months: number): string {
+  return months === 1 ? '1 month' : `${months} months`;
 }
 
 export interface AuditEntry {
@@ -285,3 +319,26 @@ export const GST_STATES: { code: string; name: string }[] = [
 export function stateName(code: string | null | undefined): string {
   return GST_STATES.find((state) => state.code === code)?.name ?? '';
 }
+
+/** What the admin can do to a company; each is a dialog of two steps on its page. */
+export type CompanyAction = 'activate' | 'plan' | 'trial' | 'limits' | 'suspend' | 'reactivate' | 'void';
+
+export const TITLES: Record<CompanyAction, string> = {
+  activate: 'Record a payment and activate',
+  plan: 'Change plan',
+  trial: 'Extend the trial',
+  limits: 'Seats and 3D view',
+  suspend: 'Suspend this company',
+  reactivate: 'Reactivate this company',
+  void: 'Void a payment entered by mistake',
+};
+
+export const CONFIRM_LABELS: Record<CompanyAction, string> = {
+  activate: 'Yes, record and activate',
+  plan: 'Yes, change the plan',
+  trial: 'Yes, extend the trial',
+  limits: 'Yes, save the limits',
+  suspend: 'Yes, suspend',
+  reactivate: 'Yes, reactivate',
+  void: 'Yes, void this payment',
+};

@@ -208,4 +208,115 @@ describe('CompanyComponent', () => {
     fixture.detectChanges();
     expect(fixture.nativeElement.querySelector('.callout').textContent).toContain('There is no company with this number.');
   });
+
+  // ---- T146: what the api gained in phase-56 G5
+
+  const VOIDED = { ...PAYMENT, void: true, voided_at: '2026-10-06T06:30:00+00:00', voided_by: 3, void_reason: 'Typed for the wrong company' };
+  const rows = (): HTMLTableRowElement[] => Array.from(el.querySelectorAll<HTMLTableRowElement>('section:last-of-type tbody tr'));
+
+  it('void a payment: the reason is asked, nothing is sent before the yes, and the row stays struck through with the reason', () => {
+    create(asha({ status: 'active', stored_status: 'active' }, { payments: [PAYMENT], payments_total: 7497, payments_total_paise: 749700, payments_count: 1, payments_void_count: 0 }));
+    expect(el.querySelector('.pay-total')!.textContent!.replace(/\s+/g, ' ')).toContain('Total received ₹7,497.00');
+    expect(rows()[0].classList.contains('void')).toBeFalse();
+
+    (rows()[0].querySelector('button.void-payment') as HTMLButtonElement).click();
+    expect(component.action).toBe('void');
+    expect(component.title).toBe('Void a payment entered by mistake');
+    component.next();
+    expect(component.step).toBe('form');
+    expect(component.actionError).toBe('Say why this payment is void, in 3 letters or more.');
+    component.form.reason = '  Typed for the wrong company ';
+    component.next();
+    expect(component.willHappen[0]).toContain('The payment of ₹7,497.00 received on 5 Oct 2026 is marked void.');
+    expect(component.willHappen[0]).toContain('The row stays in the list');
+    expect(component.willHappen[2]).toBe('Reason kept with it: "Typed for the wrong company"');
+    http.expectNone(`${API}/companies/2/payments/9/void`);
+
+    const body = yes('payments/9/void', asha({}, { payment: VOIDED, subscription_restored: true, payments: [VOIDED], payments_total: 0, payments_total_paise: 0, payments_count: 0, payments_void_count: 1 }));
+    expect(body).toEqual({ reason: 'Typed for the wrong company' });
+    const row = rows()[0];
+    expect(row.classList.contains('void')).toBeTrue();
+    expect(row.querySelector('.badge')!.textContent).toContain('void');
+    expect(row.textContent).toContain('Typed for the wrong company');
+    expect(row.textContent).withContext('the row is kept').toContain('₹7,497.00');
+    expect(row.querySelector('button.void-payment')).withContext('a void payment cannot be voided again').toBeNull();
+    // the total and the paid day are the api's, not worked out here
+    expect(el.querySelector('.pay-total')!.textContent!.replace(/\s+/g, ' ')).toContain('Total received ₹0.00 · 1 void, not counted');
+    const said = el.querySelector('.callout.success')!.textContent!;
+    expect(said).toContain('The payment of ₹7,497.00 is void.');
+    expect(said).toContain('Asha Windows is back to what it was before it: ');
+    expect(said).toContain('19 Oct 2026');
+  });
+
+  it('void an older payment: the dates were not changed; a refusal (409) stays in the dialog', () => {
+    create(asha({}, { payments: [PAYMENT] }));
+    component.openVoid(PAYMENT);
+    component.form.reason = 'Entered twice';
+    component.next();
+    component.send();
+    http.expectOne(`${API}/companies/2/payments/9/void`).flush({ success: false, code: 'payment_already_void', message: 'This payment is void already.' }, { status: 409, statusText: 'Conflict' });
+    expect(component.actionError).toBe('This payment is void already.');
+    expect(component.action).toBe('void');
+
+    yes('payments/9/void', asha({}, { payment: VOIDED, subscription_restored: false, payments: [VOIDED] }));
+    expect(el.querySelector('.callout.success')!.textContent).toContain('The dates of Asha Windows were not changed.');
+  });
+
+  it('activate with a last paid day in place of months: sends "to" and no months', () => {
+    create();
+    ask('activate', { period: 'day', to: '', amount: 4998 });
+    expect(component.actionError).toBe('Choose the last paid day.');
+    ask('activate', { period: 'day', to: '2026-10-04', amount: 4998 });
+    expect(component.actionError).toBe('The last paid day cannot be a day that has passed.');
+    ask('activate', { period: 'day', to: '2026-12-31', from: '2027-01-05', amount: 4998 });
+    expect(component.actionError).toBe('The last paid day cannot be before the day the period starts.');
+
+    ask('activate', { period: 'day', to: '2026-12-31', amount: 4998, months: 7 });
+    expect(component.willHappen[1]).toContain('active on Growth up to and including 31 Dec 2026');
+    const paid = { ...PAYMENT, amount_paise: 499800, amount: 4998, months: 2, period_to: '2026-12-31' };
+    const body = yes('activate', asha({ status: 'active', stored_status: 'active', current_period_ends_at: '2026-12-31', ends_on: '2026-12-31' }, { payment: paid }));
+    expect(body).toEqual({ to: '2026-12-31', amount_paise: 499800, mode: 'upi', plan: 'growth', paid_on: '2026-10-05' });
+    expect('months' in body).toBeFalse();
+    expect(el.querySelector('.callout.success')!.textContent).toContain('paid from 5 Oct 2026 to 31 Dec 2026');
+  });
+
+  it('activate: the dialog offers the last paid day through the shared date field', () => {
+    create();
+    component.open('activate');
+    component.form.period = 'day';
+    fixture.detectChanges();
+    const dialog = document.querySelector('.p-dialog') as HTMLElement;
+    expect(dialog.querySelector('app-date-field #act-to, #act-to')).not.toBeNull();
+    expect(dialog.querySelector('#act-months')).toBeNull();
+    component.close();
+    fixture.detectChanges();
+  });
+
+  it('reads seats_override and features_override from the api, also when they equal the plan', () => {
+    // Growth gives 5 seats and no 3D: an override of the same values cannot be guessed from the result
+    create(asha({}, { seats_override: 5, features_override: { feature_3d: false, max_design_templates: 3 } }));
+    const text = el.textContent!.replace(/\s+/g, ' ');
+    expect(text).toContain('set for this company; the plan gives 5');
+    expect(text).toContain('Set for this company, whatever the plan says:');
+    expect(component.featureOverride).toEqual({ feature_3d: false, max_design_templates: 3 });
+    component.open('limits');
+    expect(component.form.seats).toBe(5);
+    expect(component.form.threeD).toBe('off');
+    // the whole stored map goes back with the one change
+    Object.assign(component.form, { threeD: 'on' });
+    component.next();
+    expect(yes('overrides', asha({}, { seats_override: 5, features_override: { max_design_templates: 3, feature_3d: true } }))).toEqual({
+      features_override: { max_design_templates: 3, feature_3d: true },
+    });
+  });
+
+  it('an answer that says "no override" is believed: nothing is guessed from the result', () => {
+    create(asha({ features: { ...GROWTH.features, feature_3d: true } }, { seats_override: null, features_override: null }));
+    expect(component.featureOverride).toEqual({});
+    expect(el.textContent).not.toContain('whatever the plan says');
+    component.open('limits');
+    expect(component.form.threeD).toBe('plan');
+    expect(component.form.seats).toBeNull();
+    component.close();
+  });
 });

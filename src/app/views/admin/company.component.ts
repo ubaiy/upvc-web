@@ -6,42 +6,31 @@ import { Observable } from 'rxjs';
 import { formatInr } from '../../shared/pipes/inr.pipe';
 import {
   AdminCompany,
+  CONFIRM_LABELS,
+  CompanyAction,
   FeatureMap,
   PAYMENT_MODES,
+  Payment,
   PaymentMode,
   Plan,
+  TITLES,
   apiError,
   attentionText,
   daysText,
   endsLabel,
   featureList,
   modeLabel,
+  monthsText,
   seatsText,
   stateName,
   statusBadge,
   statusLabel,
+  storedFeatureOverride,
+  whole,
 } from './admin.models';
 import { ActivateRequest, AdminService } from './admin.service';
 
-export type CompanyAction = 'activate' | 'plan' | 'trial' | 'limits' | 'suspend' | 'reactivate';
-
-const TITLES: Record<CompanyAction, string> = {
-  activate: 'Record a payment and activate',
-  plan: 'Change plan',
-  trial: 'Extend the trial',
-  limits: 'Seats and 3D view',
-  suspend: 'Suspend this company',
-  reactivate: 'Reactivate this company',
-};
-
-const CONFIRM_LABELS: Record<CompanyAction, string> = {
-  activate: 'Yes, record and activate',
-  plan: 'Yes, change the plan',
-  trial: 'Yes, extend the trial',
-  limits: 'Yes, save the limits',
-  suspend: 'Yes, suspend',
-  reactivate: 'Yes, reactivate',
-};
+export type { CompanyAction } from './admin.models';
 
 /**
  * One company: what it is on, what it uses, its people and its payments, and the
@@ -58,6 +47,8 @@ const CONFIRM_LABELS: Record<CompanyAction, string> = {
       .actions { display: flex; flex-wrap: wrap; gap: var(--s-2); }
       .will { margin: 0; padding-inline-start: var(--s-5); display: grid; gap: var(--s-2); color: var(--c-text); }
       .attention { color: var(--c-warning); }
+      tr.void td.strike { text-decoration: line-through; color: var(--c-text-3); }
+      .void-why { white-space: normal; max-width: 260px; }
       :host > section, :host > .grid-2 { margin-block-end: var(--s-5); }
       app-callout { margin-block-end: var(--s-4); }
       @media (max-width: 640px) {
@@ -91,11 +82,17 @@ export class CompanyComponent implements OnInit {
   busy = false;
   /** A field that is not filled in right (ours), or the refusal of the api (its own words). */
   actionError = '';
+  /** The payment the "void" dialog is about. */
+  voiding: Payment | null = null;
 
   form = {
     plan: '',
     note: '',
+    /** Paid for a number of months, or up to a last day (phase-56 G5 b). */
+    period: 'months' as 'months' | 'day',
     months: 1 as number | null,
+    to: '',
+    reason: '',
     amount: null as number | null,
     mode: 'upi' as PaymentMode,
     reference: '',
@@ -154,8 +151,18 @@ export class CompanyComponent implements OnInit {
     return offered.length || !current ? offered : [current];
   }
 
-  /** What the company has on top of its plan. The api answers the result, not the override itself: a key that differs from the plan is one. */
+  /** The seats set for this company, as the api stores them; `null`: the plan's. */
+  get seatsOverride(): number | null {
+    const company = this.company;
+    return company && 'seats_override' in company ? company.seats_override ?? null : company?.subscription.seats.override ?? null;
+  }
+
+  /** What the company has on top of its plan: the map the api stores. Only an older api, which does not answer it, is guessed: a key that differs from the plan. */
   get featureOverride(): FeatureMap {
+    const stored = storedFeatureOverride(this.company);
+    if (stored !== undefined) {
+      return { ...(stored || {}) };
+    }
     const subscription = this.company?.subscription;
     const plan = subscription?.plan?.features || {};
     const override: FeatureMap = {};
@@ -176,19 +183,27 @@ export class CompanyComponent implements OnInit {
     this.form = {
       plan: subscription.plan?.code ?? '',
       note: '',
+      period: 'months',
       months: 1,
+      to: '',
+      reason: '',
       amount: null,
       mode: 'upi',
       reference: '',
       paidOn: subscription.today,
       from: '',
       days: 14,
-      seats: subscription.seats.override,
+      seats: this.seatsOverride,
       threeD: 'feature_3d' in override ? (override['feature_3d'] ? 'on' : 'off') : 'plan',
     };
     this.action = action;
     this.step = 'form';
     this.actionError = '';
+  }
+
+  openVoid(payment: Payment): void {
+    this.open('void');
+    this.voiding = payment;
   }
 
   close(): void {
@@ -226,10 +241,10 @@ export class CompanyComponent implements OnInit {
       case 'activate': {
         const reference = form.reference.trim() ? `, reference ${form.reference.trim()}` : '';
         lines.push(
-          `A payment of ${formatInr(form.amount)} by ${modeLabel(form.mode)}, received on ${day(form.paidOn)}${reference}, is recorded. It cannot be removed later.`
+          `A payment of ${formatInr(form.amount)} by ${modeLabel(form.mode)}, received on ${day(form.paidOn)}${reference}, is recorded. It is never deleted: one entered by mistake can be voided, with a reason.`
         );
         lines.push(
-          `${name} becomes active on ${plan?.name ?? form.plan} for ${monthsText(form.months as number)}, ` +
+          `${name} becomes active on ${plan?.name ?? form.plan} ${form.period === 'day' ? 'up to and including ' + day(form.to) : 'for ' + monthsText(form.months as number)}, ` +
             (form.from ? `starting ${day(form.from)}.` : 'starting the day after the paid period that is still running, or today if none is.')
         );
         if (plan && plan.code !== subscription.plan?.code) {
@@ -244,7 +259,7 @@ export class CompanyComponent implements OnInit {
         lines.push(`${name} moves from ${subscription.plan?.name ?? 'no plan'} to ${plan?.name ?? form.plan}, from its next request.`);
         if (plan) {
           lines.push(`${plan.name}: ${formatInr(plan.price)} a month before GST, ${plan.seats} seats. ${featureList(plan.features).join(', ')}.`);
-          if (subscription.seats.override === null && subscription.seats.used > plan.seats) {
+          if (this.seatsOverride === null && subscription.seats.used > plan.seats) {
             lines.push(`It has ${subscription.seats.used} people today, more than the ${plan.seats} seats of ${plan.name}. Nobody is removed.`);
           }
         }
@@ -280,6 +295,13 @@ export class CompanyComponent implements OnInit {
         lines.push(`${name} becomes read-only at once. Its people can still sign in, view and download everything.`);
         lines.push('Nothing is deleted. A payment does not lift it: only "Reactivate" does.');
         break;
+      case 'void': {
+        const payment = this.voiding;
+        lines.push(`The payment of ${formatInr(payment?.amount)} received on ${day(payment?.paid_on)} is marked void. The row stays in the list, struck through, with your reason. It cannot be made good again.`);
+        lines.push(`If it is the last payment entered, the plan, the status and the paid day of ${name} go back to what they were before it. An older payment is only marked: the dates stay.`);
+        lines.push(`Reason kept with it: "${form.reason.trim()}"`);
+        break;
+      }
       case 'reactivate':
         lines.push(`The suspension of ${name} is lifted.`);
         lines.push('Its access then follows its dates again: full if the trial or paid period is running, read-only if it has run out.');
@@ -330,7 +352,7 @@ export class CompanyComponent implements OnInit {
     switch (action) {
       case 'activate': {
         const body: ActivateRequest = {
-          months: form.months as number,
+          ...(form.period === 'day' ? { to: form.to } : { months: form.months as number }),
           amount_paise: Math.round((form.amount as number) * 100),
           mode: form.mode,
         };
@@ -361,15 +383,16 @@ export class CompanyComponent implements OnInit {
         return this.admin.suspend(this.id, note);
       case 'reactivate':
         return this.admin.reactivate(this.id, note);
+      case 'void':
+        return this.admin.voidPayment(this.id, (this.voiding as Payment).id, form.reason.trim());
     }
   }
 
   /** Only what the form changes is sent: the api leaves a key that is not sent as it is. */
   private limitChanges(): { seats_override?: number | null; features_override?: FeatureMap | null } {
-    const subscription = this.company?.subscription;
     const changes: { seats_override?: number | null; features_override?: FeatureMap | null } = {};
     const seats = this.form.seats === null || (this.form.seats as unknown) === '' ? null : Number(this.form.seats);
-    if (seats !== (subscription?.seats.override ?? null)) {
+    if (seats !== this.seatsOverride) {
       changes.seats_override = seats;
     }
     const before = this.featureOverride;
@@ -387,7 +410,18 @@ export class CompanyComponent implements OnInit {
     const form = this.form;
     switch (this.action) {
       case 'activate':
-        if (!whole(form.months) || (form.months as number) < 1 || (form.months as number) > 60) {
+        if (form.period === 'day') {
+          const today = this.company?.subscription.today || '';
+          if (!form.to) {
+            return 'Choose the last paid day.';
+          }
+          if (form.to < today) {
+            return 'The last paid day cannot be a day that has passed.';
+          }
+          if (form.from && form.to < form.from) {
+            return 'The last paid day cannot be before the day the period starts.';
+          }
+        } else if (!whole(form.months) || (form.months as number) < 1 || (form.months as number) > 60) {
           return 'Enter the months paid for: a whole number from 1 to 60.';
         }
         if (form.amount === null || (form.amount as unknown) === '' || !Number.isFinite(Number(form.amount)) || Number(form.amount) < 0) {
@@ -409,6 +443,10 @@ export class CompanyComponent implements OnInit {
           return 'Enter the seats as a whole number, 1 or more. Leave it empty to use the plan\'s seats.';
         }
         return Object.keys(this.limitChanges()).length ? '' : 'Nothing is changed yet.';
+      }
+      case 'void': {
+        const length = form.reason.trim().length;
+        return length < 3 ? 'Say why this payment is void, in 3 letters or more.' : length > 1000 ? 'Keep the reason under 1000 letters.' : '';
       }
       default:
         return '';
@@ -435,6 +473,15 @@ export class CompanyComponent implements OnInit {
         return `${name} is suspended and read-only.`;
       case 'reactivate':
         return `${name} is reactivated. Its status is now: ${statusLabel(subscription.status)}.`;
+      case 'void': {
+        const ends = subscription.ends_on ? `, ${endsLabel(subscription).toLowerCase()} ${day(subscription.ends_on)}` : '';
+        return (
+          `The payment of ${formatInr(answer.payment?.amount ?? this.voiding?.amount)} is void. ` +
+          (answer.subscription_restored
+            ? `${name} is back to what it was before it: ${statusLabel(subscription.status)}${ends}.`
+            : `The dates of ${name} were not changed.`)
+        );
+      }
     }
   }
 
@@ -442,14 +489,6 @@ export class CompanyComponent implements OnInit {
     const current = this.company?.subscription.plan;
     return this.plans.find((plan) => plan.code === code) ?? (current?.code === code ? current : undefined);
   }
-}
-
-function whole(value: unknown): boolean {
-  return value !== null && value !== '' && Number.isInteger(Number(value));
-}
-
-function monthsText(months: number): string {
-  return months === 1 ? '1 month' : `${months} months`;
 }
 
 /** "5 Oct 2026" from the api's YYYY-MM-DD. */

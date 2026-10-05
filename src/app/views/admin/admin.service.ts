@@ -10,11 +10,15 @@ export interface CreateCompanyRequest {
   owner: { name: string; email: string };
   plan: string;
   trial_days: number;
+  /** Left out or `classic_example`: the example catalogue. `none`: an empty company. */
+  starter_catalogue?: 'classic_example' | 'none';
   note?: string;
 }
 
 export interface ActivateRequest {
-  months: number;
+  /** One of the two, never both: the months paid for, or the last paid day (Y-m-d). */
+  months?: number;
+  to?: string;
   amount_paise: number;
   mode: PaymentMode;
   plan?: string;
@@ -91,6 +95,11 @@ export class AdminService {
     note?: string
   ): Observable<AdminCompany> {
     return this.post(`admin/companies/${id}/overrides`, withNote({ ...changes }, note));
+  }
+
+  /** A payment entered by mistake. The row is kept; the answer is the company with `payment` and `subscription_restored`. */
+  voidPayment(id: number, paymentId: number, reason: string): Observable<AdminCompany> {
+    return this.post(`admin/companies/${id}/payments/${paymentId}/void`, { reason });
   }
 
   payments(id: number): Observable<Payment[]> {

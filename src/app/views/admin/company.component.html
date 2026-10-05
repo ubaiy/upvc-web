@@ -81,7 +81,7 @@
         <dt>Seats used</dt>
         <dd>
           {{ seatsText(c.subscription) }}
-          <span class="muted" *ngIf="c.subscription.seats.override !== null">
+          <span class="muted" *ngIf="seatsOverride !== null">
             (set for this company; the plan gives {{ c.subscription.seats.plan ?? 'no limit' }})
           </span>
         </dd>
@@ -89,6 +89,9 @@
         <dd>
           <div *ngFor="let line of featureList(c.subscription.features)">{{ line }}</div>
           <span class="muted" *ngIf="!featureList(c.subscription.features).length">Nothing listed</span>
+          <div class="muted small override" *ngIf="featureList(featureOverride) as set">
+            <ng-container *ngIf="set.length">Set for this company, whatever the plan says: {{ set.join(', ') }}</ng-container>
+          </div>
         </dd>
         <dt>Quotations this month</dt>
         <dd>{{ c.usage.quotations_this_month }}</dd>
@@ -131,7 +134,12 @@
   </section>
 
   <section class="card">
-    <div class="card-head"><h2>Payments entered</h2></div>
+    <div class="card-head">
+      <h2>Payments entered</h2>
+      <span class="muted small pay-total" *ngIf="c.payments_total !== undefined && c.payments?.length">
+        Total received {{ c.payments_total | inr }}<ng-container *ngIf="c.payments_void_count"> · {{ c.payments_void_count }} void, not counted</ng-container>
+      </span>
+    </div>
     <table class="table" *ngIf="c.payments?.length; else noPayments">
       <thead>
         <tr>
@@ -141,22 +149,33 @@
           <th scope="col">Plan</th>
           <th scope="col">Period paid for</th>
           <th scope="col" class="hide-tablet">Note</th>
+          <th scope="col"><span class="sr-only">Void</span></th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let payment of c.payments; trackBy: trackById">
-          <td class="num title">{{ payment.paid_on | date : 'd MMM y' }}</td>
-          <td class="num">{{ payment.amount | inr }}</td>
-          <td>
+        <tr *ngFor="let payment of c.payments; trackBy: trackById" [class.void]="payment.void">
+          <td class="num title strike">{{ payment.paid_on | date : 'd MMM y' }}</td>
+          <td class="num strike">{{ payment.amount | inr }}</td>
+          <td class="strike">
             {{ modeLabel(payment.mode) }}
             <div class="faint tiny" *ngIf="payment.reference">{{ payment.reference }}</div>
           </td>
-          <td>{{ planName(payment.plan) }}</td>
-          <td class="num">
+          <td class="strike">{{ planName(payment.plan) }}</td>
+          <td class="num strike">
             {{ payment.period_from | date : 'd MMM y' }} to {{ payment.period_to | date : 'd MMM y' }}
             <div class="faint tiny">{{ payment.months }} {{ payment.months === 1 ? 'month' : 'months' }}</div>
           </td>
           <td class="muted hide-tablet">{{ payment.note || '—' }}</td>
+          <td>
+            <ng-container *ngIf="payment.void; else voidButton">
+              <span class="badge plain badge-danger">void</span>
+              <div class="tiny void-why">{{ payment.void_reason }}</div>
+              <div class="faint tiny" *ngIf="payment.voided_at">{{ payment.voided_at | date : 'd MMM y' }}</div>
+            </ng-container>
+            <ng-template #voidButton>
+              <button type="button" class="btn btn-ghost btn-sm void-payment" (click)="openVoid(payment)">Void</button>
+            </ng-template>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -186,10 +205,21 @@
             </option>
           </select>
         </div>
+        <div class="field">
+          <label class="label" for="act-period">Paid for</label>
+          <select class="select" id="act-period" name="period" [(ngModel)]="form.period">
+            <option value="months">A number of months</option>
+            <option value="day">Up to a last day</option>
+          </select>
+        </div>
         <div class="grid-2">
-          <div class="field">
+          <div class="field" *ngIf="form.period === 'months'">
             <label class="label" for="act-months">Months paid for</label>
             <input class="input" id="act-months" name="months" type="number" inputmode="numeric" min="1" max="60" [(ngModel)]="form.months" />
+          </div>
+          <div class="field" *ngIf="form.period === 'day'">
+            <label class="label" for="act-to">Last paid day</label>
+            <app-date-field inputId="act-to" name="to" [(ngModel)]="form.to" [min]="company?.subscription?.today || ''"></app-date-field>
           </div>
           <div class="field">
             <label class="label" for="act-amount">Amount received</label>
@@ -222,8 +252,8 @@
           </div>
         </div>
         <span class="hint" id="act-from-hint">
-          Leave "Period starts on" empty to start the day after the paid period that is still running, or today. The last paid
-          day is worked out from the months.
+          Leave "Period starts on" empty to start the day after the paid period that is still running, or today.
+          {{ form.period === 'day' ? 'The last paid day is the one you choose.' : 'The last paid day is worked out from the months.' }}
         </span>
       </ng-container>
 
@@ -268,9 +298,21 @@
         A suspended company is read-only: its people can sign in, view and download, and change nothing.
       </p>
       <p class="muted" *ngSwitchCase="'reactivate'">Lifting the suspension gives the company back what its dates allow.</p>
+
+      <ng-container *ngSwitchCase="'void'">
+        <p class="muted" *ngIf="voiding as p">
+          {{ p.amount | inr }} received on {{ p.paid_on | date : 'd MMM y' }} by {{ modeLabel(p.mode) }}<ng-container *ngIf="p.reference">, reference {{ p.reference }}</ng-container>.
+          A void payment stays in the list and is left out of the total.
+        </p>
+        <div class="field">
+          <label class="label" for="void-reason">Why is this payment void?</label>
+          <textarea class="input" id="void-reason" name="reason" rows="3" maxlength="1000" [(ngModel)]="form.reason"></textarea>
+          <span class="hint">Kept with the payment and shown in the list.</span>
+        </div>
+      </ng-container>
     </ng-container>
 
-    <div class="field">
+    <div class="field" *ngIf="action !== 'void'">
       <label class="label" for="action-note">Note (optional)</label>
       <input class="input" id="action-note" name="note" type="text" maxlength="250" [(ngModel)]="form.note" placeholder="Why, or who asked" />
     </div>
@@ -292,7 +334,7 @@
     </ng-container>
     <ng-container *ngIf="step === 'confirm'">
       <button type="button" class="btn btn-secondary" [disabled]="busy" (click)="back()">Go back</button>
-      <button type="button" class="btn" [ngClass]="action === 'suspend' ? 'btn-danger' : 'btn-primary'" [disabled]="busy" (click)="send()">
+      <button type="button" class="btn" [ngClass]="action === 'suspend' || action === 'void' ? 'btn-danger' : 'btn-primary'" [disabled]="busy" (click)="send()">
         {{ busy ? 'Working…' : confirmLabel }}
       </button>
     </ng-container>
