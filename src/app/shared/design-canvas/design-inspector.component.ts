@@ -37,6 +37,7 @@ import {
   checkInvariants,
   findNode,
   glassOfPanes,
+  SHAPED_OPENING_PROBLEM,
   hasOwnGlass,
   isLeaf,
   makeDoor,
@@ -52,6 +53,7 @@ import {
   setSlidePanelWidthMm,
   setSlideTracks,
   setWindowGlass,
+  shapedOpeningPanes,
   walkLeaves,
 } from '../design-model';
 import { CanvasSelection, selectedPaneIds } from './canvas-view';
@@ -212,6 +214,13 @@ export class DesignInspectorComponent {
       const problems = checkInvariants(next, this.opts);
       if (problems.length) {
         this.problem = problems[0];
+        return;
+      }
+      // A change of shape or size must not leave a sash in a pane the
+      // shape now cuts (one that was already there is only warned about).
+      const before = new Set(shapedOpeningPanes(this.design, this.opts));
+      if (shapedOpeningPanes(next, this.opts).some((id) => !before.has(id))) {
+        this.problem = SHAPED_OPENING_PROBLEM;
         return;
       }
       this.problem = '';

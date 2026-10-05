@@ -24,8 +24,10 @@ import {
   PointMm,
   WindowDesign,
   clipPanesToShape,
+  clipPolygonToRect,
   findNode,
   isSplit,
+  leafOpens,
   shapeOutline,
   walkLeaves,
 } from '../design-model';
@@ -50,6 +52,12 @@ import {
 } from './render/render-frame';
 import { drawLeaf, drawPaneLabel } from './render/render-leaf';
 import { drawLegend } from './render/render-legend';
+import {
+  asShapedGlass,
+  drawShapedDivider,
+  drawShapedPaneEdges,
+  drawShapedPaneLabel,
+} from './render/render-shaped';
 import {
   RenderGhost,
   RenderReadout,
@@ -167,39 +175,54 @@ export function renderDesign(
     : null;
   const doorLeafIds = doorLeaves(design);
   const showLabels = isSplit(design.root);
+  /** Labels of cut panes go on last, over the bars. */
+  const shapedLabels: Array<() => void> = [];
   for (const l of lay.leaves) {
     const r = ctx.rect(l.rect);
     const clip = clips?.get(l.leaf.id);
     if (clips && (!clip || clip.polygonMm.length < 3 || clip.areaMm2 < 1)) continue;
-    let parent: Parent = layer;
     if (clip?.clipped) {
-      parent = clipGroup(ctx, clip.polygonMm, 'pane-clip');
+      // A pane the shape cuts is fixed glass with its edge and bead along
+      // the cut. Nothing of it is drawn as a rectangle, so nothing can
+      // stand outside the frame or be cut in half by it.
+      const parent = clipGroup(ctx, clip.polygonMm, 'pane-clip');
       layer.add(parent);
-    }
-    drawLeaf(parent, l.leaf, r, ctx, { isDoorLeaf: doorLeafIds.has(l.leaf.id) });
-    if (clip?.clipped) {
-      layer.add(
-        new Konva.Line({
-          points: flatPx(ctx, clip.polygonMm),
-          closed: true,
-          stroke: COL.stroke,
-          strokeWidth: 1,
-          listening: false,
-          name: 'pane-outline',
+      drawLeaf(parent, asShapedGlass(l.leaf), r, ctx);
+      // The bead of a rectangle is replaced by one along the cut edge.
+      parent.find('.bead-line').forEach((n) => n.destroy());
+      drawShapedPaneEdges(layer, l.leaf, clip.polygonMm, ctx);
+      shapedLabels.push(() =>
+        drawShapedPaneLabel(layer, l.leaf, clip.polygonMm, ctx, {
+          size: showLabels,
+          blocked: leafOpens(l.leaf),
         })
       );
+      continue;
     }
-    if (showLabels) drawPaneLabel(layer, l.leaf, r, ctx, !!clip?.clipped);
+    drawLeaf(layer, l.leaf, r, ctx, { isDoorLeaf: doorLeafIds.has(l.leaf.id) });
+    if (showLabels) drawPaneLabel(layer, l.leaf, r, ctx, false);
   }
 
+  const barFill = shadeColor(ctx.color, ctx.color === '#ffffff' ? -0.18 : -0.08);
   for (const d of lay.dividers) {
+    if (daylight && daylight.length >= 3) {
+      // Cut to the frame's inner line: the bar ends on it, closed.
+      const cut = clipPolygonToRect(daylight, d.rect);
+      if (cut.length >= 3) {
+        drawShapedDivider(layer, cut, barFill, ctx, {
+          splitId: d.split.id,
+          dividerIndex: d.index,
+        });
+      }
+      continue;
+    }
     const r = ctx.rect(d.rect);
     const bar = new Konva.Rect({
       x: r.x,
       y: r.y,
       width: Math.max(2, r.w),
       height: Math.max(2, r.h),
-      fill: shadeColor(ctx.color, ctx.color === '#ffffff' ? -0.18 : -0.08),
+      fill: barFill,
       stroke: COL.stroke,
       strokeWidth: 1.5,
       listening: false,
@@ -211,8 +234,15 @@ export function renderDesign(
 
   if (design.door) {
     const doorNode = lay.nodes.get(design.door.doorNodeId);
-    if (doorNode) drawDoorThreshold(layer, doorNode.rect, ctx);
+    // In a shaped frame the sill strip under the door stays inside the
+    // frame's outer line.
+    const sill: Parent = outline ? clipGroup(ctx, outline, 'outline-clip') : layer;
+    if (sill !== layer) layer.add(sill);
+    // A door the shape cuts is drawn as glass (render-shaped): no sill of its own.
+    const doorCut = [...doorLeafIds].some((id) => clips?.get(id)?.clipped);
+    if (doorNode && !doorCut) drawDoorThreshold(sill, doorNode.rect, ctx);
   }
+  shapedLabels.forEach((draw) => draw());
 
   if (opts.legend) {
     drawLegend(layer, drawingKey(design, opts.glassLabels), opts.stageWPx, opts.stageHPx);

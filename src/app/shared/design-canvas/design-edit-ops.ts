@@ -12,12 +12,14 @@ import {
   FrameShapeKind,
   LeafNode,
   OpOptions,
+  SHAPED_OPENING_PROBLEM,
   WindowDesign,
   clipPanesToShape,
   equalPanels,
   findNode,
   isLeaf,
   layout,
+  panesCutByShape,
   resizeFrame,
   setFrameShape,
   setLeafSpec,
@@ -145,6 +147,9 @@ export function setPaneKind(
 ): WindowDesign {
   const leaf = leafOf(design, paneId);
   if (paneKindOf(leaf) === kind) return design;
+  if (kind !== 'fixed' && panesCutByShape(design, opts).has(paneId)) {
+    throw new DesignError(SHAPED_OPENING_PROBLEM);
+  }
   if (design.door && kind !== 'openable') {
     const doorNode = findNode(design.root, design.door.doorNodeId);
     const inDoor = doorNode && findNode(doorNode, paneId);
