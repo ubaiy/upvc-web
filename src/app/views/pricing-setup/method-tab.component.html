@@ -1,0 +1,85 @@
+<div class="setup-col stack-6">
+  <div class="card card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading the pricing method">
+    <span class="skeleton" style="width: 30%"></span>
+    <span class="skeleton" style="width: 100%"></span>
+  </div>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load the pricing method. {{ loadError }}
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <ng-container *ngIf="state === 'ready' && list as l">
+    <app-callout tone="success" *ngIf="done" data-setup="method-done">{{ done }}</app-callout>
+
+    <app-callout tone="danger" *ngIf="errors.length" data-setup="method-error">
+      <ng-container *ngFor="let sentence of errors">{{ sentence }} </ng-container>
+    </app-callout>
+
+    <section class="card" aria-labelledby="h-method">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-method">How your windows are priced</h2>
+          <p>One method is live for the whole company. A quotation line keeps the method and the figures it was saved with; a line saved again after a switch is priced by the new method.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="table" data-setup="methods">
+          <tbody>
+            <tr *ngFor="let m of l.methods" [attr.data-method]="m.key">
+              <td>
+                <span class="title">{{ m.label }}</span>
+                <div class="small">{{ m.key }}</div>
+                <div class="small" *ngIf="blocked(m) && m.key !== l.method">It cannot be switched on yet: the check list is not complete.</div>
+              </td>
+              <td class="row-actions">
+                <span class="badge badge-success" *ngIf="m.key === l.method" data-setup="live">Live</span>
+                <button appWrite="settings.write" *ngIf="m.key !== l.method" type="button" class="btn btn-secondary btn-sm" [disabled]="blocked(m)" (click)="ask(m)" data-act="switch">
+                  Switch to this method
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-method-ready">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-method-ready">Is the bill of materials ready?</h2>
+          <p>It prices a window from your own profiles, rules, hardware sets and rates.</p>
+        </div>
+        <span class="badge" [ngClass]="l.ready ? 'badge-success' : 'badge-warning'" data-setup="method-ready">{{ l.ready ? 'Ready' : 'Not ready' }}</span>
+      </div>
+      <div class="card-pad stack-4">
+        <p *ngIf="l.ready">Your figures are complete and at least one profile system in use is ready.</p>
+        <ul class="todo" *ngIf="l.missing.length">
+          <li *ngFor="let m of l.missing">
+            <app-icon class="mark" name="circle-alert"></app-icon>
+            <span>{{ m.text }} <a routerLink="/pricing-setup" [queryParams]="place(m)">{{ fix(m) }}</a></span>
+          </li>
+        </ul>
+        <ul class="todo" *ngIf="l.notes.length">
+          <li *ngFor="let n of l.notes"><app-icon class="mark" name="info"></app-icon><span>{{ n }}</span></li>
+        </ul>
+        <a class="btn btn-secondary btn-sm" routerLink="/pricing-setup" [queryParams]="{ tab: 'checklist' }">Open the check list</a>
+      </div>
+    </section>
+  </ng-container>
+</div>
+
+<app-confirm-dialog
+  *ngIf="asking as m"
+  [title]="'Switch to “' + m.label + '”?'"
+  confirmLabel="Yes, switch"
+  keepLabel="Not now"
+  ability="settings.write"
+  [busy]="busy"
+  (confirmed)="confirm()"
+  (closed)="asking = null"
+>
+  <p class="muted"><strong>Prices will change.</strong> Every window priced from now on, and every saved line that is saved again, is priced by this method.</p>
+  <p class="muted">Lines already saved keep the price and the figures they were saved with. You can switch back at any time.</p>
+</app-confirm-dialog>

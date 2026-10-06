@@ -57,6 +57,22 @@ export const NAV_ITEMS: NavItem[] = [
       { label: 'Price file', link: '/bulk-price-update', ability: 'catalogue.write' },
     ],
   },
+  // The fabricator's own profile systems, rules, hardware sets and rates (card T182). Owner and accounts read it; the owner changes it.
+  {
+    id: 'pricing-setup',
+    label: 'Pricing setup',
+    icon: 'ruler',
+    link: '/pricing-setup',
+    match: ['/pricing-setup'],
+    ability: 'prices.view_cost',
+    places: [
+      { label: 'Check list', link: '/pricing-setup?tab=checklist' },
+      { label: 'Profile systems', link: '/pricing-setup?tab=systems' },
+      { label: 'Hardware sets', link: '/pricing-setup?tab=hardware' },
+      { label: 'Rates and figures', link: '/pricing-setup?tab=figures' },
+      { label: 'Pricing method', link: '/pricing-setup?tab=method' },
+    ],
+  },
   {
     id: 'settings',
     label: 'Settings',

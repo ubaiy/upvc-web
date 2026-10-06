@@ -1,0 +1,98 @@
+<section class="card" aria-labelledby="h-rules">
+  <div class="card-head card-pad">
+    <div>
+      <h2 id="h-rules">Rules: deductions, welding, glass, steel</h2>
+      <p>
+        What each piece is cut by. {{ setCount }} of {{ detail.rules.length }} rules hold a value. A rule left empty uses the default beside it;
+        where there is no default it deducts nothing and the price carries a warning. A value you save becomes your own figure.
+      </p>
+    </div>
+  </div>
+
+  <div class="card-pad stack-4">
+    <div class="head-actions">
+      <label class="check"><input type="checkbox" name="onlySet" [(ngModel)]="onlySet" data-setup="only-set" /> Only the rules that hold a value</label>
+      <select class="select" style="width: auto" name="group" [(ngModel)]="group" aria-label="Group of rules">
+        <option value="">Every group</option>
+        <option *ngFor="let g of groups" [value]="g.key">{{ g.title }}</option>
+      </select>
+    </div>
+
+    <div class="head-actions" *ngIf="detail.rule_templates.length">
+      <label class="label" for="rule-template">Start from a supplier’s tables</label>
+      <select class="select" style="width: auto" id="rule-template" name="template" [(ngModel)]="template">
+        <option value="">Choose a pack</option>
+        <option *ngFor="let t of detail.rule_templates" [value]="t.code">{{ t.name }}</option>
+      </select>
+      <button appWrite="settings.write" type="button" class="btn btn-secondary btn-sm" [disabled]="!template || saving" (click)="copyTemplate()" data-act="template">Copy its values</button>
+      <span class="small">Only for rules this system does not have yet. Each comes in as a placeholder: check it against your own supplier manual.</span>
+    </div>
+
+    <app-callout tone="success" *ngIf="added" data-setup="template-added">
+      {{ added.length ? added.length + ' rules were added as placeholders.' : 'Nothing was added: this system already has every rule of the pack.' }}
+    </app-callout>
+  </div>
+
+  <app-empty-state *ngIf="!shownGroups.length" icon="ruler" title="No rule holds a value yet" text="Untick “Only the rules that hold a value” to see every rule, or start from a supplier’s tables."></app-empty-state>
+
+  <form (ngSubmit)="save()" novalidate *ngIf="shownGroups.length">
+    <div class="table-wrap">
+      <table class="table" data-setup="rules">
+        <thead>
+          <tr>
+            <th>Rule</th>
+            <th class="num">Value</th>
+            <th>Unit</th>
+            <th class="right">Default</th>
+            <th>Source and how sure</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody *ngFor="let g of shownGroups; trackBy: trackGroup">
+          <tr class="group-row">
+            <td colspan="6">{{ g.title }}</td>
+          </tr>
+          <tr *ngFor="let row of g.rows; trackBy: trackRow" [attr.data-rule]="row.rule.key">
+            <td>
+              <label [attr.for]="inputId(row.rule.key)">{{ row.rule.label }}</label>
+              <div class="small">{{ row.rule.key }}</div>
+            </td>
+            <td class="num">
+              <input
+                class="input"
+                [id]="inputId(row.rule.key)"
+                [name]="'v-' + row.rule.key"
+                type="number"
+                step="any"
+                inputmode="decimal"
+                placeholder="Not set"
+                [(ngModel)]="row.value"
+                [class.is-invalid]="(submitted && invalid(row)) || said(row).length > 0"
+              />
+              <div class="error" *ngIf="submitted && invalid(row)">{{ row.rule.unit === 'flag' ? 'Enter 0 (no) or 1 (yes).' : 'Enter a number.' }}</div>
+              <div class="error" role="alert" *ngFor="let sentence of said(row)">{{ sentence }}</div>
+            </td>
+            <td>{{ row.rule.unit === 'flag' ? '0 or 1' : row.rule.unit }}</td>
+            <td class="right">{{ row.rule.default === null ? 'None' : row.rule.default }}</td>
+            <td>
+              <span class="badge plain" [ngClass]="confidence(row.rule).tone">{{ confidence(row.rule).text }}</span>
+              <div class="small" *ngIf="row.rule.source">{{ row.rule.source }}</div>
+            </td>
+            <td>
+              <input class="input" [name]="'n-' + row.rule.key" type="text" maxlength="1000" [(ngModel)]="row.note" [attr.aria-label]="'Note for ' + row.rule.label" [class.is-invalid]="submitted && noteAlone(row)" />
+              <div class="error" *ngIf="submitted && noteAlone(row)">Give the rule a value to keep a note on it.</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card-pad stack-4">
+      <p class="refusal" role="alert" *ngFor="let sentence of left" data-setup="rules-error">{{ sentence }}</p>
+      <div class="form-foot">
+        <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving || !dirty" data-act="save-rules">{{ saving ? 'Saving…' : 'Save the rules' }}</button>
+        <span class="hint" *ngIf="dirty && !saving">{{ dirty }} {{ dirty === 1 ? 'rule' : 'rules' }} changed, not saved yet.</span>
+      </div>
+    </div>
+  </form>
+</section>

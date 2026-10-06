@@ -1,0 +1,294 @@
+<div class="setup-col stack-6">
+  <a class="btn btn-ghost btn-sm" *ngIf="setId" routerLink="/pricing-setup" [queryParams]="{ tab: 'hardware' }"><app-icon name="arrow-left"></app-icon>All hardware sets</a>
+
+  <div class="card card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading hardware sets">
+    <span class="skeleton" style="width: 30%"></span>
+    <span class="skeleton" style="width: 100%"></span>
+    <span class="skeleton" style="width: 65%"></span>
+  </div>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load the hardware sets. {{ loadError }}
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <!-- The form of a set: a new one on the list, the open one on its page. -->
+  <ng-template #setFormTpl>
+    <form class="inline-form stack-4" *ngIf="setForm as f" (ngSubmit)="saveSet()" novalidate data-setup="set-form">
+      <strong>{{ f.id ? 'Change the set' : 'A hardware set of your own' }}</strong>
+      <div class="grid-3">
+        <div class="field" *ngIf="!f.id">
+          <label class="label" for="set-code">Code</label>
+          <input class="input" id="set-code" name="code" type="text" maxlength="40" [(ngModel)]="f.code" [class.is-invalid]="submitted && codeInvalid" placeholder="MY-CAS-1" />
+          <span class="error" *ngIf="submitted && codeInvalid">Letters, digits, dot, dash or underscore, without spaces.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="set-name">Name</label>
+          <input class="input" id="set-name" name="name" type="text" maxlength="120" [(ngModel)]="f.name" [class.is-invalid]="submitted && !f.name.trim()" />
+          <span class="error" *ngIf="submitted && !f.name.trim()">Enter a name.</span>
+        </div>
+        <div class="field" *ngIf="!f.id">
+          <label class="label" for="set-category">For</label>
+          <select class="select" id="set-category" name="category" [(ngModel)]="f.category">
+            <option *ngFor="let c of sets.categories" [value]="c">{{ words(c) }} windows{{ c === 'door' ? ' (doors)' : '' }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="set-system">Profile system</label>
+          <select class="select" id="set-system" name="system" [(ngModel)]="f.systemId">
+            <option value="">Any system</option>
+            <option *ngFor="let s of systems" [value]="s.id">{{ s.name }}{{ s.retired ? ' (retired)' : '' }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="set-brand">Brand (optional)</label>
+          <input class="input" id="set-brand" name="brand" type="text" maxlength="80" [(ngModel)]="f.brand" />
+        </div>
+        <div class="field">
+          <label class="label" for="set-rebate">Rebate offset (optional)</label>
+          <div class="input-group" [class.is-invalid]="submitted && rebateInvalid">
+            <input id="set-rebate" name="rebate" type="number" min="0" max="100" step="1" [(ngModel)]="f.rebate" />
+            <span class="unit">mm</span>
+          </div>
+          <span class="error" *ngIf="submitted && rebateInvalid">A whole number from 0 to 100.</span>
+        </div>
+      </div>
+      <label class="check">
+        <input type="checkbox" name="isDefault" [(ngModel)]="f.isDefault" />
+        The default set of its kind: the one a price uses. The mark is taken from the other set of the same kind and system.
+      </label>
+      <p class="refusal" role="alert" *ngFor="let said of errors" data-setup="set-form-error">{{ said }}</p>
+      <div class="form-foot">
+        <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : f.id ? 'Save' : 'Add the set' }}</button>
+        <button type="button" class="btn btn-ghost" (click)="setForm = null" [disabled]="saving">Cancel</button>
+      </div>
+    </form>
+  </ng-template>
+
+  <!-- The list -->
+  <ng-container *ngIf="state === 'ready' && !setId">
+    <app-callout tone="warn" *ngIf="withoutDefault.length" data-setup="no-default">
+      No default hardware set for {{ withoutDefault.join(', ') }} windows. A window of that kind cannot be priced from the bill of materials:
+      copy a ready pack below, or mark one of your sets as the default.
+    </app-callout>
+
+    <section class="card" aria-labelledby="h-sets">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-sets">Hardware sets</h2>
+          <p>A set says which handle, lock, hinge, roller and consumable goes on a window, and how many.</p>
+        </div>
+        <button appWrite="settings.write" type="button" class="btn btn-primary btn-sm" (click)="openSet()" data-setup="new-set"><app-icon name="plus"></app-icon>Add a set</button>
+      </div>
+
+      <div class="card-pad" *ngIf="setForm"><ng-container *ngTemplateOutlet="setFormTpl"></ng-container></div>
+      <div class="card-pad" *ngIf="errors.length && !setForm">
+        <p class="refusal" role="alert" *ngFor="let said of errors">{{ said }}</p>
+      </div>
+
+      <app-empty-state *ngIf="!sets.sets.length && !setForm" icon="handle" title="No hardware set yet" text="Copy a ready pack below and put your own prices on its items, or add a set of your own."></app-empty-state>
+
+      <div class="table-wrap" *ngIf="sets.sets.length">
+        <table class="table" data-setup="sets">
+          <thead>
+            <tr><th>Set</th><th>For</th><th>Profile system</th><th class="right">Lines</th><th>State</th><th class="actions-col"><span class="visually-hidden">Actions</span></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of sets.sets; trackBy: trackSet" [attr.data-set]="s.code">
+              <td>
+                <a class="title" routerLink="/pricing-setup" [queryParams]="{ tab: 'hardware', set: s.id }">{{ s.name }}</a>
+                <div class="small">{{ s.code }}<ng-container *ngIf="s.brand">, {{ s.brand }}</ng-container></div>
+              </td>
+              <td>{{ words(s.category) }}</td>
+              <td>{{ systemName(s.profile_system_id) }}</td>
+              <td class="right">{{ s.rules_count }}</td>
+              <td>
+                <span class="badge badge-success" *ngIf="s.is_default">Default</span>
+                <span class="badge plain" *ngIf="!s.is_default">Not the default</span>
+                <div class="small" *ngIf="s.unmatched.length">{{ s.unmatched.length }} {{ s.unmatched.length === 1 ? 'item has' : 'items have' }} no catalogue item</div>
+                <div class="small" *ngIf="s.unpriced.length">{{ s.unpriced.length }} {{ s.unpriced.length === 1 ? 'item has' : 'items have' }} no price</div>
+              </td>
+              <td class="row-actions">
+                <a class="btn btn-secondary btn-sm" routerLink="/pricing-setup" [queryParams]="{ tab: 'hardware', set: s.id }">Open</a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-packs" *ngIf="sets.packs.length">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-packs">Ready packs</h2>
+          <p>A researched set you can copy into your company and then change. Each item is tied to the item of the same name in your catalogue; put your own price on it there.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table" data-setup="packs">
+          <tbody>
+            <tr *ngFor="let p of sets.packs" [attr.data-pack]="p.code">
+              <td><span class="title">{{ p.code }}</span></td>
+              <td>{{ p.what }}</td>
+              <td class="row-actions">
+                <span class="badge badge-success" *ngIf="p.imported">In your sets</span>
+                <button appWrite="settings.write" *ngIf="!p.imported" type="button" class="btn btn-secondary btn-sm" [disabled]="!!importing" (click)="importPack(p)">
+                  {{ importing === p.code ? 'Copying…' : 'Copy into my sets' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+
+  <!-- One set -->
+  <ng-container *ngIf="state === 'ready' && setId && detail as d">
+    <section class="card" aria-labelledby="h-set">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-set" data-setup="set-name">{{ d.set.name }}</h2>
+          <p>
+            {{ d.set.code }}, for {{ words(d.set.category).toLowerCase() }} windows, {{ systemName(d.set.profile_system_id).toLowerCase() }}<ng-container *ngIf="d.set.brand">, {{ d.set.brand }}</ng-container
+            ><ng-container *ngIf="d.set.rebate_offset_mm !== null">, rebate offset {{ d.set.rebate_offset_mm }} mm</ng-container>.
+            <ng-container *ngIf="d.set.source"> Source: {{ d.set.source }}.</ng-container>
+          </p>
+        </div>
+        <div class="head-actions">
+          <span class="badge" [ngClass]="d.set.is_default ? 'badge-success' : ''" data-setup="set-default">{{ d.set.is_default ? 'Default' : 'Not the default' }}</span>
+          <button appWrite="settings.write" type="button" class="btn btn-secondary btn-sm" (click)="openSet(d.set)" data-act="edit-set">Change</button>
+        </div>
+      </div>
+      <div class="card-pad" *ngIf="setForm"><ng-container *ngTemplateOutlet="setFormTpl"></ng-container></div>
+      <div class="card-pad stack-2" *ngIf="d.set.unmatched.length || d.set.unpriced.length">
+        <app-callout tone="warn" *ngIf="d.set.unmatched.length">No catalogue item for: {{ d.set.unmatched.join(', ') }}. A window that needs one is refused a price. Tie each line to an item below.</app-callout>
+        <app-callout tone="warn" *ngIf="d.set.unpriced.length">
+          No price for: {{ d.set.unpriced.join(', ') }}. Put a price on the item in the catalogue.
+          <a action class="btn btn-secondary btn-sm" routerLink="/masters/hardware">Open the catalogue</a>
+        </app-callout>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-lines">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-lines">Lines of the set</h2>
+          <p>Each line: the item, what it is counted for, how many, and the catalogue item whose rate prices it. The rate itself is changed in the catalogue.</p>
+        </div>
+        <button appWrite="settings.write" type="button" class="btn btn-primary btn-sm" (click)="openLine()" data-setup="new-line"><app-icon name="plus"></app-icon>Add a line</button>
+      </div>
+
+      <div class="card-pad" *ngIf="line as l">
+        <form class="inline-form stack-4" (ngSubmit)="saveLine()" novalidate data-setup="line-form">
+          <strong>{{ l.id ? 'Change the line' : 'A new line' }}</strong>
+          <div class="grid-4">
+            <div class="field" style="grid-column: span 2">
+              <label class="label" for="line-costhead">Priced with (item of the catalogue)</label>
+              <select class="select" id="line-costhead" name="costhead" [(ngModel)]="l.costheadId" (ngModelChange)="onItem()">
+                <option value="">No item yet: no price</option>
+                <option *ngFor="let i of items" [value]="i.id">{{ i.name }}, {{ i.cost | inr }} per {{ i.unit }}</option>
+              </select>
+            </div>
+            <div class="field" style="grid-column: span 2">
+              <label class="label" for="line-item">Item</label>
+              <input class="input" id="line-item" name="item" type="text" maxlength="120" [(ngModel)]="l.item" [class.is-invalid]="submitted && !l.item.trim()" placeholder="Handle, white" />
+              <span class="error" *ngIf="submitted && !l.item.trim()">Enter the item.</span>
+            </div>
+            <div class="field">
+              <label class="label" for="line-role">Part it plays</label>
+              <input class="input" id="line-role" name="role" type="text" maxlength="30" [(ngModel)]="l.role" [class.is-invalid]="submitted && roleInvalid" placeholder="handle" />
+              <span class="error" *ngIf="submitted && roleInvalid">One word in small letters: handle, lock, hinge, roller, rail.</span>
+            </div>
+            <div class="field">
+              <label class="label" for="line-kind">Kind</label>
+              <select class="select" id="line-kind" name="kind" [(ngModel)]="l.kind">
+                <option value="hardware">Hardware</option>
+                <option value="consumable">Consumable</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="line-scope">Counted for each</label>
+              <select class="select" id="line-scope" name="scope" [(ngModel)]="l.scope">
+                <option *ngFor="let s of scopes" [value]="s">{{ words(s) }}</option>
+                <option *ngIf="!scopes.includes(l.scope)" [value]="l.scope">{{ words(l.scope) }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="line-opening">Opening type</label>
+              <select class="select" id="line-opening" name="opening" [(ngModel)]="l.opening">
+                <option value="">Any</option>
+                <option *ngFor="let o of openings" [value]="o">{{ words(o) }}</option>
+                <option *ngIf="l.opening && !openings.includes(l.opening)" [value]="l.opening">{{ words(l.opening) }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="line-formula">Quantity rule</label>
+              <select class="select" id="line-formula" name="formula" [(ngModel)]="l.formula">
+                <option *ngFor="let q of formulas" [value]="q.key">{{ q.label }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label class="label" for="line-factor">Quantity</label>
+              <input class="input" id="line-factor" name="factor" type="number" min="0" step="any" inputmode="decimal" [(ngModel)]="l.factor" [class.is-invalid]="submitted && factorInvalid" />
+              <span class="error" *ngIf="submitted && factorInvalid">Enter a number of 0 or more.</span>
+            </div>
+          </div>
+          <p class="refusal" role="alert" *ngFor="let said of errors" data-setup="line-form-error">{{ said }}</p>
+          <div class="form-foot">
+            <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : l.id ? 'Save the line' : 'Add the line' }}</button>
+            <button type="button" class="btn btn-ghost" (click)="line = null" [disabled]="saving">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <app-empty-state *ngIf="!d.rules.length && !line" icon="handle" title="This set has no line yet" text="Add the handle, the lock, the hinges and the consumables a window of this kind takes."></app-empty-state>
+
+      <div class="table-wrap" *ngIf="d.rules.length">
+        <table class="table" data-setup="lines">
+          <thead>
+            <tr><th>Item</th><th>Part</th><th>Counted for</th><th>Quantity rule</th><th>When</th><th class="right">Rate</th><th class="actions-col"><span class="visually-hidden">Actions</span></th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let r of d.rules; trackBy: trackRule" [attr.data-line]="r.item_name">
+              <td>
+                <span class="title">{{ r.item_name }}</span>
+                <div class="small" *ngIf="r.source_note">{{ r.source_note }}</div>
+              </td>
+              <td>{{ words(r.role) }}</td>
+              <td>{{ words(r.scope) }}<ng-container *ngIf="r.applies_opening">, {{ words(r.applies_opening).toLowerCase() }}</ng-container><ng-container *ngIf="r.applies_leaf">, {{ r.applies_leaf }} leaf</ng-container></td>
+              <td>{{ quantity(r) }}</td>
+              <td class="small">{{ band(r) }}</td>
+              <td class="right">
+                <ng-container *ngIf="r.costhead as c; else noItem">
+                  <span [class.refusal]="!c.cost">{{ c.cost ? (c.cost | inr) : 'No price' }}</span>
+                  <div class="small">per {{ c.unit }}</div>
+                </ng-container>
+                <ng-template #noItem><span class="refusal">No catalogue item</span></ng-template>
+              </td>
+              <td class="row-actions">
+                <button appWrite="settings.write" type="button" class="btn btn-ghost btn-sm" (click)="openLine(r)" data-act="edit-line">Change</button>
+                <button appWrite="settings.write" type="button" class="btn btn-ghost btn-sm" (click)="removing = r; removeError = ''" data-act="remove-line">Remove</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+</div>
+
+<app-confirm-dialog
+  *ngIf="removing as r"
+  [title]="'Remove ' + r.item_name + ' from the set?'"
+  confirmLabel="Remove the line"
+  keepLabel="Keep it"
+  ability="settings.write"
+  [danger]="true"
+  [busy]="busy"
+  [error]="removeError"
+  (confirmed)="removeLine()"
+  (closed)="removing = null"
+>
+  <p class="muted">A window priced after this no longer takes the item. The item stays in your catalogue.</p>
+</app-confirm-dialog>

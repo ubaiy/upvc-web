@@ -84,6 +84,18 @@ const routes: Routes = [
         component: ProfileComponent,
         resolve: { data: ProfileResolver },
       },
+      // Pricing setup (card T182): the fabricator's own profile systems, rules, hardware sets and figures.
+      // The api reads with prices.view_cost (owner, accounts) and writes with settings.write (owner).
+      {
+        path: 'pricing-setup',
+        canActivate: [AuthGuard, AbilityGuard],
+        data: { ability: 'prices.view_cost' },
+        title: 'Pricing setup',
+        loadComponent: () =>
+          import('./views/pricing-setup/pricing-setup.component').then(
+            (m) => m.PricingSetupComponent
+          ),
+      },
       {
         path: 'customers',
         canActivate: [AbilityGuard],

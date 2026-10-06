@@ -22,9 +22,9 @@ import { WorkspaceService } from './workspace.service';
 class BlankComponent {}
 
 describe('shell navigation', () => {
-  it('has the eight menu items, in the order of the job', () => {
+  it('has the nine menu items, in the order of the job', () => {
     expect(NAV_ITEMS.map((item) => item.label)).toEqual([
-      'Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Settings',
+      'Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Pricing setup', 'Settings',
     ]);
   });
 

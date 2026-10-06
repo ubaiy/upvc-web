@@ -1,0 +1,357 @@
+/**
+ * What the api answers on the routes of "Pricing setup" (card T182; contract in
+ * docs/review/phase-62-own-profiles-log.md, sections CONTRACT (T148) and T152).
+ * The web keeps these figures and shows the api's sentences; it works out no price.
+ */
+
+/** One thing that stands between the company and a price. `text` is shown; the rest says where it is fixed. */
+export interface Missing {
+  code: string;
+  text: string;
+  /** A figure of `pricing-setup/settings`. */
+  key?: string;
+  /** A role of a profile system. */
+  role?: string;
+  /** "casement" | "sliding" | "door": the kind that has no default hardware set. */
+  category?: string;
+  product_id?: number;
+}
+
+export interface SetRef {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface Trial {
+  window: string;
+  width: number;
+  height: number;
+  priced: boolean;
+  glass?: string;
+  cost?: number;
+  reason?: string;
+  warnings?: string[];
+}
+
+export interface SystemSummary {
+  id: number;
+  name: string;
+  category: string;
+  kind: string;
+  retired: boolean;
+  ready: boolean;
+  missing: Missing[];
+  hardware_set: SetRef | null;
+  trials: Trial[];
+}
+
+export interface RoleInfo {
+  role: string;
+  label: string;
+  what?: string;
+  required_for?: string[];
+  without_it?: string | null;
+}
+
+/** A value of the example pack a new company starts with, and how far it can be trusted. */
+export interface ExampleValue {
+  what: string;
+  key: string;
+  label: string;
+  value: number | string | null;
+  unit?: string;
+  confidence: string;
+  confidence_text?: string;
+  flagged: boolean;
+  source?: string;
+  stored: boolean;
+  system?: string;
+  role?: string;
+}
+
+export interface ExamplePack {
+  pack: string;
+  name: string;
+  note: string;
+  confidence: Record<string, string>;
+  to_confirm: ExampleValue[];
+}
+
+export interface MethodChoice {
+  key: string;
+  label: string;
+}
+
+/** GET pricing-setup. */
+export interface Checklist {
+  method: string;
+  methods: MethodChoice[];
+  ready: boolean;
+  missing: Missing[];
+  notes: string[];
+  systems: SystemSummary[];
+  example: ExamplePack | null;
+  roles: RoleInfo[];
+  charged_by_hardware_set: Record<string, string>;
+}
+
+export interface RoleProfile {
+  id: number;
+  profile_code: string;
+  profile_name: string;
+  kg_meter: number | null;
+  /** null: bought the company's way (`settings.profile_rate_basis`). */
+  charge_basis: 'per_kg' | 'per_m' | null;
+  rate_meter: number | null;
+}
+
+export interface SystemRole extends RoleInfo {
+  required: boolean;
+  profile: RoleProfile | null;
+}
+
+export interface SystemRule {
+  key: string;
+  label: string;
+  /** mm, deg, flag (0 / 1), count, kg. */
+  unit: string;
+  group: string;
+  default: number | null;
+  value: number | null;
+  is_set: boolean;
+  /** true: copied from a pack, not yet the company's own figure. */
+  is_placeholder: boolean | null;
+  source: string | null;
+  notes: string | null;
+}
+
+export interface SystemRow {
+  id: number;
+  name: string;
+  series: string | null;
+  category: string;
+  system_depth_mm: number | null;
+  notes: string | null;
+  is_verified: boolean;
+  retired_at: string | null;
+}
+
+/** GET pricing-setup/systems/{id}, and the answer of every change to a system. */
+export interface SystemDetail {
+  system: SystemRow;
+  kind: string;
+  retired: boolean;
+  ready: boolean;
+  missing: Missing[];
+  settings_ready: boolean;
+  hardware_set: SetRef | null;
+  trials: Trial[];
+  roles: SystemRole[];
+  rule_groups: Record<string, string>;
+  rules: SystemRule[];
+  rule_templates: { code: string; name: string }[];
+  /** Only after a pack of rules was copied in. */
+  template_added?: string[];
+}
+
+/** One line of PUT pricing-setup/systems/{id}/roles. */
+export interface RoleChange {
+  role: string;
+  product_id: number | null;
+  kg_meter?: number;
+  charge_basis?: 'per_kg' | 'per_m' | null;
+  rate_meter?: number;
+}
+
+export interface SystemBody {
+  name: string;
+  category: string;
+  system_depth_mm: number;
+  series?: string | null;
+  notes?: string | null;
+}
+
+/** A profile of the catalogue as `product/{id}` holds it. */
+export interface ProductRow {
+  id: number;
+  category: string;
+  profile_code: string;
+  profile_name: string;
+  kg_meter: number;
+  rate_meter: number;
+  rate_bar: number;
+  kg_meter_color: number;
+  rate_meter_color: number;
+  rate_bar_color: number;
+  profile_system_id: number | null;
+  role: string | null;
+  face_width_mm: number | null;
+  profile_depth_mm: number | null;
+  rebate_mm: number | null;
+  sightline_mm: number | null;
+  bar_length_mm?: number | null;
+  [key: string]: unknown;
+}
+
+export type SettingValue = number | string | null;
+
+export interface GlassRow {
+  id: number;
+  name: string;
+  rate: number;
+  unit: string;
+  glass_mm: number | null;
+}
+
+export interface ColourRow {
+  id: number;
+  name: string;
+  rate_kg: number | null;
+}
+
+/** GET / PUT pricing-setup/settings. */
+export interface Figures {
+  settings: Record<string, SettingValue>;
+  set_by_company: string[];
+  defaults: Record<string, SettingValue>;
+  labels: Record<string, { label: string; unit: string }>;
+  missing: Missing[];
+  glass: GlassRow[];
+  colours: ColourRow[];
+}
+
+export interface FiguresBody {
+  settings?: Record<string, SettingValue>;
+  glass?: { id: number; glass_mm: number | null }[];
+  colours?: { id: number; rate_kg: number | null }[];
+}
+
+/** PUT pricing-setup/method. */
+export interface MethodAnswer {
+  method: string;
+  changed: boolean;
+  saved_lines: Record<string, number>;
+  notes: string[];
+}
+
+export interface HardwareSet {
+  id: number;
+  code: string;
+  name: string;
+  brand: string | null;
+  category: string;
+  profile_system_id: number | null;
+  rebate_offset_mm: number | null;
+  is_default: boolean;
+  is_verified: boolean;
+  source: string | null;
+  rules_count: number;
+  /** Items with no cost head: a window that needs one is refused. */
+  unmatched: string[];
+  /** Items whose cost head costs 0. */
+  unpriced: string[];
+}
+
+export interface HardwarePack {
+  code: string;
+  what: string;
+  imported: boolean;
+}
+
+/** GET hardware-sets. */
+export interface HardwareSets {
+  sets: HardwareSet[];
+  packs: HardwarePack[];
+  categories: string[];
+}
+
+/** One line of a hardware set: which item, for which opening, and how many. */
+export interface HardwareRule {
+  id: number;
+  hardware_set_id: number;
+  priority: number | null;
+  kind: string | null;
+  role: string;
+  scope: string;
+  applies_opening: string | null;
+  applies_leaf: string | null;
+  band_on: string | null;
+  band_min_mm: number | null;
+  band_max_mm: number | null;
+  weight_min_kg: number | null;
+  weight_max_kg: number | null;
+  costhead_id: number | null;
+  item_name: string;
+  qty_formula: string | null;
+  qty_factor: string | number | null;
+  qty_min: number | null;
+  step_mm: number | null;
+  measure: string | null;
+  source_note: string | null;
+  costhead: { id: number; name: string; cost: number; unit: string } | null;
+  [key: string]: unknown;
+}
+
+/** GET hardware-sets/{id}, and the answer of every change to a set or its lines. */
+export interface HardwareSetDetail {
+  set: HardwareSet;
+  rules: HardwareRule[];
+  created?: boolean;
+  rule_id?: number;
+}
+
+export interface CostHead {
+  id: number;
+  name: string;
+  cost: number;
+  unit: string;
+  costhead: string;
+}
+
+/** The api's "no", in its own words: one sentence for the form and one for each thing it named. */
+export class SetupRefusal extends Error {
+  constructor(message: string, readonly errors: string[] = [], readonly code = '', readonly status = 0, readonly data: any = null) {
+    super(message);
+  }
+}
+
+/**
+ * The refusals that belong to one row. The api starts a sentence with the label of
+ * what it is about ("Opening sash: the weight per metre must be ..."), or names it inside.
+ */
+export function refusalsFor(errors: string[], label: string): string[] {
+  const name = (label || '').trim().toLowerCase();
+  if (!name) return [];
+  return errors.filter((sentence) => {
+    const text = sentence.toLowerCase();
+    return text.startsWith(name + ':') || text.includes(`'${name}'`) || text.includes(`"${name}"`);
+  });
+}
+
+/** The refusals no row took: shown once, at the foot of the form. */
+export function refusalsLeft(errors: string[], labels: string[]): string[] {
+  const taken = new Set(labels.flatMap((label) => refusalsFor(errors, label)));
+  return errors.filter((sentence) => !taken.has(sentence));
+}
+
+/** What is typed in a number box, as the api takes it: empty = null. NaN when it is not a number. */
+export function typedNumber(value: unknown): number | null {
+  const text = String(value ?? '').trim();
+  return text === '' ? null : Number(text);
+}
+
+/** What a box holds, as text. A number box hands Angular a number, not a string. */
+export function typedText(value: unknown): string {
+  return String(value ?? '').trim();
+}
+
+export function shownNumber(value: unknown): string {
+  return value === null || value === undefined ? '' : String(value);
+}
+
+/** "casement" → "Casement". */
+export function words(key: string): string {
+  const text = String(key ?? '').replace(/[_-]+/g, ' ').trim();
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}

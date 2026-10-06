@@ -1,0 +1,134 @@
+<div class="setup-col stack-6">
+  <div class="card card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading the check list">
+    <span class="skeleton" style="width: 30%"></span>
+    <span class="skeleton" style="width: 100%"></span>
+    <span class="skeleton" style="width: 65%"></span>
+  </div>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load the check list. {{ loadError }}
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <ng-container *ngIf="state === 'ready' && list as l">
+    <!-- A company still on the example pack: every figure is another fabricator's or a rule of thumb. -->
+    <app-callout tone="warn" *ngIf="l.example as ex" data-setup="example">
+      <strong>These are example values.</strong> {{ ex.note }} ({{ ex.name }})
+      <app-own-rates action [primary]="true"></app-own-rates>
+    </app-callout>
+
+    <section class="card" aria-labelledby="h-check">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-check">Can a window be priced from your own profiles?</h2>
+          <p>
+            Live pricing method: <strong data-setup="method">{{ methodLabel }}</strong>.
+            <a routerLink="/pricing-setup" [queryParams]="{ tab: 'method' }">See the method</a>
+          </p>
+        </div>
+        <span class="badge" [ngClass]="l.ready ? 'badge-success' : 'badge-warning'" data-setup="ready">{{ l.ready ? 'Ready' : 'Not ready' }}</span>
+      </div>
+
+      <div class="card-pad stack-4">
+        <p *ngIf="l.ready && !l.missing.length" data-setup="all-set">
+          Your figures are complete and {{ readyCount }} of {{ inUse.length }} profile {{ inUse.length === 1 ? 'system' : 'systems' }} in use
+          {{ readyCount === 1 ? 'is' : 'are' }} ready. The bill-of-materials price can be used.
+        </p>
+
+        <div *ngIf="l.missing.length" data-setup="missing">
+          <p class="muted">Still missing for the company:</p>
+          <ul class="todo">
+            <li *ngFor="let m of l.missing">
+              <app-icon class="mark" name="circle-alert"></app-icon>
+              <span>
+                {{ m.text }}
+                <a routerLink="/pricing-setup" [queryParams]="place(m)">{{ fix(m) }}</a>
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <div *ngIf="l.notes.length" data-setup="notes">
+          <p class="muted">To know:</p>
+          <ul class="todo">
+            <li *ngFor="let n of l.notes"><app-icon class="mark" name="info"></app-icon><span>{{ n }}</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-check-systems">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-check-systems">Profile systems</h2>
+          <p>A system is ready when its profiles have their roles, weights and rates, its kind has a default hardware set, and the trial windows are priced.</p>
+        </div>
+        <a class="btn btn-secondary btn-sm" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems' }">All systems</a>
+      </div>
+
+      <app-empty-state *ngIf="!l.systems.length" icon="layers" title="No profile system yet" text="Add your first system and give its profiles their roles.">
+        <a class="btn btn-primary" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems' }">Add a profile system</a>
+      </app-empty-state>
+
+      <div class="card-pad stack-4" *ngFor="let s of l.systems; trackBy: trackSystem" [attr.data-system]="s.name">
+        <div class="head-actions">
+          <a class="title" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems', system: s.id }"><strong>{{ s.name }}</strong></a>
+          <span class="badge plain">{{ s.category }}</span>
+          <span class="badge" *ngIf="s.retired">Retired</span>
+          <span class="badge" *ngIf="!s.retired" [ngClass]="s.ready ? 'badge-success' : 'badge-warning'">{{ s.ready ? 'Ready' : 'Not ready' }}</span>
+          <span class="small" *ngIf="s.hardware_set">Hardware set: {{ s.hardware_set.code }}</span>
+        </div>
+        <ul class="todo" *ngIf="s.missing.length">
+          <li *ngFor="let m of s.missing">
+            <app-icon class="mark" name="circle-alert"></app-icon>
+            <span>
+              {{ m.text }}
+              <a routerLink="/pricing-setup" [queryParams]="place(m, s.id)">{{ fix(m, s.id) }}</a>
+            </span>
+          </li>
+        </ul>
+        <ul class="todo" *ngIf="s.trials.length">
+          <li *ngFor="let t of s.trials">
+            <app-icon class="mark" [class.ok]="t.priced" [name]="t.priced ? 'circle-check' : 'circle-x'"></app-icon>
+            <span *ngIf="t.priced">Trial: {{ t.window }} with {{ t.glass }} costs {{ t.cost | inr }} (cost, before margin and GST).</span>
+            <span *ngIf="!t.priced">Trial: {{ t.window }} is not priced: {{ t.reason }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="card" *ngIf="l.example as ex" aria-labelledby="h-example" data-setup="example-values">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-example">The example values you started with</h2>
+          <p>
+            The pack as it was given, not your present figures. {{ flagged.length }} of {{ ex.to_confirm.length }} are marked "check first".
+            When you have replaced them with your own, say "These are my rates now".
+          </p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Value</th><th>Figure</th><th>How sure</th><th>Source</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let v of ex.to_confirm" [class.is-asked]="v.flagged">
+              <td>
+                {{ v.label }}
+                <div class="small" *ngIf="v.system">{{ v.system }}</div>
+                <div class="small" *ngIf="!v.stored">Offered only, not stored</div>
+              </td>
+              <td>{{ shown(v) }}</td>
+              <td>
+                <span class="badge plain" [ngClass]="v.flagged ? 'badge-warning' : ''">{{ v.flagged ? 'Check first' : v.confidence }}</span>
+                <div class="small">{{ v.confidence_text || ex.confidence[v.confidence] }}</div>
+              </td>
+              <td class="small">{{ v.source }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+</div>

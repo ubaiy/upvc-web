@@ -1,0 +1,136 @@
+<div class="setup-col stack-6">
+  <section class="card" aria-labelledby="h-systems">
+    <div class="card-head card-pad">
+      <div>
+        <h2 id="h-systems">Profile systems</h2>
+        <p>One system for each family of profiles you buy: its frame, sash, mullion, bead and steel, and the rules they are cut by.</p>
+      </div>
+      <div class="head-actions">
+        <button type="button" class="btn btn-ghost btn-sm" *ngIf="retiredCount" (click)="showRetired = !showRetired" data-setup="toggle-retired">
+          {{ showRetired ? 'Hide retired' : 'Show retired (' + retiredCount + ')' }}
+        </button>
+        <button appWrite="settings.write" type="button" class="btn btn-primary btn-sm" (click)="openNew()" data-setup="new-system">
+          <app-icon name="plus"></app-icon>Add a system
+        </button>
+      </div>
+    </div>
+
+    <div class="card-pad" *ngIf="form as f">
+      <form class="inline-form stack-4" (ngSubmit)="save()" novalidate data-setup="system-form">
+        <strong>{{ f.id ? 'Rename or change the system' : f.copyOf ? 'Copy of a system' : 'A new profile system' }}</strong>
+        <p class="small" *ngIf="f.copyOf">
+          The new system gets the rule values of the first one. Its profiles are not copied (a profile holds one role in one system): enter them again under their own codes.
+        </p>
+        <div class="grid-3">
+          <div class="field">
+            <label class="label" for="sys-name">Name</label>
+            <input class="input" id="sys-name" name="name" type="text" maxlength="190" [(ngModel)]="f.name" [class.is-invalid]="submitted && !f.name.trim()" placeholder="Alpha 60 casement" />
+            <span class="error" *ngIf="submitted && !f.name.trim()">Enter a name.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="sys-category">Type</label>
+            <select class="select" id="sys-category" name="category" [(ngModel)]="f.category">
+              <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
+            </select>
+            <span class="hint">A door is priced from a casement system: give it a door sash.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="sys-depth">System depth</label>
+            <div class="input-group" [class.is-invalid]="submitted && depthInvalid()">
+              <input id="sys-depth" name="depth" type="number" min="1" step="1" inputmode="decimal" [(ngModel)]="f.depth" />
+              <span class="unit">mm</span>
+            </div>
+            <span class="error" *ngIf="submitted && depthInvalid()">Enter the depth in mm, above 0.</span>
+          </div>
+          <div class="field">
+            <label class="label" for="sys-series">Series (optional)</label>
+            <input class="input" id="sys-series" name="series" type="text" maxlength="100" [(ngModel)]="f.series" />
+          </div>
+          <div class="field" style="grid-column: span 2">
+            <label class="label" for="sys-notes">Note (optional)</label>
+            <input class="input" id="sys-notes" name="notes" type="text" maxlength="250" [(ngModel)]="f.notes" />
+          </div>
+        </div>
+        <p class="refusal" role="alert" *ngIf="formError" data-setup="system-form-error">{{ formError }}</p>
+        <div class="form-foot">
+          <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : f.id ? 'Save' : 'Add the system' }}</button>
+          <button type="button" class="btn btn-ghost" (click)="form = null" [disabled]="saving">Cancel</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading profile systems">
+      <span class="skeleton" style="width: 100%"></span>
+      <span class="skeleton" style="width: 100%"></span>
+      <span class="skeleton" style="width: 60%"></span>
+    </div>
+
+    <div class="card-pad" *ngIf="state === 'error'">
+      <app-callout tone="warn">
+        We could not load the profile systems. {{ loadError }}
+        <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+      </app-callout>
+    </div>
+
+    <div class="card-pad" *ngIf="actionError && !retiring">
+      <app-callout tone="danger">{{ actionError }}</app-callout>
+    </div>
+
+    <ng-container *ngIf="state === 'ready'">
+      <app-empty-state *ngIf="!shown.length && !form" icon="layers" title="No profile system yet" text="Add the first family of profiles you buy. Then give each profile its role, weight and rate.">
+        <button appWrite="settings.write" type="button" class="btn btn-primary" (click)="openNew()"><app-icon name="plus"></app-icon>Add a system</button>
+      </app-empty-state>
+
+      <div class="table-wrap" *ngIf="shown.length">
+        <table class="table" data-setup="systems">
+          <thead>
+            <tr>
+              <th>System</th>
+              <th>Type</th>
+              <th class="right">Profiles with a role</th>
+              <th>State</th>
+              <th class="actions-col"><span class="visually-hidden">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let s of shown; trackBy: trackSystem" [attr.data-system]="s.name">
+              <td>
+                <a class="title" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems', system: s.id }">{{ s.name }}</a>
+                <div class="small" *ngIf="!s.retired && !s.ready && s.missing.length">{{ s.missing.length }} {{ s.missing.length === 1 ? 'thing' : 'things' }} missing</div>
+              </td>
+              <td>{{ s.category }}</td>
+              <td class="right">{{ profiles[s.id] || 0 }}</td>
+              <td>
+                <span class="badge" *ngIf="s.retired">Retired</span>
+                <span class="badge" *ngIf="!s.retired" [ngClass]="s.ready ? 'badge-success' : 'badge-warning'">{{ s.ready ? 'Ready' : 'Not ready' }}</span>
+              </td>
+              <td class="row-actions">
+                <a class="btn btn-secondary btn-sm" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems', system: s.id }">Open</a>
+                <button appWrite="settings.write" type="button" class="btn btn-ghost btn-sm" (click)="openFor(s, false)" data-act="rename">Rename</button>
+                <button appWrite="settings.write" type="button" class="btn btn-ghost btn-sm" (click)="openFor(s, true)" data-act="copy">Copy</button>
+                <button appWrite="settings.write" type="button" class="btn btn-ghost btn-sm" (click)="askRetire(s)" data-act="retire">{{ s.retired ? 'Bring back' : 'Retire' }}</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+  </section>
+</div>
+
+<app-confirm-dialog
+  *ngIf="retiring as s"
+  [title]="s.retired ? 'Bring ' + s.name + ' back?' : 'Retire ' + s.name + '?'"
+  [confirmLabel]="s.retired ? 'Bring it back' : 'Retire it'"
+  keepLabel="Cancel"
+  ability="settings.write"
+  [busy]="busy"
+  [error]="actionError"
+  (confirmed)="retire()"
+  (closed)="retiring = null; actionError = ''"
+>
+  <p class="muted" *ngIf="!s.retired">
+    Nothing is deleted. The windows already saved on it keep their price. No new window can be priced on it, and it no longer counts for the check list. You can bring it back.
+  </p>
+  <p class="muted" *ngIf="s.retired">New windows can be priced on it again, and it counts for the check list.</p>
+</app-confirm-dialog>

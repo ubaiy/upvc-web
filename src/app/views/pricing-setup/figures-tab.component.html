@@ -1,0 +1,131 @@
+<div class="setup-col stack-6">
+  <div class="card card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading the figures">
+    <span class="skeleton" style="width: 30%"></span>
+    <span class="skeleton" style="width: 100%"></span>
+    <span class="skeleton" style="width: 65%"></span>
+  </div>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load the figures. {{ loadError }}
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <form class="stack-6" *ngIf="state === 'ready' && figures as fg" (ngSubmit)="save()" novalidate>
+    <app-callout tone="warn" *ngIf="fg.missing.length" data-setup="figures-missing">
+      <ng-container *ngFor="let m of fg.missing; let last = last">{{ m.text }}<ng-container *ngIf="!last"> </ng-container></ng-container>
+    </app-callout>
+
+    <section class="card" aria-labelledby="h-figures">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-figures">Rates and figures of the company</h2>
+          <p>What every window priced from the bill of materials is worked out with. An empty box goes back to the default beside it; a rate has none and stays not set.</p>
+        </div>
+      </div>
+
+      <div class="card-pad stack-6">
+        <fieldset *ngFor="let g of groups" [attr.data-figures]="g.id">
+          <legend>{{ g.title }}</legend>
+          <p class="hint" *ngIf="g.text">{{ g.text }}</p>
+          <div class="form-grid">
+            <div class="field" *ngFor="let f of g.fields; trackBy: trackField" [class.is-asked]="f.key === asked">
+              <label class="label" [attr.for]="inputId(f.key)">{{ f.label }}</label>
+
+              <select class="select" *ngIf="f.choices as choices" [id]="inputId(f.key)" [name]="f.key" [(ngModel)]="f.value" [disabled]="choices.length < 2">
+                <option *ngFor="let c of choices" [value]="c">{{ words(c) }}</option>
+              </select>
+
+              <div class="input-group" *ngIf="!f.choices" [class.is-invalid]="(submitted && invalid(f)) || said(f).length > 0">
+                <span class="unit" *ngIf="f.money">₹</span>
+                <input
+                  [id]="inputId(f.key)"
+                  [name]="f.key"
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputmode="decimal"
+                  [placeholder]="f.fallback === null ? 'Not set' : 'Default ' + f.fallback"
+                  [(ngModel)]="f.value"
+                />
+                <span class="unit">{{ f.unit }}</span>
+              </div>
+
+              <span class="error" *ngIf="submitted && invalid(f)">{{ f.unit === '%' ? 'Enter a percentage from 0 to 100.' : 'Enter a number of 0 or more.' }}</span>
+              <span class="error" role="alert" *ngFor="let sentence of said(f)">{{ sentence }}</span>
+              <span class="error" *ngIf="missing(f) as text">{{ text }}</span>
+              <span class="hint" *ngIf="!missing(f) && !f.choices">
+                {{ f.own ? 'Your figure.' : f.fallback === null ? 'Not set.' : 'The default (' + f.fallback + ').' }}
+              </span>
+              <span class="hint" *ngIf="f.choices && f.choices.length < 2">The only way the api prices today.</span>
+            </div>
+          </div>
+        </fieldset>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-glass" *ngIf="glass.length">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-glass">Glass thickness</h2>
+          <p>The thickness of the glass without the air gap. The weight of every opening sash is worked out from it. The rate of a glass is changed in the catalogue.</p>
+        </div>
+        <a class="btn btn-secondary btn-sm" routerLink="/masters/glass">Open the catalogue</a>
+      </div>
+      <div class="table-wrap">
+        <table class="table" data-setup="glass">
+          <thead>
+            <tr><th>Glass</th><th class="right">Rate</th><th class="num">Thickness</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let g of glass; trackBy: trackRow">
+              <td>{{ g.name }}</td>
+              <td class="right">{{ g.rate | inr }} per {{ g.unit }}</td>
+              <td class="num">
+                <div class="input-group" [class.is-invalid]="submitted && badNumber(g.value, 100)">
+                  <input [name]="'glass-' + g.id" type="number" min="0" step="any" inputmode="decimal" placeholder="Not set" [(ngModel)]="g.value" [attr.aria-label]="'Thickness of ' + g.name" />
+                  <span class="unit">mm</span>
+                </div>
+                <div class="error" *ngIf="submitted && badNumber(g.value, 100)">Enter the thickness in mm.</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="h-colours" *ngIf="colours.length">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-colours">Profile rate by colour</h2>
+          <p>A coloured window is priced only when its colour has a rate per kg.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table class="table" data-setup="colours">
+          <thead>
+            <tr><th>Colour</th><th class="num">Rate</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let c of colours; trackBy: trackRow">
+              <td>{{ c.name }}</td>
+              <td class="num">
+                <div class="input-group" [class.is-invalid]="submitted && badNumber(c.value, 1000000)">
+                  <span class="unit">₹</span>
+                  <input [name]="'colour-' + c.id" type="number" min="0" step="any" inputmode="decimal" placeholder="Not set" [(ngModel)]="c.value" [attr.aria-label]="'Rate per kg of ' + c.name" />
+                  <span class="unit">per kg</span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <p class="refusal" role="alert" *ngFor="let sentence of left" data-setup="figures-error">{{ sentence }}</p>
+
+    <div class="form-foot">
+      <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving || !dirty" data-act="save-figures">{{ saving ? 'Saving…' : 'Save the figures' }}</button>
+      <span class="hint" *ngIf="dirty && !saving">You have unsaved changes.</span>
+    </div>
+  </form>
+</div>
