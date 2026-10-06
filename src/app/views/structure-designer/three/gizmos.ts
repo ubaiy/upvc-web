@@ -4,6 +4,11 @@
  * moves along its axis only, and gives back the wanted value of its
  * dimension. The labels themselves are HTML, placed by the host from
  * `labels()`.
+ *
+ * A dimension LINE (the guide) is in the scene only while its handle is under
+ * the pointer or dragged, or its label is pointed at or typed in: one guide
+ * at most, from one end of the measured size to the other. Nothing of it
+ * stands in the structure while the user is only looking.
  */
 
 import {
@@ -48,6 +53,8 @@ interface DragState {
 
 /** Radius of a handle's ball on screen, CSS px. */
 const HANDLE_PX = 10;
+/** Half the tick across each end of a guide, mm. */
+const GUIDE_TICK = 45;
 const UP = new Vector3(0, 1, 0);
 
 export class Gizmos {
@@ -58,6 +65,8 @@ export class Gizmos {
   private readonly rim = new MeshBasicMaterial({ color: '#ffffff', depthTest: false, transparent: true });
   private readonly lineMaterial: LineBasicMaterial;
   private lines: LineSegments | null = null;
+  /** The dimension whose label the user points at or types in. */
+  private active: string | null = null;
   private handles: Handle[] = [];
   private dims: Dim[] = [];
   private state: DragState | null = null;
@@ -75,23 +84,9 @@ export class Gizmos {
   setDims(dims: Dim[]): void {
     this.dims = dims;
     this.clear();
-    const pts: number[] = [];
-    for (const d of dims) {
-      const a = new Vector3(...d.a);
-      const b = new Vector3(...d.b);
-      if (a.distanceTo(b) < 1) continue;
-      const along = b.clone().sub(a).normalize();
-      const tick = Math.abs(along.y) > 0.9 ? new Vector3(1, 0, 0) : new Vector3().crossVectors(along, UP).normalize();
-      pts.push(...a.toArray(), ...b.toArray());
-      for (const p of [a, b]) pts.push(...p.clone().addScaledVector(tick, -70).toArray(), ...p.clone().addScaledVector(tick, 70).toArray());
-    }
-    if (pts.length) {
-      const g = new BufferGeometry();
-      g.setAttribute('position', new Float32BufferAttribute(pts, 3));
-      this.lines = new LineSegments(g, this.lineMaterial);
-      this.lines.renderOrder = 8;
-      this.root.add(this.lines);
-    }
+    if (this.hovered && !dims.some((d) => d.id === this.hovered)) this.hovered = null;
+    if (this.active && !dims.some((d) => d.id === this.active)) this.active = null;
+    this.syncGuide();
     for (const dim of dims) {
       if (!dim.handle) continue;
       const group = new Group();
@@ -113,6 +108,53 @@ export class Gizmos {
       this.root.add(group);
       this.handles.push({ dim, group });
     }
+  }
+
+  /** The dimension whose guide is wanted now: the one dragged, else the one under the pointer, else the one whose label is in use. */
+  get guide(): string | null {
+    return this.state?.id ?? this.hovered ?? this.active;
+  }
+
+  /** The label of a dimension is pointed at or typed in (null = none). True when the picture changed. */
+  setActive(id: string | null): boolean {
+    this.active = id;
+    return this.syncGuide();
+  }
+
+  /** The pointer left the view: nothing is hovered. True when the picture changed. */
+  unhover(): boolean {
+    if (!this.hovered) return false;
+    this.hovered = null;
+    this.syncGuide();
+    return true;
+  }
+
+  /** Put the one wanted guide in the scene and take any other out. True when something changed. */
+  private syncGuide(): boolean {
+    const dim = this.dims.find((d) => d.id === this.guide) ?? null;
+    const a = dim ? new Vector3(...dim.a) : null;
+    const b = dim ? new Vector3(...dim.b) : null;
+    const wanted = dim && a && b && a.distanceTo(b) >= 1 ? dim.id : null;
+    if (!wanted && !this.lines) return false;
+    if (this.lines) {
+      this.lines.geometry.dispose();
+      this.lines.removeFromParent();
+      this.lines = null;
+    }
+    if (!wanted || !a || !b) return true;
+    // From one end of the size to the other, with a short tick across each end.
+    const along = b.clone().sub(a).normalize();
+    const tick = Math.abs(along.y) > 0.9 ? new Vector3(1, 0, 0) : new Vector3().crossVectors(along, UP).normalize();
+    const pts: number[] = [...a.toArray(), ...b.toArray()];
+    for (const p of [a, b]) pts.push(...p.clone().addScaledVector(tick, -GUIDE_TICK).toArray(), ...p.clone().addScaledVector(tick, GUIDE_TICK).toArray());
+    const g = new BufferGeometry();
+    g.setAttribute('position', new Float32BufferAttribute(pts, 3));
+    this.lines = new LineSegments(g, this.lineMaterial);
+    this.lines.name = 'guide';
+    this.lines.userData['dim'] = wanted;
+    this.lines.renderOrder = 8;
+    this.root.add(this.lines);
+    return true;
   }
 
   /** Keep every handle the same size on screen, whatever the zoom and the height of the view. */
@@ -143,6 +185,7 @@ export class Gizmos {
     const id = this.near(ray, 2.4)?.dim.id ?? null;
     if (id === this.hovered) return id ? true : null;
     this.hovered = id;
+    this.syncGuide();
     return !!id;
   }
 
@@ -165,6 +208,7 @@ export class Gizmos {
       step: h.dim.unit === 'deg' ? 0.5 : 10,
       last: h.dim.value,
     };
+    this.syncGuide();
     return { id: h.dim.id, value: h.dim.value };
   }
 
@@ -183,6 +227,7 @@ export class Gizmos {
   release(): DragValue | null {
     const s = this.state;
     this.state = null;
+    this.syncGuide();
     return s ? { id: s.id, value: s.last } : null;
   }
 

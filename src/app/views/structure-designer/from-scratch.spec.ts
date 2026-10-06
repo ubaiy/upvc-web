@@ -117,7 +117,8 @@ describe('StructureDesignerComponent: a structure from nothing (T169)', () => {
     expect(new Set(c.structure!.faces.filter((f) => f.role === 'wall').map((f) => f.group)).size).toBe(6);
     expect(el.querySelector('.sd-plan-dock app-plan-editor')).not.toBeNull();
     const offered = Array.from(el.querySelectorAll<HTMLElement>('[data-param="roof"] [data-option]')).map((b) => b.dataset['option']);
-    expect(offered).toEqual(['none', 'flat', 'leanto', 'gable']);
+    // No gable: its ridge would lie on the inner edge of this L and one arm would get a single slope (T173).
+    expect(offered).toEqual(['none', 'flat', 'leanto']);
     const why = Array.from(el.querySelectorAll('[data-roof="not-offered"]')).map((n) => n.textContent);
     expect(why).toContain('A hipped roof needs a plan with no inward corner.');
     // The plan and the side letters are not fields.

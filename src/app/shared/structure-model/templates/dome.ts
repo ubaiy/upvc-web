@@ -126,9 +126,11 @@ export const DOME: TemplateDef = {
     const kerb = num(p, 'kerb');
     const top = kerb + num(p, 'rise');
     const out = half + 350;
+    // The rise is pulled at the crown; a dome with a top opening has no crown, so at its top ring.
+    const ring = domeShape(p).rings[0];
     const dims = [
       paramDim(DOME, p, 'diameter', [-half, 0, out], [half, 0, out], { at: [half, kerb, 0], axis: [1, 0, 0], gain: 2 }),
-      paramDim(DOME, p, 'rise', [-out, kerb, 0], [-out, top, 0], { at: [0, top, 0], axis: [0, 1, 0], gain: 1 }),
+      paramDim(DOME, p, 'rise', [-out, kerb, 0], [-out, top, 0], { at: [ring.r, ring.y, 0], axis: [0, 1, 0], gain: 1 }),
     ];
     if (kerb > 0) dims.push(paramDim(DOME, p, 'kerb', [out, 0, 0], [out, kerb, 0]));
     return dims;

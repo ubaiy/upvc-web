@@ -235,7 +235,7 @@
       </div>
       <div #labels class="sd-labels" [hidden]="!showDims || !webgl">
         <ng-container *ngFor="let d of dims; trackBy: trackDim">
-          <button type="button" class="sd-dim" *ngIf="editingDim !== d.id" [attr.data-dim]="d.id" (click)="editDim(d)" [title]="d.label + ': tap to type'">
+          <button type="button" class="sd-dim" *ngIf="editingDim !== d.id" [attr.data-dim]="d.id" (click)="editDim(d)" (mouseenter)="guideDim(d.id)" (mouseleave)="guideDim(null)" [title]="d.label + ': tap to type'">
             <small>{{ d.label }}</small>{{ dimText(d) }}
           </button>
           <span class="sd-dim sd-dim--edit" *ngIf="editingDim === d.id" [attr.data-dim]="d.id">

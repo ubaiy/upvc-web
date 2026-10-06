@@ -663,7 +663,13 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     return d.unit === 'deg' ? `${Math.round(d.value * 10) / 10}°` : `${Math.round(d.value)}`;
   }
 
+  /** The guide line of a size shows while its label is pointed at or typed in (null = none). */
+  guideDim(id: string | null): void {
+    this.zone.runOutsideAngular(() => this.scene?.setActiveDim(id ?? this.editingDim));
+  }
+
   editDim(d: Dim): void {
+    this.guideDim(d.id);
     const layer = this.labelLayer?.nativeElement;
     const at = layer?.querySelector<HTMLElement>(`[data-dim="${d.id}"]`)?.style.transform ?? '';
     this.editingDim = d.id;
@@ -684,6 +690,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   cancelDim(): void {
     this.editingDim = null;
+    this.guideDim(null);
     // The label comes back as a new element: the scene places it on its next frame.
     setTimeout(() => this.scene?.requestRender());
   }

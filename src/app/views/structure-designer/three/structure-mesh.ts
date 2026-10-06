@@ -8,6 +8,10 @@
  * on the long edges, which is what catches the light. A framed face gets its
  * own inner frame; what opens shows how: a sash, hinges and a lever handle, or
  * two lapped sliding leaves. Glass carries its tint a face, as vertex colour.
+ * Hardware and the opening sign are placed on the EDGES of the sash's real
+ * outline (its hinge stile, lock stile, head, sill), never on its bounding
+ * box: under a sloped roof a sash has a raked head, and nothing may be drawn
+ * outside it. A piece that would not fit inside its sash is left out.
  * This is the designer's own simple geometry; the mitred window builder of
  * shared/design-3d takes over the inside of a face on a later card.
  */
@@ -132,8 +136,16 @@ class Soup {
   }
 }
 
-/** A convex anticlockwise outline moved inward by d on every edge. */
-export function insetOutline(outline: Vec2[], d: number): Vec2[] {
+/**
+ * A convex anticlockwise outline moved inward by d on every edge. A side of a few millimetres (two
+ * corners of a roof that all but fall together) has no direction worth the name: its corner is dropped.
+ */
+export function insetOutline(points: Vec2[], d: number): Vec2[] {
+  const kept = points.filter((p, i) => {
+    const q = points[(i + 1) % points.length];
+    return Math.hypot(q[0] - p[0], q[1] - p[1]) > 8;
+  });
+  const outline = kept.length >= 3 ? kept : points;
   const n = outline.length;
   let area = 0;
   let perimeter = 0;
@@ -151,11 +163,22 @@ export function insetOutline(outline: Vec2[], d: number): Vec2[] {
     const l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
     return [-(q[1] - p[1]) / l, (q[0] - p[0]) / l];
   };
+  const normals = outline.map((_, i) => inward(i));
   return outline.map((p, i) => {
-    const n0 = inward((i + n - 1) % n);
-    const n1 = inward(i);
+    const n0 = normals[(i + n - 1) % n];
+    const n1 = normals[i];
     const k = safe / Math.max(0.2, 1 + n0[0] * n1[0] + n0[1] * n1[1]);
-    return [p[0] + (n0[0] + n1[0]) * k, p[1] + (n0[1] + n1[1]) * k];
+    const moved: Vec2 = [p[0] + (n0[0] + n1[0]) * k, p[1] + (n0[1] + n1[1]) * k];
+    // Beside a very pointed corner a short side has no room for the whole inset: a corner that would pass
+    // another side of the outline is brought back onto it. Nothing inset ever leaves its outline.
+    outline.forEach((a, j) => {
+      const inside = (moved[0] - a[0]) * normals[j][0] + (moved[1] - a[1]) * normals[j][1];
+      if (inside < 0) {
+        moved[0] -= normals[j][0] * inside;
+        moved[1] -= normals[j][1] * inside;
+      }
+    });
+    return moved;
   });
 }
 
@@ -216,6 +239,8 @@ export interface StructureObject {
   pickables: Mesh[];
 }
 
+/** A knuckle stays inside the section of the bars it closes: nothing stands out past a ridge end or a corner. */
+const HUB_RADIUS: Readonly<Record<string, number>> = { crown: 60, ridge_end: 40, node: 44 };
 const FRAME_W = 46;
 const SASH_W = 42;
 const JOINT_HALF = 26;
@@ -253,7 +278,7 @@ export function buildStructure(structure: Structure, m: StructureMaterials): Str
   // A knuckle only where bars meet out of square (dome nodes, hips): it closes the open wedge.
   for (const hub of structure.hubs) {
     const owner: PickTarget = { kind: 'bar', id: hub.jointIds[0] ?? '' };
-    profile.knuckle(hub.at, hub.role === 'node' ? 44 : 78, owner);
+    profile.knuckle(hub.at, HUB_RADIUS[hub.role] ?? 44, owner);
   }
 
   for (const face of structure.faces) {
@@ -296,7 +321,76 @@ interface Soups {
   lines: number[];
 }
 
-function addFace(face: Face, s: Soups): void {
+/** What one face draws for the way it opens, in the face's own (u, v) mm: for the checks that nothing leaves the sash. */
+export interface OpeningTrace {
+  faceId: string;
+  /** The outer outline of what opens (the sash, or the two leaves together). */
+  sash: Vec2[];
+  /** The glass of the sash: the opening sign is drawn on it. */
+  pane: Vec2[];
+  /** The footprint of each piece of hardware (handle plate, lever, hinge, stay, pull). */
+  parts: Vec2[][];
+  /** The lines of the opening sign. */
+  lines: [Vec2, Vec2][];
+}
+
+/** The hardware and opening signs of every face that opens, exactly as buildStructure draws them. */
+export function traceOpenings(structure: Structure): OpeningTrace[] {
+  const soups: Soups = { profile: new Soup(), glass: new Soup(), panel: new Soup(), gasket: new Soup(), metal: new Soup(), hidden: new Soup(), lines: [] };
+  const out: OpeningTrace[] = [];
+  for (const face of structure.faces) {
+    const trace: OpeningTrace = { faceId: face.id, sash: [], pane: [], parts: [], lines: [] };
+    addFace(face, soups, trace);
+    if (trace.sash.length) out.push(trace);
+  }
+  return out;
+}
+
+/** True when p is inside a convex anticlockwise outline, or no more than tol outside it. */
+export function insideOutline(outline: Vec2[], p: Vec2, tol = 0): boolean {
+  for (let i = 0; i < outline.length; i++) {
+    const a = outline[i];
+    const b = outline[(i + 1) % outline.length];
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (l < 1e-6) continue;
+    // Distance outside this edge (the inside is on the left of a → b).
+    if (((b[1] - a[1]) * (p[0] - a[0]) - (b[0] - a[0]) * (p[1] - a[1])) / l > tol) return false;
+  }
+  return outline.length >= 3;
+}
+
+/** One side of a sash: from a to b going anticlockwise, its unit direction and its unit outward normal. */
+interface SashEdge {
+  a: Vec2;
+  b: Vec2;
+  length: number;
+  dir: Vec2;
+  out: Vec2;
+}
+
+function sashEdges(outline: Vec2[]): SashEdge[] {
+  return outline.map((a, i) => {
+    const b = outline[(i + 1) % outline.length];
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const dir: Vec2 = [(b[0] - a[0]) / length, (b[1] - a[1]) / length];
+    return { a, b, length, dir, out: [dir[1], -dir[0]] };
+  });
+}
+
+/** The side that looks most the given way (hinge stile, lock stile, head, sill); null when the sash has no such side. */
+function sideLooking(edges: SashEdge[], way: Vec2, not?: SashEdge | null): SashEdge | null {
+  let best: SashEdge | null = null;
+  let bestDot = 0.5;
+  for (const e of edges) {
+    const d = e.out[0] * way[0] + e.out[1] * way[1];
+    if (e === not || e.length < 200 || d < bestDot) continue;
+    best = e;
+    bestDot = d;
+  }
+  return best;
+}
+
+function addFace(face: Face, s: Soups, trace?: OpeningTrace): void {
   const { origin, u, v } = face.plane;
   const n = faceNormal(face);
   const owner: PickTarget = { kind: 'face', id: face.id };
@@ -318,8 +412,36 @@ function addFace(face: Face, s: Soups): void {
     ring(s.gasket, insetOutline(outline, edge - 7), insetOutline(outline, edge + 9), lift + 3);
     fan(s.glass, insetOutline(outline, edge), lift);
   };
-  const part = (a: Vec2, b: Vec2, width: number, depth: number, lift: number): void => s.metal.box(at(a, lift), at(b, lift), width, depth, n, owner);
-  const seg = (a: Vec2, b: Vec2, lift = 16): void => void s.lines.push(...at(a, lift), ...at(b, lift));
+  /** The outlines nothing of this face's opening may leave: set once the sash (or the leaves) is known. */
+  let sash: Vec2[] = [];
+  let pane: Vec2[] = [];
+  const within = (sashOutline: Vec2[], paneOutline: Vec2[]): void => {
+    sash = sashOutline;
+    pane = paneOutline;
+    if (trace) {
+      trace.sash = sashOutline;
+      trace.pane = paneOutline;
+    }
+  };
+  /** A piece of hardware a → b; left out (false) when its footprint would not lie on the sash. */
+  const part = (a: Vec2, b: Vec2, width: number, depth: number, lift: number): boolean => {
+    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (l < 1) return false;
+    const y: Vec2 = [(-(b[1] - a[1]) / l) * (width / 2), ((b[0] - a[0]) / l) * (width / 2)];
+    const corners: Vec2[] = [[a[0] + y[0], a[1] + y[1]], [b[0] + y[0], b[1] + y[1]], [b[0] - y[0], b[1] - y[1]], [a[0] - y[0], a[1] - y[1]]];
+    if (!corners.every((c) => insideOutline(sash, c, 0.5))) return false;
+    s.metal.box(at(a, lift), at(b, lift), width, depth, n, owner);
+    trace?.parts.push(corners);
+    return true;
+  };
+  /** A line of the opening sign; left out when an end would be off the glass. */
+  const seg = (a: Vec2, b: Vec2, lift = 16): void => {
+    if (!insideOutline(pane, a, 0.5) || !insideOutline(pane, b, 0.5)) return;
+    s.lines.push(...at(a, lift), ...at(b, lift));
+    trace?.lines.push([a, b]);
+  };
+  /** A point of a side: t mm from its start along it, off mm outward of it. */
+  const on = (e: SashEdge, t: number, off = 0): Vec2 => [e.a[0] + e.dir[0] * t + e.out[0] * off, e.a[1] + e.dir[1] * t + e.out[1] * off];
   const key = fillKey(face);
   const fill = face.fill.kind;
 
@@ -355,6 +477,8 @@ function addFace(face: Face, s: Soups): void {
       // Two leaves on two tracks, lapped at the meeting stiles; the outside leaf is the left one.
       const mid = (a + b) / 2;
       const lap = LEAF_W / 2;
+      const leaves: Vec2[] = [[a, c], [b, c], [b, d], [a, d]];
+      within(leaves, leaves);
       const vm = (c + d) / 2;
       const leaf = (u0: number, u1: number, lift: number, pull: number, towards: 1 | -1): void => {
         const outline: Vec2[] = [[u0, c], [u1, c], [u1, d], [u0, d]];
@@ -386,29 +510,56 @@ function addFace(face: Face, s: Soups): void {
   glaze(face.outline, edge, opens ? 10 : 0);
   if (!opens) return;
 
-  // The opening sign of a workshop drawing, the hinges and a lever handle, on the pane's bounding box.
-  const [u0, u1, v0, v1] = box(insetOutline(face.outline, edge));
+  // The opening sign of a workshop drawing, the hinges and a lever handle: on the sides of the sash as it really is.
+  const paneOutline = insetOutline(face.outline, edge);
+  within(insetOutline(face.outline, edge - w + 6), paneOutline);
+  const edges = sashEdges(paneOutline);
   const stile = w - 6;
+  const [u0, u1] = box(paneOutline);
+  /** The sign: from the middle of the hinged side to every corner that is not on it. */
+  const sign = (hinged: SashEdge): void => {
+    const apex = on(hinged, hinged.length / 2);
+    for (const p of paneOutline) if (p !== hinged.a && p !== hinged.b) seg(p, apex);
+  };
+  /** Hinges (or stays) on a side, set in from its ends. */
+  const hang = (side: SashEdge, inset: number, half: number, middle: boolean): void => {
+    const m = Math.min(inset, side.length * 0.25);
+    const h = Math.min(half, side.length * 0.12);
+    for (const t of middle ? [m, side.length / 2, side.length - m] : [m, side.length - m]) part(on(side, t - h, stile - 12), on(side, t + h, stile - 12), 16, 16, 40);
+  };
+
   if (key === 'top-hung') {
-    seg([u0, v0], [(u0 + u1) / 2, v1]);
-    seg([u1, v0], [(u0 + u1) / 2, v1]);
-    const um = (u0 + u1) / 2;
-    const hv = v0 - stile / 2;
-    part([um - 60, hv], [um + 60, hv], 24, 8, 42);
-    part([um - 12, hv], [um + 100, hv], 15, 12, 52);
-    for (const u of [u0 + 120, u1 - 120]) part([u - 45, v1 + stile], [u + 45, v1 + stile], 16, 16, 40);
+    const head = sideLooking(edges, [0, 1]);
+    if (!head) return;
+    sign(head);
+    hang(head, 120, 45, false);
+    // The handle in the middle of the bottom rail, its lever along the rail.
+    const sill = sideLooking(edges, [0, -1], head);
+    if (!sill) return;
+    const t = sill.length / 2;
+    const reach = Math.min(60, sill.length * 0.2);
+    part(on(sill, t - reach, stile / 2), on(sill, t + reach, stile / 2), 24, 8, 42);
+    part(on(sill, t - reach / 5, stile / 2), on(sill, t + reach * 1.6, stile / 2), 15, 12, 52);
     return;
   }
   // Hinged on the left as seen from outside; the sign points at the hinges.
-  seg([u1, v0], [u0, (v0 + v1) / 2]);
-  seg([u1, v1], [u0, (v0 + v1) / 2]);
   const door = key === 'door';
-  const hv = door ? Math.min(v0 + 1000, (v0 + v1) / 2) : (v0 + v1) / 2;
-  const hu = u1 + stile / 2;
-  part([hu, hv - (door ? 105 : 62)], [hu, hv + (door ? 105 : 62)], door ? 30 : 24, 8, 42);
-  part([hu, hv + 24], [hu - (door ? 150 : 115), hv + 24], door ? 18 : 15, 12, 52);
-  const hinges = door ? [v0 + 200, (v0 + v1) / 2, v1 - 200] : [v0 + 160, v1 - 160];
-  for (const v of hinges) part([u0 - stile, v - 50], [u0 - stile, v + 50], 16, 16, 40);
+  const hinged = sideLooking(edges, [-1, 0]);
+  if (!hinged) return;
+  sign(hinged);
+  hang(hinged, door ? 200 : 160, 50, door);
+  // The handle on the stile across from the hinges: a plate along the stile, a lever towards the hinges.
+  const lock = sideLooking(edges, [1, 0], hinged);
+  if (!lock) return;
+  // The lock stile runs anticlockwise, so upward: a door handle is a metre above its foot.
+  const t = door ? Math.min(1000, lock.length / 2) : lock.length / 2;
+  const plate = Math.min(door ? 105 : 62, lock.length * 0.3);
+  part(on(lock, t - plate, stile / 2), on(lock, t + plate, stile / 2), door ? 30 : 24, 8, 42);
+  const from = on(lock, t + Math.min(24, plate / 2), stile / 2);
+  for (const reach of [door ? 150 : 115, 80, 50]) {
+    const length = Math.min(reach, (u1 - u0) * 0.3);
+    if (part(from, [from[0] - lock.out[0] * length, from[1] - lock.out[1] * length], door ? 18 : 15, 12, 52)) break;
+  }
 }
 
 export function disposeStructure(object: StructureObject): void {

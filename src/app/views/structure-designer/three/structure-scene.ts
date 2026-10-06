@@ -208,6 +208,7 @@ export class StructureScene {
     canvas.addEventListener('pointermove', this.onPointerMove);
     canvas.addEventListener('pointerup', this.onPointerUp);
     canvas.addEventListener('pointercancel', this.onPointerUp);
+    canvas.addEventListener('pointerleave', this.onPointerLeave);
     this.controls = new OrbitControls(this.camera, canvas);
     this.controls.enableDamping = false;
     this.controls.maxPolarAngle = Math.PI / 2 - 0.01;
@@ -307,6 +308,20 @@ export class StructureScene {
   setGizmosVisible(visible: boolean): void {
     this.gizmos.root.visible = visible && !this.plain;
     this.requestRender();
+  }
+
+  /** The label of a dimension is pointed at or typed in: its guide shows meanwhile (null = none). */
+  setActiveDim(id: string | null): void {
+    if (this.gizmos.setActive(id)) this.requestRender();
+  }
+
+  /** The names of the guide objects in the scene now, and the dimension each belongs to (for the checks). */
+  guides(): string[] {
+    const out: string[] = [];
+    this.gizmos.root.traverse((o) => {
+      if (o.name === 'guide') out.push(String(o.userData['dim']));
+    });
+    return out;
   }
 
   view(preset: ViewPreset): void {
@@ -431,6 +446,13 @@ export class StructureScene {
       this.canvas.style.cursor = over ? 'grab' : '';
       if (over !== null) this.requestRender();
     }
+  };
+
+  /** The pointer left the view: no handle is hovered, so no guide stays behind. */
+  private readonly onPointerLeave = (): void => {
+    if (this.gizmos.dragging || !this.gizmos.unhover()) return;
+    this.canvas.style.cursor = '';
+    this.requestRender();
   };
 
   private readonly onPointerUp = (e: PointerEvent): void => {
@@ -594,6 +616,7 @@ export class StructureScene {
     c.removeEventListener('pointermove', this.onPointerMove);
     c.removeEventListener('pointerup', this.onPointerUp);
     c.removeEventListener('pointercancel', this.onPointerUp);
+    c.removeEventListener('pointerleave', this.onPointerLeave);
     c.removeEventListener('webglcontextlost', this.onContextLost);
     c.removeEventListener('webglcontextrestored', this.onContextRestored);
     this.controls.removeEventListener('change', this.requestRender);

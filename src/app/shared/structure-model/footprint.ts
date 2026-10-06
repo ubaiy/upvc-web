@@ -194,6 +194,41 @@ export function roofsFor(pts: Pt[]): RoofKind[] {
   return roofs;
 }
 
+/**
+ * The ways a gable's ridge can run on this plan and still be a gable: along
+ * the longest side, across it, or neither. The ridge lies over the middle of
+ * the plan; where a part of the plan lies wholly on one side of it, that part
+ * would get one slope with a wall under its top, which is a lean-to and not
+ * a gable.
+ */
+export function gableRidges(pts: Pt[]): ('along' | 'across')[] {
+  if (pts.length < 3) return [];
+  const long = sideFrame(pts, longestSide(pts)).dir;
+  const twoSlopes = (along: Pt): boolean => {
+    const perp: Pt = [-along[1], along[0]];
+    const ts = pts.map((p) => dotP(p, perp));
+    const mid = (Math.min(...ts) + Math.max(...ts)) / 2;
+    for (const slab of slabsOf(pts, along, PLAN_MAX * 4)) {
+      for (const piece of slab.pieces) {
+        const lo = (piece.at0[0] + piece.at1[0]) / 2;
+        const hi = (piece.at0[1] + piece.at1[1]) / 2;
+        if (hi - lo > PLAN_MIN_SIDE && (hi < mid + 50 || lo > mid - 50)) return false;
+      }
+    }
+    return true;
+  };
+  const out: ('along' | 'across')[] = [];
+  if (twoSlopes(long)) out.push('along');
+  if (twoSlopes([-long[1], long[0]])) out.push('across');
+  return out;
+}
+
+/** The roofs offered on this plan: those that can be built and are what their name says. */
+export function roofsOffered(pts: Pt[]): RoofKind[] {
+  const ridges = gableRidges(pts);
+  return roofsFor(pts).filter((roof) => roof !== 'gable' || ridges.length > 0);
+}
+
 // --- ready plans ---
 
 export function rectanglePlan(width: number, depth: number): Pt[] {

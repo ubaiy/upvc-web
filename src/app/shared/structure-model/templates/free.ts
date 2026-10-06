@@ -18,6 +18,7 @@ import {
   commonIntervals,
   distP,
   formatPlan,
+  gableRidges,
   highSides,
   longestSide,
   orientPlan,
@@ -29,6 +30,7 @@ import {
   regularPlan,
   RoofKind,
   roofsFor,
+  roofsOffered,
   sideFrame,
   slabsOf,
   withoutStraightCorners,
@@ -53,7 +55,8 @@ export const ROOF_LABEL: Record<RoofKind, string> = {
 
 /** Why a roof is not offered on a plan, in plain words ('' when it is). */
 export function roofRefusal(plan: Pt[], roof: RoofKind): string {
-  if (roofsFor(plan).includes(roof)) return '';
+  if (roofsOffered(plan).includes(roof)) return '';
+  if (roof === 'gable') return 'A gable needs roof on both sides of its ridge; a part of this plan would get one slope only. Use a lean-to or a flat roof.';
   if (roof === 'dome') return 'A dome needs a regular plan of 5 sides or more (use "Round / regular").';
   if (roof === 'leanto') return 'A lean-to needs one straight side that the whole plan lies behind.';
   return `A ${ROOF_LABEL[roof].toLowerCase()} roof needs a plan with no inward corner.`;
@@ -360,6 +363,10 @@ function generate(p: Params): Structure {
 
 const roofIs = (...kinds: RoofKind[]) => (p: Params): boolean => kinds.includes(p['roof'] as RoofKind);
 const never = (): boolean => false;
+const RIDGE_OPTIONS: { value: 'along' | 'across'; label: string }[] = [
+  { value: 'along', label: 'Along the longest wall' },
+  { value: 'across', label: 'Across it' },
+];
 const ROOF_ORDER: RoofKind[] = ['none', 'flat', 'leanto', 'gable', 'hipped', 'pyramid', 'dome'];
 
 export const FREE: TemplateDef = {
@@ -377,7 +384,9 @@ export const FREE: TemplateDef = {
       type: 'choice',
       default: 'flat',
       options: ROOF_ORDER.map((value) => ({ value, label: ROOF_LABEL[value] })),
-      optionsFor: (p) => roofsFor(planOf(p)).map((value) => ({ value, label: ROOF_LABEL[value] })),
+      // A roof a saved structure already has stays in the list, even where it would not be offered anew.
+      optionsFor: (p) =>
+        ROOF_ORDER.filter((value) => roofsOffered(planOf(p)).includes(value) || (value === p['roof'] && roofsFor(planOf(p)).includes(value))).map((value) => ({ value, label: ROOF_LABEL[value] })),
       hint: 'Only the roofs that can be built on this plan are offered',
     },
     {
@@ -409,6 +418,10 @@ export const FREE: TemplateDef = {
         { value: 'along', label: 'Along the longest wall' },
         { value: 'across', label: 'Across it' },
       ],
+      optionsFor: (p) => {
+        const ridges = gableRidges(planOf(p));
+        return RIDGE_OPTIONS.filter((o) => !ridges.length || ridges.includes(o.value) || o.value === p['ridge']);
+      },
       showIf: roofIs('gable'),
     },
     { key: 'pitch', label: 'Roof pitch', type: 'deg', default: 15, min: 2, max: 60, step: 0.5, hint: '2° to 60° from level', showIf: roofIs('leanto', 'gable', 'hipped') },
@@ -424,8 +437,12 @@ export const FREE: TemplateDef = {
     const high = highSides(plan);
     const wanted = Number(p['highSide']) - 1;
     const round = regularPlan(plan);
+    // A gable newly chosen takes the ridge that gives it two slopes.
+    const ridges = gableRidges(plan);
+    const ridge = roof === 'gable' && ridges.length && !ridges.includes(p['ridge'] as 'along' | 'across') ? ridges[0] : p['ridge'];
     return {
       ...p,
+      ridge,
       plan: formatPlan(plan),
       walls: wallStates(p, plan.length),
       roof,
@@ -437,10 +454,27 @@ export const FREE: TemplateDef = {
   generate,
   dims(p): Dim[] {
     const plan = planOf(p);
+    const n = plan.length;
     const h = num(p, 'height');
-    const q = plan[0];
-    const { out } = sideFrame(plan, 0);
-    const a: Vec3 = [q[0] + out[0] * 350, 0, q[1] + out[1] * 350];
-    return [paramDim(FREE, p, 'height', a, [a[0], h, a[2]], { at: [q[0], h, q[1]], axis: [0, 1, 0], gain: 1 })];
+    const top = eaveHeight(plan, p);
+    const states = wallStates(p, n);
+    const built = (i: number): boolean => states[i] !== 'h' || p['roof'] !== 'none';
+    // The handle sits ON the structure: on the top of a wall, at a corner where the wall is just the wall
+    // height (under a slope the other corners are higher), and of those the one nearest the usual view.
+    let best = 0;
+    let bestScore = -Infinity;
+    plan.forEach((q, i) => {
+      if (!built(i) && !built((i + n - 1) % n)) return;
+      const score = -Math.round(top(q) - h) * 1e6 + q[0] * 0.62 + q[1];
+      if (score > bestScore) [best, bestScore] = [i, score];
+    });
+    const q = plan[best];
+    const y = top(q);
+    // The size is measured beside that corner, pointing away from the plan.
+    const o0 = sideFrame(plan, best).out;
+    const o1 = sideFrame(plan, (best + n - 1) % n).out;
+    const l = Math.hypot(o0[0] + o1[0], o0[1] + o1[1]) || 1;
+    const a: Vec3 = [q[0] + ((o0[0] + o1[0]) / l) * 350, 0, q[1] + ((o0[1] + o1[1]) / l) * 350];
+    return [paramDim(FREE, p, 'height', a, [a[0], h, a[2]], { at: [q[0], y, q[1]], axis: [0, 1, 0], gain: 1 })];
   },
 };
