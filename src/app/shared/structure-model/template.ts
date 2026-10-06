@@ -10,12 +10,15 @@ import { clamp } from './vec';
 export interface ParamSpec {
   key: string;
   label: string;
-  type: 'mm' | 'deg' | 'count' | 'choice' | 'toggle';
+  /** `text` is kept as it is and never shown as a field (the plan of a structure drawn from nothing). */
+  type: 'mm' | 'deg' | 'count' | 'choice' | 'toggle' | 'text';
   default: ParamValue;
   min?: number;
   max?: number;
   step?: number;
   options?: { value: string; label: string }[];
+  /** The choices that can be built with the other parameters as they are; absent = all of `options`. */
+  optionsFor?: (p: Params) => { value: string; label: string }[];
   hint?: string;
   /** Hidden while this says no (a door width has no meaning without a front wall). */
   showIf?: (p: Params) => boolean;
@@ -62,8 +65,10 @@ export function normalizeParams(def: TemplateDef, input: Params): Params {
     const raw = input[s.key];
     if (s.type === 'toggle') {
       p[s.key] = typeof raw === 'boolean' ? raw : s.default;
+    } else if (s.type === 'text') {
+      p[s.key] = typeof raw === 'string' ? raw : s.default;
     } else if (s.type === 'choice') {
-      p[s.key] = typeof raw === 'string' && s.options?.some((o) => o.value === raw) ? raw : s.default;
+      p[s.key] = typeof raw === 'string' && (!s.options || s.options.some((o) => o.value === raw)) ? raw : s.default;
     } else {
       let v = typeof raw === 'number' && Number.isFinite(raw) ? raw : (s.default as number);
       const step = s.step ?? 1;

@@ -24,6 +24,8 @@ export interface FaceSpec extends TaggedPoly {
   group: string;
   groupLabel: string;
   fill: FaceFill;
+  /** The way the face looks, when the one point inside the structure cannot tell (a plan with inward corners). */
+  outward?: Vec3;
 }
 
 export interface SlicedSpec extends Omit<FaceSpec, 'id' | 'label'> {
@@ -114,7 +116,7 @@ export class StructureBuilder {
     let pts = spec.pts;
     let roles = spec.roles;
     let n = unit(polygonNormal(pts));
-    if (dot(n, sub(centroid(pts), this.inside)) < 0) {
+    if (dot(n, spec.outward ?? sub(centroid(pts), this.inside)) < 0) {
       const k = pts.length;
       pts = [...pts].reverse();
       roles = pts.map((_, i) => spec.roles[(2 * k - 2 - i) % k]);
@@ -163,6 +165,7 @@ export class StructureBuilder {
         group: spec.group,
         groupLabel: spec.groupLabel,
         fill: spec.fill,
+        outward: spec.outward,
       })
     );
     return strips.length;

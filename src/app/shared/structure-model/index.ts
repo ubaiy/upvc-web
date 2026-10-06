@@ -4,6 +4,7 @@ export * from './types';
 export * from './bar-sections';
 export * from './builder';
 export * from './derive';
+export * from './footprint';
 export * from './history';
 export * from './operations';
 export * from './template';
