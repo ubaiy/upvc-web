@@ -29,6 +29,13 @@ import {
   barSection,
   createStructure,
   defaultParams,
+  formatPlan,
+  FREE,
+  planOf,
+  Pt,
+  ROOF_LABEL,
+  roofRefusal,
+  RoofKind,
   Dim,
   Face,
   FILL_LABEL,
@@ -63,6 +70,7 @@ import { environment } from '../../../environments/environment';
 import { WorkspaceService } from '../../containers/shell/workspace.service';
 import { InrPipe } from '../../shared/pipes/inr.pipe';
 import { customerSheet, sheetFacts } from './customer-sheet';
+import { PlanChange, PlanEditorComponent } from './plan-editor.component';
 import { missingRate, neededRates, plainRefusal, rateName, StructureApiError, StructureLineService, StructurePrice, StructurePriceRequest } from './structure-line.service';
 import { BrowserStructureStore, StructureStore, StructureSummary } from './structure-store.service';
 import { PickTarget } from './three/structure-mesh';
@@ -114,7 +122,7 @@ const GLASS_TINTS = [
 @Component({
   selector: 'app-structure-designer',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, InrPipe],
+  imports: [CommonModule, FormsModule, RouterModule, InrPipe, PlanEditorComponent],
   templateUrl: './structure-designer.component.html',
   styleUrls: ['./structure-designer.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -132,6 +140,13 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     { key: 'side', label: 'Side' },
     { key: 'top', label: 'Top' },
   ];
+
+  /** "Start from scratch": the plan is being drawn and there is no structure yet. */
+  drawing = false;
+  /** The plan of a structure drawn from nothing, beside its 3D view. */
+  planOpen = false;
+  /** The plan the editor shows; the same list until the plan changes. */
+  planPts: Pt[] | null = null;
 
   /** Pictures of the start cards, by template kind. Empty until drawn (or with no WebGL). */
   thumbnails: Record<string, string> = {};
@@ -310,6 +325,52 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.open(createStructure(kind), null);
   }
 
+  /** "Start from scratch": an empty plot; the structure exists once the plan is closed. */
+  startScratch(): void {
+    this.drawing = true;
+    this.cdr.markForCheck();
+  }
+
+  /** The plan was closed (or a ready plan taken): walls rise from it, and the plan stays open beside the 3D view. */
+  planDrawn(plan: Pt[]): void {
+    this.drawing = false;
+    this.open(createStructure(FREE.kind, { plan: formatPlan(plan) }), null);
+    this.planOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  /** A corner or a side is being dragged in the plan: the 3D view follows. */
+  planPreview(change: PlanChange): void {
+    this.preview({ plan: formatPlan(change.plan), walls: change.walls });
+  }
+
+  /** A change of the plan is finished: one undo step. */
+  planChanged(change: PlanChange): void {
+    this.commit({ plan: formatPlan(change.plan), walls: change.walls });
+  }
+
+  get isFree(): boolean {
+    return this.def?.kind === FREE.kind;
+  }
+
+  togglePlan(): void {
+    this.planOpen = !this.planOpen;
+    this.cdr.markForCheck();
+  }
+
+  /** The choices of a parameter that can be built as the structure is now. */
+  optionsOf(spec: ParamSpec): { value: string; label: string }[] {
+    return spec.optionsFor ? spec.optionsFor(this.params) : spec.options ?? [];
+  }
+
+  /** The roofs this plan cannot carry, each with the reason. */
+  get roofNotes(): string[] {
+    if (!this.isFree || !this.planPts) return [];
+    const plan = this.planPts;
+    const reasons = (Object.keys(ROOF_LABEL) as RoofKind[]).map((k) => roofRefusal(plan, k)).filter((r) => !!r);
+    return [...new Set(reasons)];
+  }
+
   private open(structure: Structure, savedId: string | null): void {
     this.history = new History(structure);
     this.savedId = savedId;
@@ -318,6 +379,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.gestureBase = null;
     this.sheet = 'shape';
     this.openList = false;
+    this.planOpen = false;
     this.refresh(true);
   }
 
@@ -359,6 +421,9 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   /** Back to the start screen. */
   close(): void {
     this.history = null;
+    this.drawing = false;
+    this.planOpen = false;
+    this.planPts = null;
     this.def = null;
     this.summary = null;
     this.dims = [];
@@ -445,6 +510,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.def = own?.def ?? null;
     this.params = own?.params ?? {};
     this.dims = own ? own.def.dims(own.params) : [];
+    const plan = own?.def.kind === FREE.kind ? planOf(own.params) : null;
+    if (!plan || !this.planPts || formatPlan(plan) !== formatPlan(this.planPts)) this.planPts = plan;
     this.summary = summarize(s);
     const faces = new Set(s.faces.map((f) => f.id));
     this.selectedFaces = this.selectedFaces.filter((id) => faces.has(id));
@@ -785,7 +852,9 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   reset(): void {
     const h = this.history;
     if (!h || !this.def) return;
-    h.push({ ...this.def.generate(defaultParams(this.def)), name: h.present.name });
+    // A structure drawn from nothing keeps its plan: only the sizes, the roof and the panels go back.
+    const start = this.isFree ? normalizeParams(this.def, { ...defaultParams(this.def), plan: this.params['plan'] }) : defaultParams(this.def);
+    h.push({ ...this.def.generate(start), name: h.present.name });
     this.selectedFaces = [];
     this.selectedBar = null;
     this.refresh(true);

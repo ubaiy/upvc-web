@@ -1,10 +1,24 @@
 <!-- Start screen: choose what to build. -->
-<div class="sd sd--start" *ngIf="!structure">
+<div class="sd sd--start" *ngIf="!structure && !drawing">
   <header class="sd-hero">
     <a class="sd-btn sd-back" *ngIf="quotationId" [routerLink]="quotationLink" data-action="to-quotation">‹ Back to the quotation</a>
     <h1>{{ quotationId ? 'Add a 3D structure to this quotation' : 'Design a structure in 3D' }}</h1>
-    <p>Choose a shape. It appears at a usual size; then stretch it, set the counts and change any panel.<ng-container *ngIf="quotationId"> The price shows while you design, and Save puts it in the quotation as a line.</ng-container></p>
+    <p>Draw your own plan from nothing, or start from an example. Then stretch it, set the counts and change any panel.<ng-container *ngIf="quotationId"> The price shows while you design, and Save puts it in the quotation as a line.</ng-container></p>
   </header>
+  <div class="sd-cards sd-cards--scratch">
+    <button type="button" class="sd-card sd-card--scratch" (click)="startScratch()" data-kind="free">
+      <span class="sd-card__picture">
+        <svg viewBox="0 0 160 120" aria-hidden="true">
+          <path d="M20 0V120M40 0V120M60 0V120M80 0V120M100 0V120M120 0V120M140 0V120M0 20H160M0 40H160M0 60H160M0 80H160M0 100H160" stroke="#d5dde6" stroke-width="1" fill="none" />
+          <path d="M40 20H100V60H140V100H40Z" fill="rgba(47,124,200,.14)" stroke="#1f4f82" stroke-width="3" stroke-linejoin="round" />
+          <g fill="#fff" stroke="#1f4f82" stroke-width="2"><circle cx="40" cy="20" r="4" /><circle cx="100" cy="20" r="4" /><circle cx="100" cy="60" r="4" /><circle cx="140" cy="60" r="4" /><circle cx="140" cy="100" r="4" /><circle cx="40" cy="100" r="4" /></g>
+        </svg>
+      </span>
+      <span class="sd-card__name">Start from scratch</span>
+      <span class="sd-card__blurb">Draw the plan corner by corner on a grid: any shape, any angle. Walls rise from it and you choose the roof: flat, lean-to, gable, hipped, pyramid or dome.</span>
+    </button>
+  </div>
+  <h2 class="sd-cards__title">Or start from an example</h2>
   <div class="sd-cards">
     <button type="button" class="sd-card" *ngFor="let t of templates" (click)="start(t.kind)" [attr.data-kind]="t.kind">
       <span class="sd-card__picture">
@@ -34,6 +48,16 @@
     </div>
   </section>
   <p class="sd-toast" *ngIf="message" role="status">{{ message }}</p>
+</div>
+
+<!-- Start from scratch: the plan is drawn first. -->
+<div class="sd sd--draw" *ngIf="drawing && !structure">
+  <header class="sd-hero">
+    <button type="button" class="sd-btn sd-back" (click)="close()" data-action="back-from-plan">‹ Back</button>
+    <h1>Start from scratch</h1>
+    <p>Draw the floor plan as seen from above. Corners keep to a 100 mm grid and to right angles; sizes are in millimetres. When the shape is closed the walls rise from it.</p>
+  </header>
+  <app-plan-editor class="sd-plan sd-plan--full" [plan]="null" (drawn)="planDrawn($event)"></app-plan-editor>
 </div>
 
 <!-- The designer. -->
@@ -152,11 +176,12 @@
       <button type="button" class="sd-fold" (click)="togglePanel('left', false)" title="Hide this panel" aria-label="Hide the shape panel">‹</button>
       <section class="sd-sec sd-sec--shape" *ngIf="def">
         <h2>{{ def.label }}</h2>
+        <button type="button" class="sd-btn sd-plan-toggle" *ngIf="isFree" (click)="togglePlan()" [class.is-on]="planOpen" [attr.aria-pressed]="planOpen" data-action="plan">{{ planOpen ? 'Hide the plan' : 'Change the plan (corners, sides, open walls)' }}</button>
         <div class="sd-field" *ngFor="let p of visibleParams; trackBy: trackKey" [attr.data-param]="p.key">
           <label [attr.for]="'sd-' + p.key">{{ p.label }}</label>
           <ng-container [ngSwitch]="p.type">
             <div class="sd-seg" *ngSwitchCase="'choice'" role="group" [attr.aria-label]="p.label">
-              <button type="button" *ngFor="let o of p.options" [class.is-on]="params[p.key] === o.value" (click)="setParam(p, o.value, false)">{{ o.label }}</button>
+              <button type="button" *ngFor="let o of optionsOf(p)" [class.is-on]="params[p.key] === o.value" (click)="setParam(p, o.value, false)" [attr.data-option]="o.value">{{ o.label }}</button>
             </div>
             <ng-container *ngSwitchDefault>
               <div class="sd-number">
@@ -188,6 +213,7 @@
             </ng-container>
           </ng-container>
           <small *ngIf="p.hint">{{ p.hint }}</small>
+          <ng-container *ngIf="p.key === 'roof'"><small class="sd-why" *ngFor="let r of roofNotes" data-roof="not-offered">{{ r }}</small></ng-container>
         </div>
 
         <h3>Profile colour</h3>
@@ -220,7 +246,12 @@
       </div>
       <button type="button" class="sd-btn sd-unfold sd-unfold--left" (click)="togglePanel('left', true)" [attr.aria-expanded]="leftOpen">Shape ›</button>
       <button type="button" class="sd-btn sd-unfold sd-unfold--right" (click)="togglePanel('right', true)" [attr.aria-expanded]="rightOpen">‹ Selection and parts<i *ngIf="selectedFaces.length || selectedBar"></i></button>
+      <div class="sd-plan-dock" *ngIf="isFree && planOpen && planPts">
+        <header><strong>Plan</strong><span class="sd-muted sd-small">seen from above · the 3D view follows</span><span class="sd-spacer"></span><button type="button" class="sd-btn" (click)="togglePlan()" aria-label="Hide the plan">Hide</button></header>
+        <app-plan-editor class="sd-plan" [plan]="planPts" [walls]="$any(params['walls'])" (preview)="planPreview($event)" (changed)="planChanged($event)"></app-plan-editor>
+      </div>
       <div class="sd-views">
+        <button type="button" class="sd-btn" *ngIf="isFree" [class.is-on]="planOpen" (click)="togglePlan()" [attr.aria-pressed]="planOpen" data-view="plan">Plan</button>
         <div class="sd-seg" role="group" aria-label="View">
           <button type="button" *ngFor="let v of views" (click)="setView(v.key)" [attr.data-view]="v.key">{{ v.label }}</button>
         </div>

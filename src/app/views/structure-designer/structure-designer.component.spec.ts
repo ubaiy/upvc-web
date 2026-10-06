@@ -56,7 +56,7 @@ describe('StructureDesignerComponent', () => {
   it('starts with a card for every structure type', async () => {
     await make();
     const cards = Array.from(el.querySelectorAll<HTMLElement>('.sd-card'));
-    expect(cards.map((b) => b.dataset['kind'])).toEqual(['dome', 'cabin', 'bay', 'pyramid', 'lean-to', 'gable']);
+    expect(cards.map((b) => b.dataset['kind'])).toEqual(['free', 'dome', 'cabin', 'bay', 'pyramid', 'lean-to', 'gable']);
     expect(el.querySelector('.sd--design')).toBeNull();
   });
 
@@ -491,6 +491,6 @@ describe('StructureDesignerComponent', () => {
       c.close();
       fixture.detectChanges();
     }
-    expect(el.querySelectorAll('.sd-card').length).toBe(6);
+    expect(el.querySelectorAll('.sd-card').length).toBe(7);
   });
 });
