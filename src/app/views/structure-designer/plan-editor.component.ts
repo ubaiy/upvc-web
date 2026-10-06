@@ -66,7 +66,7 @@ const STATE_LABEL: Record<string, string> = { w: 'Wall', o: 'Open side', h: 'Aga
       <span class="pe-spacer"></span>
       <label class="pe-len" *ngIf="draft.length">
         <span>Length of this side</span>
-        <input type="number" inputmode="numeric" [min]="minSide" [max]="maxSide" step="10" [(ngModel)]="typed" (keydown.enter)="addTyped()" placeholder="mm" data-plan="typed" aria-label="Length of the side being drawn, in mm" />
+        <input type="number" inputmode="numeric" [min]="minSide" [max]="maxSide" step="10" [(ngModel)]="typed" (keydown.enter)="addTyped()" placeholder="mm" #typedInput data-plan="typed" aria-label="Length of the side being drawn, in mm" />
         <span class="pe-unit">mm</span>
         <button type="button" class="pe-btn" (click)="addTyped()" [disabled]="!typed">Add</button>
       </label>
@@ -88,8 +88,8 @@ const STATE_LABEL: Record<string, string> = { w: 'Wall', o: 'Open side', h: 'Aga
         <pattern id="pe-minor" [attr.width]="grid" [attr.height]="grid" patternUnits="userSpaceOnUse"><path [attr.d]="'M ' + grid + ' 0 L 0 0 0 ' + grid" fill="none" class="pe-grid-minor" [attr.stroke-width]="u * 0.08" /></pattern>
         <pattern id="pe-major" [attr.width]="grid * 10" [attr.height]="grid * 10" patternUnits="userSpaceOnUse"><rect [attr.width]="grid * 10" [attr.height]="grid * 10" fill="url(#pe-minor)" /><path [attr.d]="'M ' + grid * 10 + ' 0 L 0 0 0 ' + grid * 10" fill="none" class="pe-grid-major" [attr.stroke-width]="u * 0.16" /></pattern>
       </defs>
-      <rect [attr.x]="box.x" [attr.y]="box.y" [attr.width]="box.w" [attr.height]="box.h" fill="url(#pe-major)" />
-      <text class="pe-front" [attr.x]="box.x + box.w / 2" [attr.y]="box.y + box.h - u * 1.2" [attr.font-size]="u * 2.2" text-anchor="middle">FRONT · one square = 1 m</text>
+      <rect [attr.x]="box.x - box.w" [attr.y]="box.y - box.h" [attr.width]="box.w * 3" [attr.height]="box.h * 3" fill="url(#pe-major)" />
+      <text class="pe-front" [attr.x]="box.x + box.w / 2" [attr.y]="box.y + box.h - u * 0.9" [attr.font-size]="u * 1.7" text-anchor="middle">FRONT · one square = 1 m</text>
 
       <!-- A closed plan. -->
       <ng-container *ngIf="shown as pts">
@@ -151,25 +151,25 @@ const STATE_LABEL: Record<string, string> = { w: 'Wall', o: 'Open side', h: 'Aga
       .pe-btn { height: 32px; padding: 0 12px; border: 1px solid #c3ccd6; border-radius: 6px; background: #fff; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
       .pe-btn:hover:not(:disabled) { background: #f1f5f9; }
       .pe-btn:disabled { opacity: 0.5; cursor: default; }
-      .pe-btn--primary { background: #1f4f82; border-color: #1f4f82; color: #fff; }
-      .pe-btn--primary:hover:not(:disabled) { background: #173e68; }
+      .pe-btn--primary { background: var(--sd-accent, #1f4f82); border-color: var(--sd-accent, #1f4f82); color: #fff; }
+      .pe-btn--primary:hover:not(:disabled) { filter: brightness(0.92); }
       .pe-seg { display: inline-flex; border: 1px solid #c3ccd6; border-radius: 6px; overflow: hidden; }
       .pe-seg button { height: 30px; padding: 0 10px; border: 0; border-right: 1px solid #c3ccd6; background: #fff; color: inherit; font: inherit; cursor: pointer; }
       .pe-seg button:last-child { border-right: 0; }
-      .pe-seg button.is-on { background: #1f4f82; color: #fff; }
+      .pe-seg button.is-on { background: var(--sd-accent, #1f4f82); color: #fff; }
       .pe-btn:focus-visible, .pe-seg button:focus-visible, .pe-len input:focus-visible, .pe-round input:focus-visible { outline: 2px solid #2f7cc8; outline-offset: 1px; }
       .pe-muted { color: #5c6875; }
       .pe-len, .pe-round { display: inline-flex; align-items: center; gap: 6px; }
       .pe-len input, .pe-round input { width: 84px; height: 32px; padding: 0 8px; border: 1px solid #c3ccd6; border-radius: 6px; font: inherit; background: #fff; color: inherit; }
       .pe-round input { width: 68px; }
       .pe-unit { color: #5c6875; font-size: 12px; }
-      .pe-svg { flex: 1; min-height: 220px; width: 100%; background: #fbfcfd; border: 1px solid #d5dce4; border-radius: 8px; touch-action: none; user-select: none; }
+      .pe-svg { flex: 1 1 0; min-height: 200px; height: 0; width: 100%; background: #fbfcfd; border: 1px solid #d5dce4; border-radius: 8px; touch-action: none; user-select: none; }
       .pe-svg.is-drawing { cursor: crosshair; }
       .pe-grid-minor { stroke: #e3e8ee; }
       .pe-grid-major { stroke: #c4ced9; }
       .pe-front { fill: #8894a1; letter-spacing: 0.08em; }
-      .pe-floor { fill: rgba(47, 124, 200, 0.1); stroke: none; }
-      .pe-side { stroke: #1f4f82; stroke-linecap: round; pointer-events: none; }
+      .pe-floor { fill: var(--sd-accent, #1f4f82); fill-opacity: 0.1; stroke: none; }
+      .pe-side { stroke: var(--sd-accent, #1f4f82); stroke-linecap: round; pointer-events: none; }
       .pe-side.is-open { stroke: #6f8fb0; stroke-dasharray: 2 3; stroke-dashoffset: 0; vector-effect: none; }
       .pe-side.is-house { stroke: #7a5a2b; }
       .pe-side.is-on { stroke: #e07a10; }
@@ -177,8 +177,8 @@ const STATE_LABEL: Record<string, string> = { w: 'Wall', o: 'Open side', h: 'Aga
       .pe-hit { stroke: transparent; cursor: move; }
       .pe-size { fill: #1c2430; paint-order: stroke; stroke: #fbfcfd; stroke-width: 0.35em; stroke-linejoin: round; pointer-events: none; font-weight: 600; }
       .pe-no { fill: #5c6875; font-weight: 400; }
-      .pe-size--live { fill: #1f4f82; }
-      .pe-corner { fill: #fff; stroke: #1f4f82; cursor: grab; }
+      .pe-size--live { fill: var(--sd-accent, #1f4f82); }
+      .pe-corner { fill: #fff; stroke: var(--sd-accent, #1f4f82); cursor: grab; }
       .pe-corner.is-first { fill: #dff0e3; stroke: #1f8a3b; }
       .pe-corner.is-on { fill: #e07a10; stroke: #8a4a05; }
       .pe-rubber { stroke: #2f7cc8; stroke-dasharray: 3 2; pointer-events: none; }
@@ -225,6 +225,7 @@ export class PlanEditorComponent implements OnChanges {
   private noteTimer = 0;
 
   @ViewChild('svg', { static: true }) private svg!: ElementRef<SVGSVGElement>;
+  @ViewChild('typedInput') private typedInput?: ElementRef<HTMLInputElement>;
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
@@ -234,9 +235,18 @@ export class PlanEditorComponent implements OnChanges {
     this.fitView();
   }
 
-  /** One hundredth of the width of the view, mm: the unit of line widths and letters. */
+  /** About 6 px of the screen, in mm of the plan: the unit of line widths and letters, whatever the size of the view. */
   get u(): number {
-    return this.box.w / 100;
+    const el = this.svg?.nativeElement;
+    const w = el?.clientWidth ?? 0;
+    const h = el?.clientHeight ?? 0;
+    if (!w || !h) return this.box.w / 100;
+    return Math.max(this.box.w / w, this.box.h / h) * 6;
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.cdr.markForCheck();
   }
 
   get viewBox(): string {
@@ -258,7 +268,7 @@ export class PlanEditorComponent implements OnChanges {
 
   get drawHint(): string {
     if (!this.draft.length) return 'Click where the first corner goes.';
-    if (this.draft.length < 3) return 'Click the next corner, or type the length of the side and press Enter.';
+    if (this.draft.length < 3) return 'Click the next corner, or point the way, type the length and press Enter.';
     return 'Click the next corner, or the green first corner to close the shape.';
   }
 
@@ -306,10 +316,10 @@ export class PlanEditorComponent implements OnChanges {
     this.cdr.markForCheck();
   }
 
+  /** The pointer left the plot (to type a length, say): the side being drawn stays as it was aimed. */
   onLeave(): void {
-    if (this.plan) return;
+    if (this.plan || this.draft.length) return;
     this.cursor = null;
-    this.badSide = -1;
     this.cdr.markForCheck();
   }
 
@@ -355,6 +365,7 @@ export class PlanEditorComponent implements OnChanges {
     const point = pointAtLength(this.last, towards, length);
     this.place({ point, kind: 'grid' });
     this.cursor = null;
+    this.typedInput?.nativeElement.blur();
   }
 
   undoCorner(): void {
@@ -401,6 +412,11 @@ export class PlanEditorComponent implements OnChanges {
   @HostListener('document:keydown', ['$event'])
   onKey(e: KeyboardEvent): void {
     if (this.plan || !this.draft.length || (e.target as HTMLElement | null)?.closest('input, textarea, select')) return;
+    // A figure typed over the plot is the length of the side being drawn.
+    if (/^[0-9]$/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+      this.typedInput?.nativeElement.focus();
+      return;
+    }
     if (e.key === 'Backspace' || ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z')) {
       e.preventDefault();
       e.stopPropagation();

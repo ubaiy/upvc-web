@@ -100,6 +100,8 @@ const LINE_PICTURE_MAX = 1_900_000;
 const OVERLAY_FROM_PX = 1100;
 /** From this width both panels start open. */
 const OPEN_FROM_PX = 1200;
+/** What the plan of a from-scratch structure covers beside the left panel, CSS px (.sd-plan-dock). */
+const PLAN_DOCK = 452;
 /** What an open panel and the toolbars cover of the 3D view, CSS px (structure-designer.component.scss). */
 const COVER = { left: 268, right: 324, top: 56, bottom: 30 };
 
@@ -270,7 +272,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   private pushInsets(refit: boolean): void {
     const wide = window.innerWidth >= OVERLAY_FROM_PX;
     const insets: ViewInsets = {
-      left: wide && this.leftOpen ? COVER.left : 0,
+      left: (wide && this.leftOpen ? COVER.left : 0) + (wide && this.planOpen && this.isFree ? PLAN_DOCK : 0),
       right: wide && this.rightOpen ? COVER.right : 0,
       top: COVER.top,
       bottom: wide ? COVER.bottom : 0,
@@ -335,8 +337,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   planDrawn(plan: Pt[]): void {
     this.drawing = false;
     this.open(createStructure(FREE.kind, { plan: formatPlan(plan) }), null);
-    this.planOpen = true;
-    this.cdr.markForCheck();
+    this.togglePlan();
   }
 
   /** A corner or a side is being dragged in the plan: the 3D view follows. */
@@ -353,8 +354,11 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     return this.def?.kind === FREE.kind;
   }
 
+  /** The plan lies over the left of the 3D view; the parts panel folds away to leave the structure room, and the view is fitted to what is free. */
   togglePlan(): void {
     this.planOpen = !this.planOpen;
+    if (this.planOpen && window.innerWidth < 1800) this.rightOpen = false;
+    this.pushInsets(true);
     this.cdr.markForCheck();
   }
 
@@ -638,6 +642,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     if (typeof value === 'number' && !Number.isFinite(value)) return;
     if (live) this.preview({ [spec.key]: value });
     else this.commit({ [spec.key]: value });
+    // Another roof is another outline: the whole of it is brought into view.
+    if (spec.key === 'roof') this.fit();
   }
 
   step(spec: ParamSpec, by: number): void {

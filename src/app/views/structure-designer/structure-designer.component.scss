@@ -1267,16 +1267,42 @@ button.sd-dim:hover {
 
 /* --- a structure drawn from nothing (T169) --- */
 .sd-cards--scratch {
-  grid-template-columns: minmax(0, 560px);
+  grid-template-columns: minmax(0, 1fr);
 }
 .sd-card--scratch {
-  border-color: #1f4f82;
-  box-shadow: 0 0 0 1px #1f4f82 inset;
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  column-gap: 4px;
+  padding: 0;
+  border-color: var(--sd-accent);
+  box-shadow: 0 0 0 1px var(--sd-accent) inset;
+  color: inherit;
+}
+.sd-card--scratch .sd-card__picture {
+  grid-row: 1 / 3;
+  border-bottom: 0;
+  border-right: 1px solid var(--sd-border);
+  color: var(--sd-accent);
 }
 .sd-card--scratch .sd-card__picture svg {
   display: block;
   width: 100%;
   height: 100%;
+}
+.sd-card--scratch .sd-card__name {
+  align-self: end;
+  padding-top: 18px;
+  font-size: 18px;
+}
+.sd-card--scratch .sd-card__blurb {
+  padding-bottom: 18px;
+  font-size: 15px;
+}
+@media (max-width: 560px) {
+  .sd-card--scratch {
+    grid-template-columns: 110px minmax(0, 1fr);
+  }
 }
 .sd-cards__title {
   margin: 20px 0 8px;
@@ -1287,7 +1313,6 @@ button.sd-dim:hover {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: calc(100vh - 120px);
   padding: 16px;
 }
 .sd-plan {
@@ -1295,7 +1320,9 @@ button.sd-dim:hover {
   min-height: 0;
 }
 .sd-plan--full {
-  min-height: 480px;
+  flex: none;
+  height: calc(100vh - 250px);
+  min-height: 420px;
 }
 .sd-plan-dock {
   position: absolute;
@@ -1305,8 +1332,8 @@ button.sd-dim:hover {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: min(520px, calc(100% - 24px));
-  height: min(470px, calc(100% - 120px));
+  width: min(440px, calc(100% - 24px));
+  height: min(520px, calc(100% - 110px));
   padding: 10px;
   border: 1px solid #c9d2dc;
   border-radius: 10px;
@@ -1320,7 +1347,7 @@ button.sd-dim:hover {
 }
 .is-left-open .sd-plan-dock {
   left: 280px;
-  width: min(520px, calc(100% - 292px));
+  width: min(440px, calc(100% - 292px));
 }
 .sd-plan-toggle {
   width: 100%;
