@@ -73,6 +73,7 @@ export class PricingSetupService {
         example: data?.example ?? null,
         roles: data?.roles ?? [],
         charged_by_hardware_set: data?.charged_by_hardware_set ?? {},
+        packs: data?.packs ?? [],
       }))
     );
   }
@@ -88,6 +89,11 @@ export class PricingSetupService {
 
   updateSystem(id: number, body: SystemBody): Observable<SystemRow> {
     return this.send<SystemDetail>('put', `pricing-setup/systems/${id}`, body, 'The profile system was not saved.').pipe(map((detail) => detail.system));
+  }
+
+  /** POST pricing-setup/packs: one ready system of the starter pack, with its profiles, roles, rules and the hardware sets of its kind. */
+  addPack(pack: string): Observable<SystemDetail> {
+    return this.send<SystemDetail>('post', 'pricing-setup/packs', { pack }, 'The system was not added.');
   }
 
   /** POST pricing-setup/systems/{id}/copy: a new system with the profiles (under new codes), roles and rules of the first. */
@@ -248,5 +254,6 @@ export function toFigures(data: Figures): Figures {
     missing: data?.missing ?? [],
     glass: data?.glass ?? [],
     colours: data?.colours ?? [],
+    profiles: data?.profiles ?? [],
   };
 }

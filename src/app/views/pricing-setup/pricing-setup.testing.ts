@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Type } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterTestingModule } from '@angular/router/testing';
 import { Observable, firstValueFrom, of, throwError } from 'rxjs';
 
@@ -82,7 +83,7 @@ export async function mount<T>(component: Type<T>, api: FakeApi, inputs: Partial
   api.me = api.me ?? meOf(abilities);
   const toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError', 'showInfo', 'showWarn']);
   TestBed.configureTestingModule({
-    imports: [component, RouterTestingModule],
+    imports: [component, RouterTestingModule, NoopAnimationsModule],
     providers: [
       { provide: ApiHttpService, useValue: api },
       { provide: AuthService, useValue: { getToken: () => 'token-1' } },
@@ -160,6 +161,7 @@ export function checklist(over: Partial<Checklist> = {}): Checklist {
     example: null,
     roles: [],
     charged_by_hardware_set: {},
+    packs: [],
     ...over,
   };
 }
@@ -216,6 +218,7 @@ export function figures(over: Partial<Figures> = {}): Figures {
     ],
     glass: [{ id: 2, name: '5mm plain glass', rate: 72, unit: 'Sq M', glass_mm: null }],
     colours: [{ id: 1, name: 'Default', rate_kg: 210 }],
+    profiles: [],
     ...over,
   };
 }

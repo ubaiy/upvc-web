@@ -64,4 +64,29 @@ describe('CatalogueAdapter', () => {
     expect(call.request.body).toEqual({ mode: 'percent', category: 'all', dry_run: true, percent: 5 });
     call.flush({ success: true, data: { count: 0, rows: [] } });
   });
+
+  it('a profile is saved with its profile system, how it is bought and its bar only when the row carries them (T187)', () => {
+    const row = { id: 26, category: 'Casement', profile_code: 'A', profile_name: 'Frame', kg_meter: 1, kg_meter_color: 1, rate_meter: 0, rate_bar: 0, rate_meter_color: 0, rate_bar_color: 0 };
+    adapter.saveProfile(row as any).subscribe();
+    const plain = http.expectOne(`${API}/product/update/26`);
+    expect(Object.keys(plain.request.body)).not.toContain('profile_system_id');
+    plain.flush({ success: true, data: row });
+
+    adapter.saveProfile({ ...row, profile_system_id: 4, charge_basis: undefined, bar_length_mm: 5800 } as any).subscribe();
+    const placed = http.expectOne(`${API}/product/update/26`);
+    expect(placed.request.body).toEqual(jasmine.objectContaining({ profile_system_id: 4, charge_basis: null, bar_length_mm: 5800 }));
+    placed.flush({ success: true, data: row });
+  });
+
+  it('offers the profile systems in use, and reads one profile with empty colour figures as the list shows them', () => {
+    let systems: unknown;
+    adapter.systems().subscribe((rows) => (systems = rows.map((r) => r.name)));
+    http.expectOne(`${API}/profile-system/list`).flush({ success: true, data: [{ id: 4, name: 'Alpha 60', retired_at: null }, { id: 9, name: 'Old 50', retired_at: '2026-10-01 10:00:00' }] });
+    expect(systems).toEqual(['Alpha 60']);
+
+    let profile: any;
+    adapter.profile(31).subscribe((row) => (profile = row));
+    http.expectOne(`${API}/product/31`).flush({ success: true, data: { id: 31, kg_meter: '1.043', kg_meter_color: null, rate_meter: '0', rate_bar: '0', rate_meter_color: null, rate_bar_color: null } });
+    expect([profile.kg_meter, profile.kg_meter_color, profile.rate_meter_color]).toEqual([1.043, 1.043, 0]);
+  });
 });

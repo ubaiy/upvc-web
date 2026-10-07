@@ -50,6 +50,10 @@ export interface ProfileRow extends ProfileRates {
   profile_depth_mm?: number | null;
   rebate_mm?: number | null;
   sightline_mm?: number | null;
+  /** For the new pricing (bill of materials): the system the profile is a part of, how it is bought, its bar. */
+  profile_system_id?: number | null;
+  charge_basis?: 'per_kg' | 'per_m' | null;
+  bar_length_mm?: number | null;
   updated_at?: string;
 }
 
@@ -93,6 +97,14 @@ export const PROFILE_ROLES: { value: string; label: string }[] = [
   { value: 'threshold', label: 'Threshold' },
   { value: 'door_sash_in', label: 'Door sash, opening in' },
   { value: 'door_sash_out', label: 'Door sash, opening out' },
+  // The other parts of a profile system (Pricing setup).
+  { value: 'centre_adaptor', label: 'Centre adaptor' },
+  { value: 'mesh_sash', label: 'Fly-mesh sash' },
+  { value: 'frame_reinforcement', label: 'Steel for the frame' },
+  { value: 'sash_reinforcement', label: 'Steel for the sash' },
+  { value: 'shutter_reinforcement', label: 'Steel for the sliding sash' },
+  { value: 'mullion_reinforcement', label: 'Steel for the mullion' },
+  { value: 'transom_reinforcement', label: 'Steel for the transom' },
 ];
 
 const SPELLING: [RegExp, string][] = [

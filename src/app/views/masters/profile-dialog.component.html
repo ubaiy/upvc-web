@@ -122,6 +122,45 @@
       </div>
     </details>
 
+    <details class="span-2 sizes" [attr.open]="hasNewPricing ? '' : null" data-profile="new-pricing">
+      <summary>For the new pricing (bill of materials)</summary>
+      <p class="hint">The part it plays is "Used as" above, and its weight is the weight above. One part of a system has one profile.</p>
+      <div class="form-grid">
+        <div class="field">
+          <label class="label" for="pf-system">Profile system</label>
+          <select class="select" id="pf-system" formControlName="profile_system_id">
+            <option value="">None</option>
+            <option *ngFor="let system of systems" [value]="system.id">{{ system.name }}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label class="label" for="pf-basis">Bought</label>
+          <select class="select" id="pf-basis" formControlName="charge_basis">
+            <option value="">At the company's rate per kg</option>
+            <option value="per_kg">Per kg</option>
+            <option value="per_m">Per metre, at its own rate</option>
+          </select>
+        </div>
+        <div class="field" *ngIf="form.value.charge_basis === 'per_m'">
+          <label class="label" for="pf-own-rate">Rate per metre</label>
+          <div class="input-group" [class.is-invalid]="bad('own_rate_meter')">
+            <span class="unit">₹</span>
+            <input id="pf-own-rate" class="num" inputmode="decimal" autocomplete="off" formControlName="own_rate_meter" />
+            <span class="unit">per m</span>
+          </div>
+          <span class="error" *ngIf="bad('own_rate_meter')">Enter an amount, for example 210.</span>
+        </div>
+        <div class="field">
+          <label class="label" for="pf-bar">Bar length</label>
+          <div class="input-group" [class.is-invalid]="bad('bar_length_mm')">
+            <input id="pf-bar" class="num" inputmode="numeric" autocomplete="off" formControlName="bar_length_mm" placeholder="5800" />
+            <span class="unit">mm</span>
+          </div>
+          <span class="error" *ngIf="bad('bar_length_mm')">A whole number of mm from 500 to 20000.</span>
+        </div>
+      </div>
+    </details>
+
     <app-callout class="span-2" tone="danger" *ngIf="error" role="alert">{{ error }}</app-callout>
   </form>
 

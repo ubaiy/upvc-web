@@ -71,6 +71,8 @@ export class CatalogueComponent implements OnInit, OnDestroy {
   glass: ItemRow[] = [];
   hardware: ItemRow[] = [];
   factors: PriceFactors | null = null;
+  /** The profile systems a profile can be a part of (the form of a profile). */
+  systems: { id: number; name: string }[] = [];
   units: string[] = [];
 
   /** Search text and the second filter (category or group), kept per tab. */
@@ -141,6 +143,7 @@ export class CatalogueComponent implements OnInit, OnDestroy {
     const fail = () => (this.state[source] = 'error');
     if (source === 'profiles') {
       this.adapter.factors().subscribe({ next: (f) => (this.factors = f), error: () => (this.factors = null) });
+      this.adapter.systems().subscribe({ next: (rows) => (this.systems = rows), error: () => (this.systems = []) });
       this.adapter.profiles().subscribe({
         next: (rows) => {
           this.profiles = rows;

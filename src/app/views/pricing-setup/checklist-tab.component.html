@@ -74,23 +74,22 @@
       <div class="card-head card-pad">
         <div>
           <h2 id="h-check-systems">Profile systems</h2>
-          <p>A system is ready when its profiles have their roles, weights and rates, its kind has a default hardware set, and the trial windows are priced.</p>
+          <p>The systems you use, one line each: open a line to see what it still needs. A retired system is not listed.</p>
         </div>
         <a class="btn btn-secondary btn-sm" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems' }">All systems</a>
       </div>
 
-      <app-empty-state *ngIf="!l.systems.length" icon="layers" title="No profile system yet" text="Add your first system and give its profiles their roles.">
+      <app-empty-state *ngIf="!inUse.length" icon="layers" title="No profile system yet" text="Add your first system and give its profiles their roles.">
         <a class="btn btn-primary" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems' }">Add a profile system</a>
       </app-empty-state>
 
-      <div class="card-pad stack-4" *ngFor="let s of l.systems; trackBy: trackSystem" [attr.data-system]="s.name">
-        <div class="head-actions">
-          <a class="title" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems', system: s.id }"><strong>{{ s.name }}</strong></a>
-          <span class="badge plain">{{ s.category }}</span>
-          <span class="badge" *ngIf="s.retired">Retired</span>
-          <span class="badge" *ngIf="!s.retired" [ngClass]="s.ready ? 'badge-success' : 'badge-warning'">{{ s.ready ? 'Ready' : 'Not ready' }}</span>
-          <span class="small" *ngIf="s.hardware_set">Hardware set: {{ s.hardware_set.code }}</span>
-        </div>
+      <details class="card-pad" *ngFor="let s of inUse; trackBy: trackSystem" [attr.data-system]="s.name">
+        <summary>
+          <a class="title" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems', system: s.id }"><strong>{{ s.name }}</strong></a>:
+          <span class="badge" [ngClass]="s.ready ? 'badge-success' : 'badge-warning'">{{ s.ready ? 'Ready' : s.missing.length ? s.missing.length + (s.missing.length === 1 ? ' thing missing' : ' things missing') : 'Not ready' }}</span>
+        </summary>
+        <p class="small" *ngIf="!s.ready && !s.missing.length">Nothing is missing in the system itself: the company's figures above are not complete.</p>
+        <p class="small" *ngIf="s.hardware_set">{{ s.category }}. Hardware set: {{ s.hardware_set.code }}</p>
         <ul class="todo" *ngIf="s.missing.length">
           <li *ngFor="let m of s.missing">
             <app-icon class="mark" name="circle-alert"></app-icon>
@@ -107,7 +106,7 @@
             <span *ngIf="!t.priced">Trial: {{ t.window }} is not priced: {{ t.reason }}</span>
           </li>
         </ul>
-      </div>
+      </details>
     </section>
 
     <section class="card" *ngIf="l.example as ex" aria-labelledby="h-example" data-setup="example-values">
@@ -120,7 +119,9 @@
           </p>
         </div>
       </div>
-      <div class="table-wrap">
+      <details class="card-pad">
+        <summary>Show the {{ ex.to_confirm.length }} values</summary>
+        <div class="table-wrap">
         <table class="table">
           <thead>
             <tr><th>Value</th><th>Figure</th><th>How sure</th><th>Source</th></tr>
@@ -141,7 +142,8 @@
             </tr>
           </tbody>
         </table>
-      </div>
+        </div>
+      </details>
     </section>
   </ng-container>
 </div>

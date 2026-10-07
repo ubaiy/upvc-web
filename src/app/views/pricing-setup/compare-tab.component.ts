@@ -4,8 +4,11 @@ import { RouterModule } from '@angular/router';
 
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { InrPipe } from 'src/app/shared/pipes/inr.pipe';
+import { BomShortComponent } from './bom-short.component';
 import { ComparedWindow, Comparison, SystemSummary } from './pricing-setup.models';
 import { PricingSetupService } from './pricing-setup.service';
+
+export { roleWords } from './bom-short.component';
 
 /** The words of the link beside a window the bill of materials cannot price. */
 export function fixWords(place: Record<string, string | number>): string {
@@ -13,11 +16,6 @@ export function fixWords(place: Record<string, string | number>): string {
   if (place['tab'] === 'hardware') return 'Open Hardware sets';
   if (place['role']) return 'Give the profile';
   return place['system'] ? 'Open the system' : 'Open Profile systems';
-}
-
-/** "frame", "sash + mesh sash": the role codes of a row as words. */
-export function roleWords(role: string): string {
-  return role.replace(/_/g, ' ').replace(/\+/g, ' + ');
 }
 
 /**
@@ -30,7 +28,7 @@ export function roleWords(role: string): string {
 @Component({
   selector: 'app-setup-compare',
   standalone: true,
-  imports: [CommonModule, RouterModule, SharedComponentsModule, InrPipe],
+  imports: [CommonModule, RouterModule, SharedComponentsModule, InrPipe, BomShortComponent],
   templateUrl: './compare-tab.component.html',
   styleUrls: ['./setup.scss'],
 })
@@ -45,7 +43,6 @@ export class CompareTabComponent implements OnInit {
   asSystem: number | null = null;
 
   fix = fixWords;
-  role = roleWords;
 
   constructor(private setup: PricingSetupService) {}
 

@@ -44,12 +44,13 @@ describe('CatalogueComponent', () => {
 
   beforeEach(async () => {
     adapter = jasmine.createSpyObj<CatalogueAdapter>('CatalogueAdapter', [
-      'profiles', 'colours', 'items', 'factors', 'units', 'saveProfile', 'saveItem', 'deleteColour', 'deleteProfile', 'deleteItem', 'message',
+      'profiles', 'colours', 'items', 'factors', 'systems', 'units', 'saveProfile', 'saveItem', 'deleteColour', 'deleteProfile', 'deleteItem', 'message',
     ]);
     adapter.profiles.and.callFake(() => of(PROFILES.map((p) => ({ ...p }))));
     adapter.colours.and.returnValue(of(COLOURS));
     adapter.items.and.callFake(() => of(ITEMS.map((i) => ({ ...i }))));
     adapter.factors.and.returnValue(of(FACTORS));
+    adapter.systems.and.returnValue(of([{ id: 4, name: 'Alpha 60' }]));
     adapter.units.and.returnValue(of(['Sq M', 'Unit', 'Meter']));
     adapter.message.and.callFake((_err: unknown, fallback?: string) => fallback ?? 'failed');
     params = new BehaviorSubject(convertToParamMap({ tab: 'profile' }));

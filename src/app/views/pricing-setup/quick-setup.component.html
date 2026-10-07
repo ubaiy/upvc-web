@@ -1,0 +1,207 @@
+<div class="setup-col stack-6">
+  <div class="card card-pad sk-card" *ngIf="state === 'loading'" aria-busy="true" aria-label="Loading the quick setup">
+    <span class="skeleton" style="width: 30%"></span>
+    <span class="skeleton" style="width: 100%"></span>
+    <span class="skeleton" style="width: 65%"></span>
+  </div>
+
+  <app-callout tone="warn" *ngIf="state === 'error'">
+    We could not load the quick setup. {{ loadError }}
+    <button action type="button" class="btn btn-secondary btn-sm" (click)="load()">Try again</button>
+  </app-callout>
+
+  <ng-container *ngIf="state === 'ready' && list as l">
+    <section class="card" aria-labelledby="h-quick-a" data-setup="quick-systems">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-quick-a">1. Which systems do you sell?</h2>
+          <p>Tick what you make. A ready system comes with its profiles, weights, cutting rules and hardware set: example values you can change later.</p>
+        </div>
+        <span class="badge" [ngClass]="l.ready ? 'badge-success' : 'badge-warning'" data-setup="ready">{{ l.ready ? 'Ready to price' : 'Not ready yet' }}</span>
+      </div>
+      <ul class="pick card-pad">
+        <li *ngFor="let c of choices; trackBy: trackChoice" [attr.data-choice]="c.note">
+          <label class="check">
+            <input appWrite="settings.write" type="checkbox" [checked]="inUse(c)" [disabled]="!!ticking" (change)="tick(c, $any($event.target).checked)" />
+            <span><strong>{{ c.name }}</strong><span class="small" *ngIf="c.note !== c.name"> ({{ c.note }})</span></span>
+          </label>
+          <span class="small" *ngIf="ticking === c.name">Working…</span>
+          <ng-container *ngIf="inUse(c) && c.system as s">
+            <span class="badge badge-success" *ngIf="s.ready">Ready</span>
+            <span class="small" *ngIf="!s.ready && !s.missing.length">Waiting for your rates (step 2)</span>
+            <details *ngIf="s.missing.length">
+              <summary>{{ s.missing.length }} {{ s.missing.length === 1 ? 'thing' : 'things' }} missing</summary>
+              <ul class="todo">
+                <li *ngFor="let m of s.missing">
+                  <app-icon class="mark" name="circle-alert"></app-icon>
+                  <span>{{ m.text }} <a routerLink="/pricing-setup" [queryParams]="place(m, s.id)">{{ fix(m, s.id) }}</a></span>
+                </li>
+              </ul>
+            </details>
+            <a class="small" routerLink="/pricing-setup" [queryParams]="{ tab: 'systems', system: s.id }">Open</a>
+          </ng-container>
+        </li>
+      </ul>
+      <p class="card-pad refusal" role="alert" *ngIf="tickError" data-setup="tick-error">{{ tickError }}</p>
+    </section>
+
+    <section class="card" aria-labelledby="h-quick-b" *ngIf="figures as f" data-setup="quick-rates">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-quick-b">2. Your rates</h2>
+          <p>What you pay. Every window is priced from these.</p>
+        </div>
+      </div>
+      <div class="card-pad" *ngIf="f.missing.length" data-setup="rates-missing">
+        <ul class="todo">
+          <li *ngFor="let m of f.missing"><app-icon class="mark" name="circle-alert"></app-icon><span>{{ m.text }}</span></li>
+        </ul>
+      </div>
+      <form (ngSubmit)="saveRates()" novalidate>
+        <div class="table-wrap">
+          <table class="table" data-setup="rates">
+            <tbody>
+              <tr *ngFor="let key of rateKeys" [attr.data-rate]="key">
+                <td><label [for]="'q-' + key">{{ label(key) }}</label> <span class="badge plain badge-warning" *ngIf="isExample('setting', key, f.settings[key])" data-mark="example">example</span></td>
+                <td class="num">
+                  <div class="input-group">
+                    <span class="unit">₹</span>
+                    <input [id]="'q-' + key" [name]="key" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="rates[key]" placeholder="Not set" />
+                    <span class="unit">{{ unit(key) }}</span>
+                  </div>
+                </td>
+                <td></td>
+              </tr>
+              <tr *ngFor="let g of glassShown" [attr.data-glass]="g.name">
+                <td><label [for]="'q-glass-' + g.id">Glass: {{ g.name }}</label> <span class="badge plain badge-warning" *ngIf="isExample('glass_rate', g.name, g.rate)" data-mark="example">example</span></td>
+                <td class="num">
+                  <div class="input-group">
+                    <span class="unit">₹</span>
+                    <input [id]="'q-glass-' + g.id" [name]="'glass-' + g.id" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="glass[g.id].rate" />
+                    <span class="unit">per {{ g.unit | lowercase }}</span>
+                  </div>
+                </td>
+                <td class="num">
+                  <div class="input-group">
+                    <input [name]="'mm-' + g.id" [attr.data-box]="'mm-' + g.id" type="number" min="0" step="0.1" inputmode="decimal" [(ngModel)]="glass[g.id].mm" [attr.aria-label]="'Thickness of ' + g.name" placeholder="Thickness" />
+                    <span class="unit">mm</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="card-pad" *ngFor="let s of sets" [attr.data-set]="s.code" (toggle)="opened(s, $event)">
+          <summary>
+            Hardware, {{ s.category }}: {{ s.name }}
+            <span class="small">counted per window by the set, priced item by item</span>
+            <span class="badge plain badge-warning" *ngIf="noPrice(s)" data-mark="no-price">{{ noPrice(s) }} without a price</span>
+          </summary>
+          <p class="small" *ngIf="!items[s.id]">Loading the items…</p>
+          <table class="table" *ngIf="items[s.id] as rows">
+            <tbody>
+              <tr *ngFor="let i of rows" [attr.data-item]="i.name">
+                <td>
+                  {{ i.name }} <span class="badge plain badge-warning" *ngIf="isExample('hardware_price', i.name, i.costhead?.cost)" data-mark="example">example</span>
+                  <div class="small">Quantity: {{ i.counted }}</div>
+                </td>
+                <td class="num">
+                  <div class="input-group" *ngIf="i.costhead as c; else untied" [class.is-invalid]="!c.cost">
+                    <span class="unit">₹</span>
+                    <input [name]="'item-' + s.id + '-' + c.id" [attr.data-box]="'item-' + s.id + '-' + c.id" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="prices[c.id]" [attr.aria-label]="'Price of ' + i.name" />
+                    <span class="unit">per {{ c.unit | lowercase }}</span>
+                  </div>
+                  <ng-template #untied><span class="refusal">Not in your catalogue</span></ng-template>
+                  <div class="refusal" *ngIf="i.costhead && !i.costhead.cost">No price yet</div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="small"><a routerLink="/pricing-setup" [queryParams]="{ tab: 'hardware', set: s.id }">The rules of the set</a> (which item, for which window, how many) are under Advanced.</p>
+        </details>
+
+        <details class="card-pad" *ngIf="glassFolded.length" data-setup="more-glass">
+          <summary>Other glass ({{ glassFolded.length }})</summary>
+          <table class="table">
+            <tbody>
+              <tr *ngFor="let g of glassFolded">
+                <td>{{ g.name }}</td>
+                <td class="num">
+                  <div class="input-group">
+                    <span class="unit">₹</span>
+                    <input [name]="'glass-' + g.id" [attr.data-box]="'glass-' + g.id" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="glass[g.id].rate" [attr.aria-label]="'Rate of ' + g.name" />
+                    <span class="unit">per {{ g.unit | lowercase }}</span>
+                  </div>
+                </td>
+                <td class="num">
+                  <div class="input-group">
+                    <input [name]="'mm-' + g.id" [attr.data-box]="'mm-' + g.id" type="number" min="0" step="0.1" inputmode="decimal" [(ngModel)]="glass[g.id].mm" [attr.aria-label]="'Thickness of ' + g.name" placeholder="Thickness" />
+                    <span class="unit">mm</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </details>
+
+        <details class="card-pad" *ngIf="f.profiles.length" data-setup="own-rates">
+          <summary>A profile at its own rate ({{ ownCount }} of {{ f.profiles.length }})</summary>
+          <p class="small">Leave a profile empty to buy it at your rate per kg. Type a rate per metre for one you buy by the metre.</p>
+          <table class="table">
+            <tbody>
+              <tr *ngFor="let p of f.profiles" [attr.data-profile]="p.profile_code">
+                <td>{{ p.profile_code }} <span class="small">{{ p.profile_name }}, {{ p.role_label }}, {{ p.kg_meter }} kg/m</span></td>
+                <td class="num">
+                  <div class="input-group">
+                    <span class="unit">₹</span>
+                    <input [name]="'own-' + p.id" [attr.data-box]="'own-' + p.id" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="own[p.id]" [attr.aria-label]="'Rate per metre of ' + p.profile_code" placeholder="Per kg" />
+                    <span class="unit">per m</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </details>
+
+        <div class="card-pad stack-4">
+          <p class="refusal" role="alert" *ngFor="let said of saveErrors" data-setup="rates-error">{{ said }}</p>
+          <div class="form-foot">
+            <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving" data-act="save-rates">{{ saving ? 'Saving…' : 'Save my rates' }}</button>
+            <span class="small">Wastage, overhead and glass rounding are under <a routerLink="/pricing-setup" [queryParams]="{ tab: 'figures' }">Advanced</a>.</span>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" aria-labelledby="h-quick-c" data-setup="quick-check">
+      <div class="card-head card-pad">
+        <div>
+          <h2 id="h-quick-c">3. Check a window</h2>
+          <p>Plain windows of your systems, priced from the rates above (cost, before margin and GST). Open one to see what it is made of.</p>
+        </div>
+      </div>
+      <div class="card-pad stack-4">
+        <p *ngIf="!trials.length" data-setup="no-trial">No window can be priced yet: finish steps 1 and 2.</p>
+        <details *ngFor="let t of trials" class="trial" [attr.data-trial]="t.trial.window">
+          <summary>
+            <app-icon class="mark" [class.ok]="t.trial.priced" [name]="t.trial.priced ? 'circle-check' : 'circle-x'"></app-icon>
+            {{ t.system }}: {{ t.trial.window }}
+            <ng-container *ngIf="t.trial.priced"> with {{ t.trial.glass }} costs <strong>{{ t.trial.cost | inr }}</strong></ng-container>
+            <ng-container *ngIf="!t.trial.priced"> is not priced: {{ t.trial.reason }}</ng-container>
+          </summary>
+          <app-setup-bom [bom]="t.trial.bom"></app-setup-bom>
+        </details>
+        <app-callout tone="warn" *ngIf="l.example as ex" data-setup="example">
+          <strong>These are example values.</strong> {{ ex.note }}
+          <app-own-rates action [primary]="true"></app-own-rates>
+        </app-callout>
+        <p class="small">
+          You price today by: <strong data-setup="method">{{ methodLabel }}</strong>.
+          <a routerLink="/pricing-setup" [queryParams]="{ tab: 'compare' }">Compare with my old prices</a> ·
+          <a routerLink="/pricing-setup" [queryParams]="{ tab: 'method' }">Pricing method</a>
+        </p>
+      </div>
+    </section>
+  </ng-container>
+</div>

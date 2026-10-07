@@ -35,6 +35,17 @@ export interface Trial {
   cost?: number;
   reason?: string;
   warnings?: string[];
+  /** The bill of materials of the trial in short (api T187). */
+  bom?: BomShort;
+}
+
+/** A ready system of the starter pack, and the company's system of that name when it has one (api T187). */
+export interface Pack {
+  pack: string;
+  what: string;
+  kind: string;
+  profiles: number;
+  system_id: number | null;
 }
 
 export interface SystemSummary {
@@ -102,6 +113,7 @@ export interface Checklist {
   example: ExamplePack | null;
   roles: RoleInfo[];
   charged_by_hardware_set: Record<string, string>;
+  packs: Pack[];
 }
 
 export interface RoleProfile {
@@ -232,12 +244,25 @@ export interface Figures {
   missing: Missing[];
   glass: GlassRow[];
   colours: ColourRow[];
+  /** The profiles that hold a role in a system in use (api T187). */
+  profiles: RateProfile[];
+}
+
+export interface RateProfile extends RoleProfile {
+  profile_system_id: number;
+  role: string;
+  role_label: string;
 }
 
 export interface FiguresBody {
   settings?: Record<string, SettingValue>;
-  glass?: { id: number; glass_mm: number | null }[];
+  /** `rate` alone leaves the thickness as it is. */
+  glass?: { id: number; glass_mm?: number | null; rate?: number }[];
   colours?: { id: number; rate_kg: number | null }[];
+  /** A profile at its own rate per metre; `charge_basis` null: the company's way again. */
+  profiles?: { id: number; charge_basis: 'per_m' | null; rate_meter?: number }[];
+  /** The price of a hardware item (a cost head that is not a glass). */
+  items?: { id: number; rate: number }[];
 }
 
 /** PUT pricing-setup/method. */
@@ -378,15 +403,17 @@ export interface ComparedPrice {
   /** Where a refusal is fixed: the query string of /pricing-setup; null when nothing there fixes it. */
   place?: Record<string, string | number> | null;
   /** The bill of materials of one window in short (the new method only). */
-  bom?: {
-    profiles: { role: string; code: string; name: string; metres: number; kg: number; amount: number }[];
-    glass: { name: string; qty: number; unit: string; amount: number }[];
-    hardware_set: SetRef | null;
-    hardware: { items: number; amount: number };
-    figures: Record<string, number | null>;
-    totals: { material: number; labour: number; overhead: number; installation: number; cost: number };
-    warnings: string[];
-  };
+  bom?: BomShort;
+}
+
+export interface BomShort {
+  profiles: { role: string; code: string; name: string; metres: number; kg: number; amount: number }[];
+  glass: { name: string; qty: number; unit: string; amount: number }[];
+  hardware_set: SetRef | null;
+  hardware: { items: number; amount: number };
+  figures: Record<string, number | null>;
+  totals: { material: number; labour: number; overhead: number; installation: number; cost: number };
+  warnings: string[];
 }
 
 export interface ComparedWindow {

@@ -32,6 +32,16 @@ export class CatalogueAdapter {
     );
   }
 
+  /** One profile as the catalogue holds it: what the form of a profile opens with (Pricing setup opens the same form). */
+  profile(id: number): Observable<ProfileRow> {
+    return this.read<ProfileRow>(`product/${id}`).pipe(map((row) => this.numbers(row)));
+  }
+
+  /** The profile systems of the company in use: a profile is a part of one, or of none. */
+  systems(): Observable<{ id: number; name: string }[]> {
+    return this.read<{ id: number; name: string; retired_at?: string | null }[]>('profile-system/list').pipe(map((rows) => (rows ?? []).filter((row) => !row.retired_at)));
+  }
+
   colours(): Observable<ColourRow[]> {
     return this.read<ColourRow[]>(API_END_POINT.profile_color.list);
   }
@@ -187,6 +197,8 @@ export class CatalogueAdapter {
       profile_depth_mm: profile.profile_depth_mm ?? null,
       rebate_mm: profile.rebate_mm ?? null,
       sightline_mm: profile.sightline_mm ?? null,
+      // For the new pricing. Sent only when the row carries them, so a caller that never read them cannot empty them.
+      ...Object.fromEntries((['profile_system_id', 'charge_basis', 'bar_length_mm'] as const).filter((key) => key in profile).map((key) => [key, profile[key] ?? null])),
     };
   }
 

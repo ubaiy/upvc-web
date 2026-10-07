@@ -172,6 +172,38 @@ tr.is-asked td {
   font-size: var(--fs-12);
 }
 
+// The rates of the quick setup: a box shows its whole figure, or "Not set".
+[data-setup='quick-rates'] .table .num {
+  width: 210px;
+}
+
+[data-setup='quick-rates'] .table .num .input-group {
+  min-width: 190px;
+}
+
+// The tick list of the quick setup: one line per system.
+.pick {
+  list-style: none;
+  margin: 0;
+  display: grid;
+  gap: var(--s-3);
+}
+
+.pick li {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+details > summary .mark {
+  vertical-align: text-bottom;
+}
+
+details[open] > summary {
+  margin-block-end: var(--s-3);
+}
+
 details > summary {
   cursor: pointer;
   font-weight: var(--fw-medium);

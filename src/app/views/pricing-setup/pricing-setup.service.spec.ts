@@ -132,7 +132,7 @@ describe('PricingSetupService (T182)', () => {
 
     api.answer = () => ok({});
     expect(await firstValueFrom(service.hardwareSets())).toEqual({ sets: [], packs: [], categories: [] });
-    expect(toFigures({} as any)).toEqual({ settings: {}, set_by_company: [], defaults: {}, labels: {}, missing: [], glass: [], colours: [] });
+    expect(toFigures({} as any)).toEqual({ settings: {}, set_by_company: [], defaults: {}, labels: {}, missing: [], glass: [], colours: [], profiles: [] });
 
     api.answer = () => ok('no list');
     expect(await firstValueFrom(service.products())).toEqual([]);

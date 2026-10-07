@@ -19,7 +19,7 @@
           <h2 id="h-system" data-setup="system-name">{{ d.system.name }}</h2>
           <p>
             {{ d.system.category }}<ng-container *ngIf="d.system.system_depth_mm">, {{ d.system.system_depth_mm }} mm deep</ng-container
-            ><ng-container *ngIf="d.system.series">, series {{ d.system.series }}</ng-container>. {{ filled }} of {{ d.roles.length }} roles have a profile.
+            ><ng-container *ngIf="d.system.series">, series {{ d.system.series }}</ng-container>. {{ filled }} of {{ d.roles.length }} parts have a profile.
             <ng-container *ngIf="d.hardware_set">Hardware set: {{ d.hardware_set.name }} ({{ d.hardware_set.code }}).</ng-container>
           </p>
           <p *ngIf="d.system.notes">{{ d.system.notes }}</p>
@@ -54,163 +54,94 @@
     <section class="card" aria-labelledby="h-roles">
       <div class="card-head card-pad">
         <div>
-          <h2 id="h-roles">Profiles, by the role each plays</h2>
+          <h2 id="h-roles">Profiles, by the part each plays</h2>
           <p>
-            One profile for each role. The weight is what a profile bought per kg is priced by; a profile bought per metre needs its rate per metre.
-            Steel and sashes always need a weight.
+            One profile of your catalogue for each part. A profile is entered and changed in one place, the
+            <a routerLink="/catalogue">Catalogue</a>: “New profile” and “Change” open its form.
           </p>
         </div>
       </div>
+
+      <ng-template #rows let-list>
+        <tr *ngFor="let r of list; trackBy: trackRole" [attr.data-role]="r.role" [class.is-asked]="r.role === role">
+          <td>
+            <strong>{{ r.label }}</strong>
+            <span class="badge plain badge-accent" *ngIf="r.required">Needed</span>
+            <div class="small" *ngIf="!r.profile && r.without_it">Without it: {{ r.without_it }}</div>
+          </td>
+          <td>
+            <ng-container *ngIf="r.profile as p; else none">
+              <span class="title">{{ p.profile_code }}</span>
+              <div class="small">{{ p.profile_name }}</div>
+            </ng-container>
+            <ng-template #none>
+              <select appWrite="settings.write" class="select" [attr.aria-label]="'A catalogue profile for ' + r.label" [disabled]="saving" (change)="$any($event.target).value && give(r, +$any($event.target).value)" data-act="pick">
+                <option value="">Pick a catalogue profile</option>
+                <option *ngFor="let p of free" [value]="p.id">{{ p.profile_code }}, {{ p.profile_name }}</option>
+              </select>
+            </ng-template>
+          </td>
+          <td class="right">{{ r.profile?.kg_meter ? r.profile?.kg_meter + ' kg/m' : '' }}</td>
+          <td>
+            <ng-container *ngIf="r.profile as p">{{ basisLabel(p.charge_basis) }}<ng-container *ngIf="p.charge_basis === 'per_m' && p.rate_meter">, {{ p.rate_meter | inr }} per m</ng-container></ng-container>
+          </td>
+          <td class="row-actions">
+            <ng-container *ngIf="r.profile; else addNew">
+              <button appWrite="settings.write" type="button" class="btn btn-sm btn-ghost" (click)="change(r)" data-act="change">Change</button>
+              <button appWrite="settings.write" type="button" class="btn btn-sm btn-ghost" [disabled]="saving" (click)="give(r, null)" data-act="take-out">Take out</button>
+            </ng-container>
+            <ng-template #addNew>
+              <button appWrite="settings.write" type="button" class="btn btn-sm btn-secondary" (click)="add(r)" data-act="new-profile">New profile</button>
+            </ng-template>
+          </td>
+        </tr>
+      </ng-template>
 
       <div class="table-wrap">
         <table class="table" data-setup="roles">
           <thead>
             <tr>
-              <th>Role</th>
+              <th>Part</th>
               <th>Profile</th>
               <th class="right">Weight</th>
               <th>Bought</th>
-              <th class="right">Rate per metre</th>
               <th class="actions-col"><span class="visually-hidden">Actions</span></th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let r of d.roles; trackBy: trackRole" [attr.data-role]="r.role" [class.is-asked]="r.role === role || form?.role?.role === r.role">
-              <td>
-                <strong>{{ r.label }}</strong>
-                <span class="badge plain badge-accent" *ngIf="r.required">Needed</span>
-                <div class="small" *ngIf="r.what">{{ r.what }}</div>
-                <div class="small" *ngIf="!r.profile && r.without_it">Without it: {{ r.without_it }}</div>
-              </td>
-              <td>
-                <ng-container *ngIf="r.profile as p; else none">
-                  <span class="title">{{ p.profile_code }}</span>
-                  <div class="small">{{ p.profile_name }}</div>
-                </ng-container>
-                <ng-template #none><span class="faint">No profile</span></ng-template>
-              </td>
-              <td class="right">{{ r.profile?.kg_meter ? r.profile?.kg_meter + ' kg/m' : '' }}</td>
-              <td>{{ r.profile ? basisLabel(r.profile.charge_basis) : '' }}</td>
-              <td class="right">{{ r.profile?.rate_meter ? (r.profile?.rate_meter | inr) : '' }}</td>
-              <td class="row-actions">
-                <button appWrite="settings.write" type="button" class="btn btn-sm" [ngClass]="r.profile ? 'btn-ghost' : 'btn-secondary'" (click)="open(r)" data-act="role">
-                  {{ r.profile ? 'Change' : 'Add profile' }}
-                </button>
-              </td>
-            </tr>
+            <ng-container *ngTemplateOutlet="rows; context: { $implicit: main }"></ng-container>
           </tbody>
         </table>
       </div>
 
-      <div class="card-pad" *ngIf="form as f">
-        <form class="inline-form stack-4" (ngSubmit)="save()" novalidate data-setup="role-form">
-          <strong>{{ f.role.label }}: {{ f.mode === 'edit' ? 'change the profile' : 'give a profile' }}</strong>
+      <details class="card-pad" [attr.open]="moreOpen ? '' : null" data-setup="more-parts">
+        <summary>More parts ({{ moreFilled }} of {{ more.length }} have a profile)</summary>
+        <div class="table-wrap">
+          <table class="table" data-setup="roles-more">
+            <tbody>
+              <ng-container *ngTemplateOutlet="rows; context: { $implicit: more }"></ng-container>
+            </tbody>
+          </table>
+        </div>
+      </details>
 
-          <div class="head-actions" *ngIf="f.mode !== 'edit'">
-            <label class="check"><input type="radio" name="mode" value="new" [(ngModel)]="f.mode" /> A new profile</label>
-            <label class="check"><input type="radio" name="mode" value="pick" [(ngModel)]="f.mode" /> One already in my catalogue</label>
-          </div>
+      <p class="card-pad refusal" role="alert" *ngFor="let said of errors" data-setup="role-error">{{ said }}</p>
+    </section>
 
-          <div class="field" *ngIf="f.mode === 'pick'">
-            <label class="label" for="role-pick">Profile of the catalogue</label>
-            <select class="select" id="role-pick" name="pick" [ngModel]="f.productId" (ngModelChange)="pick($event)" [class.is-invalid]="submitted && !f.productId">
-              <option [ngValue]="null">Choose a profile</option>
-              <option *ngFor="let p of free" [ngValue]="p.id">{{ p.profile_code }}, {{ p.profile_name }}</option>
-            </select>
-            <span class="hint" *ngIf="!free.length">Every profile of your catalogue already holds a role. Enter a new one.</span>
-            <span class="error" *ngIf="submitted && !f.productId">Choose a profile.</span>
-          </div>
-
-          <div class="grid-4" *ngIf="f.mode !== 'pick'">
-            <div class="field">
-              <label class="label" for="role-code">Code</label>
-              <input class="input" id="role-code" name="code" type="text" maxlength="100" [(ngModel)]="f.code" [class.is-invalid]="submitted && !f.code.trim()" placeholder="A60-FR" />
-              <span class="error" *ngIf="submitted && !f.code.trim()">Enter the code.</span>
-            </div>
-            <div class="field" style="grid-column: span 3">
-              <label class="label" for="role-name">Name</label>
-              <input class="input" id="role-name" name="pname" type="text" maxlength="190" [(ngModel)]="f.name" [class.is-invalid]="submitted && !f.name.trim()" placeholder="Alpha 60 outer frame" />
-              <span class="error" *ngIf="submitted && !f.name.trim()">Enter the name.</span>
-            </div>
-          </div>
-
-          <div class="grid-4">
-            <div class="field">
-              <label class="label" for="role-kg">Weight</label>
-              <div class="input-group" [class.is-invalid]="submitted && kgInvalid">
-                <input id="role-kg" name="kg" type="number" min="0" max="100" step="0.001" inputmode="decimal" [(ngModel)]="f.kg" />
-                <span class="unit">kg/m</span>
-              </div>
-              <span class="error" *ngIf="submitted && kgInvalid">Enter the weight per metre, above 0 and up to 100.</span>
-            </div>
-            <div class="field">
-              <label class="label" for="role-basis">Bought</label>
-              <select class="select" id="role-basis" name="basis" [(ngModel)]="f.basis">
-                <option value="">The company’s way</option>
-                <option value="per_kg">Per kg</option>
-                <option value="per_m">Per metre</option>
-              </select>
-            </div>
-            <div class="field">
-              <label class="label" for="role-rate">Rate per metre</label>
-              <div class="input-group" [class.is-invalid]="submitted && rateInvalid">
-                <span class="unit">₹</span>
-                <input id="role-rate" name="rate" type="number" min="0" step="0.01" inputmode="decimal" [(ngModel)]="f.rate" [placeholder]="f.basis === 'per_m' ? 'Needed' : 'Not needed per kg'" />
-                <span class="unit">per m</span>
-              </div>
-              <span class="error" *ngIf="submitted && rateInvalid">{{ f.basis === 'per_m' ? 'A profile bought per metre needs its rate.' : 'Enter an amount of 0 or more.' }}</span>
-            </div>
-            <div class="field">
-              <label class="label" for="role-bar">Bar length (optional)</label>
-              <div class="input-group" [class.is-invalid]="submitted && barInvalid">
-                <input id="role-bar" name="bar" type="number" min="500" max="20000" step="1" inputmode="numeric" [(ngModel)]="f.bar" placeholder="5800" />
-                <span class="unit">mm</span>
-              </div>
-              <span class="error" *ngIf="submitted && barInvalid">A whole number of mm from 500 to 20000 (5800 for a 5.8 m bar).</span>
-              <span class="hint" *ngIf="!(submitted && barInvalid)">Kept with the profile. No price reads it yet.</span>
-            </div>
-          </div>
-
-          <div class="grid-4" *ngIf="f.mode !== 'pick'">
-            <div class="field" *ngFor="let dim of dims">
-              <label class="label" [attr.for]="'role-' + dim.field">{{ dim.label }} (optional)</label>
-              <div class="input-group" [class.is-invalid]="submitted && bad(f[dim.field], 1000)">
-                <input [id]="'role-' + dim.field" [name]="dim.field" type="number" min="0" step="0.1" inputmode="decimal" [(ngModel)]="f[dim.field]" />
-                <span class="unit">mm</span>
-              </div>
-              <span class="error" *ngIf="submitted && bad(f[dim.field], 1000)">Enter a size from 0 to 1000 mm.</span>
-            </div>
-          </div>
-
-          <p class="refusal" role="alert" *ngFor="let said of formErrors" data-setup="role-form-error">{{ said }}</p>
-
-          <div class="form-foot">
-            <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Save the profile' }}</button>
-            <button type="button" class="btn btn-ghost" (click)="form = null" [disabled]="saving">Cancel</button>
-            <ng-container *ngIf="f.mode === 'edit'">
-              <button appWrite="settings.write" type="button" class="btn btn-ghost" (click)="takeOut(f.role)" [disabled]="saving" data-act="take-out">Take it out of this role</button>
-              <button appWrite="settings.write" type="button" class="btn btn-ghost" (click)="deleting = f.role; deleteError = ''" [disabled]="saving" data-act="delete-profile">Delete the profile</button>
-            </ng-container>
-          </div>
-        </form>
+    <section class="card card-pad" data-setup="rules-line">
+      <div class="head-actions">
+        <span>
+          <strong>Standard cutting rules in use</strong>: {{ rulesLine.set }} rules.
+          <ng-container *ngIf="rulesLine.placeholders">{{ rulesLine.placeholders }} are a supplier pack’s values (placeholders: check them against your supplier’s manual)<ng-container *ngIf="rulesLine.own">, {{ rulesLine.own }} are your own figures</ng-container>.</ng-container>
+          <ng-container *ngIf="!rulesLine.placeholders && rulesLine.set">All are your own figures.</ng-container>
+          <ng-container *ngIf="!rulesLine.set">None is set: the general sizes of the engine are used, and the price says so.</ng-container>
+        </span>
+        <button type="button" class="btn btn-secondary btn-sm" [attr.aria-expanded]="customise" (click)="customise = !customise" data-act="customise">{{ customise ? 'Hide the rules' : 'Customise' }}</button>
       </div>
     </section>
 
-    <app-setup-rules [detail]="d" (saved)="onRules($event)"></app-setup-rules>
+    <app-setup-rules *ngIf="customise" [detail]="d" (saved)="onRules($event)"></app-setup-rules>
   </ng-container>
 </div>
 
-<app-confirm-dialog
-  *ngIf="deleting as r"
-  [title]="'Delete ' + (r.profile?.profile_code || 'the profile') + '?'"
-  confirmLabel="Delete the profile"
-  keepLabel="Keep it"
-  ability="settings.write"
-  [danger]="true"
-  [busy]="busy"
-  [error]="deleteError"
-  (confirmed)="remove()"
-  (closed)="deleting = null"
->
-  <p class="muted">The role {{ r.label }} becomes empty and the profile is removed from your catalogue. A profile used by a quotation is not removed.</p>
-</app-confirm-dialog>
+<app-profile-dialog [(visible)]="dialogOpen" [profile]="editing" [categories]="categories" [factors]="factors" [systems]="systems" [preset]="preset" (saved)="load()"></app-profile-dialog>

@@ -57,7 +57,10 @@ describe('Pricing setup, the check list (T182)', () => {
     expect(linkOf(system, 'Give the profile')).toContain('/pricing-setup?tab=systems&system=4&role=steel');
     expect(linkOf(system, 'Open Hardware sets')).toContain('/pricing-setup?tab=hardware');
     expect(linkOf(system, 'Alpha 60 casement')).toContain('/pricing-setup?tab=systems&system=4');
-    expect(el().querySelector('[data-system="Old 50 sliding"]')!.textContent).toContain('Retired');
+    // One line per system in use, with the count of what it misses, closed; a retired system is not listed (T187).
+    expect(system.querySelector('summary')!.textContent!.replace(/\s+/g, ' ').trim()).toBe('Alpha 60 casement: 2 things missing');
+    expect((system as HTMLDetailsElement).open).toBe(false);
+    expect(el().querySelector('[data-system="Old 50 sliding"]')).toBeNull();
     expect(el().querySelector('[data-setup="example"]')).toBeNull();
     expect(el().querySelector('[data-setup="example-values"]')).toBeNull();
   });
