@@ -10,7 +10,7 @@ import { SharedComponentsModule } from 'src/app/shared/components/shared-compone
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 import { placeOf, fixLabel } from './checklist-tab.component';
-import { ProductRow, RoleChange, SetupRefusal, SystemDetail, SystemRole, shownNumber, typedNumber } from './pricing-setup.models';
+import { ProductRow, RoleChange, SetupRefusal, SystemDetail, SystemRole, shownNumber, typedNumber, typedText } from './pricing-setup.models';
 import { PricingSetupService } from './pricing-setup.service';
 import { SystemRulesComponent } from './system-rules.component';
 
@@ -29,6 +29,9 @@ export interface RoleForm {
   /** '' = the company's way. */
   basis: '' | 'per_kg' | 'per_m';
   rate: string;
+  /** The bar as it is bought, in mm. `barHeld`: what the api holds, so only a change is sent. */
+  bar: string;
+  barHeld: string;
   face: string;
   depth: string;
   rebate: string;
@@ -125,6 +128,8 @@ export class SystemDetailComponent implements OnChanges {
       kg: shownNumber(p?.kg_meter),
       basis: (p?.charge_basis ?? '') as RoleForm['basis'],
       rate: p?.rate_meter ? String(p.rate_meter) : '',
+      bar: shownNumber(p?.bar_length_mm),
+      barHeld: shownNumber(p?.bar_length_mm),
       face: '',
       depth: '',
       rebate: '',
@@ -157,6 +162,7 @@ export class SystemDetailComponent implements OnChanges {
     const f = this.form;
     if (!f || (f.productId && f.productId !== row.id)) return;
     f.product = row;
+    if (!f.bar && !f.barHeld) f.bar = f.barHeld = shownNumber(row.bar_length_mm);
     for (const d of DIMS) f[d.field] = shownNumber(row[d.key]);
   }
 
@@ -166,6 +172,7 @@ export class SystemDetailComponent implements OnChanges {
     const row = this.free.find((p) => p.id === Number(id));
     if (!f) return;
     f.productId = row?.id ?? null;
+    f.bar = f.barHeld = '';
     if (row) {
       f.code = row.profile_code;
       f.name = row.profile_name;
@@ -189,11 +196,17 @@ export class SystemDetailComponent implements OnChanges {
     return !!f && (this.bad(f.rate, 1000000) || (f.basis === 'per_m' && typedNumber(f.rate) === null));
   }
 
+  /** A whole number of millimetres from 500 to 20000, as the api takes it; empty = not said. */
+  get barInvalid(): boolean {
+    const n = typedNumber(this.form?.bar);
+    return n !== null && (!Number.isInteger(n) || n < 500 || n > 20000);
+  }
+
   get invalid(): boolean {
     const f = this.form;
     if (!f) return true;
-    if (f.mode === 'pick') return !f.productId || this.kgInvalid || this.rateInvalid;
-    return !f.code.trim() || !f.name.trim() || this.kgInvalid || this.rateInvalid || DIMS.some((d) => this.bad(f[d.field], 1000));
+    if (f.mode === 'pick') return !f.productId || this.kgInvalid || this.rateInvalid || this.barInvalid;
+    return !f.code.trim() || !f.name.trim() || this.kgInvalid || this.rateInvalid || this.barInvalid || DIMS.some((d) => this.bad(f[d.field], 1000));
   }
 
   save(): void {
@@ -247,7 +260,8 @@ export class SystemDetailComponent implements OnChanges {
 
   private change(f: RoleForm, productId: number): RoleChange {
     const rate = typedNumber(f.rate);
-    return { role: f.role.role, product_id: productId, kg_meter: Number(f.kg), charge_basis: f.basis || null, ...(rate !== null ? { rate_meter: rate } : {}) };
+    const bar = typedText(f.bar) !== f.barHeld ? { bar_length_mm: typedNumber(f.bar) } : {};
+    return { role: f.role.role, product_id: productId, kg_meter: Number(f.kg), charge_basis: f.basis || null, ...(rate !== null ? { rate_meter: rate } : {}), ...bar };
   }
 
   /** The role is emptied; the profile stays in the catalogue. */

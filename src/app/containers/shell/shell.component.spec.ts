@@ -121,7 +121,7 @@ describe('ShellComponent', () => {
   it('shows the company name, the menu items and the signed-in user', () => {
     expect(text('.ws-name')).toBe('Hakimi Enterprise');
     const labels = [...fixture.nativeElement.querySelectorAll('a.item .t')].map((el: Element) => el.textContent?.trim());
-    expect(labels).toEqual(['Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Settings']);
+    expect(labels).toEqual(['Home', 'Quotations', 'Orders', 'Customers', 'Bills', 'Outstanding', 'Catalogue', 'Pricing setup', 'Settings']);
     expect(text('.who')).toBe('HE');
     expect(text('.account .item .t')).toBe('Husain Ezzi');
   });
@@ -175,7 +175,7 @@ describe('ShellComponent', () => {
     fixture.detectChanges();
     expect(more.getAttribute('aria-expanded')).toBe('true');
     const sheet = [...bar.querySelectorAll('.sheet .menu-item')].map((el: Element) => el.textContent?.trim().replace(/\s+/g, ' '));
-    expect(sheet).toEqual(['Bills', 'Outstanding', 'Catalogue', 'Settings', 'Search', 'Your profile Husain Ezzi', 'Sign out']);
+    expect(sheet).toEqual(['Bills', 'Outstanding', 'Catalogue', 'Pricing setup', 'Settings', 'Search', 'Your profile Husain Ezzi', 'Sign out']);
 
     await router.navigateByUrl('/masters/glass');
     await settle();
@@ -212,7 +212,7 @@ describe('ShellComponent', () => {
 
     state$.next(EMPTY_ACCESS);
     fixture.detectChanges();
-    expect(labels().length).toBe(8);
+    expect(labels().length).toBe(9);
     expect(fixture.nativeElement.querySelector('.plan-banner')).toBeNull();
   });
 

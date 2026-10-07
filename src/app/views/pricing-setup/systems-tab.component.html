@@ -19,7 +19,7 @@
       <form class="inline-form stack-4" (ngSubmit)="save()" novalidate data-setup="system-form">
         <strong>{{ f.id ? 'Rename or change the system' : f.copyOf ? 'Copy of a system' : 'A new profile system' }}</strong>
         <p class="small" *ngIf="f.copyOf">
-          The new system gets the rule values of the first one. Its profiles are not copied (a profile holds one role in one system): enter them again under their own codes.
+          The new system gets the profiles of the first one, each under a new code, with their roles, weights and rates, and every rule with its source and note. A hardware set tied to the first system is not copied.
         </p>
         <div class="grid-3">
           <div class="field">
@@ -27,14 +27,14 @@
             <input class="input" id="sys-name" name="name" type="text" maxlength="190" [(ngModel)]="f.name" [class.is-invalid]="submitted && !f.name.trim()" placeholder="Alpha 60 casement" />
             <span class="error" *ngIf="submitted && !f.name.trim()">Enter a name.</span>
           </div>
-          <div class="field">
+          <div class="field" *ngIf="!f.copyOf">
             <label class="label" for="sys-category">Type</label>
             <select class="select" id="sys-category" name="category" [(ngModel)]="f.category">
               <option *ngFor="let c of categories" [value]="c">{{ c }}</option>
             </select>
             <span class="hint">A door is priced from a casement system: give it a door sash.</span>
           </div>
-          <div class="field">
+          <div class="field" *ngIf="!f.copyOf">
             <label class="label" for="sys-depth">System depth</label>
             <div class="input-group" [class.is-invalid]="submitted && depthInvalid()">
               <input id="sys-depth" name="depth" type="number" min="1" step="1" inputmode="decimal" [(ngModel)]="f.depth" />
@@ -42,18 +42,18 @@
             </div>
             <span class="error" *ngIf="submitted && depthInvalid()">Enter the depth in mm, above 0.</span>
           </div>
-          <div class="field">
+          <div class="field" *ngIf="!f.copyOf">
             <label class="label" for="sys-series">Series (optional)</label>
             <input class="input" id="sys-series" name="series" type="text" maxlength="100" [(ngModel)]="f.series" />
           </div>
-          <div class="field" style="grid-column: span 2">
+          <div class="field" style="grid-column: span 2" *ngIf="!f.copyOf">
             <label class="label" for="sys-notes">Note (optional)</label>
             <input class="input" id="sys-notes" name="notes" type="text" maxlength="250" [(ngModel)]="f.notes" />
           </div>
         </div>
         <p class="refusal" role="alert" *ngIf="formError" data-setup="system-form-error">{{ formError }}</p>
         <div class="form-foot">
-          <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : f.id ? 'Save' : 'Add the system' }}</button>
+          <button appWrite="settings.write" type="submit" class="btn btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : f.id ? 'Save' : f.copyOf ? 'Copy the system' : 'Add the system' }}</button>
           <button type="button" class="btn btn-ghost" (click)="form = null" [disabled]="saving">Cancel</button>
         </div>
       </form>

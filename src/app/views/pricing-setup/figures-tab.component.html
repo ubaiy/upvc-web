@@ -12,7 +12,7 @@
 
   <form class="stack-6" *ngIf="state === 'ready' && figures as fg" (ngSubmit)="save()" novalidate>
     <app-callout tone="warn" *ngIf="fg.missing.length" data-setup="figures-missing">
-      <ng-container *ngFor="let m of fg.missing; let last = last">{{ m.text }}<ng-container *ngIf="!last"> </ng-container></ng-container>
+      <ng-container *ngFor="let m of fg.missing; let last = last">{{ m.text }}{{ last ? '' : ' ' }}</ng-container>
     </app-callout>
 
     <section class="card" aria-labelledby="h-figures">

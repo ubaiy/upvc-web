@@ -160,9 +160,14 @@
               </div>
               <span class="error" *ngIf="submitted && rateInvalid">{{ f.basis === 'per_m' ? 'A profile bought per metre needs its rate.' : 'Enter an amount of 0 or more.' }}</span>
             </div>
-            <div class="field" *ngIf="f.product?.bar_length_mm">
-              <span class="label">Bar length</span>
-              <span>{{ f.product?.bar_length_mm }} mm</span>
+            <div class="field">
+              <label class="label" for="role-bar">Bar length (optional)</label>
+              <div class="input-group" [class.is-invalid]="submitted && barInvalid">
+                <input id="role-bar" name="bar" type="number" min="500" max="20000" step="1" inputmode="numeric" [(ngModel)]="f.bar" placeholder="5800" />
+                <span class="unit">mm</span>
+              </div>
+              <span class="error" *ngIf="submitted && barInvalid">A whole number of mm from 500 to 20000 (5800 for a 5.8 m bar).</span>
+              <span class="hint" *ngIf="!(submitted && barInvalid)">Kept with the profile. No price reads it yet.</span>
             </div>
           </div>
 

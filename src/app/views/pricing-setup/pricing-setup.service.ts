@@ -10,6 +10,7 @@ import {
   Figures,
   FiguresBody,
   HardwareRule,
+  HardwareSet,
   HardwareSetDetail,
   HardwareSets,
   MethodAnswer,
@@ -66,6 +67,7 @@ export class PricingSetupService {
         methods: data?.methods ?? [],
         missing: data?.missing ?? [],
         notes: data?.notes ?? [],
+        unpriced_profiles: data?.unpriced_profiles ?? [],
         systems: data?.systems ?? [],
         example: data?.example ?? null,
         roles: data?.roles ?? [],
@@ -85,6 +87,11 @@ export class PricingSetupService {
 
   updateSystem(id: number, body: SystemBody): Observable<SystemRow> {
     return this.send<SystemRow>('post', `profile-system/update/${id}`, body, 'The profile system was not saved.');
+  }
+
+  /** POST pricing-setup/systems/{id}/copy: a new system with the profiles (under new codes), roles and rules of the first. */
+  copySystem(id: number, name: string): Observable<SystemDetail> {
+    return this.send<SystemDetail>('post', `pricing-setup/systems/${id}/copy`, { name }, 'The profile system was not copied.');
   }
 
   /** Nothing is deleted: a retired system takes no new window and does not count for readiness. */
@@ -164,6 +171,11 @@ export class PricingSetupService {
     return this.send<HardwareSetDetail>('put', `hardware-sets/${id}`, body, 'The hardware set was not saved.');
   }
 
+  /** Refused (422) while the set is the default of its kind, or tied to a system in use. */
+  deleteHardwareSet(id: number): Observable<{ deleted: { id: number; code: string; name: string }; sets: HardwareSet[] }> {
+    return this.remove(`hardware-sets/${id}`, 'The hardware set was not deleted.');
+  }
+
   addHardwareRule(setId: number, body: Partial<HardwareRule>): Observable<HardwareSetDetail> {
     return this.send<HardwareSetDetail>('post', `hardware-sets/${setId}/rules`, body, 'The line was not added.');
   }
@@ -173,10 +185,7 @@ export class PricingSetupService {
   }
 
   deleteHardwareRule(ruleId: number): Observable<HardwareSetDetail> {
-    return this.api.delete(`hardware-sets/rules/${ruleId}`, quiet()).pipe(
-      map((res) => this.unwrap<HardwareSetDetail>(res, 'The line was not removed.')),
-      catchError((err) => throwError(() => toRefusal(err, 'The line was not removed.')))
-    );
+    return this.remove<HardwareSetDetail>(`hardware-sets/rules/${ruleId}`, 'The line was not removed.');
   }
 
   /** The hardware items of the catalogue: what a line of a set can be priced with. */
@@ -192,6 +201,13 @@ export class PricingSetupService {
 
   private read<T>(url: string, fallback: string): Observable<T> {
     return this.api.get(url, quiet()).pipe(
+      map((res) => this.unwrap<T>(res, fallback)),
+      catchError((err) => throwError(() => toRefusal(err, fallback)))
+    );
+  }
+
+  private remove<T>(url: string, fallback: string): Observable<T> {
+    return this.api.delete(url, quiet()).pipe(
       map((res) => this.unwrap<T>(res, fallback)),
       catchError((err) => throwError(() => toRefusal(err, fallback)))
     );

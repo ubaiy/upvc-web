@@ -109,6 +109,9 @@ export class HardwareTabComponent implements OnChanges {
   removing: HardwareRule | null = null;
   busy = false;
   removeError = '';
+  /** The set asked to be deleted, with its lines. */
+  deleting: HardwareSet | null = null;
+  deleteError = '';
 
   quantity = quantityRule;
   band = bandOf;
@@ -311,6 +314,26 @@ export class HardwareTabComponent implements OnChanges {
       error: (e: Error) => {
         this.busy = false;
         this.removeError = e.message;
+      },
+    });
+  }
+
+  /** Refused by the api while the set is the default of its kind, or tied to a system in use: its sentences stay in the dialog. */
+  deleteSet(): void {
+    const set = this.deleting;
+    if (!set || this.busy) return;
+    this.busy = true;
+    this.deleteError = '';
+    this.setup.deleteHardwareSet(set.id).subscribe({
+      next: () => {
+        this.busy = false;
+        this.deleting = null;
+        this.toast.showSuccess(`${set.name} deleted`);
+        this.router.navigate(['/pricing-setup'], { queryParams: { tab: 'hardware' } });
+      },
+      error: (e: SetupRefusal) => {
+        this.busy = false;
+        this.deleteError = (e.errors?.length ? e.errors : [e.message]).join(' ');
       },
     });
   }

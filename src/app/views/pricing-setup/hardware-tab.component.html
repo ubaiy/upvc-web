@@ -150,7 +150,7 @@
         <div>
           <h2 id="h-set" data-setup="set-name">{{ d.set.name }}</h2>
           <p>
-            {{ d.set.code }}, for {{ words(d.set.category).toLowerCase() }} windows, {{ systemName(d.set.profile_system_id).toLowerCase() }}<ng-container *ngIf="d.set.brand">, {{ d.set.brand }}</ng-container
+            {{ d.set.code }}, for {{ words(d.set.category).toLowerCase() }} windows, {{ d.set.profile_system_id ? systemName(d.set.profile_system_id) : 'any system' }}<ng-container *ngIf="d.set.brand">, {{ d.set.brand }}</ng-container
             ><ng-container *ngIf="d.set.rebate_offset_mm !== null">, rebate offset {{ d.set.rebate_offset_mm }} mm</ng-container>.
             <ng-container *ngIf="d.set.source"> Source: {{ d.set.source }}.</ng-container>
           </p>
@@ -158,6 +158,7 @@
         <div class="head-actions">
           <span class="badge" [ngClass]="d.set.is_default ? 'badge-success' : ''" data-setup="set-default">{{ d.set.is_default ? 'Default' : 'Not the default' }}</span>
           <button appWrite="settings.write" type="button" class="btn btn-secondary btn-sm" (click)="openSet(d.set)" data-act="edit-set">Change</button>
+          <button appWrite="settings.write" type="button" class="btn btn-ghost btn-sm" (click)="deleting = d.set; deleteError = ''" data-act="delete-set">Delete</button>
         </div>
       </div>
       <div class="card-pad" *ngIf="setForm"><ng-container *ngTemplateOutlet="setFormTpl"></ng-container></div>
@@ -291,4 +292,19 @@
   (closed)="removing = null"
 >
   <p class="muted">A window priced after this no longer takes the item. The item stays in your catalogue.</p>
+</app-confirm-dialog>
+
+<app-confirm-dialog
+  *ngIf="deleting as s"
+  [title]="'Delete ' + s.name + '?'"
+  confirmLabel="Delete the set"
+  keepLabel="Keep it"
+  ability="settings.write"
+  [danger]="true"
+  [busy]="busy"
+  [error]="deleteError"
+  (confirmed)="deleteSet()"
+  (closed)="deleting = null"
+>
+  <p class="muted">The set and its lines are removed. A line already saved keeps the items it was priced with. The items stay in your catalogue.</p>
 </app-confirm-dialog>

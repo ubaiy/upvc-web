@@ -64,7 +64,29 @@
 }
 
 .table .num {
-  width: 110px;
+  width: 150px;
+}
+
+// A unit is one word on one line ("per sq ft"), and a box in a table keeps room for its figure.
+.input-group .unit {
+  white-space: nowrap;
+}
+
+.table .num .input-group {
+  min-width: 130px;
+}
+
+.table[data-setup='colours'] .num {
+  width: 230px;
+}
+
+.table[data-setup='rules'] th:first-child,
+.table[data-setup='rules'] td:first-child {
+  min-width: 230px;
+}
+
+.table[data-setup='rules'] td:last-child {
+  min-width: 200px;
 }
 
 .table input.input,

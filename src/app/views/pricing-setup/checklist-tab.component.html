@@ -48,6 +48,19 @@
           </ul>
         </div>
 
+        <div *ngIf="l.unpriced_profiles.length" data-setup="unpriced">
+          <p class="muted">No rate for the pricing method you use today (a window on one of these is refused):</p>
+          <ul class="todo">
+            <li *ngFor="let m of l.unpriced_profiles">
+              <app-icon class="mark" name="circle-alert"></app-icon>
+              <span>
+                {{ m.text }}
+                <a *ngIf="m.system_id" routerLink="/pricing-setup" [queryParams]="place(m, m.system_id)">Open the profile</a>
+              </span>
+            </li>
+          </ul>
+        </div>
+
         <div *ngIf="l.notes.length" data-setup="notes">
           <p class="muted">To know:</p>
           <ul class="todo">

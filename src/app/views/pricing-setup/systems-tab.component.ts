@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { forkJoin, of, switchMap } from 'rxjs';
+import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 
 import { WriteDirective } from 'src/app/shared/access/write.directive';
@@ -23,6 +23,9 @@ export interface SystemForm {
   series: string;
   notes: string;
 }
+
+/** "1 rule", "31 rules". */
+const count = (n: number | undefined, what: string): string => `${n ?? 0} ${what}${n === 1 ? '' : 's'}`;
 
 /** The api takes these two; a door is priced from a casement system (roles "Door sash"). */
 export const SYSTEM_CATEGORIES = ['Casement', 'Sliding'];
@@ -75,6 +78,8 @@ export class SystemsTabComponent implements OnInit {
         for (const p of products) {
           if (p.profile_system_id && p.role) this.profiles[p.profile_system_id] = (this.profiles[p.profile_system_id] ?? 0) + 1;
         }
+        // The api's own count, where it gives one.
+        for (const s of list.systems) if (s.profiles_with_role !== undefined) this.profiles[s.id] = s.profiles_with_role;
         this.state = 'ready';
       },
       error: (e: Error) => {
@@ -132,7 +137,7 @@ export class SystemsTabComponent implements OnInit {
     const f = this.form;
     this.submitted = true;
     this.formError = '';
-    if (!f || this.saving || !f.name.trim() || this.depthInvalid()) return;
+    if (!f || this.saving || !f.name.trim() || (!f.copyOf && this.depthInvalid())) return;
     const body: SystemBody = {
       name: f.name.trim(),
       category: f.category,
@@ -141,28 +146,18 @@ export class SystemsTabComponent implements OnInit {
       notes: f.notes.trim() || null,
     };
     this.saving = true;
+    // A copy is the api's: the profiles under new codes, their roles, and every rule with its source and note.
     const call = f.id
-      ? this.setup.updateSystem(f.id, body).pipe(map((row) => ({ row, copied: 0 })))
-      : this.setup.addSystem(body).pipe(
-          switchMap((row) =>
-            f.copyOf
-              ? // A copy takes the rule values of the first system. Its profiles are not copied: a profile holds one role in one system.
-                this.setup.system(f.copyOf).pipe(
-                  switchMap((from) => {
-                    const rules: Record<string, number> = {};
-                    for (const r of from.rules) if (r.is_set && r.value !== null) rules[r.key] = r.value;
-                    return Object.keys(rules).length ? this.setup.saveRules(row.id, rules).pipe(map(() => ({ row, copied: Object.keys(rules).length }))) : of({ row, copied: 0 });
-                  })
-                )
-              : of({ row, copied: 0 })
-          )
-        );
+      ? this.setup.updateSystem(f.id, body).pipe(map((row) => ({ row, copied: '' })))
+      : f.copyOf
+      ? this.setup.copySystem(f.copyOf, body.name).pipe(map((d) => ({ row: d.system, copied: `System copied with ${count(d.copied?.profiles, 'profile')} and ${count(d.copied?.rules, 'rule')}.` })))
+      : this.setup.addSystem(body).pipe(map((row) => ({ row, copied: '' })));
     call.subscribe({
       next: ({ row, copied }) => {
         this.saving = false;
         const wasNew = !f.id;
         this.form = null;
-        this.toast.showSuccess(wasNew ? (copied ? `System added with ${copied} rules copied. Enter its profiles.` : 'Profile system added') : 'Profile system saved');
+        this.toast.showSuccess(wasNew ? copied || 'Profile system added' : 'Profile system saved');
         if (wasNew) {
           this.router.navigate(['/pricing-setup'], { queryParams: { tab: 'systems', system: row.id } });
         } else {

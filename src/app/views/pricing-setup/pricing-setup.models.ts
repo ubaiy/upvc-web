@@ -15,6 +15,9 @@ export interface Missing {
   /** "casement" | "sliding" | "door": the kind that has no default hardware set. */
   category?: string;
   product_id?: number;
+  /** The system of a profile the area formula has no rate for (`unpriced_profiles`). */
+  system_id?: number;
+  profile_code?: string;
 }
 
 export interface SetRef {
@@ -40,6 +43,9 @@ export interface SystemSummary {
   category: string;
   kind: string;
   retired: boolean;
+  /** The profiles of the system, and those of them that hold a role (api T184). */
+  profiles?: number;
+  profiles_with_role?: number;
   ready: boolean;
   missing: Missing[];
   hardware_set: SetRef | null;
@@ -90,6 +96,8 @@ export interface Checklist {
   ready: boolean;
   missing: Missing[];
   notes: string[];
+  /** While the method is the area formula: each profile of a system in use it has no rate for. A window on one is refused. */
+  unpriced_profiles: Missing[];
   systems: SystemSummary[];
   example: ExamplePack | null;
   roles: RoleInfo[];
@@ -104,6 +112,8 @@ export interface RoleProfile {
   /** null: bought the company's way (`settings.profile_rate_basis`). */
   charge_basis: 'per_kg' | 'per_m' | null;
   rate_meter: number | null;
+  /** The bar as it is bought, in mm (5800). Kept and shown; no price reads it. */
+  bar_length_mm?: number | null;
 }
 
 export interface SystemRole extends RoleInfo {
@@ -153,6 +163,8 @@ export interface SystemDetail {
   rule_templates: { code: string; name: string }[];
   /** Only after a pack of rules was copied in. */
   template_added?: string[];
+  /** Only in the answer of a copy: what came over, and the new code of each profile. */
+  copied?: { from: number; profiles: number; rules: number; codes: Record<string, string> };
 }
 
 /** One line of PUT pricing-setup/systems/{id}/roles. */
@@ -162,6 +174,7 @@ export interface RoleChange {
   kg_meter?: number;
   charge_basis?: 'per_kg' | 'per_m' | null;
   rate_meter?: number;
+  bar_length_mm?: number | null;
 }
 
 export interface SystemBody {
