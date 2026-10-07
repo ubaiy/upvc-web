@@ -81,13 +81,13 @@ export class PricingSetupService {
     return this.read<SystemDetail>(`pricing-setup/systems/${id}`, 'The profile system could not be loaded.');
   }
 
-  /** POST profile-system/add. The answer is the row; its roles and rules are read with `system`. */
+  /** POST pricing-setup/systems (refused with 422 and every sentence). The answer is the row; its roles and rules are read with `system`. */
   addSystem(body: SystemBody): Observable<SystemRow> {
-    return this.send<SystemRow>('post', 'profile-system/add', body, 'The profile system was not added.');
+    return this.send<SystemDetail>('post', 'pricing-setup/systems', body, 'The profile system was not added.').pipe(map((detail) => detail.system));
   }
 
   updateSystem(id: number, body: SystemBody): Observable<SystemRow> {
-    return this.send<SystemRow>('post', `profile-system/update/${id}`, body, 'The profile system was not saved.');
+    return this.send<SystemDetail>('put', `pricing-setup/systems/${id}`, body, 'The profile system was not saved.').pipe(map((detail) => detail.system));
   }
 
   /** POST pricing-setup/systems/{id}/copy: a new system with the profiles (under new codes), roles and rules of the first. */
@@ -105,17 +105,16 @@ export class PricingSetupService {
     return this.send<SystemDetail>('put', `pricing-setup/systems/${id}/roles`, { roles }, 'The profiles were not saved.');
   }
 
-  /** A number sets a rule, null removes it; `template` first copies a pack for the keys the system does not have. */
-  saveRules(id: number, rules: Record<string, number | null>, template?: string): Observable<SystemDetail> {
+  /**
+   * A number sets a rule, null removes it; `template` first copies a pack for the keys the system does not have;
+   * `notes` is the note of a rule (null clears it): a note alone leaves the value and its source as they are.
+   */
+  saveRules(id: number, rules: Record<string, number | null>, template?: string, notes: Record<string, string | null> = {}): Observable<SystemDetail> {
     const body: Record<string, unknown> = {};
     if (Object.keys(rules).length) body['rules'] = rules;
+    if (Object.keys(notes).length) body['notes'] = notes;
     if (template) body['template'] = template;
     return this.send<SystemDetail>('put', `pricing-setup/systems/${id}/rules`, body, 'The rules were not saved.');
-  }
-
-  /** The note of one rule: the api keeps it on the single-rule route (`rule_key`, `value_mm`, `notes`). */
-  saveRuleNote(id: number, key: string, value: number, notes: string): Observable<unknown> {
-    return this.send<unknown>('post', `profile-system/${id}/rules/add`, { rule_key: key, value_mm: value, notes }, 'The note was not saved.');
   }
 
   product(id: number): Observable<ProductRow> {
@@ -126,17 +125,19 @@ export class PricingSetupService {
     return this.read<ProductRow[]>('product/get-product-list', 'The profiles could not be loaded.').pipe(map((rows) => (Array.isArray(rows) ? rows : [])));
   }
 
+  /** POST pricing-setup/profiles: a profile of the bill of materials, without the six rates of the area formula. */
   addProduct(body: Partial<ProductRow>): Observable<ProductRow> {
-    return this.send<ProductRow>('post', 'product/add', body, 'The profile was not added.');
+    return this.send<{ profile: ProductRow }>('post', 'pricing-setup/profiles', body, 'The profile was not added.').pipe(map((data) => data.profile));
   }
 
+  /** What is not sent stays (a profile of the catalogue keeps its rates). */
   updateProduct(id: number, body: Partial<ProductRow>): Observable<ProductRow> {
-    return this.send<ProductRow>('post', `product/update/${id}`, body, 'The profile was not saved.');
+    return this.send<{ profile: ProductRow }>('put', `pricing-setup/profiles/${id}`, body, 'The profile was not saved.').pipe(map((data) => data.profile));
   }
 
-  /** Refused, with the quotation numbers in the sentence, while a quotation uses the profile. */
+  /** Refused (422), with the quotation numbers in the sentence, while a quotation uses the profile. */
   deleteProduct(id: number): Observable<unknown> {
-    return this.send<unknown>('post', `product/delete/${id}`, undefined, 'The profile was not removed.');
+    return this.remove<unknown>(`pricing-setup/profiles/${id}`, 'The profile was not removed.');
   }
 
   figures(): Observable<Figures> {
@@ -228,7 +229,7 @@ export class PricingSetupService {
     );
   }
 
-  /** The older routes (profile-system/add, product/add) refuse with HTTP 200 and `status: 0`. */
+  /** The older routes (product/get-product-list and the other catalogue reads) refuse with HTTP 200 and `status: 0`. */
   private unwrap<T>(res: any, fallback: string): T {
     if (!res || res.success !== true) {
       throw new SetupRefusal(res?.message || fallback, sentences(res?.data?.errors), String(res?.code ?? ''), 200, res?.data ?? null);

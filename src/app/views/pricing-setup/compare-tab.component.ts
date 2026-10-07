@@ -11,6 +11,7 @@ import { PricingSetupService } from './pricing-setup.service';
 export function fixWords(place: Record<string, string | number>): string {
   if (place['tab'] === 'figures') return 'Set it in Rates and figures';
   if (place['tab'] === 'hardware') return 'Open Hardware sets';
+  if (place['role']) return 'Give the profile';
   return place['system'] ? 'Open the system' : 'Open Profile systems';
 }
 

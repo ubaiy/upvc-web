@@ -21,6 +21,7 @@ describe('Pricing setup, the compare of the two methods (T186)', () => {
     expect(fixWords({ tab: 'figures', key: 'labour_rate' })).toBe('Set it in Rates and figures');
     expect(fixWords({ tab: 'hardware' })).toBe('Open Hardware sets');
     expect(fixWords({ tab: 'systems', system: 4 })).toBe('Open the system');
+    expect(fixWords({ tab: 'systems', system: 4, role: 'bead' })).toBe('Give the profile');
     expect(fixWords({ tab: 'systems' })).toBe('Open Profile systems');
     expect(roleWords('sash+mesh_sash')).toBe('sash + mesh sash');
   });
@@ -103,6 +104,11 @@ describe('Pricing setup, the compare of the two methods (T186)', () => {
     fixture = await mount(CompareTabComponent, api);
     expect(said('compare-empty')).toBe('No window is saved on a quotation yet, so there is nothing to compare.');
     expect(el().querySelector('[data-setup="compare"]')).toBeNull();
+
+    api.answer = answers(() => ok(comparison({ totals: { windows: 3, compared: 0, not_priced: 3, old: 0, new: 0, difference: 0 } })));
+    fixture.componentInstance.load();
+    await settle(fixture);
+    expect(said('compare-total')).toBe('None of your last 3 saved windows can be priced by both methods yet; each row says why.');
 
     api.answer = answers(() => http(500));
     fixture.componentInstance.load();

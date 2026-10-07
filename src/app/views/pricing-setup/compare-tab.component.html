@@ -34,7 +34,10 @@
     <p class="card-pad" *ngIf="!a.windows.length" data-setup="compare-empty">No window is saved on a quotation yet, so there is nothing to compare.</p>
 
     <ng-container *ngIf="a.windows.length">
-      <p class="card-pad" data-setup="compare-total">
+      <p class="card-pad" data-setup="compare-total" *ngIf="!a.totals.compared">
+        <strong>None of your last {{ a.totals.windows }} saved {{ a.totals.windows === 1 ? 'window' : 'windows' }}</strong> can be priced by both methods yet; each row says why.
+      </p>
+      <p class="card-pad" data-setup="compare-total" *ngIf="a.totals.compared">
         <strong>{{ a.totals.compared }} of {{ a.totals.windows }} {{ a.totals.windows === 1 ? 'window' : 'windows' }}</strong> priced by both methods: area formula
         <strong>{{ a.totals.old | inr }}</strong>, bill of materials <strong>{{ a.totals.new | inr }}</strong>, difference <strong>{{ a.totals.difference | inr }}</strong>.
         <span *ngIf="a.totals.not_priced"> {{ a.totals.not_priced }} cannot be compared; each row says why.</span>

@@ -1,7 +1,7 @@
 import { ComponentFixture } from '@angular/core/testing';
 
 import { SystemDetail } from './pricing-setup.models';
-import { FakeApi, button, linkOf, mount, ok, refused200, refused422, roleOf, settle, systemDetail, toastOf, type } from './pricing-setup.testing';
+import { FakeApi, button, linkOf, mount, ok, refused422, roleOf, settle, systemDetail, toastOf, type } from './pricing-setup.testing';
 import { SystemDetailComponent } from './system-detail.component';
 
 const FRAME_ROW = {
@@ -39,9 +39,9 @@ describe('Pricing setup, one profile system (T182)', () => {
       if (own) return own;
       if (c.url === 'pricing-setup/systems/4') return ok(detail);
       if (c.url === 'pricing-setup/systems/4/roles') return ok(detail);
-      if (c.url === 'product/add') return ok({ ...FRAME_ROW, ...c.body, id: 77 });
+      if (c.url === 'pricing-setup/profiles') return ok({ profile: { ...FRAME_ROW, ...c.body, id: 77 } });
       if (c.url === 'product/31') return ok(FRAME_ROW);
-      if (c.url === 'product/update/31') return ok({ ...FRAME_ROW, ...c.body });
+      if (c.url === 'pricing-setup/profiles/31') return ok({ profile: { ...FRAME_ROW, ...c.body } });
       if (c.url === 'product/get-product-list') return ok([{ ...FRAME_ROW, id: 40, profile_code: 'OLD-BD', profile_name: 'Old bead', kg_meter: 0.3, role: null, profile_system_id: null }, FRAME_ROW]);
       return undefined;
     };
@@ -83,7 +83,7 @@ describe('Pricing setup, one profile system (T182)', () => {
     expect(row('bead').classList).toContain('is-asked');
   });
 
-  it('a new profile: the catalogue row first (product/add), then its role, weight, basis and rate (PUT roles)', async () => {
+  it('a new profile: the profile first (POST pricing-setup/profiles, no rate of the area formula), then its role, weight, basis and rate (PUT roles)', async () => {
     await open('bead');
     type(form().querySelector('#role-code'), ' A60-BD ');
     type(form().querySelector('#role-name'), 'Alpha 60 bead');
@@ -99,17 +99,13 @@ describe('Pricing setup, one profile system (T182)', () => {
     button(form(), 'Save the profile').click();
     await settle(fixture);
 
-    expect(api.writes.map((c) => `${c.verb} ${c.url}`)).toEqual(['post product/add', 'put pricing-setup/systems/4/roles']);
+    expect(api.writes.map((c) => `${c.verb} ${c.url}`)).toEqual(['post pricing-setup/profiles', 'put pricing-setup/systems/4/roles']);
     expect(api.writes[0].body).toEqual({
       category: 'Casement',
       profile_code: 'A60-BD',
       profile_name: 'Alpha 60 bead',
       kg_meter: 0.28,
       rate_meter: 42,
-      rate_bar: 0,
-      kg_meter_color: 0.28,
-      rate_meter_color: 0,
-      rate_bar_color: 0,
       face_width_mm: 18,
       profile_depth_mm: null,
       rebate_mm: null,
@@ -143,8 +139,8 @@ describe('Pricing setup, one profile system (T182)', () => {
     expect(api.writes).toEqual([]);
   });
 
-  it('a refusal of the catalogue (HTTP 200, status 0) is shown in the form in the api\'s words, and no role is sent', async () => {
-    routes((c) => (c.url === 'product/add' ? refused200('profile_code is already used by another profile') : undefined));
+  it('a refusal (422) is shown in the form in the api\'s words, and no role is sent', async () => {
+    routes((c) => (c.url === 'pricing-setup/profiles' ? refused422(['profile_code is already used by another profile']) : undefined));
     await open('bead');
     type(form().querySelector('#role-code'), 'A60-FR');
     type(form().querySelector('#role-name'), 'Alpha 60 bead');
@@ -154,7 +150,7 @@ describe('Pricing setup, one profile system (T182)', () => {
     await settle(fixture);
 
     expect(errors()).toEqual(['profile_code is already used by another profile']);
-    expect(api.writes.map((c) => c.url)).toEqual(['product/add']);
+    expect(api.writes.map((c) => c.url)).toEqual(['pricing-setup/profiles']);
     expect(form()).not.toBeNull();
   });
 
@@ -173,7 +169,7 @@ describe('Pricing setup, one profile system (T182)', () => {
     refuse = false;
     button(form(), 'Save the profile').click();
     await settle(fixture);
-    expect(api.writes.map((c) => c.url)).toEqual(['product/add', 'pricing-setup/systems/4/roles', 'pricing-setup/systems/4/roles']);
+    expect(api.writes.map((c) => c.url)).toEqual(['pricing-setup/profiles', 'pricing-setup/systems/4/roles', 'pricing-setup/systems/4/roles']);
     expect(api.writes[2].body.roles[0].product_id).toBe(77);
   });
 
@@ -212,8 +208,10 @@ describe('Pricing setup, one profile system (T182)', () => {
     await settle(fixture);
     button(form(), 'Save the profile').click();
     await settle(fixture);
-    expect(api.writes.map((c) => c.url)).toEqual(['product/update/31', 'pricing-setup/systems/4/roles']);
-    expect(api.writes[0].body).toEqual({ ...FRAME_ROW, profile_name: 'Alpha 60 frame, new die' });
+    expect(api.writes.map((c) => `${c.verb} ${c.url}`)).toEqual(['put pricing-setup/profiles/31', 'put pricing-setup/systems/4/roles']);
+    // Only the name, the code and the sizes: a profile of the catalogue keeps its rates.
+    expect(api.writes[0].body).toEqual(jasmine.objectContaining({ profile_code: 'A60-FR', profile_name: 'Alpha 60 frame, new die' }));
+    expect(Object.keys(api.writes[0].body).sort()).toEqual(['face_width_mm', 'profile_code', 'profile_depth_mm', 'profile_name', 'rebate_mm', 'sightline_mm']);
   });
 
   it('the bar length is sent with the role when it is typed, null when it is emptied, and not at all when it is left', async () => {
@@ -262,7 +260,7 @@ describe('Pricing setup, one profile system (T182)', () => {
   });
 
   it('"Delete the profile" asks first; after the yes the role is emptied, then the profile removed; a refusal stays in the dialog', async () => {
-    routes((c) => (c.url === 'product/delete/31' ? refused200('This profile is used by quotation Q-0012 and cannot be removed.') : undefined));
+    routes((c) => (c.verb === 'delete' && c.url === 'pricing-setup/profiles/31' ? refused422(['This profile is used by quotation Q-0012 and cannot be removed.'], 'This profile is used by quotation Q-0012 and cannot be removed.', 'in_use') : undefined));
     await open('frame');
     button(form(), 'Delete the profile').click();
     await settle(fixture);
@@ -272,7 +270,7 @@ describe('Pricing setup, one profile system (T182)', () => {
 
     Array.from(dialog.querySelectorAll('button')).find((b) => b.textContent!.trim() === 'Delete the profile')!.click();
     await settle(fixture);
-    expect(api.writes.map((c) => c.url)).toEqual(['pricing-setup/systems/4/roles', 'product/delete/31']);
+    expect(api.writes.map((c) => c.url)).toEqual(['pricing-setup/systems/4/roles', 'pricing-setup/profiles/31']);
     expect(el().querySelector('app-confirm-dialog')!.textContent).toContain('This profile is used by quotation Q-0012 and cannot be removed.');
   });
 });

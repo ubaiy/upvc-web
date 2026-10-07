@@ -20,8 +20,7 @@ describe('Pricing setup, the profile systems (T182)', () => {
       if (c.url === 'pricing-setup') return ok(checklist());
       if (c.url === 'product/get-product-list') return ok([{ id: 31, profile_system_id: 4, role: 'frame' }, { id: 32, profile_system_id: 4, role: 'sash' }, { id: 33, profile_system_id: 4, role: null }, { id: 34, profile_system_id: null, role: null }]);
       if (c.url === 'pricing-setup/systems/4') return ok(systemDetail({ system: { ...systemDetail().system, notes: 'Bought from Alpha' } }));
-      if (c.url === 'profile-system/add') return ok({ id: 12, ...c.body });
-      if (c.url === 'profile-system/update/4') return ok({ id: 4, ...c.body });
+      if (c.url === 'pricing-setup/systems') return ok(systemDetail({ system: { ...systemDetail().system, ...c.body, id: 12 } }));
       if (c.url.startsWith('pricing-setup/systems/')) return ok(systemDetail());
       return undefined;
     };
@@ -67,7 +66,7 @@ describe('Pricing setup, the profile systems (T182)', () => {
     expect(row('Alpha 60 casement').querySelectorAll('td')[2].textContent!.trim()).toBe('0');
   });
 
-  it('a new system: POST profile-system/add with what was typed, then its own page', async () => {
+  it('a new system: POST pricing-setup/systems with what was typed, then its own page', async () => {
     await start();
     el().querySelector<HTMLButtonElement>('[data-setup="new-system"]')!.click();
     await settle(fixture);
@@ -86,14 +85,14 @@ describe('Pricing setup, the profile systems (T182)', () => {
     button(form(), 'Add the system').click();
     await settle(fixture);
 
-    expect(api.writes.map((c) => `${c.verb} ${c.url}`)).toEqual(['post profile-system/add']);
+    expect(api.writes.map((c) => `${c.verb} ${c.url}`)).toEqual(['post pricing-setup/systems']);
     expect(api.writes[0].body).toEqual({ name: 'Beta 70 sliding', category: 'Sliding', system_depth_mm: 70, series: 'B70', notes: null });
     expect(navigate).toHaveBeenCalledWith(['/pricing-setup'], { queryParams: { tab: 'systems', system: 12 } });
     expect(toastOf().showSuccess).toHaveBeenCalledWith('Profile system added');
   });
 
-  it('a refusal of the older route (HTTP 200, status 0) is shown in the form and the form stays', async () => {
-    routes((c) => (c.url === 'profile-system/add' ? refused200('A profile system with this name already exists.') : undefined));
+  it('a refusal (422) is shown in the form and the form stays', async () => {
+    routes((c) => (c.url === 'pricing-setup/systems' ? refused422(['A profile system with this name already exists.'], 'A profile system with this name already exists.') : undefined));
     await start();
     el().querySelector<HTMLButtonElement>('[data-setup="new-system"]')!.click();
     await settle(fixture);
@@ -105,7 +104,7 @@ describe('Pricing setup, the profile systems (T182)', () => {
     expect(navigate).not.toHaveBeenCalled();
   });
 
-  it('rename: the form opens with what the api holds, saves with profile-system/update and reads the list again', async () => {
+  it('rename: the form opens with what the api holds, saves with PUT pricing-setup/systems/{id} and reads the list again', async () => {
     await start();
     row('Alpha 60 casement').querySelector<HTMLButtonElement>('[data-act="rename"]')!.click();
     await settle(fixture);
@@ -119,7 +118,7 @@ describe('Pricing setup, the profile systems (T182)', () => {
     await settle(fixture);
     button(form(), 'Save').click();
     await settle(fixture);
-    expect(api.writes.map((c) => `${c.verb} ${c.url}`)).toEqual(['post profile-system/update/4']);
+    expect(api.writes.map((c) => `${c.verb} ${c.url}`)).toEqual(['put pricing-setup/systems/4']);
     expect(api.writes[0].body).toEqual({ name: 'Alpha 60 casement, white', category: 'Casement', system_depth_mm: 60, series: 'A60', notes: 'Bought from Alpha' });
     expect(api.sent.slice(-2)).toEqual(['GET pricing-setup', 'GET product/get-product-list']);
     expect(navigate).not.toHaveBeenCalled();

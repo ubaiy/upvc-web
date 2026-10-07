@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Observable, concat, defaultIfEmpty, last, of, switchMap } from 'rxjs';
+import { switchMap } from 'rxjs';
 
 import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
@@ -135,16 +135,16 @@ export class SystemRulesComponent implements OnChanges {
     for (const row of rows) {
       if (typedText(row.value) !== shownNumber(row.rule.value)) values[row.rule.key] = typedNumber(row.value);
     }
-    const notes = rows.filter((row) => row.note.trim() !== (row.rule.notes ?? '').trim() && typedNumber(row.value) !== null);
+    // The notes go in the same call. A note on a rule the system does not hold yet is sent with the value shown.
+    const notes: Record<string, string | null> = {};
+    for (const row of rows.filter((r) => r.note.trim() !== (r.rule.notes ?? '').trim() && typedNumber(r.value) !== null)) {
+      notes[row.rule.key] = row.note.trim() || null;
+      if (!row.rule.is_set) values[row.rule.key] = typedNumber(row.value);
+    }
     this.saving = true;
-    const first: Observable<unknown> = Object.keys(values).length ? this.setup.saveRules(this.detail.system.id, values) : of(null);
-    // One after the other: the demo api takes 60 requests a minute.
-    const keepNotes: Observable<unknown> = concat(...notes.map((row) => this.setup.saveRuleNote(this.detail.system.id, row.rule.key, Number(row.value), row.note.trim()))).pipe(defaultIfEmpty(null), last());
-    first
-      .pipe(
-        switchMap(() => keepNotes),
-        switchMap(() => this.setup.system(this.detail.system.id))
-      )
+    this.setup
+      .saveRules(this.detail.system.id, values, undefined, notes)
+      .pipe(switchMap(() => this.setup.system(this.detail.system.id)))
       .subscribe({
         next: (detail) => {
           this.saving = false;

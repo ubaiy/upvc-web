@@ -48,7 +48,7 @@ const DIMS: { field: 'face' | 'depth' | 'rebate' | 'sightline'; key: keyof Produ
 /**
  * One profile system (GET pricing-setup/systems/{id}): what it still misses, its trial windows,
  * its profiles by role with weight, how each is bought and its rate, and its rules.
- * A profile is entered once here: the catalogue row (product/add) and its role, weight and rate
+ * A profile is entered once here: the profile (POST pricing-setup/profiles) and its role, weight and rate
  * (PUT .../roles) are saved one after the other.
  */
 @Component({
@@ -239,11 +239,11 @@ export class SystemDetailComponent implements OnChanges {
     for (const d of DIMS) (sizes as any)[d.key] = typedNumber(f[d.field]);
     if (f.mode === 'pick' || (f.mode === 'new' && f.productId)) return of(f.productId as number);
     if (f.mode === 'new') {
-      // product/add asks for the six rates of the old area formula too; they are 0 for a profile entered here
-      // (the bill of materials reads the weight, the basis and the rate per metre).
+      // The route of this screen asks for no rate of the old area formula (the bill of materials reads the weight,
+      // the basis and the rate per metre).
       const rate = typedNumber(f.rate) ?? 0;
       return this.setup
-        .addProduct({ category: this.detail!.system.category, profile_code: f.code.trim(), profile_name: f.name.trim(), kg_meter: kg, rate_meter: rate, rate_bar: 0, kg_meter_color: kg, rate_meter_color: 0, rate_bar_color: 0, ...sizes })
+        .addProduct({ category: this.detail!.system.category, profile_code: f.code.trim(), profile_name: f.name.trim(), kg_meter: kg, rate_meter: rate, ...sizes })
         .pipe(
           // Kept, so a refusal of the role does not add the profile a second time.
           tap((row) => (f.productId = row.id)),
@@ -254,7 +254,7 @@ export class SystemDetailComponent implements OnChanges {
     const same = !!p && p.profile_code === f.code.trim() && p.profile_name === f.name.trim() && DIMS.every((d) => (p[d.key] ?? null) === (sizes as any)[d.key]);
     if (!p || same) return of(f.productId as number);
     return this.setup
-      .updateProduct(p.id, { ...p, profile_code: f.code.trim(), profile_name: f.name.trim(), ...sizes })
+      .updateProduct(p.id, { profile_code: f.code.trim(), profile_name: f.name.trim(), ...sizes })
       .pipe(switchMap(() => of(p.id)));
   }
 

@@ -70,7 +70,7 @@ describe('Pricing setup, the rules of a system (T182)', () => {
     expect(row('weld_allowance_per_end').textContent).toContain('Not set, no default');
   });
 
-  it('saves the changed values in one PUT (a number sets, an emptied box removes), then the note on its own route, then reads the system', async () => {
+  it('saves the changed values in one PUT (a number sets, an emptied box removes), the note in the same PUT, then reads the system', async () => {
     await start();
     await showAll();
     type(value('weld_allowance_per_end'), '2.5');
@@ -81,21 +81,20 @@ describe('Pricing setup, the rules of a system (T182)', () => {
 
     save().click();
     await settle(fixture);
-    expect(api.sent).toEqual(['PUT pricing-setup/systems/4/rules', 'POST profile-system/4/rules/add', 'GET pricing-setup/systems/4']);
-    expect(api.calls[0].body).toEqual({ rules: { weld_allowance_per_end: 2.5, bead_deduction: null } });
-    expect(api.calls[1].body).toEqual({ rule_key: 'weld_allowance_per_end', value_mm: 2.5, notes: 'measured on our own welder' });
+    expect(api.sent).toEqual(['PUT pricing-setup/systems/4/rules', 'GET pricing-setup/systems/4']);
+    expect(api.calls[0].body).toEqual({ rules: { weld_allowance_per_end: 2.5, bead_deduction: null }, notes: { weld_allowance_per_end: 'measured on our own welder' } });
     expect(saved.length).toBe(1);
     expect(toastOf().showSuccess).toHaveBeenCalledWith('2 rules saved');
   });
 
-  it('a changed note alone keeps the value: only the note route is called', async () => {
+  it('a changed note alone keeps the value: only the note is sent', async () => {
     await start();
     type(note('bead_deduction'), 'checked against the Zendow manual');
     await settle(fixture);
     save().click();
     await settle(fixture);
-    expect(api.sent).toEqual(['POST profile-system/4/rules/add', 'GET pricing-setup/systems/4']);
-    expect(api.calls[0].body).toEqual({ rule_key: 'bead_deduction', value_mm: 8, notes: 'checked against the Zendow manual' });
+    expect(api.sent).toEqual(['PUT pricing-setup/systems/4/rules', 'GET pricing-setup/systems/4']);
+    expect(api.calls[0].body).toEqual({ notes: { bead_deduction: 'checked against the Zendow manual' } });
     expect(toastOf().showSuccess).toHaveBeenCalledWith('Rule saved');
   });
 
