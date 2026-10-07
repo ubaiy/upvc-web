@@ -4,9 +4,10 @@ import { RouterModule } from '@angular/router';
 
 import { WriteDirective } from 'src/app/shared/access/write.directive';
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
+import { InrPipe } from 'src/app/shared/pipes/inr.pipe';
 import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 import { fixLabel, placeOf } from './checklist-tab.component';
-import { Checklist, MethodAnswer, MethodChoice, SetupRefusal } from './pricing-setup.models';
+import { Checklist, Comparison, MethodAnswer, MethodChoice, SetupRefusal } from './pricing-setup.models';
 import { PricingSetupService } from './pricing-setup.service';
 
 /** The method that prices from the company's own profiles; it needs the check list complete. */
@@ -28,7 +29,7 @@ export function savedLinesText(answer: MethodAnswer, methods: MethodChoice[]): s
 @Component({
   selector: 'app-setup-method',
   standalone: true,
-  imports: [CommonModule, RouterModule, SharedComponentsModule, WriteDirective, ConfirmDialogComponent],
+  imports: [CommonModule, RouterModule, SharedComponentsModule, WriteDirective, ConfirmDialogComponent, InrPipe],
   templateUrl: './method-tab.component.html',
   styleUrls: ['./setup.scss'],
 })
@@ -41,6 +42,9 @@ export class MethodTabComponent implements OnInit {
   /** The api's refusal: each thing still missing, in its own words. */
   errors: string[] = [];
   done = '';
+  /** What the last saved windows cost under both methods: shown in the confirm before the yes. */
+  compared: Comparison | null = null;
+  compareError = '';
 
   place = placeOf;
   fix = fixLabel;
@@ -74,6 +78,9 @@ export class MethodTabComponent implements OnInit {
     this.errors = [];
     this.done = '';
     this.asking = m;
+    this.compared = null;
+    this.compareError = '';
+    this.setup.compare().subscribe({ next: (c) => (this.compared = c), error: (e: Error) => (this.compareError = e.message) });
   }
 
   confirm(): void {

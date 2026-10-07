@@ -8,7 +8,7 @@ import { AccessService } from 'src/app/shared/access/access.service';
 import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 import { AuthService } from 'src/app/shared/services/auth.service';
 import { ToastService } from 'src/app/shared/services/toast.service';
-import { Checklist, Figures, SystemDetail, SystemRole, SystemRule } from './pricing-setup.models';
+import { Checklist, Comparison, Figures, SystemDetail, SystemRole, SystemRule } from './pricing-setup.models';
 
 /** What the specs of Pricing setup share: an api that answers by route, and the answers of the contract. */
 
@@ -216,6 +216,55 @@ export function figures(over: Partial<Figures> = {}): Figures {
     ],
     glass: [{ id: 2, name: '5mm plain glass', rate: 72, unit: 'Sq M', glass_mm: null }],
     colours: [{ id: 1, name: 'Default', rate_kg: 210 }],
+    ...over,
+  };
+}
+
+/** GET pricing-setup/compare (T186): a window both methods price, and two only the old method prices. */
+export function comparison(over: Partial<Comparison> = {}): Comparison {
+  const bom = {
+    profiles: [
+      { role: 'frame', code: 'B-frame', name: 'Beta 70 frame', metres: 4.6894, kg: 6.096, amount: 984.78 },
+      { role: 'sash+mesh_sash', code: 'B-sash', name: 'Beta 70 sash', metres: 3.2, kg: 4.64, amount: 620 },
+      { role: 'reinforcement', code: 'B-steel', name: 'Beta 70 steel', metres: 4.1412, kg: 2.485, amount: 223.62 },
+    ],
+    glass: [{ name: 'Clear float 5 mm', qty: 10.6562, unit: 'sq ft', amount: 479.53 }],
+    hardware_set: { id: 1, code: 'RS-CAS-1', name: 'Casement, espagnolette + hinges or friction stays' },
+    hardware: { items: 9, amount: 512.4 },
+    figures: { profile_rate_kg: 140, steel_rate_kg: 90, profile_wastage_pct: 6, steel_wastage_pct: 5, glass_wastage_pct: 0, overhead_pct: 10, labour_rate: 25, installation_rate: 40 },
+    totals: { material: 2820.33, labour: 322.92, overhead: 314.33, installation: 516.67, cost: 3974.25 },
+    warnings: ['The profile system lists no interlock for this number of sliding sashes.'],
+  };
+  return {
+    method: 'legacy_v1',
+    scope: { limit: 20, quotation_id: null, as_system_id: null },
+    totals: { windows: 3, compared: 2, not_priced: 1, old: 18440, new: 17210.36, difference: -1229.64 },
+    windows: [
+      {
+        line_id: 311, quotation_id: 57, quotation_number: 'Q-0057', label: 'W1', description: 'Casement Openable window', width: 1200, height: 1500, quantity: 2,
+        stored: { method: 'legacy_v1', total: 9000 },
+        old: { method: 'legacy_v1', priced: true, total: 9000, reason: null },
+        new: { method: 'bom_v1', priced: true, total: 7948.5, reason: null, bom },
+        compared_as: null,
+        difference: -1051.5,
+      },
+      {
+        line_id: 310, quotation_id: 57, quotation_number: 'Q-0057', label: null, description: 'Casement Fixed window', width: 1000, height: 1200, quantity: 1,
+        stored: { method: 'legacy_v1', total: 5200 },
+        old: { method: 'legacy_v1', priced: true, total: 5200, reason: null },
+        new: { method: 'bom_v1', priced: false, total: null, reason: 'profile CAS-F belongs to no profile system, so there are no cutting rules for it.', place: { tab: 'systems' } },
+        compared_as: null,
+        difference: null,
+      },
+      {
+        line_id: 309, quotation_id: 56, quotation_number: 'Q-0056', label: 'D1', description: 'Casement Openable door', width: 900, height: 2100, quantity: 1,
+        stored: { method: 'legacy_v1', total: 9440 },
+        old: { method: 'legacy_v1', priced: true, total: 9440, reason: null },
+        new: { method: 'bom_v1', priced: false, total: null, reason: 'the labour rate is not set (fabrication labour per sq ft).', place: { tab: 'figures', key: 'labour_rate' } },
+        compared_as: null,
+        difference: null,
+      },
+    ],
     ...over,
   };
 }

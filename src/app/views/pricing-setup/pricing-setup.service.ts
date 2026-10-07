@@ -6,6 +6,7 @@ import { quiet } from 'src/app/shared/interceptors/request-options';
 import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 import {
   Checklist,
+  Comparison,
   CostHead,
   Figures,
   FiguresBody,
@@ -150,6 +151,13 @@ export class PricingSetupService {
   /** 422 `not_ready` while the check list is not complete: the refusal carries each missing sentence. */
   setMethod(method: string): Observable<MethodAnswer> {
     return this.send<MethodAnswer>('put', 'pricing-setup/method', { method }, 'The pricing method was not changed.');
+  }
+
+  /** GET pricing-setup/compare: the last saved windows priced by both methods; `asSystem` prices a window of no system as that one. Nothing is stored. */
+  compare(asSystem: number | null = null, limit = 20): Observable<Comparison> {
+    return this.read<Comparison>(`pricing-setup/compare?limit=${limit}` + (asSystem ? `&as_system_id=${asSystem}` : ''), 'The comparison could not be worked out.').pipe(
+      map((data) => ({ ...data, windows: data?.windows ?? [], totals: data?.totals ?? { windows: 0, compared: 0, not_priced: 0, old: 0, new: 0, difference: 0 } }))
+    );
   }
 
   hardwareSets(): Observable<HardwareSets> {

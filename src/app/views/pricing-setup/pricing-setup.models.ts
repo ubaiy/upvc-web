@@ -368,3 +368,48 @@ export function words(key: string): string {
   const text = String(key ?? '').replace(/[_-]+/g, ' ').trim();
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
+
+/** One window of GET pricing-setup/compare priced by one method: the line total, or the sentence of the refusal. */
+export interface ComparedPrice {
+  method: string;
+  priced: boolean;
+  total: number | null;
+  reason: string | null;
+  /** Where a refusal is fixed: the query string of /pricing-setup; null when nothing there fixes it. */
+  place?: Record<string, string | number> | null;
+  /** The bill of materials of one window in short (the new method only). */
+  bom?: {
+    profiles: { role: string; code: string; name: string; metres: number; kg: number; amount: number }[];
+    glass: { name: string; qty: number; unit: string; amount: number }[];
+    hardware_set: SetRef | null;
+    hardware: { items: number; amount: number };
+    figures: Record<string, number | null>;
+    totals: { material: number; labour: number; overhead: number; installation: number; cost: number };
+    warnings: string[];
+  };
+}
+
+export interface ComparedWindow {
+  line_id: number;
+  quotation_id: number;
+  quotation_number: string | null;
+  label: string | null;
+  description: string;
+  width: number;
+  height: number;
+  quantity: number;
+  stored: { method: string; total: number };
+  old: ComparedPrice;
+  new: ComparedPrice;
+  /** The saved profile is in no system: the new price is that of the same window built from this one. */
+  compared_as?: { id: number; name: string } | null;
+  difference: number | null;
+}
+
+/** GET pricing-setup/compare: the company's own saved windows under both methods. The totals add the windows both price. */
+export interface Comparison {
+  method: string;
+  scope: { limit: number; quotation_id: number | null; as_system_id?: number | null };
+  totals: { windows: number; compared: number; not_priced: number; old: number; new: number; difference: number };
+  windows: ComparedWindow[];
+}

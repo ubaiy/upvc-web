@@ -80,6 +80,18 @@
   (confirmed)="confirm()"
   (closed)="asking = null"
 >
+  <p data-setup="switch-compare" *ngIf="compared as c; else comparing">
+    <ng-container *ngIf="c.totals.windows; else nothingSaved">
+      Your last {{ c.totals.windows }} saved {{ c.totals.windows === 1 ? 'window' : 'windows' }}: {{ c.totals.compared }} priced by both methods, area formula
+      <strong>{{ c.totals.old | inr }}</strong>, bill of materials <strong>{{ c.totals.new | inr }}</strong> (difference {{ c.totals.difference | inr }}).
+      <span *ngIf="c.totals.not_priced">{{ c.totals.not_priced }} cannot be priced by one of the two.</span>
+      <a routerLink="/pricing-setup" [queryParams]="{ tab: 'compare' }">See each window</a>
+    </ng-container>
+    <ng-template #nothingSaved>No window is saved on a quotation yet, so there is no price to compare.</ng-template>
+  </p>
+  <ng-template #comparing>
+    <p class="muted" data-setup="switch-compare">{{ compareError ? 'The comparison could not be worked out. ' + compareError : 'Pricing your last saved windows by both methods…' }}</p>
+  </ng-template>
   <p class="muted"><strong>Prices will change.</strong> Every window priced from now on, and every saved line that is saved again, is priced by this method.</p>
-  <p class="muted">Lines already saved keep the price and the figures they were saved with. You can switch back at any time.</p>
+  <p class="muted">Lines already saved keep the price and the figures they were saved with. A draft quotation you open again says “Prices have changed” when a window of it would cost something else today; nothing moves until you save that window again or press Update prices there. You can switch back at any time.</p>
 </app-confirm-dialog>

@@ -1,7 +1,7 @@
 import { ComponentFixture } from '@angular/core/testing';
 
 import { MethodTabComponent, savedLinesText } from './method-tab.component';
-import { FakeApi, checklist, linkOf, mount, ok, refused422, settle } from './pricing-setup.testing';
+import { FakeApi, checklist, comparison, http, linkOf, mount, ok, refused422, settle } from './pricing-setup.testing';
 
 describe('Pricing setup, the pricing method (T182)', () => {
   let api: FakeApi;
@@ -57,6 +57,30 @@ describe('Pricing setup, the pricing method (T182)', () => {
     expect(dialog()).toBeNull();
     expect(api.writes).toEqual([]);
     expect(row('legacy_v1').querySelector('[data-setup="live"]')).not.toBeNull();
+  });
+
+  it('the confirm shows what the last saved windows cost under both methods (T186), or says that it could not be worked out', async () => {
+    let compare = (): any => ok(comparison());
+    api.answer = (c) => (c.url === 'pricing-setup' ? ok(checklist({ ready: true, missing: [] })) : c.url.startsWith('pricing-setup/compare') ? compare() : undefined);
+    fixture = await mount(MethodTabComponent, api);
+
+    switchOf('bom_v1')!.click();
+    await settle(fixture);
+    expect(api.sent).toContain('GET pricing-setup/compare?limit=20');
+    const said = dialog()!.querySelector('[data-setup="switch-compare"]')!.textContent!.replace(/\s+/g, ' ').trim();
+    expect(said).toContain('Your last 3 saved windows: 2 priced by both methods, area formula ₹18,440.00, bill of materials ₹17,210.36 (difference −₹1,229.64).');
+    expect(said).toContain('1 cannot be priced by one of the two.');
+    expect(linkOf(dialog()!, 'See each window')).toContain('/pricing-setup?tab=compare');
+    expect(api.writes).toEqual([]);
+
+    dialogButton('Not now').click();
+    compare = () => http(500);
+    await settle(fixture);
+    switchOf('bom_v1')!.click();
+    await settle(fixture);
+    expect(dialog()!.querySelector('[data-setup="switch-compare"]')!.textContent).toContain('The comparison could not be worked out.');
+    // The switch itself is still his to make.
+    expect(dialogButton('Yes, switch').disabled).toBeFalse();
   });
 
   it('after the yes: PUT pricing-setup/method, the new method is live and the saved lines are accounted for', async () => {

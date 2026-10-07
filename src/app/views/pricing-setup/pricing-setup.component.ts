@@ -5,6 +5,7 @@ import { Subscription } from 'rxjs';
 
 import { SharedComponentsModule } from 'src/app/shared/components/shared-components.module';
 import { ChecklistTabComponent } from './checklist-tab.component';
+import { CompareTabComponent } from './compare-tab.component';
 import { FiguresTabComponent } from './figures-tab.component';
 import { HardwareTabComponent } from './hardware-tab.component';
 import { MethodTabComponent } from './method-tab.component';
@@ -16,6 +17,7 @@ export const SETUP_TABS = [
   { id: 'systems', label: 'Profile systems' },
   { id: 'hardware', label: 'Hardware sets' },
   { id: 'figures', label: 'Rates and figures' },
+  { id: 'compare', label: 'Compare' },
   { id: 'method', label: 'Pricing method' },
 ] as const;
 export type SetupTabId = (typeof SETUP_TABS)[number]['id'];
@@ -39,6 +41,7 @@ export type SetupTabId = (typeof SETUP_TABS)[number]['id'];
     SystemDetailComponent,
     HardwareTabComponent,
     FiguresTabComponent,
+    CompareTabComponent,
     MethodTabComponent,
   ],
   template: `
@@ -66,6 +69,7 @@ export type SetupTabId = (typeof SETUP_TABS)[number]['id'];
       </ng-container>
       <app-setup-hardware *ngSwitchCase="'hardware'" [setId]="setId"></app-setup-hardware>
       <app-setup-figures *ngSwitchCase="'figures'" [asked]="key"></app-setup-figures>
+      <app-setup-compare *ngSwitchCase="'compare'"></app-setup-compare>
       <app-setup-method *ngSwitchCase="'method'"></app-setup-method>
     </div>
   `,

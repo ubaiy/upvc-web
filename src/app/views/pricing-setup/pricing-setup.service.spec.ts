@@ -44,6 +44,8 @@ describe('PricingSetupService (T182)', () => {
       ['the figures', (s) => s.figures(), 'GET pricing-setup/settings'],
       ['saved figures', (s) => s.saveFigures({ settings: { labour_rate: 55 } }), 'PUT pricing-setup/settings', { settings: { labour_rate: 55 } }],
       ['the method', (s) => s.setMethod('bom_v1'), 'PUT pricing-setup/method', { method: 'bom_v1' }],
+      ['the compare', (s) => s.compare(), 'GET pricing-setup/compare?limit=20'],
+      ['the compare, old windows as a system', (s) => s.compare(4), 'GET pricing-setup/compare?limit=20&as_system_id=4'],
       ['the hardware sets', (s) => s.hardwareSets(), 'GET hardware-sets'],
       ['one hardware set', (s) => s.hardwareSet(3), 'GET hardware-sets/3'],
       ['a pack copied in', (s) => s.addHardwareSet({ pack: 'RS-CAS-1' }), 'POST hardware-sets', { pack: 'RS-CAS-1' }],
