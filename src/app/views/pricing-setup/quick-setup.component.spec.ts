@@ -2,7 +2,7 @@ import { ComponentFixture } from '@angular/core/testing';
 
 import { Checklist, Figures, HardwareSet } from './pricing-setup.models';
 import { FakeApi, button, checklist, comparison, figures, linkOf, meOf, mount, ok, OWNER, refused422, settle, toastOf, type } from './pricing-setup.testing';
-import { QuickSetupComponent, choicesOf, itemsOf, ratesBody } from './quick-setup.component';
+import { QuickSetupComponent, choicesOf, groupsOf, itemsOf, ratesBody } from './quick-setup.component';
 
 const SET: HardwareSet = {
   id: 3, code: 'RS-CAS-1', name: 'Casement, espagnolette + hinges', brand: null, category: 'casement', profile_system_id: null, rebate_offset_mm: 8,
@@ -236,5 +236,86 @@ describe('Pricing setup, the quick setup (T187)', () => {
     expect(el().querySelector('[data-setup="no-trial"]')!.textContent).toContain('No window can be priced yet');
     expect(el().querySelector('[data-setup="rates-missing"]')!.textContent).toContain('The fabrication labour rate per sq ft is not set.');
     expect(el().querySelector('[data-setup="ready"]')!.textContent).toBe('Not ready yet');
+  });
+
+  describe('the brand first (T194)', () => {
+    const brandButtons = (): HTMLButtonElement[] => Array.from(el().querySelectorAll<HTMLButtonElement>('[data-setup="brands"] button'));
+    const lines = (): string[] => Array.from(el().querySelectorAll('[data-choice]')).map((li) => li.getAttribute('data-choice')!);
+
+    /** The api of T194: two brands, the second with a system the company took (id 21, not ready yet). */
+    function withBrands(taken = false): void {
+      list.brands = [
+        {
+          brand: 'NCL VEKA', note: 'System names and profile codes are from the NCL VEKA technical catalogue. Weights are generic.',
+          packs: [
+            { pack: 'NCL VEKA I-60 Casement', what: 'I-60 Casement: casement windows and hinged doors', kind: 'casement', profiles: 8, system_id: taken ? 21 : null, confirm: 8 },
+            { pack: 'NCL VEKA I-60 Sliding 2 track', what: 'I-60 Sliding, 2 track', kind: 'sliding', profiles: 6, system_id: null, confirm: 6 },
+          ],
+        },
+        { brand: 'Encraft', note: 'Weights are generic.', packs: [{ pack: 'Encraft EN62 casement', what: 'EN62 Casement, heavy duty', kind: 'casement', profiles: 8, system_id: null, confirm: 8 }] },
+      ];
+      if (taken) list.systems.push({ id: 21, name: 'NCL VEKA I-60 Casement', category: 'Casement', kind: 'casement', retired: false, ready: true, missing: [], hardware_set: null, trials: [] });
+    }
+
+    it('an api without brands: the tick list as before, no brand to pick', () => {
+      expect(el().querySelector('[data-setup="brands"]')).toBeNull();
+      expect(lines()).toEqual(['Generic 60 mm casement', 'Generic sliding 2 track', 'Casement', 'Sliding']);
+    });
+
+    it('the groups: each brand with its ready systems, then "Other / unbranded" with the generic systems and the systems of his own; a brand system is not listed twice', () => {
+      withBrands(true);
+      expect(groupsOf(list).map((g) => [g.brand, g.choices.map((c) => c.note)])).toEqual([
+        ['NCL VEKA', ['NCL VEKA I-60 Casement', 'NCL VEKA I-60 Sliding 2 track']],
+        ['Encraft', ['Encraft EN62 casement']],
+        ['Other / unbranded', ['Generic 60 mm casement', 'Generic sliding 2 track', 'Casement', 'Sliding']],
+      ]);
+    });
+
+    it('a company on the generic systems opens on "Other / unbranded": no extra click; a brand is one click, its systems carry the mark to confirm', async () => {
+      withBrands();
+      fixture.componentInstance.load();
+      await settle(fixture);
+      expect(brandButtons().map((b) => [b.textContent!.trim(), b.getAttribute('aria-pressed')])).toEqual([['NCL VEKA', 'false'], ['Encraft', 'false'], ['Other / unbranded (2)', 'true']]);
+      expect(lines()).toEqual(['Generic 60 mm casement', 'Generic sliding 2 track', 'Casement', 'Sliding']);
+      expect(el().querySelector('[data-mark="confirm"]')).toBeNull();
+
+      brandButtons()[0].click();
+      fixture.detectChanges();
+      expect(lines()).toEqual(['NCL VEKA I-60 Casement', 'NCL VEKA I-60 Sliding 2 track']);
+      expect(el().querySelector('[data-setup="brand-note"]')!.textContent).toContain('Weights are generic. No rate is given');
+      expect(choice('NCL VEKA I-60 Casement').querySelector('[data-mark="confirm"]')!.textContent).toBe('8 weights to confirm from your invoice');
+      expect(tick('NCL VEKA I-60 Casement').checked).toBe(false);
+
+      // The tick is the call of before with the brand system's name; the brand stays picked when the page is read again.
+      api.calls = [];
+      tick('NCL VEKA I-60 Casement').click();
+      await settle(fixture);
+      expect(api.bodyOf('post', 'pricing-setup/packs')).toEqual({ pack: 'NCL VEKA I-60 Casement' });
+      expect(lines()).toEqual(['NCL VEKA I-60 Casement', 'NCL VEKA I-60 Sliding 2 track']);
+    });
+
+    it('a company that took a brand system opens on that brand, ticked and Ready', async () => {
+      withBrands(true);
+      fixture.componentInstance.brand = null;
+      fixture.componentInstance.load();
+      await settle(fixture);
+      expect(brandButtons().find((b) => b.getAttribute('aria-pressed') === 'true')!.textContent!.trim()).toBe('NCL VEKA (1)');
+      expect(tick('NCL VEKA I-60 Casement').checked).toBe(true);
+      expect(choice('NCL VEKA I-60 Casement').textContent).toContain('Ready');
+    });
+
+    it('a company with nothing in use picks its brand first', async () => {
+      withBrands();
+      list.systems = [];
+      list.packs.forEach((p) => (p.system_id = null));
+      fixture.componentInstance.brand = null;
+      fixture.componentInstance.load();
+      await settle(fixture);
+      expect(lines()).toEqual([]);
+      expect(el().querySelector('[data-setup="no-brand"]')).not.toBeNull();
+      brandButtons()[2].click();
+      fixture.detectChanges();
+      expect(lines()).toEqual(['Generic 60 mm casement', 'Generic sliding 2 track']);
+    });
   });
 });

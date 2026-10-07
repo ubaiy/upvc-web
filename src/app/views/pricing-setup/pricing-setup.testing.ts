@@ -162,6 +162,7 @@ export function checklist(over: Partial<Checklist> = {}): Checklist {
     roles: [],
     charged_by_hardware_set: {},
     packs: [],
+    brands: [],
     ...over,
   };
 }

@@ -46,6 +46,15 @@ export interface Pack {
   kind: string;
   profiles: number;
   system_id: number | null;
+  /** A system of a brand pack: how many of its weights are generic, to confirm from the supplier's invoice (api T194). */
+  confirm?: number;
+}
+
+/** The ready systems of one brand of profile, and how true the pack is (api T194). */
+export interface Brand {
+  brand: string;
+  note: string;
+  packs: Pack[];
 }
 
 export interface SystemSummary {
@@ -114,6 +123,7 @@ export interface Checklist {
   roles: RoleInfo[];
   charged_by_hardware_set: Record<string, string>;
   packs: Pack[];
+  brands: Brand[];
 }
 
 export interface RoleProfile {

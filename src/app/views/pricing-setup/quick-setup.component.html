@@ -15,16 +15,24 @@
       <div class="card-head card-pad">
         <div>
           <h2 id="h-quick-a">1. Which systems do you sell?</h2>
-          <p>Tick what you make. A ready system comes with its profiles, weights, cutting rules and hardware set: example values you can change later.</p>
+          <p>{{ groups.length > 1 ? 'Pick the brand of profile you buy, then tick what you make.' : 'Tick what you make.' }} A ready system comes with its profiles, weights, cutting rules and hardware set: example values you can change later.</p>
         </div>
         <span class="badge" [ngClass]="l.ready ? 'badge-success' : 'badge-warning'" data-setup="ready">{{ l.ready ? 'Ready to price' : 'Not ready yet' }}</span>
       </div>
-      <ul class="pick card-pad">
+      <div class="line-actions card-pad" role="group" aria-label="The brand of profile you buy" *ngIf="groups.length > 1" data-setup="brands">
+        <button type="button" class="btn btn-sm" *ngFor="let g of groups" [ngClass]="g.brand === brand ? 'btn-primary' : 'btn-secondary'" [attr.aria-pressed]="g.brand === brand" [attr.data-brand]="g.brand" (click)="brand = g.brand">
+          {{ g.brand }}<ng-container *ngIf="inUseOf(g) as n"> ({{ n }})</ng-container>
+        </button>
+      </div>
+      <p class="card-pad small" *ngIf="groups.length > 1 && !brand" data-setup="no-brand">No brand picked yet.</p>
+      <p class="card-pad small" *ngIf="brandNote" data-setup="brand-note">{{ brandNote }} No rate is given: your rates are yours (step 2).</p>
+      <ul class="pick card-pad" *ngIf="choices.length">
         <li *ngFor="let c of choices; trackBy: trackChoice" [attr.data-choice]="c.note">
           <label class="check">
             <input appWrite="settings.write" type="checkbox" [checked]="inUse(c)" [disabled]="!!ticking" (change)="tick(c, $any($event.target).checked)" />
             <span><strong>{{ c.name }}</strong><span class="small" *ngIf="c.note !== c.name"> ({{ c.note }})</span></span>
           </label>
+          <span class="badge badge-warning" *ngIf="c.confirm" data-mark="confirm">{{ c.confirm }} weights to confirm from your invoice</span>
           <span class="small" *ngIf="ticking === c.name">Working…</span>
           <ng-container *ngIf="inUse(c) && c.system as s">
             <span class="badge badge-success" *ngIf="s.ready">Ready</span>

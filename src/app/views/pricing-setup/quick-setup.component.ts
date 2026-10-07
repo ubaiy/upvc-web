@@ -14,7 +14,7 @@ import { ToastService } from 'src/app/shared/services/toast.service';
 import { BomShortComponent } from './bom-short.component';
 import { fixLabel, placeOf } from './checklist-tab.component';
 import { quantityRule } from './hardware-tab.component';
-import { Checklist, Figures, FiguresBody, GlassRow, HardwareRule, HardwareSet, SetupRefusal, SystemSummary, Trial, shownNumber, typedNumber } from './pricing-setup.models';
+import { Checklist, Figures, FiguresBody, GlassRow, HardwareRule, HardwareSet, Pack, SetupRefusal, SystemSummary, Trial, shownNumber, typedNumber } from './pricing-setup.models';
 import { PricingSetupService } from './pricing-setup.service';
 
 /** A line of "Which systems do you sell?": a ready system of the starter pack, or a system of the company's own. */
@@ -24,7 +24,19 @@ export interface Choice {
   /** The pack to add when the company has no system of it yet. */
   pack: string | null;
   system: SystemSummary | null;
+  /** A system of a brand pack: its weights are generic, to confirm from the invoice. */
+  confirm?: number;
 }
+
+/** The lines of step 1 for one brand of profile (T194). */
+export interface Group {
+  brand: string;
+  note: string;
+  choices: Choice[];
+}
+
+/** What the four generic systems and the company's own are offered as. */
+export const OTHER = 'Other / unbranded';
 
 /** An item of an opened hardware set: its catalogue item (the price), and how the set counts it. */
 export interface SetItem {
@@ -45,13 +57,17 @@ export function itemsOf(rules: HardwareRule[]): SetItem[] {
 /** The four rupee rates of the company, in the order of the table. */
 export const QUICK_RATES = ['profile_rate_kg', 'steel_rate_kg', 'labour_rate', 'installation_rate'];
 
+const lineOf = (list: Checklist, p: Pack): Choice => ({ name: p.what, note: p.pack, pack: p.pack, system: list.systems.find((s) => s.id === p.system_id) ?? null, confirm: p.confirm });
+
 /** The ready systems first, then the company's own. A system is of a pack by the id the api gives. */
 export function choicesOf(list: Checklist): Choice[] {
-  const ofPack = new Set(list.packs.map((p) => p.system_id));
-  return [
-    ...list.packs.map((p) => ({ name: p.what, note: p.pack, pack: p.pack, system: list.systems.find((s) => s.id === p.system_id) ?? null })),
-    ...list.systems.filter((s) => !ofPack.has(s.id)).map((s) => ({ name: s.name, note: s.category, pack: null, system: s })),
-  ];
+  const ofPack = new Set([...list.packs, ...list.brands.flatMap((b) => b.packs)].map((p) => p.system_id));
+  return [...list.packs.map((p) => lineOf(list, p)), ...list.systems.filter((s) => !ofPack.has(s.id)).map((s) => ({ name: s.name, note: s.category, pack: null, system: s }))];
+}
+
+/** T194: the brand first. Each brand with its ready systems; the generic systems and the company's own are "Other / unbranded". */
+export function groupsOf(list: Checklist): Group[] {
+  return [...list.brands.map((b) => ({ brand: b.brand, note: b.note, choices: b.packs.map((p) => lineOf(list, p)) })), { brand: OTHER, note: '', choices: choicesOf(list) }];
 }
 
 /**
@@ -90,7 +106,7 @@ export function ratesBody(
 
 /**
  * Quick setup (card T187), what Pricing setup opens on: three steps on one page.
- * 1. Which systems do you sell: a tick takes a ready system (POST pricing-setup/packs) or brings one back, no tick retires it.
+ * 1. Which systems do you sell: the brand of profile first (T194), then a tick takes a ready system (POST pricing-setup/packs) or brings one back, no tick retires it.
  * 2. Your rates: one table, one save (PUT pricing-setup/settings).
  * 3. Check a window: the trial windows the api prices, each with its bill of materials, then "These are my rates now".
  * Everything else of the set-up is under Advanced. The web works out no price.
@@ -108,7 +124,9 @@ export class QuickSetupComponent implements OnInit, OnDestroy {
   list: Checklist | null = null;
   figures: Figures | null = null;
   sets: HardwareSet[] = [];
-  choices: Choice[] = [];
+  groups: Group[] = [];
+  /** The brand whose systems are shown: the one the company has a system in use of, else the one it picks. */
+  brand: string | null = null;
 
   /** The line being ticked. */
   ticking = '';
@@ -151,7 +169,8 @@ export class QuickSetupComponent implements OnInit, OnDestroy {
     forkJoin({ list: this.setup.checklist(), figures: this.setup.figures(), sets: this.setup.hardwareSets() }).subscribe({
       next: ({ list, figures, sets }) => {
         this.list = list;
-        this.choices = choicesOf(list);
+        this.groups = groupsOf(list);
+        this.brand ??= (this.groups.find((g) => g.choices.some((c) => this.inUse(c))) ?? (this.groups.length === 1 ? this.groups[0] : null))?.brand ?? null;
         this.sets = sets.sets.filter((s) => s.is_default);
         this.takeFigures(figures);
         // The sets that stand open are read again with it.
@@ -198,6 +217,19 @@ export class QuickSetupComponent implements OnInit, OnDestroy {
   isExample(what: string, key: string, held: unknown): boolean {
     const given = this.list?.example?.to_confirm.find((v) => v.what === what && v.key === key && v.stored);
     return !!given && given.value !== null && held !== null && held !== undefined && Number(given.value) === Number(held);
+  }
+
+  /** The lines of the brand picked. */
+  get choices(): Choice[] {
+    return this.groups.find((g) => g.brand === this.brand)?.choices ?? [];
+  }
+
+  get brandNote(): string {
+    return this.groups.find((g) => g.brand === this.brand)?.note ?? '';
+  }
+
+  inUseOf(g: Group): number {
+    return g.choices.filter((c) => this.inUse(c)).length;
   }
 
   inUse(c: Choice): boolean {

@@ -74,6 +74,7 @@ export class PricingSetupService {
         roles: data?.roles ?? [],
         charged_by_hardware_set: data?.charged_by_hardware_set ?? {},
         packs: data?.packs ?? [],
+        brands: data?.brands ?? [],
       }))
     );
   }
