@@ -341,7 +341,7 @@
       </div>
 
       <!-- Drawn and not charged, because the company has not set its rate: said to every role, beside the price (card T144). -->
-      <app-not-priced-note class="dz-not-priced" *ngIf="price.notPriced.length" [notes]="price.notPriced"></app-not-priced-note>
+      <app-not-priced-note class="dz-not-priced" *ngIf="price.notPriced.length || price.pricedWithout.length" [notes]="price.notPriced" [without]="price.pricedWithout"></app-not-priced-note>
 
       <!-- Price details are the cost of each part and the margin: only for a role with prices.view_cost (card T143). -->
       <div class="panel-foot" *appCan="'prices.view_cost'">
@@ -373,7 +373,7 @@
               </tr>
             </tbody>
           </table>
-          <app-not-priced-note class="details-not-priced" *ngIf="price.notPriced.length" [notes]="price.notPriced"></app-not-priced-note>
+          <app-not-priced-note class="details-not-priced" *ngIf="price.notPriced.length || price.pricedWithout.length" [notes]="price.notPriced" [without]="price.pricedWithout"></app-not-priced-note>
         </div>
         <dl class="details-total">
           <div><dt>Cost</dt><dd class="num">{{ price.cost | inr }}</dd></div>

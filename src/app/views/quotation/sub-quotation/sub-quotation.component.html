@@ -138,6 +138,13 @@
     </button>
   </app-callout>
 
+  <app-callout tone="warn" *ngIf="priceRefusals.length">
+    {{ priceRefusals.length === 1 ? 'This window was' : 'These windows were' }} not priced again and {{ priceRefusals.length === 1 ? 'keeps its' : 'keep their' }} price:
+    <ul class="refusals">
+      <li *ngFor="let r of priceRefusals"><strong>{{ r.window }}</strong>: {{ r.reason }}</li>
+    </ul>
+  </app-callout>
+
   <app-callout *ngIf="copyRepriced && q.editable">
     Prices have changed since the original. This copy uses today’s prices.
     <button action type="button" class="btn btn-ghost btn-sm" (click)="dismissRepriced()">Dismiss</button>
@@ -219,7 +226,7 @@
           </button>
           <span class="name" *ngIf="!q.editable && !q.revisable">{{ line.name }}</span>
           <div class="muted small">{{ line.description }}</div>
-          <app-not-priced-note class="line-not-priced" *ngIf="line.notPriced?.length" [notes]="line.notPriced ?? []"></app-not-priced-note>
+          <app-not-priced-note class="line-not-priced" *ngIf="line.notPriced?.length || line.pricedWithout?.length" [notes]="line.notPriced ?? []" [without]="line.pricedWithout ?? []"></app-not-priced-note>
         </div>
         <span class="muted small num qty">Qty {{ line.quantity }}</span>
         <div class="price">

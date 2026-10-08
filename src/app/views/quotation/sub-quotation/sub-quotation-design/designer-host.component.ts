@@ -56,7 +56,7 @@ import {
 import { quiet } from 'src/app/shared/interceptors/request-options';
 import { ToastService } from 'src/app/shared/services/toast.service';
 import { CanDirective } from 'src/app/shared/access/can.directive';
-import { NotPricedNoteComponent, notPricedOf } from '../not-priced';
+import { NotPricedNoteComponent, notPricedOf, pricedWithoutOf } from '../not-priced';
 import { ACCESS_PARTS } from 'src/app/shared/access/write.directive';
 import { DesignTemplateStore } from '../../../design-lab/design-template-store.service';
 import { QuotationService } from '../../quotation.service';
@@ -92,6 +92,8 @@ interface PriceView {
   lines: PriceLine[];
   /** What is drawn and not charged because its rate is not set, in the api's words (card T144). */
   notPriced: string[];
+  /** T202: the parts priced at nothing in a priced window, in the api's words. */
+  pricedWithout: string[];
   message: string;
 }
 
@@ -340,12 +342,13 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
       rate: Number(item.rate_per_sq_ft) || 0,
       lines: priceLinesOf(details),
       notPriced: notPricedOf(details),
+      pricedWithout: pricedWithoutOf(details),
       message: '',
     };
   }
 
   private emptyPrice(state: PriceState, message = ''): PriceView {
-    return { state, amount: 0, cost: 0, areaSqFt: 0, rate: 0, lines: [], notPriced: [], message };
+    return { state, amount: 0, cost: 0, areaSqFt: 0, rate: 0, lines: [], notPriced: [], pricedWithout: [], message };
   }
 
   private context(): { quotationId: string; lineId: string | null; quantity: number; label: string; frameFaceMm: number } {
@@ -507,6 +510,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
         ...livePriceOf(res.data),
         lines: priceLinesOf(res.data),
         notPriced: notPricedOf(res.data),
+        pricedWithout: pricedWithoutOf(res.data),
         message: '',
       };
     } else {

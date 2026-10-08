@@ -39,8 +39,8 @@ export interface LineForm {
 
 /** What a line is counted for, and how many: the values the api takes (phase-47 log, section 1). */
 export const LINE_SCOPES = ['sash', 'pane', 'bottom_pane', 'steel_piece', 'frame_side', 'window'];
-/** tilt_turn (T196): the rows of a tilt and turn sash; a set without one refuses a tilt and turn window and sends the owner here. */
-export const LINE_OPENINGS = ['side_hung', 'top_hung', 'tilt_turn'];
+/** tilt_turn (T196), top_hung and bottom_hung (T202): the rows of such a sash; a set without one refuses the window and sends the owner here. */
+export const LINE_OPENINGS = ['side_hung', 'top_hung', 'bottom_hung', 'tilt_turn'];
 export const QTY_FORMULAS: { key: string; label: string }[] = [
   { key: 'fixed', label: 'A fixed number' },
   { key: 'per_m', label: 'Per metre' },

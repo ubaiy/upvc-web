@@ -9,7 +9,7 @@
 import { TotalsLine } from 'src/app/shared/components/totals/totals.component';
 import { addressLine } from 'src/app/shared/class/address-text';
 import { PaneType, WindowSpec } from 'src/app/shared/components/window-thumb/window-drawing';
-import { notPricedOf } from '../not-priced';
+import { notPricedOf, pricedWithoutOf } from '../not-priced';
 
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'declined' | 'expired' | 'billed';
 
@@ -52,6 +52,8 @@ export interface QuotationLine {
   thumbLabel: string;
   /** What is drawn and not charged because its rate is not set, in the api's words (card T144). */
   notPriced?: string[];
+  /** T202: the parts the new pricing method priced at nothing in this window, in the api's words. */
+  pricedWithout?: string[];
 }
 
 export interface QuotationCustomer {
@@ -416,6 +418,7 @@ function readLine(line: any, index: number, item: any): QuotationLine {
     spec,
     thumbLabel: `Drawing of ${name}${category ? ', ' + category.toLowerCase() : ''}`,
     notPriced: notPricedOf(line),
+    pricedWithout: pricedWithoutOf(line),
   };
 }
 

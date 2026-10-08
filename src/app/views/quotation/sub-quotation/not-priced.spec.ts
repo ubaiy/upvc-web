@@ -5,7 +5,7 @@ import { BehaviorSubject } from 'rxjs';
 import { AccessService } from 'src/app/shared/access/access.service';
 import { AccessState } from 'src/app/shared/access/access.models';
 import { toQuotationView } from './detail/quotation-detail.model';
-import { NotPricedNoteComponent, notPricedOf } from './not-priced';
+import { NotPricedNoteComponent, notPricedOf, pricedWithoutOf } from './not-priced';
 import { priceLinesOf } from './sub-quotation-design/designer-request';
 
 /** A row of the api's group "Bars and shapes" (BarShapePricing::rateRow). */
@@ -130,6 +130,22 @@ describe('What a price draws and does not charge (T144)', () => {
       expect(link.textContent?.trim()).toBe('Set these rates');
       expect(link.getAttribute('href')).toBe('/profile?tab=pricing&rates=extras');
       expect(link.getAttribute('target')).withContext('the window being drawn stays open').toBe('_blank');
+    });
+
+    it('what the new method priced at nothing is said in the words of the api, with the way to Pricing setup (T202)', () => {
+      const without = ['Priced without the steel of the sliding sashes: the profile system has no rule shutter_reinforcement_deduction'];
+      expect(pricedWithoutOf({ priced_without: without })).toEqual(without);
+      expect(pricedWithoutOf({ quatation_object_data: JSON.stringify({ priced_without: without }) })).toEqual(without);
+      expect(pricedWithoutOf({ quatation_object_data: '{}' })).toEqual([]);
+      expect(toQuotationView({ id: 14, quatation_product: [{ id: 1, width: 1500, height: 1200, quantity: 1, priced_without: without }] }).lines[0].pricedWithout).toEqual(without);
+
+      as(['prices.view_cost', 'settings.write']);
+      fixture.componentRef.setInput('without', without);
+      fixture.detectChanges();
+      const note = el().querySelector('[data-price="priced-without"]')!;
+      expect(note.textContent).toContain(without[0] + '.');
+      expect(note.querySelector('a')!.getAttribute('href')).toBe('/pricing-setup');
+      expect(el().querySelector('[data-price="not-priced"]')).withContext('no rate is missing: no "Set these rates"').toBeNull();
     });
 
     it('a role that cannot change settings reads the same sentences, without the link', () => {

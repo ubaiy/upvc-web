@@ -55,6 +55,8 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   actionError = '';
   /** This draft is a copy whose prices differ from its source. */
   copyRepriced = false;
+  /** T202: the windows the last Update prices could not price again, each with the sentence of the api. They keep their price. */
+  priceRefusals: { window: string; reason: string }[] = [];
 
   menuItems: MenuItem[] = [];
   sendOpen = false;
@@ -87,6 +89,7 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
       this._route.paramMap.subscribe((params) => {
         // From one quotation straight to another the page stays: nothing asked or open on the last one is kept.
         this.id = Number(params.get('id'));
+        this.priceRefusals = [];
         this.view = null;
         this.actionError = '';
         this.busy = '';
@@ -290,7 +293,10 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
   updatePrices(): void {
     const before = this.view!.total;
     const shown = this.id;
-    this._run('prices', this._dataService.updateQuotationPrices(this.id), () => {
+    this._run('prices', this._dataService.updateQuotationPrices(this.id), (data) => {
+      this.priceRefusals = (data?.refused ?? []).map((r: any) => ({ window: r.label || `${r.width} x ${r.height} mm`, reason: r.reason }));
+      const kept = this.priceRefusals.length;
+      const rest = kept ? ` ${kept} ${kept === 1 ? 'window' : 'windows'} could not be priced again and ${kept === 1 ? 'keeps its' : 'keep their'} price: see why above the list.` : '';
       this._loading?.unsubscribe();
       this._loading = this._dataService.getQuotation(shown).subscribe({
         next: (res) => {
@@ -298,9 +304,9 @@ export class SubQuotationComponent implements OnInit, OnDestroy {
             this._show(res.data);
             const after = this.view!.total;
             this._toast.showSuccess(
-              after === before
+              (after === before
                 ? 'Prices are up to date. The total did not change.'
-                : `Prices updated. The total went from ${formatInr(before)} to ${formatInr(after)}.`
+                : `Prices updated. The total went from ${formatInr(before)} to ${formatInr(after)}.`) + rest
             );
           }
         },

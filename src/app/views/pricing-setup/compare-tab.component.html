@@ -42,6 +42,11 @@
         <strong>{{ a.totals.old | inr }}</strong>, bill of materials <strong>{{ a.totals.new | inr }}</strong>, difference <strong>{{ a.totals.difference | inr }}</strong>.
         <span *ngIf="a.totals.not_priced"> {{ a.totals.not_priced }} cannot be compared; each row says why.</span>
       </p>
+      <ul class="todo card-pad" *ngIf="a.totals.priced_without?.length" data-setup="priced-without">
+        <li *ngFor="let p of a.totals.priced_without">
+          <app-icon class="mark" name="info"></app-icon><span><strong>{{ p.windows }} {{ p.windows === 1 ? 'window' : 'windows' }}</strong>: {{ p.text }}.</span>
+        </li>
+      </ul>
 
       <div class="table-wrap">
         <table class="table" data-setup="compare">
@@ -68,6 +73,7 @@
                 </td>
                 <td class="right">
                   <ng-container *ngIf="w.new.priced; else noNew">{{ w.new.total | inr }}</ng-container>
+                  <div class="small" *ngFor="let p of w.new.bom?.priced_without" data-setup="row-priced-without">{{ p }}.</div>
                   <ng-template #noNew>
                     <span class="small">
                       Cannot be priced: {{ w.new.reason }}

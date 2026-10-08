@@ -424,6 +424,8 @@ export interface BomShort {
   figures: Record<string, number | null>;
   totals: { material: number; labour: number; overhead: number; installation: number; cost: number };
   warnings: string[];
+  /** T202: the parts this window is priced without (a rule or a profile the system lacks), in the api's sentences. */
+  priced_without?: string[];
 }
 
 export interface ComparedWindow {
@@ -447,6 +449,6 @@ export interface ComparedWindow {
 export interface Comparison {
   method: string;
   scope: { limit: number; quotation_id: number | null; as_system_id?: number | null };
-  totals: { windows: number; compared: number; not_priced: number; old: number; new: number; difference: number };
+  totals: { windows: number; compared: number; not_priced: number; old: number; new: number; difference: number; priced_without?: { text: string; windows: number }[] };
   windows: ComparedWindow[];
 }

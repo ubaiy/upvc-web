@@ -595,6 +595,21 @@ describe('SubQuotationComponent (quotation page)', () => {
     expect(text()).toContain('₹21,500.00');
   });
 
+  it('lists the windows Update prices could not price again, each with the sentence of the api', () => {
+    show({ prices_changed: true });
+    service.updateQuotationPrices.and.returnValue(
+      ok({ updated: 1, refused: [{ line_id: 7, label: 'W1 bedroom', width: 600, height: 1200, reason: 'hardware set RS-CAS-1 has no row for a top-hung sash.' }, { line_id: 8, label: null, width: 900, height: 1500, reason: 'glass G has no rate (cost).' }] })
+    );
+    service.getQuotation.and.returnValue(ok(sampleQuotation()));
+    (el().querySelector('app-callout .warn button') as HTMLButtonElement).click();
+    fixture.detectChanges();
+    expect(toast.showSuccess).toHaveBeenCalledWith(
+      'Prices are up to date. The total did not change. 2 windows could not be priced again and keep their price: see why above the list.'
+    );
+    const rows = Array.from(el().querySelectorAll('.refusals li')).map((li) => li.textContent!.trim());
+    expect(rows).toEqual(['W1 bedroom: hardware set RS-CAS-1 has no row for a top-hung sash.', '900 x 1500 mm: glass G has no rate (cost).']);
+  });
+
   it('says so on a copy whose prices differ from the original', () => {
     create(ok(sampleQuotation()), { repriced: '1' });
     expect(text()).toContain('Prices have changed since the original');

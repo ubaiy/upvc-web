@@ -40,6 +40,19 @@ describe('Pricing setup, the compare of the two methods (T186)', () => {
     expect(cells(311).slice(1, 4)).toEqual(['₹9,000.00', '₹7,948.50', '−₹1,051.50']);
   });
 
+  it('a window priced without a part says so on its row, and the total counts such windows (T202)', async () => {
+    const without = 'Priced without the steel of the sliding sashes: the profile system has no rule shutter_reinforcement_deduction';
+    const answer = comparison();
+    answer.windows[0].new.bom = { ...answer.windows[0].new.bom!, priced_without: [without] };
+    answer.totals = { ...answer.totals, priced_without: [{ text: without, windows: 13 }] };
+    api.answer = answers(() => ok(answer));
+    fixture = await mount(CompareTabComponent, api);
+
+    expect(said('priced-without')).toBe(`13 windows: ${without}.`);
+    expect(cells(311)[2]).toBe(`₹7,948.50${without}.`);
+    expect(row(310).querySelector('[data-setup="row-priced-without"]')).toBeNull();
+  });
+
   it("a window the new method cannot price says why in the api's sentence, with a link to where it is fixed", async () => {
     api.answer = answers(() => ok(comparison()));
     fixture = await mount(CompareTabComponent, api);

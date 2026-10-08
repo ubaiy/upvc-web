@@ -45,6 +45,15 @@ export function notPricedOf(data: any): string[] {
 }
 
 /**
+ * T202: the parts the new pricing method priced at nothing inside a window it priced, because the profile system
+ * lacks a rule or a profile, in the api's sentences (`priced_without` of the price call, or of a saved line).
+ */
+export function pricedWithoutOf(data: any): string[] {
+  const said = data?.priced_without ?? parsed(data?.quatation_object_data)?.priced_without;
+  return Array.isArray(said) ? said.map((sentence) => String(sentence).replace(/[.]$/, '')) : [];
+}
+
+/**
  * The amber line under a price: what was drawn and not charged, because the
  * company has not set its rate. Whoever can change the settings gets the
  * way there; everyone else reads the line.
@@ -55,6 +64,10 @@ export function notPricedOf(data: any): string[] {
   imports: [NgFor, NgIf, RouterLink, CanDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
+    <p class="not-priced" *ngIf="without?.length" role="note" data-price="priced-without">
+      <span *ngFor="let note of without">{{ note }}. </span>
+      <a *appCan="'settings.write'" routerLink="/pricing-setup" target="_blank" rel="noopener">Open Pricing setup</a>
+    </p>
     <p class="not-priced" *ngIf="notes?.length" role="note" data-price="not-priced">
       <span *ngFor="let note of notes">{{ note }}. </span>
       <a
@@ -71,6 +84,7 @@ export function notPricedOf(data: any): string[] {
     `
       :host { display: block; }
       :host(.line-not-priced) { margin-block-start: var(--s-1); max-width: 560px; }
+      .not-priced + .not-priced { margin-block-start: var(--s-1); }
       .not-priced {
         margin: 0;
         padding: var(--s-2) var(--s-3);
@@ -86,4 +100,6 @@ export function notPricedOf(data: any): string[] {
 })
 export class NotPricedNoteComponent {
   @Input() notes: string[] | null = [];
+  /** T202: what the window is priced without (a rule or a profile the profile system lacks). */
+  @Input() without: string[] | null = [];
 }

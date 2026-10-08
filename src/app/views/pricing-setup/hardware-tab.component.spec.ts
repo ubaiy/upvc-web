@@ -227,7 +227,7 @@ describe('Pricing setup, the hardware sets (T182)', () => {
     expect((form.querySelector('#line-item') as HTMLInputElement).value).toBe('Friction stay');
     type(form.querySelector('#line-role'), 'stay');
     const opening = form.querySelector<HTMLSelectElement>('#line-opening')!;
-    expect(Array.from(opening.options).map((o) => o.textContent!.trim())).toEqual(['Any', 'Side hung', 'Top hung', 'Tilt turn']);
+    expect(Array.from(opening.options).map((o) => o.textContent!.trim())).toEqual(['Any', 'Side hung', 'Top hung', 'Bottom hung', 'Tilt turn']);
     opening.value = 'top_hung';
     opening.dispatchEvent(new Event('change'));
     type(form.querySelector('#line-factor'), '2');
