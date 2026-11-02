@@ -148,6 +148,18 @@
         For this pane only. Shift-click, or press and hold, another pane to glaze several alike.
       </p>
 
+      <div class="di-row">
+        <label class="di-check">
+          <input
+            type="checkbox"
+            data-di="pane-louvers"
+            [checked]="!!l.louvers"
+            (change)="onLouvers($any($event.target).checked)"
+          />
+          Louvers
+        </label>
+      </div>
+
       <label class="di-row" *ngIf="paneKind === 'openable'">
         <span>Opens</span>
         <select

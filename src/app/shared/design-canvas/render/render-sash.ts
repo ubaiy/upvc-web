@@ -208,8 +208,31 @@ export function drawGlass(
   parent.add(glass);
   if (ctx.detail !== 'tiny') drawGlassReflection(parent, g);
   if (own) drawGlassHatch(parent, g, index);
+  if (leaf.louvers) drawLouverSlats(parent, leaf, g);
   if (o.bars !== false) drawGlazingBars(parent, g, ctx);
   if (own && o.tag !== false) drawGlassTag(parent, leaf, g, ctx, index);
+}
+
+/** Level slats across the pane. */
+function drawLouverSlats(parent: Parent, leaf: LeafNode, g: PxRect): void {
+  const slats = new Konva.Group({ listening: false, name: 'louver-slats' });
+  slats.setAttr('paneId', leaf.id);
+  const step = Math.max(6, Math.min(16, g.h / 8));
+  for (let y = g.y + step / 2; y < g.y + g.h - 2; y += step) {
+    slats.add(
+      new Konva.Rect({
+        x: g.x + 1,
+        y,
+        width: g.w - 2,
+        height: step * 0.45,
+        fill: '#ffffff',
+        stroke: '#8a9299',
+        strokeWidth: 0.75,
+        opacity: 0.9,
+      })
+    );
+  }
+  parent.add(slats);
 }
 
 function drawGlassReflection(parent: Parent, r: PxRect): void {
@@ -273,11 +296,12 @@ function drawGlassTag(
   ctx: RenderCtx,
   index: number
 ): void {
-  if (g.w < 24 || g.h < 22) return;
+  const scale = ctx.opts.pictureText ?? 1;
+  if (g.w < 24 * scale || g.h < 22 * scale) return;
   const code = `G${index + 1}`;
   const name = ctx.opts.glassLabels?.[String(leaf.glassId)] ?? '';
-  const fontSize = ctx.detail === 'full' ? 10 : 9;
-  const text = new Konva.Text({ text: name ? `${code} ${name}` : code, fontSize, padding: 3, fill: '#ffffff', fontStyle: 'bold' });
+  const fontSize = (ctx.detail === 'full' ? 12 : 11) * scale;
+  const text = new Konva.Text({ text: name ? `${code} ${name}` : code, fontSize, padding: 3 * scale, fill: '#ffffff', fontStyle: 'bold' });
   if (text.width() > g.w - 8) text.text(code);
   const label = new Konva.Label({
     x: g.x + 4,

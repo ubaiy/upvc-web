@@ -53,6 +53,7 @@ import {
   setGlazing,
   setLeafSpec,
   setPaneGlass,
+  setPaneLouvers,
   setSlideMesh,
   setSlidePanel,
   setSlidePanelCount,
@@ -302,6 +303,12 @@ export class DesignInspectorComponent {
     const match = this.glassOptions.find((g) => String(g.id) === raw);
     if (!ids.length || !match) return;
     this.run((d) => setPaneGlass(d, ids, match.id));
+  }
+
+  /** Louvers in the selected pane(s). */
+  onLouvers(on: boolean): void {
+    const ids = this.selectedIds;
+    if (ids.length) this.run((d) => setPaneLouvers(d, ids, on));
   }
 
   onBars(which: 'barsV' | 'barsH', raw: string): void {

@@ -10,6 +10,7 @@ import {
   parse,
   serialize,
   setPaneGlass,
+  setPaneLouvers,
   setSlidePanelCount,
   setWindowGlass,
   splitPane,
@@ -138,5 +139,31 @@ describe('glass per pane', () => {
       // And a document saved before pane glass existed reads back byte for byte.
       expect(serialize(parse(serialize(base)))).toBe(serialize(base));
     }
+  });
+});
+
+describe('louvers on a pane', () => {
+  const louvered = (d: WindowDesign): boolean[] => toPayload(d).parts.map((p) => !!p.is_louvers);
+
+  it('marks the part of that pane, on every kind of pane', () => {
+    for (const build of [singleFixed, twoSashOpenable, verticalMullion, mixedExampleB, slidingTwoTrack]) {
+      const base = build();
+      expect(louvered(base)).not.toContain(true);
+      expect(louvered(setPaneLouvers(base, [ids(base)[0]], true))).toContain(true);
+    }
+  });
+
+  it('leaves the other panes alone', () => {
+    const base = verticalMullion();
+    const [first, second] = ids(base);
+    expect(louvered(setPaneLouvers(base, [second], true))).toEqual([false, true]);
+    expect(first).toBeTruthy();
+  });
+
+  it('comes off again and reads back byte for byte', () => {
+    const base = twoSashOpenable();
+    const on = setPaneLouvers(base, ids(base), true);
+    expect(serialize(parse(serialize(on)))).toBe(serialize(on));
+    expect(serialize(setPaneLouvers(on, ids(base), false))).toBe(serialize(base));
   });
 });

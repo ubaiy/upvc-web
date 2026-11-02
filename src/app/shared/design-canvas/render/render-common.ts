@@ -101,6 +101,8 @@ export interface RenderOpts {
   sashFaces?: SashFaces | null;
   /** Draw the key of the symbols under the drawing (the saved picture). */
   legend?: boolean;
+  /** The saved picture prints small, so its words are drawn this many times larger. */
+  pictureText?: number;
   /** Side the elevation is viewed from (default 'outside' = as modelled). */
   viewFrom?: ViewFrom;
 }

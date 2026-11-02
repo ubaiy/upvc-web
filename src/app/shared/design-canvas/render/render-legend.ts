@@ -14,8 +14,8 @@ const GAP = 14;
 const FONT = 10;
 
 /** Height the key of `items` needs on a stage `stageWPx` wide (0 = no key). */
-export function legendHeightPx(items: KeyItem[], stageWPx: number): number {
-  return items.length ? rowsOf(items, stageWPx).length * ROW_H + 8 : 0;
+export function legendHeightPx(items: KeyItem[], stageWPx: number, scale = 1): number {
+  return items.length ? (rowsOf(items, stageWPx / scale).length * ROW_H + 8) * scale : 0;
 }
 
 interface Placed {
@@ -51,16 +51,18 @@ export function drawLegend(
   parent: Parent,
   items: KeyItem[],
   stageWPx: number,
-  stageHPx: number
+  stageHPx: number,
+  scale = 1
 ): void {
   if (!items.length) return;
-  const rows = rowsOf(items, stageWPx);
-  const group = new Konva.Group({ listening: false, name: 'drawing-key' });
+  const widthPx = stageWPx / scale;
+  const rows = rowsOf(items, widthPx);
+  const group = new Konva.Group({ listening: false, name: 'drawing-key', scaleX: scale, scaleY: scale });
   group.setAttr('items', items.map((i) => i.glyph));
-  let y = stageHPx - rows.length * ROW_H - 4;
+  let y = stageHPx / scale - rows.length * ROW_H - 4;
   for (const row of rows) {
     const total = row.reduce((a, p) => a + p.w, 0) + GAP * (row.length - 1);
-    let x = (stageWPx - total) / 2;
+    let x = (widthPx - total) / 2;
     for (const { item, w } of row) {
       drawGlyph(group, item, x, y);
       group.add(
@@ -136,6 +138,12 @@ function drawGlyph(group: Konva.Group, item: KeyItem, x: number, y: number): voi
       }
       break;
     }
+    case 'louvers':
+      box();
+      for (let gy = top + 3; gy < top + h; gy += 3) {
+        line([x + 2, gy, x + GLYPH_W - 2, gy], false);
+      }
+      break;
     case 'track':
       group.add(
         new Konva.Circle({ x: x + GLYPH_W / 2, y: mid, radius: 6, stroke: COL.label, strokeWidth: 1, fill: '#ffffff' })

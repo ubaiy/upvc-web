@@ -3,7 +3,7 @@ import 'zone.js/testing';
 
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { WindowDesign, toPayload, walkLeaves } from '../design-model';
-import { mixedExampleB, singleFixed } from '../design-model/testing/fixtures';
+import { mixedExampleB, singleFixed, slidingTwoTrack, twoSashOpenable } from '../design-model/testing/fixtures';
 import { CanvasSelection } from './canvas-view';
 import { DesignInspectorComponent } from './design-inspector.component';
 
@@ -113,5 +113,20 @@ describe('DesignInspectorComponent: glass per pane', () => {
     fixture.detectChanges();
     component.onPaneGlass('15');
     expect(glassOf()).toEqual([undefined]);
+  });
+  it('offers louvers on a fixed, an openable and a sliding pane', async () => {
+    for (const build of [singleFixed, twoSashOpenable, slidingTwoTrack]) {
+      const [pane] = walkLeaves(build().root).map((l) => l.id);
+      create(build(), { type: 'pane', paneId: pane });
+      const box = q<HTMLInputElement>('[data-di="pane-louvers"]') as HTMLInputElement;
+      expect(box).withContext(build.name).not.toBeNull();
+      box.checked = true;
+      box.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+      expect(walkLeaves(design.root).find((l) => l.id === pane)?.louvers).toBeTrue();
+      expect(toPayload(design).parts.some((p) => p.is_louvers)).toBeTrue();
+      expect(q<HTMLInputElement>('[data-di="pane-louvers"]')?.checked).toBeTrue();
+      fixture.destroy();
+    }
   });
 });

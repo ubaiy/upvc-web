@@ -261,7 +261,7 @@ export function renderDesign(
   shapedLabels.forEach((draw) => draw());
 
   if (opts.legend) {
-    drawLegend(layer, drawingKey(design, opts.glassLabels), opts.stageWPx, opts.stageHPx);
+    drawLegend(layer, drawingKey(design, opts.glassLabels), opts.stageWPx, opts.stageHPx, opts.pictureText ?? 1);
   }
 
   drawSelection(layer, lay, ctx, ui.selection, frame, outline);

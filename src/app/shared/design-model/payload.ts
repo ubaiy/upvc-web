@@ -398,6 +398,11 @@ function sashExtras(leaf: LeafNode, outline: PaneOutline | undefined): Partial<G
   return out;
 }
 
+/** Louvers are priced on the part of the pane that has them. */
+function ownLouvers(leaf: LeafNode): Partial<GlobalSpec> {
+  return leaf.louvers ? { is_louvers: true } : {};
+}
+
 /** One per-section part: full spec + the pane's own configuration. */
 function leafPart(
   base: GlobalSpec,
@@ -418,6 +423,7 @@ function leafPart(
     width: Math.round(widthMm),
     ...ownHardware(leaf),
     ...ownGlass(leaf),
+    ...ownLouvers(leaf),
     ...override,
   };
 }
@@ -505,7 +511,7 @@ export function toPayload(
       ...sashExtras(leaf, outlines?.get(leaf.id)),
     };
     if (singleFixedRoot) {
-      parts.push({ ...base, ...ownGlass(leaf), ...extras });
+      parts.push({ ...base, ...ownGlass(leaf), ...ownLouvers(leaf), ...extras });
     } else {
       parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, frameProductId, extras));
     }

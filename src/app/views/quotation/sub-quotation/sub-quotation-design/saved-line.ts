@@ -31,6 +31,8 @@ import {
   layout,
   parse,
   positionsFromWidths,
+  setPaneLouvers,
+  walkLeaves,
 } from 'src/app/shared/design-model';
 import {
   PaneNode as OldNode,
@@ -200,7 +202,6 @@ function convertNode(node: OldNode, wMm: number, hMm: number, c: Convert): Model
 /** Options of the old screen that the model does not carry. */
 function unsupportedOptions(spec: any): string[] {
   const out: string[] = [];
-  if (spec?.is_louvers) out.push('It was saved with the "Louvers" option.');
   if (spec?.is_lshape) out.push('It was saved with the "L shape" option.');
   if (spec?.is_cupler) out.push('It was saved with the "Coupler" option.');
   if (spec?.ventilation_id) out.push('It was saved with a ventilation unit.');
@@ -294,7 +295,7 @@ export function openSavedLine(row: any, opts?: SavedLineOptions): OpenedLine {
   c.reasons.push(...unsupportedOptions(c.spec));
   const colourId = idOf(qod?.color?.id ?? c.spec?.color_id);
   const root = convertNode(tree, widthMm - 2 * face, heightMm - 2 * face, c);
-  const design: WindowDesign = createDesign({
+  const unlouvered: WindowDesign = createDesign({
     frame: {
       widthMm,
       heightMm,
@@ -310,6 +311,9 @@ export function openSavedLine(row: any, opts?: SavedLineOptions): OpenedLine {
     },
     root,
   });
+  const design = c.spec?.is_louvers
+    ? setPaneLouvers(unlouvered, walkLeaves(unlouvered.root).map((l) => l.id), true)
+    : unlouvered;
 
   try {
     const problems = checkInvariants(design, { frameFaceMm: face });

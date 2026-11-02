@@ -26,6 +26,7 @@ export type KeyGlyph =
   | 'slides'
   | 'fixed-shutter'
   | 'mesh'
+  | 'louvers'
   | 'track'
   | 'glass';
 
@@ -81,6 +82,7 @@ export function drawingKey(
   if (slides) items.push({ glyph: 'slides', text: 'Slides this way' });
   if (fixedShutter) items.push({ glyph: 'fixed-shutter', text: 'Fixed shutter' });
   if (mesh) items.push({ glyph: 'mesh', text: 'Fly mesh shutter' });
+  if (leaves.some((l) => l.louvers)) items.push({ glyph: 'louvers', text: 'Louvers' });
   if (slides || fixedShutter) items.push({ glyph: 'track', text: 'Track, 1 = outside' });
 
   glassesOf(design).forEach((id, i) => {

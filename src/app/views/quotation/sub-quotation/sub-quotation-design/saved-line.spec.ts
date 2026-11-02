@@ -116,10 +116,12 @@ describe('openSavedLine: lines saved before the design document', () => {
     const row = JSON.parse(JSON.stringify(DEMO_LINES['mullion']));
     const data = JSON.parse(row.quatation_object_data);
     data.design_tree.spec.is_louvers = true;
+    data.design_tree.spec.is_lshape = true;
     row.quatation_object_data = JSON.stringify(data);
     const o = openSavedLine(row);
     expect(o.faithful).toBeFalse();
-    expect(o.reasons.join(' ')).toContain('Louvers');
+    expect(o.reasons.join(' ')).not.toContain('Louvers');
+    expect(walkLeaves(o.design.root).every((l) => l.louvers)).toBeTrue();
   });
 
   it('the oldest rows (first section only) still open, from what is there', () => {

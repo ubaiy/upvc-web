@@ -86,6 +86,19 @@ export function setPaneGlass(
   return root === design.root ? design : { ...design, root };
 }
 
+/** Louvers on or off in the given panes. Off leaves no key behind. */
+export function setPaneLouvers(design: WindowDesign, paneIds: string[], on: boolean): WindowDesign {
+  const ids = new Set(paneIds);
+  const root = mapLeaves(design.root, (leaf) => {
+    if (!ids.has(leaf.id) || !!leaf.louvers === on) return leaf;
+    if (on) return { ...leaf, louvers: true };
+    const next = { ...leaf };
+    delete next.louvers;
+    return next;
+  });
+  return root === design.root ? design : { ...design, root };
+}
+
 /** "Whole window": every pane gets `glassId`; no pane keeps a glass of its own. */
 export function setWindowGlass(design: WindowDesign, glassId: Id | null): WindowDesign {
   const root = mapLeaves(design.root, (leaf) => withGlass(leaf, null, glassId));

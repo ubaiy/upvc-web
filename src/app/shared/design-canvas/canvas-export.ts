@@ -18,6 +18,8 @@ import { legendHeightPx } from './render/render-legend';
 /** Size of the saved picture in px at pixelRatio 1. */
 export const PICTURE_WIDTH_PX = 800;
 export const PICTURE_HEIGHT_PX = 600;
+/** The PDF prints the picture 46 mm wide: at this size its words stay readable. */
+export const PICTURE_TEXT = 2.5;
 
 export interface PictureOpts {
   frameFaceMm: number;
@@ -48,7 +50,7 @@ export function designPicture(design: WindowDesign, opts: PictureOpts): string {
     // The key goes under the width dimension; the window makes room for it.
     const legend = opts.legend !== false;
     const keyH = legend
-      ? legendHeightPx(drawingKey(design, opts.glassLabels), PICTURE_WIDTH_PX)
+      ? legendHeightPx(drawingKey(design, opts.glassLabels), PICTURE_WIDTH_PX, PICTURE_TEXT)
       : 0;
     const margins = { ...VIEW_MARGINS, bottom: VIEW_MARGINS.bottom + keyH };
     renderDesign(
@@ -67,6 +69,7 @@ export function designPicture(design: WindowDesign, opts: PictureOpts): string {
         glassLabels: opts.glassLabels ?? null,
         sashFaces: opts.sashFaces ?? null,
         legend,
+        pictureText: PICTURE_TEXT,
         viewFrom,
       }
     );

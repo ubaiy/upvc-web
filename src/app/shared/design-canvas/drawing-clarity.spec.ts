@@ -13,6 +13,7 @@ import {
   makeDoor,
   setLeafSpec,
   setPaneGlass,
+  setPaneLouvers,
   setSlide,
   setSlideMesh,
   setSlidePanel,
@@ -25,8 +26,9 @@ import {
   twoSashOpenable,
   verticalMullion,
 } from '../design-model/testing/fixtures';
-import { PICTURE_HEIGHT_PX, PICTURE_WIDTH_PX, designPicture } from './canvas-export';
+import { PICTURE_HEIGHT_PX, PICTURE_TEXT, PICTURE_WIDTH_PX, designPicture } from './canvas-export';
 import { RenderOpts, renderDesign } from './canvas-renderer';
+import { drawingKey } from './drawing-key';
 import {
   CanvasSelection,
   computeView,
@@ -38,7 +40,6 @@ import {
   VIEW_MARGINS_COMPACT,
 } from './canvas-view';
 import { resolveSelection } from './canvas-commands';
-import { drawingKey } from './drawing-key';
 
 const FACE = 60;
 let stage: Konva.Stage | null = null;
@@ -405,6 +406,32 @@ describe('drawing clarity: glass per pane', () => {
       paneIds: ['p2', 'p3'],
     });
     expect(b).toBeTruthy();
+  });
+});
+
+describe('drawing clarity: louvers', () => {
+  it('a louvered pane shows its slats and the key says so', () => {
+    const base = verticalMullion();
+    const [, second] = walkLeaves(base.root).map((l) => l.id);
+    const layer = draw(setPaneLouvers(base, [second], true));
+    const slats = all(layer, 'louver-slats');
+    expect(slats.length).toBe(1);
+    expect(slats[0].getAttr('paneId')).toBe(second);
+    expect(all(draw(base), 'louver-slats').length).toBe(0);
+    expect(drawingKey(setPaneLouvers(base, [second], true)).map((k) => k.glyph)).toContain('louvers');
+  });
+
+  it('the glass tag of the saved picture is drawn large enough to read in the PDF', () => {
+    const base = verticalMullion();
+    const [, second] = walkLeaves(base.root).map((l) => l.id);
+    const d = setPaneGlass(base, [second], 15);
+    const size = (opts: Partial<RenderOpts>): number => {
+      const [tag] = all(draw(d, { w: PICTURE_WIDTH_PX, h: PICTURE_HEIGHT_PX, opts }), 'glass-tag') as Konva.Label[];
+      return tag.getText().fontSize();
+    };
+    expect(size({})).toBeGreaterThanOrEqual(12);
+    expect(size({ pictureText: PICTURE_TEXT })).toBe(size({}) * PICTURE_TEXT);
+    expect(PICTURE_TEXT).toBeGreaterThanOrEqual(2.5);
   });
 });
 

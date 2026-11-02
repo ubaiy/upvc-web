@@ -199,6 +199,8 @@ export interface LeafNode {
    * document saved before per-pane glass means. See glass.ts.
    */
   glassId?: Id | null;
+  /** Louvers in this pane. Absent = none. */
+  louvers?: boolean;
   /**
    * Bars dividing THIS sash only (casement leaves; a sliding leaf carries
    * them per shutter, on its panels). Absent = undivided. See {@link PallaBars}.
