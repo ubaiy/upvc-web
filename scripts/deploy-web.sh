@@ -33,13 +33,16 @@ if [ "$REF" = HEAD ] && [ -n "$(git status --porcelain -- src scripts angular.js
   fail "there are uncommitted changes, commit them first"
 fi
 
-WORK=$(mktemp -d)
+# One fixed folder: the bundle names depend on the build path, so only this keeps two builds comparable
+WORK=$(dirname "$ROOT")/.upvc-web-build
 cleanup() {
   cd "$ROOT"
   # rmdir drops the junction only, so rm never reaches the real node_modules
   if [ -e "$WORK/node_modules" ]; then cmd //c rmdir "$(cygpath -w "$WORK/node_modules")" || true; fi
   if [ ! -e "$WORK/node_modules" ]; then rm -rf "$WORK"; else echo "Left in place: $WORK"; fi
 }
+cleanup
+mkdir "$WORK"
 trap cleanup EXIT
 
 git archive "$SHA" | tar -x -C "$WORK"
