@@ -64,11 +64,18 @@ grep -q 'API_URL:"/api/v1"' "$DIST"/main.*.js || fail "the build does not call t
 echo "Build checks passed."
 
 matches_live() {
-  local file
+  local file differs=0
   for file in "$DIST"/*.js "$DIST"/*.css; do
-    [ "$(curl -s -m 30 "$SITE/$(basename "$file")" | sha256sum | cut -d' ' -f1)" = "$(sha256sum < "$file" | cut -d' ' -f1)" ] || return 1
+    if [ "$(curl -s -m 30 "$SITE/$(basename "$file")" | sha256sum | cut -d' ' -f1)" != "$(sha256sum < "$file" | cut -d' ' -f1)" ]; then
+      echo "Differs from live: $(basename "$file")"
+      differs=1
+    fi
   done
-  [ "$(curl -s -m 30 "$SITE/" | sha256sum | cut -d' ' -f1)" = "$(sha256sum < "$DIST/index.html" | cut -d' ' -f1)" ]
+  if [ "$(curl -s -m 30 "$SITE/" | sha256sum | cut -d' ' -f1)" != "$(sha256sum < "$DIST/index.html" | cut -d' ' -f1)" ]; then
+    echo "Differs from live: index.html"
+    differs=1
+  fi
+  return $differs
 }
 
 if [ "$DRY" = 1 ]; then
