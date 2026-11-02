@@ -206,16 +206,20 @@ export function tooLongNote(plan: BarPlan): string {
   return named.length ? `${lead}: ${named.join(', ')}.` : `${lead}.`;
 }
 
-const four = (raw: any): BarSettings | null => {
+const figures = (raw: any): BarSettings | null => {
   const read = (key: string) => (raw?.[key] === null || raw?.[key] === undefined || raw?.[key] === '' ? NaN : Number(raw[key]));
   const out = { bar_mm: read('bar_mm'), blade_mm: read('blade_mm'), end_trim_mm: read('end_trim_mm'), min_offcut_mm: read('min_offcut_mm') };
-  return Object.values(out).every(Number.isFinite) ? out : null;
+  if (!Object.values(out).every(Number.isFinite)) {
+    return null;
+  }
+  const steel = read('steel_bar_mm');
+  return Number.isFinite(steel) ? { ...out, steel_bar_mm: steel } : out;
 };
 
 /** `data` of production/bar-settings, or null when it has no settings. The standard values are the api's, or none. */
 export function toBarSettingsAnswer(data: any): BarSettingsAnswer | null {
-  const settings = four(data?.settings);
-  return settings ? { settings, defaults: four(data?.defaults) } : null;
+  const settings = figures(data?.settings);
+  return settings ? { settings, defaults: figures(data?.defaults) } : null;
 }
 
 /** Why a bar settings call failed: the api's sentence, the connection, or the fallback. */

@@ -229,6 +229,12 @@ describe('production adapter', () => {
       expect(toBarSettingsAnswer({ settings: { bar_mm: '6000', blade_mm: '5.7', end_trim_mm: 25, min_offcut_mm: 400 }, defaults: answer.defaults })).toEqual(answer);
     });
 
+    it('keeps the steel bar length, as a number', () => {
+      const read = toBarSettingsAnswer({ settings: { ...answer.settings, steel_bar_mm: '6100' }, defaults: { ...answer.defaults, steel_bar_mm: 6000 } })!;
+      expect(read.settings.steel_bar_mm).toBe(6100);
+      expect(read.defaults!.steel_bar_mm).toBe(6000);
+    });
+
     it('refuses an answer without settings', () => {
       expect(toBarSettingsAnswer({ defaults: answer.defaults })).toBeNull();
       expect(toBarSettingsAnswer(null)).toBeNull();
