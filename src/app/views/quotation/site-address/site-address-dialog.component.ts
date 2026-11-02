@@ -42,7 +42,7 @@ import { SiteAddressComponent } from './site-address.component';
         <app-site-address [customerId]="customerId" [selectedId]="addressId" [collapsed]="false"></app-site-address>
         <app-callout tone="danger" *ngIf="saveError">{{ saveError }}</app-callout>
         <!-- Lets Enter submit the form; the visible buttons are in the dialog footer. -->
-        <button type="submit" hidden appWrite="quotations.write"></button>
+        <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true" appWrite="quotations.write">Submit</button>
       </form>
       <ng-template pTemplate="footer">
         <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>

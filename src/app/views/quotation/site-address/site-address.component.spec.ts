@@ -242,6 +242,15 @@ describe('SiteAddressDialogComponent', () => {
     expect(radios.map((radio) => radio.checked)).toEqual([true, false, false]);
   });
 
+  it('draws no empty button: the submit that lets Enter work takes no space, and appWrite does not bring it back', () => {
+    const submit = body().querySelector('form button[type="submit"]') as HTMLButtonElement;
+
+    expect(submit).not.toBeNull();
+    expect(submit.getBoundingClientRect().height).toBeLessThanOrEqual(1);
+    expect(submit.getAttribute('tabindex')).toBe('-1');
+    expect(submit.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('saves another address to the quotation and says it was saved', () => {
     const saved = jasmine.createSpy('saved');
     dialog.saved.subscribe(saved);

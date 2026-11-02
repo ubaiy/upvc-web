@@ -191,6 +191,16 @@ describe('QuotationDialogComponent', () => {
     expect(saved).toHaveBeenCalledWith(31);
   });
 
+  it('draws no empty button: the submit that lets Enter work takes no space, and appWrite does not bring it back', () => {
+    open();
+    const submit = body().querySelector('form button[type="submit"]') as HTMLButtonElement;
+
+    expect(submit).not.toBeNull();
+    expect(submit.getBoundingClientRect().height).toBeLessThanOrEqual(1);
+    expect(submit.getAttribute('tabindex')).toBe('-1');
+    expect(submit.getAttribute('aria-hidden')).toBe('true');
+  });
+
   describe('site address (T90)', () => {
     const ADDRESSES = [
       { id: 8, customer_id: 3, is_default: 0, address: 'Site office', address_line2: null, city: 'Pune', state: 'MH', zip_code: '411001', pincode: '411001' },
