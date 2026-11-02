@@ -18,7 +18,7 @@ export type Vec2 = [number, number];
 export type FaceOpening = 'fixed' | 'casement' | 'top-hung' | 'door' | 'sliding';
 
 export type FaceFill =
-  /** A framed unit; `design` is filled in when the 2D designer is wired to faces. */
+  /** A framed unit: a real window. `design` is its WindowDesign, the same one the window designer edits and prices. */
   | { kind: 'design'; opening: FaceOpening; design?: WindowDesign }
   /** A pane held directly by the bars around it (roof and dome panes). */
   | { kind: 'glass'; glassId: Id | null }
@@ -77,14 +77,31 @@ export interface Extra {
 export type ParamValue = number | string | boolean;
 export type Params = Record<string, ParamValue>;
 
+/** What the catalogue rows of the whole structure are; every id is a row of the company's catalogue. */
+export interface StructureDefaults {
+  profileSystemId: Id | null;
+  /** The colour of the profiles: a profile colour row. */
+  colorId: Id | null;
+  /** The glass of the windows and of the roof panes that have none of their own: a Glazzing row. */
+  glassId: Id | null;
+  /** The profile of each bar role: a catalogue profile id. A role not in the list is priced from the accessories. */
+  bars: Record<string, Id>;
+  /** The item of each hub role: a Hardware cost head. A hub not in the list is not charged. */
+  hubs: Record<string, Id>;
+}
+
+export function emptyDefaults(): StructureDefaults {
+  return { profileSystemId: null, colorId: null, glassId: null, bars: {}, hubs: {} };
+}
+
 export interface Structure {
   schema: string;
   unit: 'mm';
   name: string;
   /** Where it came from; lets the parameters be changed later. */
   template?: { kind: string; params: Params };
-  defaults: { profileSystemId: Id | null; colorId: Id | null; glassId: Id | null };
-  /** Drawing colours until the catalogue colour and glass rows are wired in. */
+  defaults: StructureDefaults;
+  /** The drawing colours: they follow the catalogue colour and glass chosen in `defaults`. */
   appearance: { profileColour: string; glassTint: string };
   faces: Face[];
   joints: Joint[];

@@ -1,6 +1,17 @@
 import { IconName } from '../../shared/components/icon/icon-paths';
 import { structureTypeLabel } from '../quotation/sub-quotation/detail/quotation-detail.model';
-import { DocumentFormat, DocumentType, JobNote, JobResult, JobStructure, JobWarning, ProductionJob } from './production.model';
+import {
+  BarPlan,
+  BarSettings,
+  BarSettingsAnswer,
+  DocumentFormat,
+  DocumentType,
+  JobNote,
+  JobResult,
+  JobStructure,
+  JobWarning,
+  ProductionJob,
+} from './production.model';
 
 export { fileNameFromHeader } from '../../shared/class/download-file';
 
@@ -19,6 +30,12 @@ export const DOCUMENTS: DocumentCard[] = [
     title: 'Cutting list',
     text: 'For the saw: every piece by profile and colour, longest first.',
     icon: 'ruler',
+  },
+  {
+    type: 'bar-plan',
+    title: 'Bar plan',
+    text: 'For buying and the saw: bars to order, the cuts on each bar, offcuts and waste.',
+    icon: 'split-v',
   },
   {
     type: 'glass-order',
@@ -43,6 +60,7 @@ export const DOCUMENTS: DocumentCard[] = [
 /** File name stems the api uses in Content-Disposition. */
 const FILE_STEM: Record<DocumentType | 'pack', string> = {
   'cutting-list': 'Cutting-list',
+  'bar-plan': 'Bar-plan',
   'glass-order': 'Glass-order',
   'hardware-order': 'Hardware-order',
   sheet: 'Production-sheets',
@@ -84,13 +102,24 @@ export interface JobSummary {
   glassArea: number;
   glassPanes: number;
   hardwareItems: number;
+  /** Bars of profile to buy, from the api's bar plan; 0 without one. */
+  bars: number;
+  steelBars: number;
+  /** The waste of the profile bars, as the api worked it out. */
+  wastePct: number;
+  offcuts: number;
 }
 
 export function summarise(job: ProductionJob): JobSummary {
   const totals = job.totals || ({} as ProductionJob['totals']);
   const sum = <T>(rows: T[] | undefined, pick: (row: T) => number) =>
     (rows || []).reduce((total, row) => total + (Number(pick(row)) || 0), 0);
+  const bars = job.bar_plan?.totals;
   return {
+    bars: Number(bars?.profile?.bars) || 0,
+    steelBars: Number(bars?.steel?.bars) || 0,
+    wastePct: Number(bars?.profile?.waste_pct) || 0,
+    offcuts: Number(bars?.profile?.offcuts) || 0,
     profileMetres: sum(totals.profiles, (row) => row.length_m),
     profilePieces: sum(totals.profiles, (row) => row.pieces),
     steelMetres: sum(totals.reinforcement, (row) => row.length_m),
@@ -98,6 +127,107 @@ export function summarise(job: ProductionJob): JobSummary {
     glassPanes: sum(totals.glass, (row) => row.panes),
     hardwareItems: (totals.hardware || []).length,
   };
+}
+
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+/** The "Bars to buy" figure: the bars, then the steel bars and the waste. Words only; the numbers are the api's. */
+export function barsStat(sum: JobSummary): { value: string; detail: string } {
+  const steel = sum.steelBars ? `plus ${sum.steelBars} steel ${plural(sum.steelBars, 'bar', 'bars')}, ` : '';
+  return { value: `${sum.bars} ${plural(sum.bars, 'bar', 'bars')}`, detail: `${steel}${+sum.wastePct.toFixed(1)}% waste` };
+}
+
+/** A sum row of the Bars tab. */
+export interface BarTotalRow {
+  label: string;
+  bars: number;
+  offcuts: number;
+  waste_pct: number;
+}
+
+/** The api's totals for the profiles and for the steel; one row each, since waste is not shared between them. */
+export function barTotals(plan: BarPlan | null | undefined): BarTotalRow[] {
+  const sections = plan?.sections || [];
+  const hasProfile = sections.some((section) => !section.steel);
+  const hasSteel = sections.some((section) => section.steel);
+  const row = (label: string, total: Partial<BarPlan['totals']['profile']> | undefined): BarTotalRow => ({
+    label,
+    bars: Number(total?.bars) || 0,
+    offcuts: Number(total?.offcuts) || 0,
+    waste_pct: Number(total?.waste_pct) || 0,
+  });
+  const rows: BarTotalRow[] = [];
+  if (hasProfile) {
+    rows.push(row(hasSteel ? 'Profile total' : 'Total', plan?.totals?.profile));
+  }
+  if (hasSteel) {
+    rows.push(row(hasProfile ? 'Steel total' : 'Total', plan?.totals?.steel));
+  }
+  return rows;
+}
+
+/** What the bars were worked out with, in the api's numbers. */
+export function barRule(settings: BarSettings): string {
+  return `Blade ${settings.blade_mm} mm · ${settings.end_trim_mm} mm trimmed from each end · offcuts from ${settings.min_offcut_mm} mm kept, not counted as waste`;
+}
+
+/** The profiles priced at the company's bar length, or empty. */
+export function assumedLine(plan: BarPlan): string {
+  const names = Array.isArray(plan?.assumed) ? plan.assumed : [];
+  if (!names.length) {
+    return '';
+  }
+  const taken = (plan.sections || []).filter((section) => section.bar_assumed);
+  const bar = taken.find((section) => !section.steel)?.bar_mm;
+  const steel = taken.find((section) => section.steel)?.bar_mm;
+  const all = (plan.sections || []).every((section) => section.bar_assumed);
+  const used =
+    bar && steel && bar !== steel
+      ? `${bar} mm was used, ${steel} mm for steel`
+      : `${bar ?? steel ?? plan.settings.bar_mm} mm was used${all ? ' for all of them' : ''}`;
+  return all
+    ? `No profile has its own bar length, so ${used}. Set it on a profile in the Catalogue, or change it in Bar settings.`
+    : `No bar length is set for ${names.join('; ')}. ${used}.`;
+}
+
+/** The pieces longer than the bar, which are not in the plan, or empty. */
+export function tooLongNote(plan: BarPlan): string {
+  const count = Number(plan?.too_long) || 0;
+  if (!count) {
+    return '';
+  }
+  const named = (plan.sections || [])
+    .flatMap((section) => section.too_long || [])
+    .map((piece) => {
+      const where = [piece.code || piece.window, piece.part ? words(piece.part, PART) : ''].filter(Boolean).join(' ');
+      return `${where} ${piece.mm} mm`.trim() + ((piece.qty || 1) > 1 ? ` × ${piece.qty}` : '');
+    });
+  const lead = `${count} ${plural(count, 'piece is', 'pieces are')} longer than the bar and ${plural(count, 'is', 'are')} not in this plan`;
+  return named.length ? `${lead}: ${named.join(', ')}.` : `${lead}.`;
+}
+
+const four = (raw: any): BarSettings | null => {
+  const read = (key: string) => (raw?.[key] === null || raw?.[key] === undefined || raw?.[key] === '' ? NaN : Number(raw[key]));
+  const out = { bar_mm: read('bar_mm'), blade_mm: read('blade_mm'), end_trim_mm: read('end_trim_mm'), min_offcut_mm: read('min_offcut_mm') };
+  return Object.values(out).every(Number.isFinite) ? out : null;
+};
+
+/** `data` of production/bar-settings, or null when it has no settings. The standard values are the api's, or none. */
+export function toBarSettingsAnswer(data: any): BarSettingsAnswer | null {
+  const settings = four(data?.settings);
+  return settings ? { settings, defaults: four(data?.defaults) } : null;
+}
+
+/** Why a bar settings call failed: the api's sentence, the connection, or the fallback. */
+export function barSettingsMessage(err: any, fallback: string): string {
+  if (err instanceof Error) {
+    return err.message || fallback;
+  }
+  if (err?.status === 0) {
+    return 'We could not reach the server. Check your connection.';
+  }
+  const errors = err?.error?.data?.errors;
+  return err?.error?.message || (Array.isArray(errors) ? errors.join(' ') : '') || fallback;
 }
 
 /** A 3D structure as the page lists it: what it is, how big, how many. */

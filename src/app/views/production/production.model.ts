@@ -5,8 +5,8 @@
  * documents.
  */
 
-/** The four workshop documents. `pack` is all four in one PDF. */
-export type DocumentType = 'cutting-list' | 'glass-order' | 'hardware-order' | 'sheet';
+/** The five workshop documents. `pack` is all of them in one PDF. */
+export type DocumentType = 'cutting-list' | 'bar-plan' | 'glass-order' | 'hardware-order' | 'sheet';
 export type DocumentFormat = 'pdf' | 'html' | 'xlsx';
 
 export interface ProfileTotal {
@@ -81,6 +81,88 @@ export interface ProductionJob {
   warnings: JobWarning[];
   /** The same things to check, in the api's own plain words. Shown as sent; `warnings` is the older raw form. */
   notes?: JobNote[];
+  /** The bars to buy and the waste (card P6), without the cut patterns. Absent from an older api. */
+  bar_plan?: BarPlan;
+}
+
+/** The four numbers of Bar settings, as the api names them. */
+export interface BarSettings {
+  /** Bar length for a profile that has none of its own. */
+  bar_mm: number;
+  /** The same for steel reinforcement. Absent from a job made before it existed. */
+  steel_bar_mm?: number;
+  /** What one cut takes out of the bar. */
+  blade_mm: number;
+  /** Trimmed from each end of a bar. */
+  end_trim_mm: number;
+  /** A leftover this long or longer is kept as an offcut. */
+  min_offcut_mm: number;
+}
+
+/** `data` of GET and POST production/bar-settings. */
+export interface BarSettingsAnswer {
+  settings: BarSettings;
+  /** The standard values; null when an api sends none. */
+  defaults: BarSettings | null;
+}
+
+/** A piece longer than the bar, left out of the plan. */
+export interface BarTooLong {
+  mm: number;
+  /** The window's code, "W1". */
+  code?: string | null;
+  window?: string | null;
+  part?: string | null;
+  qty?: number;
+}
+
+/** One profile (or steel profile) of a colour in the bar plan. Metres are the api's. */
+export interface BarSection {
+  code: string | null;
+  name: string;
+  colour: string | null;
+  steel: boolean;
+  profile_id: number | null;
+  bar_mm: number;
+  /** The profile has no bar length of its own: the company's was used. */
+  bar_assumed: boolean;
+  bars: number;
+  pieces: number;
+  bought_m: number;
+  cut_m: number;
+  blade_m: number;
+  trim_m: number;
+  scrap_m: number;
+  offcut_m: number;
+  offcuts: number;
+  offcut_sizes: { mm: number; count: number }[];
+  waste_m: number;
+  waste_pct: number;
+  too_long?: BarTooLong[];
+}
+
+export interface BarTotals {
+  bars: number;
+  pieces: number;
+  bought_m: number;
+  cut_m: number;
+  offcut_m: number;
+  offcuts: number;
+  waste_m: number;
+  waste_pct: number;
+}
+
+/** The api's `bar_plan` for the web: the plan without its patterns. */
+export interface BarPlan {
+  settings: BarSettings;
+  /** An old job: worked out with the standard values. */
+  standard: boolean;
+  sections: BarSection[];
+  totals: { profile: BarTotals; steel: BarTotals };
+  /** Profiles priced at the company's bar length, "OLD-F · Old Frame". */
+  assumed: string[];
+  /** How many pieces are longer than the bar. */
+  too_long: number;
 }
 
 /** A 3D structure on the job, as the api lists it. */

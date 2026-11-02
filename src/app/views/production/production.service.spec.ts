@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 
 import { environment } from '../../../environments/environment';
 import { SKIP_ERROR_TOAST, SKIP_LOADER } from '../../shared/interceptors/request-options';
-import { JOB } from './production.adapter.spec';
+import { BAR_PLAN, JOB } from './production.adapter.spec';
 import { ProductionService } from './production.service';
 
 const API = environment.API_URL;
@@ -103,6 +103,74 @@ describe('ProductionService', () => {
       .expectOne((r) => r.url === `${API}/production/document/14/pack`)
       .flush(new Blob([refusal], { type: 'application/json' }));
     expect((await done).message).toBe('This quatation has no production job with that revision');
+  });
+
+  it('asks for the bar plan document like any other', async () => {
+    const done = new Promise<any>((resolve, reject) =>
+      service.getDocument(14, 'bar-plan', 'pdf', 2, true).subscribe({ next: resolve, error: reject })
+    );
+    const req = http.expectOne((r) => r.url === `${API}/production/document/14/bar-plan`);
+    expect(req.request.params.get('revision')).toBe('2');
+    req.flush(new Blob(['%PDF-1.4'], { type: 'application/pdf' }), {
+      headers: { 'Content-Disposition': 'attachment; filename="Bar-plan-Q-0003-P2.pdf"' },
+    });
+    expect((await done).fileName).toBe('Bar-plan-Q-0003-P2.pdf');
+  });
+
+  it('hands the job over with the bar plan the api sent, and without one from an older api', () => {
+    const plans: (unknown)[] = [];
+    service.getJob(14).subscribe((result) => plans.push(result.kind === 'job' ? result.job.bar_plan : 'not a job'));
+    http.expectOne(`${API}/production/job/14`).flush({ success: true, data: { ...JOB, bar_plan: BAR_PLAN } });
+    service.getJob(14).subscribe((result) => plans.push(result.kind === 'job' ? result.job.bar_plan : 'not a job'));
+    http.expectOne(`${API}/production/job/14`).flush({ success: true, data: JOB });
+    expect(plans).toEqual([BAR_PLAN, undefined]);
+  });
+
+  describe('bar settings', () => {
+    const SETTINGS = { bar_mm: 6000, blade_mm: 5.7, end_trim_mm: 25, min_offcut_mm: 400 };
+    const DEFAULTS = { bar_mm: 5800, blade_mm: 6, end_trim_mm: 20, min_offcut_mm: 500 };
+
+    it('reads the settings and the standard values, quietly', () => {
+      let got: any;
+      service.getBarSettings().subscribe((answer) => (got = answer));
+      const req = http.expectOne(`${API}/production/bar-settings`);
+      expect(req.request.method).toBe('GET');
+      expect(req.request.context.get(SKIP_LOADER)).toBeTrue();
+      expect(req.request.context.get(SKIP_ERROR_TOAST)).toBeTrue();
+      req.flush({ success: true, data: { settings: SETTINGS, defaults: DEFAULTS } });
+      expect(got).toEqual({ settings: SETTINGS, defaults: DEFAULTS });
+    });
+
+    it('saves the four numbers with one POST and answers what GET answers', () => {
+      let got: any;
+      service.saveBarSettings(SETTINGS).subscribe((answer) => (got = answer));
+      const req = http.expectOne(`${API}/production/bar-settings`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual(SETTINGS);
+      expect(req.request.context.get(SKIP_LOADER)).toBeTrue();
+      expect(req.request.context.get(SKIP_ERROR_TOAST)).toBeTrue();
+      req.flush({ success: true, data: { settings: SETTINGS, defaults: DEFAULTS } });
+      expect(got.settings).toEqual(SETTINGS);
+    });
+
+    it("turns the api's 422 into an error with its sentence", () => {
+      let error: Error | undefined;
+      service.saveBarSettings({ ...SETTINGS, bar_mm: 100 }).subscribe({ error: (e) => (error = e) });
+      http.expectOne(`${API}/production/bar-settings`).flush(
+        { success: false, status: 0, code: 'validation_failed', message: 'The bar length must be 500 to 20000 mm.', data: { errors: ['The bar length must be 500 to 20000 mm.'] } },
+        { status: 422, statusText: 'Unprocessable Entity' }
+      );
+      expect(error?.message).toBe('The bar length must be 500 to 20000 mm.');
+    });
+
+    it('says the connection is down when nothing answers, and when an answer has no settings', () => {
+      const errors: string[] = [];
+      service.getBarSettings().subscribe({ error: (e) => errors.push(e.message) });
+      http.expectOne(`${API}/production/bar-settings`).error(new ProgressEvent('error'), { status: 0 });
+      service.getBarSettings().subscribe({ error: (e) => errors.push(e.message) });
+      http.expectOne(`${API}/production/bar-settings`).flush({ success: true, data: {} });
+      expect(errors).toEqual(['We could not reach the server. Check your connection.', 'The bar settings could not be loaded.']);
+    });
   });
 
   it('reports an empty answer as an error', async () => {

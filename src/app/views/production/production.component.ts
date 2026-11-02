@@ -6,12 +6,17 @@ import { Subscription } from 'rxjs';
 import { Crumb } from '../../shared/components/page-header/page-header.component';
 import { ToastService } from '../../shared/services/toast.service';
 import {
+  BarTotalRow,
   DOCUMENTS,
   DocumentCard,
   JobSummary,
   PlainWarning,
   SHEET_PAGE_WIDTH,
   StructureRow,
+  assumedLine,
+  barRule,
+  barTotals,
+  barsStat,
   fileName,
   fitZoom,
   noteLines,
@@ -19,18 +24,28 @@ import {
   previewPage,
   structureRows,
   summarise,
+  tooLongNote,
 } from './production.adapter';
-import { DocumentFormat, DocumentType, JobResult, ProductionJob } from './production.model';
+import { BarPlan, DocumentFormat, DocumentType, JobResult, ProductionJob } from './production.model';
 import { ProductionService } from './production.service';
 
 type State = 'loading' | 'error' | 'no-job' | 'no-windows' | 'ready';
-type SummaryTab = 'profiles' | 'glass' | 'hardware';
+type SummaryTab = 'profiles' | 'glass' | 'hardware' | 'bars';
+
+/** The Bars tab: the api's plan, with the sentences that go under its table. */
+interface BarsView {
+  plan: BarPlan;
+  totals: BarTotalRow[];
+  rule: string;
+  assumed: string;
+  tooLong: string;
+}
 
 /**
- * Production page of one quotation (roadmap card P5): freeze the job, then
- * preview, download or share the four workshop documents, or take them all
- * as one pack. Sizes, totals, the "not verified" banner and the warnings are
- * the api's; nothing is measured or priced here.
+ * Production page of one quotation (roadmap cards P5 and P6): freeze the job,
+ * then preview, download or share the five workshop documents, or take them all
+ * as one pack. Sizes, totals, the bar plan, the "not verified" banner and the
+ * warnings are the api's; nothing is measured or priced here.
  */
 @Component({
   selector: 'app-production',
@@ -61,9 +76,14 @@ export class ProductionComponent implements OnInit, OnDestroy {
    */
   preview: { doc: DocumentCard; src: SafeResourceUrl; url: string; html: string; zoom: number; narrow: boolean; actualSize: boolean } | null = null;
   tab: SummaryTab = 'profiles';
+  /** The bar plan of the job; null from an older api, which hides its tab and figure. */
+  bars: BarsView | null = null;
+  /** "Bars to buy"; null without a plan or without bars. */
+  barsFigure: { value: string; detail: string } | null = null;
+  barSettingsOpen = false;
 
   readonly documents = DOCUMENTS;
-  readonly placeholders = [0, 1, 2, 3];
+  readonly placeholders = [0, 1, 2, 3, 4];
 
   private params?: Subscription;
   private loading?: Subscription;
@@ -84,6 +104,7 @@ export class ProductionComponent implements OnInit, OnDestroy {
       this.busy = null;
       this.freezing = false;
       this.refreshAsking = false;
+      this.barSettingsOpen = false;
       this.load();
     });
   }
@@ -291,6 +312,11 @@ export class ProductionComponent implements OnInit, OnDestroy {
     return doc.type;
   }
 
+  /** The settings are saved for new jobs; the job on screen keeps its numbers until it is refreshed. */
+  barSettingsSaved(): void {
+    this.toast.showSuccess('Saved. Refresh the job to use these.');
+  }
+
   /** Hands a file to the browser's downloads. */
   protected save(blob: Blob, name: string): void {
     const url = URL.createObjectURL(blob);
@@ -328,6 +354,7 @@ export class ProductionComponent implements OnInit, OnDestroy {
       case 'job':
         this.job = result.job;
         this.summary = summarise(result.job);
+        this.showBars(result.job);
         // The api's own lines when it sends them; the raw warnings reworded here only for an older api.
         this.structures = structureRows(result.job.structures);
         this.warnings = Array.isArray(result.job.notes)
@@ -346,6 +373,17 @@ export class ProductionComponent implements OnInit, OnDestroy {
         break;
       default:
         this.fail(result.message);
+    }
+  }
+
+  /** The api's bar plan and the words around it. An api that sends none leaves the tab and the figure out. */
+  private showBars(job: ProductionJob): void {
+    const plan = job.bar_plan;
+    const usable = !!plan && Array.isArray(plan.sections) && !!plan.settings;
+    this.bars = usable ? { plan, totals: barTotals(plan), rule: barRule(plan.settings), assumed: assumedLine(plan), tooLong: tooLongNote(plan) } : null;
+    this.barsFigure = this.bars && this.summary?.bars ? barsStat(this.summary) : null;
+    if (!this.bars && this.tab === 'bars') {
+      this.tab = 'profiles';
     }
   }
 

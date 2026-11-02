@@ -7,6 +7,11 @@
  * quotation. The api prices it on every change (the price bar) and keeps the
  * document, the picture and the price when it is saved. Sizes shown are
  * geometric centre-line sizes; every amount is the api's.
+ *
+ * Everything the structure is made of is a row of the company's catalogue:
+ * each wall panel is a real window (edited in a dialog with the drawing and
+ * inspector of the window designer), the glass, colour, bars and hubs are
+ * chosen from dropdowns. No screen asks for a rate.
  */
 
 import { CommonModule } from '@angular/common';
@@ -23,7 +28,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { of, Subject, Subscription } from 'rxjs';
+import { from, of, Subject, Subscription } from 'rxjs';
 import { catchError, debounceTime, map, switchMap } from 'rxjs/operators';
 import {
   barSection,
@@ -39,26 +44,25 @@ import {
   Dim,
   Face,
   FILL_LABEL,
-  fillKey,
   FillKey,
   groupFaceIds,
-  isGlazed,
   History,
   Joint,
   jointLengthMm,
   normalizeParams,
-  panelSize,
   Params,
   paramsOf,
   ParamSpec,
   parseStructure,
   renameStructure,
   retemplate,
-  faceAreaSqMm,
   serializeStructure,
-  setAppearance,
+  setBarProfile,
   setFaceFill,
-  setFaceGlassTint,
+  setFaceGlass,
+  setFaceProduct,
+  setHubItem,
+  isWindowBar,
   SHAPE_LABEL,
   Structure,
   summarize,
@@ -71,23 +75,47 @@ import { WorkspaceService } from '../../containers/shell/workspace.service';
 import { InrPipe } from '../../shared/pipes/inr.pipe';
 import { customerSheet, sheetFacts } from './customer-sheet';
 import { PlanChange, PlanEditorComponent } from './plan-editor.component';
-import { missingRate, neededRates, plainRefusal, rateName, StructureApiError, StructureLineService, StructurePrice, StructurePriceRequest } from './structure-line.service';
+import { DesignerCatalog, FRAME_FACE_MM, tintsOf } from '../quotation/sub-quotation/sub-quotation-design/designer-catalog';
+import { DesignerCatalogService } from '../quotation/sub-quotation/sub-quotation-design/designer-catalog.service';
+import { WindowDesign } from '../../shared/design-model';
+import { applyDesign, withWindows } from './panel-designs';
+import { PanelDialogComponent } from './panel-dialog.component';
+import { plainRefusal, StructureApiError, StructureCostRow, StructureLineService, StructurePrice, StructurePriceRequest } from './structure-line.service';
+import {
+  barChoices,
+  BarControl,
+  barControls,
+  Choice,
+  colourChoices,
+  controlOf,
+  firstChoices,
+  glassChoices,
+  HubControl,
+  hubControls,
+  setStructureColour,
+  setStructureGlass,
+} from './structure-choices';
+import { FaceInfo, faceInfoOf } from './selection-info';
+import { windowsAndDocument } from './structure-request';
+import { windowDesigns } from './structure-windows';
 import { BrowserStructureStore, StructureStore, StructureSummary } from './structure-store.service';
-import { PickTarget } from './three/structure-mesh';
+import { PickTarget, StructureLook } from './three/structure-mesh';
 import { LabelPosition, OrbitBenchmark, StructureScene, ViewInsets, ViewPreset, webglAvailable } from './three/structure-scene';
+
+export { canSlide } from './selection-info';
 
 type Sheet = 'shape' | 'panel' | 'parts';
 
 /**
- * What the price bar shows. `refused`: the api answered and said no (a rate
- * is not set); `failed`: no answer. Neither ever shows an amount.
+ * What the price bar shows. `refused`: the api answered and said no (something
+ * is not chosen yet); `failed`: no answer. Neither ever shows an amount.
  */
 export interface PriceView {
   state: 'idle' | 'loading' | 'ready' | 'refused' | 'failed';
   /** The last answer; kept (dimmed) while the next one is on its way. */
   data: StructurePrice | null;
   message: string;
-  /** The rate the refusal names ("bar_rate_m.rafter"), for the link to Settings. */
+  /** What the refusal asks to be chosen ("glass", "solid_panel", "bar.rafter"): the page opens that control. */
   missing: string;
 }
 
@@ -105,28 +133,12 @@ const PLAN_DOCK = 452;
 /** What an open panel and the toolbars cover of the 3D view, CSS px (structure-designer.component.scss). */
 const COVER = { left: 268, right: 324, top: 56, bottom: 30 };
 
-const PROFILE_COLOURS = [
-  { value: '#f4f4f1', label: 'White' },
-  { value: '#e9e2d0', label: 'Cream' },
-  { value: '#8a8d8f', label: 'Grey' },
-  { value: '#3b3f44', label: 'Anthracite' },
-  { value: '#6b4a32', label: 'Oak brown' },
-  { value: '#1f2224', label: 'Black' },
-];
-const GLASS_TINTS = [
-  { value: '#cfe3e8', label: 'Clear' },
-  { value: '#9fc4cf', label: 'Light blue' },
-  { value: '#8fbf9f', label: 'Green' },
-  { value: '#b89f7a', label: 'Bronze' },
-  { value: '#7d8a92', label: 'Grey' },
-];
-
 @Component({
   selector: 'app-structure-designer',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, InrPipe, PlanEditorComponent],
+  imports: [CommonModule, FormsModule, RouterModule, InrPipe, PlanEditorComponent, PanelDialogComponent],
   templateUrl: './structure-designer.component.html',
-  styleUrls: ['./structure-designer.component.scss'],
+  styleUrls: ['./structure-designer.component.scss', './structure-designer-choices.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
@@ -134,8 +146,6 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   readonly fillKeys: FillKey[] = ['fixed', 'casement', 'top-hung', 'door', 'sliding', 'panel', 'open'];
   readonly fillLabel = FILL_LABEL;
   readonly shapeLabel = SHAPE_LABEL;
-  readonly profileColours = PROFILE_COLOURS;
-  readonly glassTints = GLASS_TINTS;
   readonly views: { key: ViewPreset; label: string }[] = [
     { key: '3d', label: '3D' },
     { key: 'front', label: 'Front' },
@@ -191,7 +201,23 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   /** The browser's copy this structure was brought in from; removed once the quotation has it. */
   private importedFrom: string | null = null;
 
-  private readonly priceAsk = new Subject<StructurePriceRequest>();
+  /** The catalogue the structure is made from: the rows of the company, as the window designer reads them. */
+  readonly catalog: DesignerCatalog;
+  readonly glassChoices: Choice[];
+  readonly colourChoices: Choice[];
+  readonly barChoices: Choice[];
+  /** Hardware items a hub can be; fetched when the structure has hubs. */
+  hardwareChoices: Choice[] = [];
+  /** How each glass of the catalogue is drawn. */
+  private readonly glassTints: Record<string, string>;
+  /** The control a refusal asked for, marked until the next change. */
+  asked = '';
+  /** What had the keyboard when the dialog of a panel was opened. */
+  private opener: HTMLElement | null = null;
+  /** The window of a wall panel being edited in the dialog; null = no dialog. */
+  panelEdit: { faceIds: string[]; face: Face; design: WindowDesign; title: string } | null = null;
+
+  private readonly priceAsk = new Subject<() => Promise<StructurePriceRequest>>();
   private readonly subs = new Subscription();
   private scene: StructureScene | null = null;
   private canvasEl: HTMLCanvasElement | null = null;
@@ -216,16 +242,25 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
+    private readonly host: ElementRef<HTMLElement>,
     private readonly zone: NgZone,
     private readonly store: StructureStore,
     private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly workspace: WorkspaceService,
     private readonly lines: StructureLineService,
-    private readonly device: BrowserStructureStore
+    private readonly device: BrowserStructureStore,
+    private readonly catalogs: DesignerCatalogService
   ) {
     const query = this.route.snapshot.queryParamMap;
     const params = this.route.snapshot.paramMap;
+    // The routes load the same dropdowns and mullion profiles as the window designer.
+    const data = this.route.snapshot.data ?? {};
+    this.catalog = this.catalogs.fromRouteData(data['dropdowns'], data['mullionList']);
+    this.glassChoices = glassChoices(this.catalog);
+    this.colourChoices = colourChoices(this.catalog);
+    this.barChoices = barChoices(this.catalog);
+    this.glassTints = tintsOf(this.catalog);
     const kind = query.get('kind');
     this.quotationId = Number(params?.get('id')) || null;
     const id = params?.get('lineId') ?? query.get('id');
@@ -233,18 +268,20 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
       this.priceAsk
         .pipe(
           debounceTime(PRICE_DEBOUNCE_MS),
-          switchMap((request) =>
-            this.lines.price(request).pipe(
+          switchMap((build) =>
+            from(build()).pipe(
+              switchMap((request) => this.lines.price(request)),
               map((data): PriceView => ({ state: 'ready', data, message: '', missing: '' })),
-              catchError((e: StructureApiError) =>
-                of<PriceView>({ state: e.refused ? 'refused' : 'failed', data: null, message: plainRefusal(e.message), missing: missingRate(e.message) })
-              )
+              catchError((e: Error) => {
+                const refused = e instanceof StructureApiError && e.refused;
+                return of<PriceView>({ state: refused ? 'refused' : 'failed', data: null, message: refused ? plainRefusal(e.message) : e instanceof StructureApiError ? e.message : 'We could not reach the server. Check your connection.', missing: e instanceof StructureApiError ? e.missing : '' });
+              })
             )
           )
         )
         .subscribe((view) => {
           this.price = view;
-          if (view.state === 'refused' && view.missing) this.nameMissingRates();
+          if (view.state === 'refused' && view.missing) this.reveal(view.missing);
           this.cdr.markForCheck();
         })
     );
@@ -375,8 +412,13 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     return [...new Set(reasons)];
   }
 
+  /** A document ready to show: every wall panel has its window, and what the catalogue can choose is chosen. */
+  private prepared(structure: Structure): Structure {
+    return firstChoices(withWindows(structure), this.catalog);
+  }
+
   private open(structure: Structure, savedId: string | null): void {
-    this.history = new History(structure);
+    this.history = new History(this.prepared(structure));
     this.savedId = savedId;
     this.selectedFaces = [];
     this.selectedBar = null;
@@ -436,6 +478,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.quantity = 1;
     this.manualPrice = null;
     this.detailsOpen = this.manualOpen = false;
+    this.panelEdit = null;
+    this.asked = '';
     this.price = { state: 'idle', data: null, message: '', missing: '' };
     this.cdr.markForCheck();
     if (this.webgl) setTimeout(() => this.drawThumbnails(), 30);
@@ -472,7 +516,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.observer.observe(host);
     this.pushInsets(false);
     if (this.structure) {
-      scene.setStructure(this.structure, this.dims, true);
+      scene.setStructure(this.structure, this.dims, true, this.look);
       scene.setSelection(this.selectedFaces, this.selectedBar);
       scene.setGizmosVisible(this.showDims);
     }
@@ -506,6 +550,11 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  /** What the 3D view takes from the catalogue: how the windows and the glass are drawn. */
+  private get look(): StructureLook {
+    return { frameFaceMm: FRAME_FACE_MM, glassTints: this.glassTints };
+  }
+
   /** Everything read off the document again; the 3D view rebuilt. */
   private refresh(refit: boolean | 'auto' = false): void {
     const s = this.structure;
@@ -521,9 +570,10 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.selectedFaces = this.selectedFaces.filter((id) => faces.has(id));
     if (this.selectedBar && !s.joints.some((j) => j.id === this.selectedBar)) this.selectedBar = null;
     this.zone.runOutsideAngular(() => {
-      this.scene?.setStructure(s, this.dims, refit);
+      this.scene?.setStructure(s, this.dims, refit, this.look);
       this.scene?.setSelection(this.selectedFaces, this.selectedBar);
     });
+    this.loadHardware();
     this.askPrice();
     this.cdr.markForCheck();
   }
@@ -534,41 +584,20 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
   private askPrice(): void {
     const s = this.structure;
     const summary = this.summary;
-    if (!this.quotationId || !s || !summary) return;
+    const quotationId = this.quotationId;
+    if (!quotationId || !s || !summary) return;
     this.saveError = '';
+    this.asked = '';
     this.price = { ...this.price, state: 'loading' };
-    this.priceAsk.next({
-      quatation_id: this.quotationId,
+    const [quantity, unitPrice] = [this.quantity, this.manualPrice];
+    this.priceAsk.next(async () => ({
+      quatation_id: quotationId,
       structure_type: s.template?.kind ?? 'free',
-      quantity: this.quantity,
-      unit_price: this.manualPrice,
+      quantity,
+      unit_price: unitPrice,
       summary,
-    });
-  }
-
-  /**
-   * The api's refusal names the first rate it lacked. The fabricator is told every rate this
-   * structure needs that is not set: "3 rates are not set: glass rate per sq m, …".
-   */
-  private nameMissingRates(): void {
-    const summary = this.summary;
-    if (!summary) return;
-    this.lines.rates().subscribe({
-      next: (answer) => {
-        if (this.price.state !== 'refused') return;
-        const needed = neededRates(summary);
-        const unset = new Set(answer.missing ?? []);
-        const names = [...new Set([this.price.missing, ...needed.filter((path) => unset.has(path))])].map(rateName);
-        if (names.length > 1) {
-          const first = names.slice(0, 3);
-          const rest = names.length - first.length;
-          const named = rest > 0 ? `${first.join(', ')} and ${rest} more` : `${first.slice(0, -1).join(', ')} and ${first[first.length - 1]}`;
-          this.price = { ...this.price, message: `${names.length} rates are not set (${named}).` };
-          this.cdr.markForCheck();
-        }
-      },
-      error: () => undefined,
-    });
+      ...(await windowsAndDocument(s, quotationId, this.catalogs, this.catalog)),
+    }));
   }
 
   setQuantity(raw: string | number): void {
@@ -600,11 +629,40 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.askPrice();
   }
 
-  /** "Glass", "Frame", "Crown", "Door": what a cost row is, in the api's words where it gives them. */
-  rowName(row: StructurePrice['rows'][number]): string {
+  /** "Fixed window 675 × 2400", "Glass", "Eave beam": what a cost row is, in the api's words where it gives them. */
+  rowName(row: StructureCostRow): string {
     const what = row.name || row.role || row.fill || row.kind;
     return what.charAt(0).toUpperCase() + what.slice(1).replace(/_/g, ' ');
   }
+
+  /** What one costs: a window at its unit cost, anything else at its rate. */
+  rowRate(row: StructureCostRow): number | null {
+    return (row.kind === 'window' ? row.unit_cost ?? row.rate : row.rate) ?? null;
+  }
+
+  /** The costing rows as the api sent them; none for a user who may not see costs. */
+  rowsOf(price: StructurePrice): StructureCostRow[] {
+    return price.rows ?? [];
+  }
+
+  /** The name of the glass row of the structure, for the workshop glass order (the api keeps 60 letters). */
+  private get glassName(): string | null {
+    const id = this.structure?.defaults.glassId;
+    return this.catalog.glass.find((g) => this.same(g.id, id))?.label.slice(0, 60) ?? null;
+  }
+
+  /** The panels of a window row, by name. */
+  panelNames(ids: string[] | null | undefined): string {
+    const labels = (ids ?? []).map((id) => this.structure?.faces.find((f) => f.id === id)?.label ?? id);
+    return labels.length > 4 ? `${labels.slice(0, 3).join(', ')} and ${labels.length - 3} more` : labels.join(', ');
+  }
+
+  /** "Show me where": the control the refusal named is opened again. */
+  revealAgain(): void {
+    this.reveal(this.price.missing);
+  }
+
+  trackRole = (_: number, r: { role: string }): string => r.role;
 
   // --- changing the shape ---
 
@@ -621,7 +679,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     const h = this.history;
     if (!h) return;
     if (!this.gestureBase) this.gestureBase = h.present;
-    h.replace(retemplate(h.present, patch));
+    h.replace(this.prepared(retemplate(h.present, patch)));
     this.refresh();
   }
 
@@ -630,7 +688,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     const h = this.history;
     if (!h) return;
     const base = this.gestureBase ?? h.present;
-    const final = patch ? retemplate(h.present, patch) : h.present;
+    const final = patch ? this.prepared(retemplate(h.present, patch)) : h.present;
     this.gestureBase = null;
     h.replace(base);
     if (JSON.stringify(paramsOf(base)?.params) !== JSON.stringify(paramsOf(final)?.params)) h.push(final);
@@ -759,53 +817,37 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     return this.structure?.joints.find((j) => j.id === this.selectedBar) ?? null;
   }
 
-  get faceInfo(): {
-    title: string;
-    shape: string;
-    size: string;
-    area: string;
-    fill: FillKey | null;
-    group: string;
-    /** Some selected panel has glass. */
-    glazed: boolean;
-    /** The tint the selected glass is drawn with; null when the panels differ. */
-    tint: string | null;
-    /** Some selected panel has a tint of its own. */
-    ownTint: boolean;
-    /** Why Sliding is not offered for this selection; '' when it is. */
-    noSliding: string;
-  } | null {
+  get faceInfo(): FaceInfo | null {
     const s = this.structure;
-    const first = this.face;
-    if (!s || !first) return null;
-    const chosen = s.faces.filter((f) => this.selectedFaces.includes(f.id));
-    const fills = new Set(chosen.map((f) => fillKey(f)));
-    const area = chosen.reduce((sum, f) => sum + faceAreaSqMm(f), 0) / 1e6;
-    const size = panelSize(first);
-    const tints = new Set(chosen.filter(isGlazed).map((f) => f.glassTint ?? s.appearance.glassTint));
-    const raked = chosen.filter((f) => !canSlide(f)).length;
-    const noSliding = !raked
-      ? ''
-      : chosen.length === 1
-        ? 'Sliding needs a rectangular panel: two leaves cannot run on a sloped or pointed frame.'
-        : `Sliding needs rectangular panels: ${raked} of the ${chosen.length} selected ${raked === 1 ? 'is' : 'are'} not.`;
-    return {
-      noSliding,
-      glazed: tints.size > 0,
-      tint: tints.size === 1 ? [...tints][0] : null,
-      ownTint: chosen.some((f) => !!f.glassTint),
-      title: chosen.length === 1 ? first.label : `${chosen.length} panels`,
-      shape: chosen.length === 1 ? SHAPE_LABEL[size.shape] : chosen.every((f) => f.group === first.group) ? first.groupLabel : 'Several groups',
-      size: chosen.length === 1 ? `${size.text} mm` : '',
-      area: `${area.toFixed(2)} m²`,
-      fill: fills.size === 1 ? [...fills][0] : null,
-      group: first.groupLabel,
-    };
+    return s && this.selectedFaces.length ? faceInfoOf(s, this.selectedFaces, this.catalog) : null;
   }
 
-  get barInfo(): { role: string; length: number; faces: number } | null {
+  /** The selected bar: what it is, and the profile chosen for its role when it is charged on its own. */
+  get barInfo(): { role: string; length: number; faces: number; control: BarControl | null } | null {
     const j = this.bar;
-    return j ? { role: barSection(j.role).label, length: Math.round(jointLengthMm(j)), faces: j.faceIds.length } : null;
+    const s = this.structure;
+    if (!j || !s) return null;
+    const control = isWindowBar(j, s) ? null : barControls(s).find((c) => c.role === j.role) ?? null;
+    return { role: barSection(j.role).label, length: Math.round(jointLengthMm(j)), faces: j.faceIds.length, control };
+  }
+
+  /** One dropdown for each kind of bar the catalogue charges, and one for each kind of hub. */
+  get barRows(): BarControl[] {
+    return this.structure ? barControls(this.structure) : [];
+  }
+
+  get hubRows(): HubControl[] {
+    return this.structure ? hubControls(this.structure) : [];
+  }
+
+  /** The wall panels that are plain glass because their shape has no window. */
+  get plainWalls(): number {
+    return this.structure?.faces.filter((f) => f.role === 'wall' && f.fill.kind === 'glass').length ?? 0;
+  }
+
+  /** Id of a catalogue row as the dropdowns carry it. */
+  same(a: string | number | null | undefined, b: string | number | null | undefined): boolean {
+    return a !== null && a !== undefined && b !== null && b !== undefined && String(a) === String(b);
   }
 
   selectGroup(): void {
@@ -817,33 +859,151 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     this.selectFaces(ids);
   }
 
+  /** A new document for the history: its windows fitted and its choices filled in, one undo step. */
+  private push(next: Structure): void {
+    const h = this.history;
+    if (!h) return;
+    const ready = this.prepared(next);
+    if (ready === h.present) return;
+    h.push(ready);
+    this.refresh();
+  }
+
   setFill(key: FillKey): void {
     const h = this.history;
     if (!h || !this.selectedFaces.length) return;
     const why = key === 'sliding' ? this.faceInfo?.noSliding : '';
     if (why) return this.say(why);
-    h.push(setFaceFill(h.present, this.selectedFaces, key));
-    this.refresh();
+    const bare = key !== 'fixed' && key !== 'panel' && key !== 'open' ? this.faceInfo?.noWindow : '';
+    if (bare) return this.say(bare);
+    this.push(setFaceFill(h.present, this.selectedFaces, key));
   }
 
-  setColour(profileColour: string): void {
-    this.history?.push(setAppearance(this.history.present, { profileColour }));
-    this.refresh();
-  }
+  // --- what the structure is made of: rows of the catalogue ---
 
-  setTint(glassTint: string): void {
-    this.history?.push(setAppearance(this.history.present, { glassTint }));
-    this.refresh();
-  }
-
-  /** A tint for the glass of the selected panels only; null = the tint of the structure again. */
-  setFaceTint(tint: string | null): void {
+  chooseColour(id: string): void {
     const h = this.history;
-    if (!h || !this.selectedFaces.length) return;
-    const next = setFaceGlassTint(h.present, this.selectedFaces, tint);
-    if (next === h.present) return;
-    h.push(next);
-    this.refresh();
+    if (h && id) this.push(setStructureColour(h.present, this.catalog, this.rowId(this.colourChoices, id)));
+  }
+
+  chooseGlass(id: string): void {
+    const h = this.history;
+    if (h && id) this.push(setStructureGlass(h.present, this.catalog, this.rowId(this.glassChoices, id)));
+  }
+
+  /** The profile of a bar role; '' puts a coupler or corner post back on the accessories. */
+  chooseBar(role: string, id: string): void {
+    const h = this.history;
+    if (h) this.push(setBarProfile(h.present, role, id ? this.rowId(this.barChoices, id) : null));
+  }
+
+  chooseHub(role: string, id: string): void {
+    const h = this.history;
+    if (h) this.push(setHubItem(h.present, role, id ? this.rowId(this.hardwareChoices, id) : null));
+  }
+
+  /** The glass of the selected roof panes; '' = the glass of the structure. */
+  choosePaneGlass(id: string): void {
+    const h = this.history;
+    if (h && this.selectedFaces.length) this.push(setFaceGlass(h.present, this.selectedFaces, id ? this.rowId(this.glassChoices, id) : null));
+  }
+
+  /** What the selected solid panels are made of. */
+  chooseSolid(id: string): void {
+    const h = this.history;
+    if (h && this.selectedFaces.length && id) this.push(setFaceProduct(h.present, this.selectedFaces, this.rowId(this.glassChoices, id)));
+  }
+
+  /** The id of a row in the type the catalogue gives it (a dropdown hands back text). */
+  private rowId(rows: Choice[], text: string): string | number {
+    return rows.find((r) => String(r.id) === text)?.id ?? text;
+  }
+
+  /** Hardware items a hub can be, fetched the first time the structure has a hub. */
+  private loadHardware(): void {
+    if (this.hardwareChoices.length || !this.structure?.hubs.length) return;
+    this.catalogs.hardware().then(
+      (rows) => {
+        this.hardwareChoices = rows.map((r) => ({ id: r.id, label: r.label }));
+        this.cdr.markForCheck();
+      },
+      () => undefined
+    );
+  }
+
+  // --- the window of a wall panel ---
+
+  /** "Edit this panel": the window of the selected panel in the dialog; the first one decides the size and the shape. */
+  editPanel(): void {
+    const s = this.structure;
+    const ids = this.faceInfo?.windowIds ?? [];
+    if (!s || !ids.length) return;
+    const design = windowDesigns(s).get(ids[0]);
+    const face = s.faces.find((f) => f.id === ids[0]);
+    if (!design || !face) return;
+    this.opener = document.activeElement as HTMLElement | null;
+    this.panelEdit = { faceIds: ids, face, design, title: ids.length === 1 ? face.label : `${ids.length} panels, starting from ${face.label}` };
+    this.cdr.markForCheck();
+  }
+
+  /** Save in the dialog: the design goes to every panel chosen, each fitted to its own size; one undo step. */
+  panelSaved(design: WindowDesign): void {
+    const h = this.history;
+    const edit = this.panelEdit;
+    this.panelEdit = null;
+    this.backToOpener();
+    if (!h || !edit) return;
+    const { structure, kept } = applyDesign(h.present, edit.faceIds, design);
+    if (structure !== h.present) {
+      h.push(structure);
+      this.refresh();
+    }
+    if (kept.length) {
+      this.say(`${kept.length === 1 ? 'One panel' : `${kept.length} panels`} kept ${kept.length === 1 ? 'its' : 'their'} own window: this design does not fit ${kept.length === 1 ? 'its' : 'their'} shape.`);
+    }
+    this.cdr.markForCheck();
+  }
+
+  panelCancelled(): void {
+    this.panelEdit = null;
+    this.backToOpener();
+    this.cdr.markForCheck();
+  }
+
+  /** The button that opened the dialog gets the keyboard back. */
+  private backToOpener(): void {
+    const opener = this.opener;
+    this.opener = null;
+    setTimeout(() => opener?.isConnected && opener.focus());
+  }
+
+  // --- a refusal opens the control that fixes it ---
+
+  /** The api asked for something to be chosen: the control for it is opened and marked. */
+  private reveal(missing: string): void {
+    const s = this.structure;
+    const control = controlOf(missing);
+    if (!s || !control) return;
+    this.asked = missing;
+    if (control.kind === 'solid_panel') {
+      const solid = s.faces.filter((f) => f.fill.kind === 'panel').map((f) => f.id);
+      if (solid.length) this.selectFaces(solid);
+    } else {
+      this.sheet = 'shape';
+      this.sheetOpen = true;
+      if (!this.leftOpen) {
+        this.leftOpen = true;
+        this.pushInsets(false);
+      }
+    }
+    this.cdr.markForCheck();
+    const target = control.kind === 'bar' ? `bar.${control.role}` : control.kind === 'solid_panel' ? 'solid' : control.kind;
+    setTimeout(() => {
+      this.cdr.detectChanges();
+      const el = this.host.nativeElement.querySelector<HTMLElement>(`[data-choose="${target}"]`);
+      el?.scrollIntoView?.({ block: 'nearest' });
+      el?.focus({ preventScroll: true });
+    });
   }
 
   rename(name: string): void {
@@ -867,7 +1027,7 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     if (!h || !this.def) return;
     // A structure drawn from nothing keeps its plan: only the sizes, the roof and the panels go back.
     const start = this.isFree ? normalizeParams(this.def, { ...defaultParams(this.def), plan: this.params['plan'] }) : defaultParams(this.def);
-    h.push({ ...this.def.generate(start), name: h.present.name });
+    h.push(this.prepared({ ...this.def.generate(start), name: h.present.name }));
     this.selectedFaces = [];
     this.selectedBar = null;
     this.refresh(true);
@@ -875,7 +1035,8 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   @HostListener('document:keydown', ['$event'])
   onKey(e: KeyboardEvent): void {
-    if (!this.structure || (e.target as HTMLElement | null)?.closest('input, textarea, select')) return;
+    // The dialog of a panel has its own undo and its own Escape.
+    if (!this.structure || this.panelEdit || (e.target as HTMLElement | null)?.closest('input, textarea, select')) return;
     const mod = e.ctrlKey || e.metaKey;
     if (mod && e.key.toLowerCase() === 'z') {
       e.preventDefault();
@@ -914,9 +1075,15 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
     if (!this.quotationId) return this.say('Open a quotation and choose "Add 3D structure": a structure is saved as a line of a quotation.');
     this.saving = true;
     this.saveError = '';
-    void linePicture(this.scene).then((thumbnail) => {
+    const quotationId = this.quotationId;
+    const failed = (message: string): void => {
+      this.saving = false;
+      this.saveError = message;
+      this.cdr.markForCheck();
+    };
+    void Promise.all([linePicture(this.scene), windowsAndDocument(s, quotationId, this.catalogs, this.catalog)]).then(([thumbnail, sent]) => {
       this.store
-        .save({ id: this.savedId, document: s, thumbnail, quotationId: this.quotationId ?? undefined, quantity: this.quantity, unitPrice: this.manualPrice })
+        .save({ id: this.savedId, document: sent.document, windows: sent.windows, glass: this.glassName, thumbnail, quotationId, quantity: this.quantity, unitPrice: this.manualPrice })
         .subscribe({
           next: (row) => {
             this.savedId = row.id;
@@ -926,12 +1093,11 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
             void this.router.navigate(this.quotationLink);
           },
           error: (e: Error) => {
-            this.saving = false;
-            this.saveError = plainRefusal(e.message);
-            this.cdr.markForCheck();
+            failed(plainRefusal(e.message));
+            if (e instanceof StructureApiError && e.missing) this.reveal(e.missing);
           },
         });
-    });
+    }, () => failed('We could not load what the windows need. Check your connection and save again.'));
   }
 
   exportJson(): void {
@@ -1011,11 +1177,6 @@ export class StructureDesignerComponent implements AfterViewInit, OnDestroy {
 
   trackKey = (_: number, s: ParamSpec): string => s.key;
   trackDim = (_: number, d: Dim): string => d.id;
-}
-
-/** Sliding leaves run on a straight head and sill: only a plain rectangle can have them. */
-export function canSlide(face: Face): boolean {
-  return panelSize(face).shape === 'rectangle';
 }
 
 /**

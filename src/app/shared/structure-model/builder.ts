@@ -8,7 +8,7 @@
  * and (u, v) outline, and keeps ONE joint per distinct edge.
  */
 
-import { DEFAULT_APPEARANCE, Face, FaceFill, Hub, Joint, Params, STRUCTURE_SCHEMA, Structure, Vec2, Vec3 } from './types';
+import { DEFAULT_APPEARANCE, emptyDefaults, Face, FaceFill, Hub, Joint, Params, STRUCTURE_SCHEMA, Structure, Vec2, Vec3 } from './types';
 import { add, centroid, cross, dist, dot, edgeKey, EPS, onSegment, pointKey, polygonNormal, scale, sub, unit } from './vec';
 
 export interface TaggedPoly {
@@ -205,7 +205,7 @@ export class StructureBuilder {
       unit: 'mm',
       name,
       template: { kind, params: { ...params } },
-      defaults: { profileSystemId: null, colorId: null, glassId: null },
+      defaults: emptyDefaults(),
       appearance: { ...DEFAULT_APPEARANCE },
       faces: this.faces,
       joints,

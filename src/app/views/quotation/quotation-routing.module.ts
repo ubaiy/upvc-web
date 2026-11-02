@@ -65,6 +65,8 @@ const routes: Routes = [
     // The designer and three.js are their own chunk, loaded only here.
     path: 'detail/:id/structure',
     title: '3D structure',
+    // The same glass, colour and profile lists as the window designer: a structure is made of the same catalogue.
+    resolve: { dropdowns: AllDropdownsResolver, mullionList: MullionResolver },
     loadComponent: () =>
       import('../structure-designer/structure-designer.component').then((m) => m.StructureDesignerComponent),
   },
@@ -72,6 +74,7 @@ const routes: Routes = [
     // "Edit" on a structure line: the designer opens with the document the api keeps for that line.
     path: 'detail/:id/structure/:lineId',
     title: '3D structure',
+    resolve: { dropdowns: AllDropdownsResolver, mullionList: MullionResolver },
     loadComponent: () =>
       import('../structure-designer/structure-designer.component').then((m) => m.StructureDesignerComponent),
   },

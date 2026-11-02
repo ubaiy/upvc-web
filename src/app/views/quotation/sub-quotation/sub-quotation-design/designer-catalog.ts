@@ -15,6 +15,7 @@
  * Pure: no Angular, no HTTP.
  */
 
+import type { GlassTints } from 'src/app/shared/design-canvas/canvas-renderer';
 import {
   Id,
   LeafNode,
@@ -24,6 +25,9 @@ import {
   isLeaf,
   walkLeaves,
 } from 'src/app/shared/design-model';
+
+/** The outer frame face width every window of the designer is drawn and priced with, mm. */
+export const FRAME_FACE_MM = 60;
 
 export interface CatalogOption {
   id: Id;
@@ -140,6 +144,45 @@ export function handlesFor(
   const all = catalog.handles[category] ?? [];
   const fit = all.filter((h) => (productType === 'Door' ? h.door : h.window));
   return fit.length ? fit : all;
+}
+
+/** The handles the selected pane can take; none for a pane that is not an opening casement's kind. */
+export function handleOptionsFor(
+  catalog: DesignerCatalog,
+  productType: 'Window' | 'Door',
+  leaf: LeafNode | null
+): HandleChoice[] {
+  if (!leaf || leaf.category !== 'Casement') return [];
+  return handlesFor(catalog, 'Casement', productType);
+}
+
+/** The sash profiles of the system the selected pane uses. */
+export function sashOptionsFor(
+  catalog: DesignerCatalog,
+  productType: 'Window' | 'Door',
+  leaf: LeafNode | null
+): CatalogOption[] {
+  if (!leaf) return [];
+  return catalog.systems[systemKeyOf(productType, leaf)]?.sashes ?? [];
+}
+
+/** A drawing tint for each glass, from its name (the catalogue has no colour). */
+export function tintsOf(catalog: DesignerCatalog): GlassTints {
+  const rules: [RegExp, string][] = [
+    [/no glass/i, '#ffffff'],
+    [/black/i, '#8a9099'],
+    [/brown|bronze/i, '#c9a27a'],
+    [/blue/i, '#8fb8e0'],
+    [/green/i, '#9fd3b4'],
+    [/frost|wash/i, '#e8eef2'],
+    [/reflect/i, '#a9c7d6'],
+  ];
+  const out: GlassTints = {};
+  for (const g of catalog.glass) {
+    const hit = rules.find(([re]) => re.test(g.label));
+    if (hit) out[String(g.id)] = hit[1];
+  }
+  return out;
 }
 
 function completeLeaf(

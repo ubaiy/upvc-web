@@ -8,7 +8,6 @@ import { AccessService } from 'src/app/shared/access/access.service';
 import { DocumentsTabComponent } from './tabs/documents-tab.component';
 import { PlanTabComponent } from './tabs/plan-tab.component';
 import { PricingTaxTabComponent } from './tabs/pricing-tax-tab.component';
-import { StructureRatesTabComponent } from './tabs/structure-rates-tab.component';
 import { TeamTabComponent } from './tabs/team-tab.component';
 import { YourProfileTabComponent } from './tabs/your-profile-tab.component';
 
@@ -29,8 +28,6 @@ export const SETTINGS_TABS: SettingsTab[] = [
   { id: 'team', label: 'Team', component: TeamTabComponent, ability: 'team.manage' },
   { id: 'plan', label: 'Plan', component: PlanTabComponent, ability: 'billing.view' },
   { id: 'pricing', label: 'Pricing and tax', component: PricingTaxTabComponent, ability: 'prices.view_cost' },
-  // What a 3D structure of a quotation is priced with (card T123).
-  { id: 'structure-rates', label: 'Structure rates', component: StructureRatesTabComponent, ability: 'prices.view_cost' },
   { id: 'documents', label: 'Documents', component: DocumentsTabComponent, ability: 'settings.write' },
   { id: 'you', label: 'Your profile', component: YourProfileTabComponent },
 ];

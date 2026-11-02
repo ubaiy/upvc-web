@@ -7,6 +7,8 @@ export * from './derive';
 export * from './footprint';
 export * from './history';
 export * from './operations';
+export * from './catalogue-ops';
+export * from './window-shape';
 export * from './template';
 export * from './templates';
 export { DEG } from './vec';

@@ -3,21 +3,21 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { createStructure, summarize } from '../../shared/structure-model';
 import { environment } from '../../../environments/environment';
-import { missingRate, neededRates, plainRefusal, rateName, StructureApiError, StructureLineService, StructurePrice } from './structure-line.service';
+import { plainRefusal, StructureApiError, StructureLineService, StructurePrice } from './structure-line.service';
 import { ApiStructureStore, StructureStore } from './structure-store.service';
 
 const API = environment.API_URL;
 
 /** The price of the api contract's example (card T122). */
 export const SAMPLE_PRICE: StructurePrice = {
-  pricing_method: 'structure_rates_v1',
+  pricing_method: 'structure_catalogue_v1',
   pricing_version: 1,
   quantity: 1,
   rows: [
-    { kind: 'glass', name: 'Glass', basis: 'glass area x rate', qty: 12.4, unit: 'sq m', rate: 1800, amount: 22320 },
-    { kind: 'bar', role: 'frame', name: 'Frame', qty: 38.4, unit: 'm', rate: 450, amount: 17280 },
+    { kind: 'window', name: 'Fixed window 675 × 2400', face_ids: ['front-1', 'front-2', 'front-3', 'front-4'], count: 4, unit_cost: 5580, qty: 4, unit: 'pc', rate: 5580, amount: 22320 },
+    { kind: 'glass', name: '6mm bronze glass', qty: 12.4, unit: 'sq ft', rate: 120, amount: 1488 },
+    { kind: 'bar', role: 'eave', name: 'Eave beam', qty: 38.4, unit: 'm', rate: 450, amount: 17280 },
     { kind: 'hub', role: 'crown', qty: 1, unit: 'pc', rate: 2500, amount: 2500 },
-    { kind: 'opening', fill: 'door', qty: 1, unit: 'pc', rate: 6500, amount: 6500 },
     { kind: 'wastage', qty: 5, unit: 'percent', amount: 1980 },
   ],
   totals: { material: 48600, wastage: 1980, labour: 8008.2, overhead: 5858.82, installation: 5338.8, cost: 61234.5 },
@@ -31,7 +31,7 @@ export const SAMPLE_PRICE: StructurePrice = {
   rate_per_sq_ft: 550.55,
 };
 
-const REFUSAL = "structure_rates_v1 cannot price this structure: the structure rate 'bar_rate_m.rafter' is not set.";
+const REFUSAL = 'structure_catalogue_v1 cannot price this structure: Choose what the solid panels are made of.';
 
 describe('StructureLineService (a structure as a line of a quotation)', () => {
   let service: StructureLineService;
@@ -61,10 +61,16 @@ describe('StructureLineService (a structure as a line of a quotation)', () => {
     const errors: StructureApiError[] = [];
     const ask = () => service.price({ structure_type: 'gable', quantity: 1, summary }).subscribe({ error: (e) => errors.push(e) });
     ask();
-    http.expectOne(`${API}/quatation/structure/price`).flush({ success: false, data: null, message: REFUSAL });
+    http.expectOne(`${API}/quatation/structure/price`).flush({ success: false, data: null, message: REFUSAL, missing: 'solid_panel' });
     ask();
-    http.expectOne(`${API}/quatation/structure/price`).flush({ success: false, message: REFUSAL }, { status: 422, statusText: 'Unprocessable' });
-    expect(errors.map((e) => [e.message, e.refused])).toEqual([[REFUSAL, true], [REFUSAL, true]]);
+    http.expectOne(`${API}/quatation/structure/price`).flush({ success: false, message: REFUSAL, data: { missing: 'bar.rafter' } }, { status: 422, statusText: 'Unprocessable' });
+    ask();
+    http.expectOne(`${API}/quatation/structure/price`).flush({ success: false, message: 'The windows do not name every panel.' }, { status: 422, statusText: 'Unprocessable' });
+    expect(errors.map((e) => [e.message, e.refused, e.missing])).toEqual([
+      [REFUSAL, true, 'solid_panel'],
+      [REFUSAL, true, 'bar.rafter'],
+      ['The windows do not name every panel.', true, ''],
+    ]);
   });
 
   it('no answer, a server error and a missing route are failures, not refusals, and show no api internals', () => {
@@ -92,21 +98,11 @@ describe('StructureLineService (a structure as a line of a quotation)', () => {
     expect(http.expectOne(`${API}/quatation/structure/delete/77`).request.method).toBe('POST');
   });
 
-  it('reads the rates and saves the whole object back', () => {
-    const rates: any = { glass_rate_sq_m: { default: 1800, by_glass: {} }, bar_rate_m: { default: null, rafter: 650 } };
-    service.rates().subscribe();
-    expect(http.expectOne(`${API}/structure-rates`).request.method).toBe('GET');
-    service.saveRates(rates).subscribe();
-    const put = http.expectOne(`${API}/structure-rates`);
-    expect(put.request.method).toBe('PUT');
-    expect(put.request.body).toEqual({ rates });
-  });
-
   it('the store of saved structures is the api now: the id is the id of the quotation line', () => {
     const store = TestBed.inject(StructureStore);
     expect(store instanceof ApiStructureStore).toBeTrue();
     let saved: any;
-    store.save({ id: null, document: cabin, thumbnail: 'data:image/png;base64,AAAA', quotationId: 12, quantity: 2, unitPrice: null }).subscribe((row) => (saved = row));
+    store.save({ id: null, document: cabin, thumbnail: 'data:image/png;base64,AAAA', quotationId: 12, quantity: 2, unitPrice: null, windows: [], glass: '5mm plain glass' }).subscribe((row) => (saved = row));
     const add = http.expectOne(`${API}/quatation/structure/add`);
     expect(add.request.body).toEqual({
       quatation_id: 12,
@@ -117,6 +113,8 @@ describe('StructureLineService (a structure as a line of a quotation)', () => {
       image: 'data:image/png;base64,AAAA',
       document: cabin,
       summary,
+      windows: [],
+      glass: '5mm plain glass',
     });
     add.flush({ success: true, data: { id: 77, quantity: 2, image: null, structure: { type: 'cabin', name: cabin.name, overall: summary.overall, costing: { price_is_manual: false, unit_price: 61234.5 } } } });
     expect(saved).toEqual(jasmine.objectContaining({ id: '77', kind: 'cabin', quantity: 2, manualPrice: null }));
@@ -126,22 +124,26 @@ describe('StructureLineService (a structure as a line of a quotation)', () => {
     expect(refused).withContext('a structure lives in a quotation').toContain('line of a quotation');
   });
 
-  it('says a refusal in plain words, with the names of the Structure rates screen', () => {
-    expect(missingRate(REFUSAL)).toBe('bar_rate_m.rafter');
-    expect(plainRefusal(REFUSAL)).toBe('The rafter rate per metre is not set.');
-    expect(plainRefusal("structure_rates_v1 cannot price this structure: the structure rate 'glass_rate_sq_m.default' is not set.")).toBe('The glass rate per sq m is not set.');
-    expect(plainRefusal('structure_rates_v1 cannot price this structure: the summary is not consistent.')).toBe('The summary is not consistent.');
-    expect(rateName('opening_extra.top-hung')).toBe('extra for a top hung panel');
-    expect(rateName('hub_rate.crown')).toBe('crown hub rate');
-    expect(rateName('labour_rate_sq_ft')).toBe('labour rate per sq ft');
+  it('says a refusal in plain words, without the name of the pricing method', () => {
+    expect(plainRefusal(REFUSAL)).toBe('Choose what the solid panels are made of.');
+    expect(plainRefusal('structure_catalogue_v1 cannot price this structure: the summary is not consistent.')).toBe('The summary is not consistent.');
+    expect(plainRefusal('Choose the glass.')).toBe('Choose the glass.');
   });
 
-  it('knows which rates a structure needs, to name the ones that are missing', () => {
-    const needed = neededRates(summary);
-    expect(needed).toContain('glass_rate_sq_m.default');
-    expect(needed).toContain('bar_rate_m.corner_post');
-    expect(needed).toContain('opening_extra.door');
-    expect(needed).not.toContain('solid_panel_rate_sq_m');
-    expect(needed).not.toContain('bar_rate_m.rib');
+  it('sends the windows and the document with the price, and with a saved line', () => {
+    const windows = [{ face_ids: ['front-1', 'front-2'], body: { quatation_id: 12 } as any }];
+    service.price({ quatation_id: 12, structure_type: 'cabin', quantity: 1, document: cabin, windows, summary }).subscribe();
+    const price = http.expectOne(`${API}/quatation/structure/price`);
+    expect(price.request.body.windows).toEqual(windows);
+    expect(price.request.body.document).toEqual(cabin);
+    expect(price.request.body.glass).withContext('no glass rate any more').toBeUndefined();
+    price.flush({ success: true, data: SAMPLE_PRICE });
+    service.update(77, { document: cabin, windows, summary }).subscribe();
+    expect(http.expectOne(`${API}/quatation/structure/update/77`).request.body.windows).toEqual(windows);
+  });
+
+  it('has no call for structure rates any more', () => {
+    expect((service as unknown as Record<string, unknown>)['rates']).toBeUndefined();
+    expect((service as unknown as Record<string, unknown>)['saveRates']).toBeUndefined();
   });
 });

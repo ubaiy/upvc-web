@@ -1,14 +1,14 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject, firstValueFrom } from 'rxjs';
-import { WorkspaceService } from '../../containers/shell/workspace.service';
+import { Router } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { createStructure, fillKey, serializeStructure } from '../../shared/structure-model';
 import { environment } from '../../../environments/environment';
 import { canSlide, PRICE_DEBOUNCE_MS, StructureDesignerComponent } from './structure-designer.component';
 import { SAMPLE_PRICE } from './structure-line.service.spec';
 import { BrowserStructureStore, STRUCTURE_STORE_KEY as STORE_KEY } from './structure-store.service';
+import { documentFor } from './structure-windows';
+import { openDesigner } from './testing';
 
 const API = environment.API_URL;
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -26,20 +26,9 @@ describe('StructureDesignerComponent', () => {
 
   /** `params`: the route of a quotation, { id } for a new structure and { id, lineId } for "Edit". */
   async function make(query: Record<string, string> = {}, params: Record<string, string> = {}): Promise<void> {
-    await TestBed.configureTestingModule({
-      imports: [StructureDesignerComponent],
-      providers: [
-        provideRouter([]),
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap(query), paramMap: convertToParamMap(params) } } },
-        { provide: WorkspaceService, useValue: { workspace$: new BehaviorSubject({ name: 'Hakimi Enterprise' }) } },
-      ],
-    }).compileComponents();
-    fixture = TestBed.createComponent(StructureDesignerComponent);
+    fixture = await openDesigner(query, params);
     c = fixture.componentInstance;
     el = fixture.nativeElement;
-    fixture.detectChanges();
   }
 
   beforeEach(() => {
@@ -185,7 +174,7 @@ describe('StructureDesignerComponent', () => {
     inner().pick({ kind: 'bar', id: rib.id }, false);
     fixture.detectChanges();
     // Default dome: sphere radius 1625, ring step 22.46°, rib chord 2 × 1625 × sin 11.23° = 633.
-    expect(c.barInfo).toEqual({ role: 'Rib', length: 633, faces: 2 });
+    expect(c.barInfo).toEqual(jasmine.objectContaining({ role: 'Rib', length: 633, faces: 2 }));
     expect(c.selectedFaces).toEqual([]);
     expect(el.querySelector('.sd-sec--panel')?.textContent).toContain('True length');
   });
@@ -197,29 +186,34 @@ describe('StructureDesignerComponent', () => {
     expect(c.selectedFaces.length).toBe(12);
   });
 
-  it('a glass tint can be given to the selected panels only, and taken back', async () => {
+  it('a roof pane has its glass from the catalogue; a window has the glass of the structure', async () => {
     await make({ kind: 'cabin' });
-    inner().pick({ kind: 'face', id: 'front-1' }, false);
-    inner().pick({ kind: 'face', id: 'front-2' }, true);
+    inner().pick({ kind: 'face', id: 'roof-1' }, false);
+    inner().pick({ kind: 'face', id: 'roof-2' }, true);
     fixture.detectChanges();
-    const swatches = el.querySelectorAll<HTMLElement>('[data-tint="face"] button');
-    expect(swatches.length).toBe(c.glassTints.length + 1);
-    expect(c.faceInfo).toEqual(jasmine.objectContaining({ glazed: true, tint: '#9fc4cf', ownTint: false }));
-    swatches[3].click(); // bronze
+    const select = el.querySelector<HTMLSelectElement>('[data-choose="pane-glass"]')!;
+    expect(Array.from(select.options).map((o) => o.textContent?.trim())).toEqual(['As the structure', '5mm plain glass', '4mm Plain glass', '6mm bronze glass']);
+    expect(el.querySelector('[data-tint="face"]')).withContext('no tint swatches any more').toBeNull();
+    select.value = '16';
+    select.dispatchEvent(new Event('change'));
     fixture.detectChanges();
-    const tintOf = (id: string): string | undefined => c.structure!.faces.find((f) => f.id === id)!.glassTint;
-    expect([tintOf('front-1'), tintOf('front-2'), tintOf('front-3')]).toEqual(['#b89f7a', '#b89f7a', undefined]);
-    expect(c.structure!.appearance.glassTint).toBe('#9fc4cf');
-    expect(c.faceInfo).toEqual(jasmine.objectContaining({ tint: '#b89f7a', ownTint: true }));
-    // It stays through a resize; "As the structure" takes it off again.
+    const glassOf = (id: string): unknown => {
+      const fill = c.structure!.faces.find((f) => f.id === id)!.fill;
+      return fill.kind === 'glass' ? fill.glassId : 'not glass';
+    };
+    expect([glassOf('roof-1'), glassOf('roof-2'), glassOf('roof-3')]).toEqual([16, 16, null]);
+    // It stays through a resize; "As the structure" takes it off again; one undo step each.
     c.commit({ height: 2700 });
-    expect(tintOf('front-1')).toBe('#b89f7a');
-    c.setFaceTint(null);
-    expect(tintOf('front-1')).toBeUndefined();
-    // A solid panel has no glass to tint.
+    expect(glassOf('roof-1')).toBe(16);
+    c.choosePaneGlass('');
+    expect(glassOf('roof-1')).toBeNull();
+    c.undo();
+    expect(glassOf('roof-1')).toBe(16);
+    // A window has no glass of its own to choose here: it has the window options.
     c.selectFaces(['front-1']);
-    c.setFill('panel');
-    expect(c.faceInfo?.glazed).toBeFalse();
+    fixture.detectChanges();
+    expect(el.querySelector('[data-choose="pane-glass"]')).toBeNull();
+    expect(el.querySelector('[data-action="edit-panel"]')).not.toBeNull();
   });
 
   it('the panels fold away and come back; a selection brings its panel forward', async () => {
@@ -241,17 +235,24 @@ describe('StructureDesignerComponent', () => {
     expect(el.querySelectorAll('.sd-menu__more button').length).toBe(3);
   });
 
-  it('profile colour and glass tint apply to the whole structure; reset goes back to the defaults', async () => {
+  it('colour and glass are chosen from the catalogue and apply to the whole structure; reset goes back to the first choices', async () => {
     await make({ kind: 'gable' });
-    c.setColour('#3b3f44');
-    c.setTint('#8fbf9f');
+    const options = (sel: string): string[] => Array.from(el.querySelectorAll<HTMLOptionElement>(`${sel} option`)).map((o) => o.textContent?.trim() ?? '');
+    expect(options('[data-choose="colour"]')).toEqual(['Default', 'Oak']);
+    expect(options('[data-choose="glass"]')).toEqual(['5mm plain glass', '4mm Plain glass', '6mm bronze glass']);
+    expect(c.structure?.defaults).toEqual(jasmine.objectContaining({ colorId: 1, glassId: 1 }));
+    c.chooseColour('7');
+    c.chooseGlass('16');
     c.commit({ width: 4800 });
-    expect(c.structure?.appearance).toEqual({ profileColour: '#3b3f44', glassTint: '#8fbf9f' });
+    expect(c.structure?.defaults).toEqual(jasmine.objectContaining({ colorId: 7, glassId: 16 }));
+    expect(c.structure?.appearance).toEqual({ profileColour: '#6b4a32', glassTint: '#c9a27a' });
     c.reset();
-    expect(c.structure?.appearance.profileColour).toBe('#f4f4f1');
+    expect(c.structure?.defaults).toEqual(jasmine.objectContaining({ colorId: 1, glassId: 1 }));
+    expect(c.structure?.appearance.profileColour).toBe('#ffffff');
     expect(c.num('width')).toBe(3600);
     c.undo();
     expect(c.num('width')).toBe(4800);
+    expect(c.structure?.defaults.colorId).toBe(7);
   });
 
   // --- inside a quotation (card T123) ---
@@ -275,6 +276,11 @@ describe('StructureDesignerComponent', () => {
     const first = await answerPrice({ success: true, data: SAMPLE_PRICE });
     expect(first).toEqual(jasmine.objectContaining({ quatation_id: 12, structure_type: 'cabin', quantity: 1, unit_price: null }));
     expect(first.summary).toEqual(c.summary);
+    // Every wall panel is named once in the windows, and the document says what the structure is made of.
+    const named: string[] = first.windows.flatMap((w: { face_ids: string[] }) => w.face_ids);
+    expect(named.sort()).toEqual(c.structure!.faces.filter((f) => f.fill.kind === 'design').map((f) => f.id).sort());
+    expect(first.windows[0].body.is_saved).toBeFalse();
+    expect(first.document.defaults).toEqual(jasmine.objectContaining({ glassId: 1, colorId: 1, bars: { eave: 29, rafter: 29 } }));
     expect(el.querySelector('.sd-price')?.getAttribute('data-price')).toBe('ready');
     expect(bar()).toContain('₹73,481.40');
     expect(bar()).toContain('₹550.55 / sq ft');
@@ -295,28 +301,24 @@ describe('StructureDesignerComponent', () => {
     (el.querySelector('[data-action="details"]') as HTMLButtonElement).click();
     fixture.detectChanges();
     const rows = Array.from(el.querySelectorAll('[data-pop="details"] tbody tr')).map((r) => (r.textContent ?? '').replace(/\s+/g, ' ').trim());
-    expect(rows.length).toBe(SAMPLE_PRICE.rows.length);
-    expect(rows[0]).toContain('Glass');
+    expect(rows.length).toBe(SAMPLE_PRICE.rows!.length);
+    expect(rows[0]).toContain('Fixed window 675 × 2400');
+    expect(rows[0]).toContain('Front wall, panel 1, Front wall, panel 2, Front wall, panel 3, Front wall, panel 4');
+    expect(rows[0]).toContain('₹5,580.00');
     expect(rows[0]).toContain('₹22,320.00');
-    expect(rows[2]).withContext('a row without a name is called by its role').toContain('Crown');
+    expect(rows[3]).withContext('a row without a name is called by its role').toContain('Crown');
   });
 
-  it('a refusal is a plain sentence with a link to the rates, never a zero price', async () => {
+  it('a refusal is a plain sentence, never a zero price, and sends nobody to a settings page', async () => {
     await make({ kind: 'gable' }, { id: '12' });
-    await answerPrice({ success: false, data: null, message: "structure_rates_v1 cannot price this structure: the structure rate 'bar_rate_m.rafter' is not set." });
+    await answerPrice({ success: false, data: null, message: 'structure_catalogue_v1 cannot price this structure: Choose a profile for the rafter.', missing: 'bar.rafter' });
     expect(el.querySelector('.sd-price')?.getAttribute('data-price')).toBe('refused');
-    expect(bar()).toContain('No price yet: The rafter rate per metre is not set.');
+    expect(bar()).toContain('No price yet: Choose a profile for the rafter.');
     expect(bar()).not.toContain('₹');
-    expect(bar()).not.toContain('structure_rates_v1');
-    const link = el.querySelector('[data-price="refusal"] a') as HTMLAnchorElement;
-    expect(link.textContent).toContain('Set structure rates');
-    expect(link.getAttribute('href')).toBe('/profile?tab=structure-rates&missing=bar_rate_m.rafter');
+    expect(bar()).not.toContain('structure_catalogue_v1');
+    expect(el.querySelector('a[href*="profile"], a[href*="structure-rates"]')).toBeNull();
+    expect(el.textContent?.toLowerCase()).not.toContain('structure rates');
     expect((el.querySelector('[data-action="details"]') as HTMLButtonElement).disabled).toBeTrue();
-
-    // Every rate this structure needs and the company has not set is named: the count and the first three.
-    http().expectOne(`${API}/structure-rates`).flush({ success: true, data: { rates: {}, bar_roles: [], openings: [], missing: ['bar_rate_m.rafter', 'bar_rate_m.ridge', 'glass_rate_sq_m.default', 'overhead_pct', 'bar_rate_m.rib'] } });
-    fixture.detectChanges();
-    expect(bar()).toMatch(/No price yet: [34] rates are not set \(rafter rate per metre, glass rate per sq m/);
 
     // No answer at all is said as such, with a way to ask again.
     c.setQuantity(1);
@@ -365,9 +367,11 @@ describe('StructureDesignerComponent', () => {
     c.save();
     await waitFor(() => (add = [...add, ...http().match(`${API}/quatation/structure/add`)]).length > 0);
     expect(add[0].request.body).toEqual(
-      jasmine.objectContaining({ quatation_id: 12, name: 'Verandah for Mr Shah', structure_type: 'lean-to', quantity: 2, unit_price: null, summary })
+      jasmine.objectContaining({ quatation_id: 12, name: 'Verandah for Mr Shah', structure_type: 'lean-to', quantity: 2, unit_price: null, glass: '5mm plain glass', summary })
     );
-    expect(serializeStructure(add[0].request.body.document)).toBe(saved);
+    // The document goes with every window complete with its catalogue ids; nothing else is changed.
+    expect(serializeStructure(add[0].request.body.document)).toBe(serializeStructure(documentFor(c.structure!, c.catalog)));
+    expect(add[0].request.body.windows.flatMap((w: { face_ids: string[] }) => w.face_ids).length).toBe(c.structure!.faces.filter((f) => f.fill.kind === 'design').length);
     const line = {
       id: 77,
       kind: 'structure',
@@ -399,14 +403,15 @@ describe('StructureDesignerComponent', () => {
     let update: any[] = [];
     c.save();
     await waitFor(() => (update = [...update, ...http().match(`${API}/quatation/structure/update/77`)]).length > 0);
-    expect(update[0].request.body).toEqual(jasmine.objectContaining({ name: 'Verandah for Mr Shah', quantity: 2, unit_price: 95000 }));
+    expect(update[0].request.body).toEqual(jasmine.objectContaining({ name: 'Verandah for Mr Shah', quantity: 2, unit_price: 95000, glass: '5mm plain glass' }));
     expect(update[0].request.body.quatation_id).toBeUndefined();
 
     // A refused save stays on the page and says why.
-    update[0].flush({ success: false, message: "structure_rates_v1 cannot price this structure: the structure rate 'bar_rate_m.wall_plate' is not set." });
+    update[0].flush({ success: false, message: 'structure_catalogue_v1 cannot price this structure: Choose a profile for the wall plate.', missing: 'bar.wall_plate' });
     fixture.detectChanges();
     expect(again).not.toHaveBeenCalled();
-    expect(el.querySelector('[data-price="save-error"]')?.textContent).toContain('Not saved. The wall plate rate per metre is not set.');
+    expect(el.querySelector('[data-price="save-error"]')?.textContent).toContain('Not saved. Choose a profile for the wall plate.');
+    expect(c.asked).withContext('the control is opened').toBe('bar.wall_plate');
   });
 
   it('offers what was saved on this device before, to bring into the quotation', async () => {

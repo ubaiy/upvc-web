@@ -12,8 +12,10 @@
  * outline (its hinge stile, lock stile, head, sill), never on its bounding
  * box: under a sloped roof a sash has a raked head, and nothing may be drawn
  * outside it. A piece that would not fit inside its sash is left out.
- * This is the designer's own simple geometry; the mitred window builder of
- * shared/design-3d takes over the inside of a face on a later card.
+ * A wall panel that is a window (it has its WindowDesign) is drawn as that
+ * window by the window builder of shared/design-3d, placed on the plane of its
+ * panel (panel-window.ts); the simple frame above is for a panel with no
+ * design, and for the small pictures of the start screen.
  */
 
 import {
@@ -30,7 +32,19 @@ import {
   MeshPhysicalMaterial,
   MeshStandardMaterial,
 } from 'three';
-import { barSection, Face, faceNormal, fillKey, Structure, Vec2, Vec3 } from '../../../shared/structure-model';
+import { buildWindowParts } from '../../../shared/design-3d/window-parts';
+import type { Id, WindowDesign } from '../../../shared/design-model';
+import {
+  applyLook as applyWindowLook,
+  buildWindowGroup,
+  createMaterials as createWindowMaterials,
+  disposeMaterials as disposeWindowMaterials,
+  disposeWindow,
+  WindowMaterials,
+  WindowObject,
+} from '../../../shared/design-3d/window-mesh';
+import { barSection, DEFAULT_APPEARANCE, Face, faceNormal, fillKey, Structure, Vec2, Vec3 } from '../../../shared/structure-model';
+import { panelPlacement } from './panel-window';
 
 export interface PickTarget {
   kind: 'face' | 'bar';
@@ -224,8 +238,18 @@ export function applyAppearance(m: StructureMaterials, appearance: Structure['ap
   // The glass tint is in the geometry: buildStructure gives every pane its own.
 }
 
-/** The tint a face's glass is drawn with: its own, or the one of the structure. */
-export function glassTintOf(structure: Structure, face: Face): string {
+/** What the catalogue gives the drawing: the windows are drawn as windows when this is given. */
+export interface StructureLook {
+  /** Outer frame face width of the windows, mm. */
+  frameFaceMm: number;
+  /** How each glass of the catalogue is drawn: a tint (hex) by glass id. */
+  glassTints: Record<string, string>;
+}
+
+/** The tint a face's glass is drawn with: the glass chosen for it, else its own tint, else the one of the structure. */
+export function glassTintOf(structure: Structure, face: Face, tints?: Record<string, string>): string {
+  const own = face.fill.kind === 'glass' ? face.fill.glassId : null;
+  if (own !== null && own !== undefined) return tints?.[String(own)] ?? DEFAULT_APPEARANCE.glassTint;
   return face.glassTint ?? structure.appearance.glassTint;
 }
 
@@ -237,6 +261,10 @@ export interface StructureObject {
   root: Group;
   /** Meshes to ray-cast; each has userData.owner, one PickTarget per triangle. */
   pickables: Mesh[];
+  /** The windows drawn on their panels (each root is in `root`, marked with userData.window = the panel). */
+  windows: WindowObject[];
+  /** The materials of those windows: one set for each tint of glass. */
+  windowMaterials: WindowMaterials[];
 }
 
 /** A knuckle stays inside the section of the bars it closes: nothing stands out past a ridge end or a corner. */
@@ -246,7 +274,7 @@ const SASH_W = 42;
 const JOINT_HALF = 26;
 const LEAF_W = 40;
 
-export function buildStructure(structure: Structure, m: StructureMaterials): StructureObject {
+export function buildStructure(structure: Structure, m: StructureMaterials, look?: StructureLook): StructureObject {
   const profile = new Soup();
   const glass = new Soup();
   const panel = new Soup();
@@ -281,12 +309,22 @@ export function buildStructure(structure: Structure, m: StructureMaterials): Str
     profile.knuckle(hub.at, HUB_RADIUS[hub.role] ?? 44, owner);
   }
 
+  const root = new Group();
+  const windows: WindowObject[] = [];
+  const windowMaterials = new Map<string, WindowMaterials>();
   for (const face of structure.faces) {
-    glass.colour = tint(glassTintOf(structure, face));
+    glass.colour = tint(glassTintOf(structure, face, look?.glassTints));
+    if (look && face.fill.kind === 'design' && face.fill.design) {
+      // The plate stays so the panel can be tapped; the window is drawn on it.
+      hiddenPlate(face, hidden);
+      const drawn = windowOf(structure, face, face.fill.design, look, windowMaterials);
+      windows.push(drawn);
+      root.add(drawn.root);
+      continue;
+    }
     addFace(face, { profile, glass, panel, gasket, metal, hidden, lines });
   }
 
-  const root = new Group();
   const pickables: Mesh[] = [];
   const put = (soup: Soup, material: Material, cast: boolean, order = 0): void => {
     const mesh = soup.mesh(material);
@@ -308,7 +346,43 @@ export function buildStructure(structure: Structure, m: StructureMaterials): Str
     g.setAttribute('position', new Float32BufferAttribute(lines, 3));
     root.add(new LineSegments(g, m.line));
   }
-  return { root, pickables };
+  return { root, pickables, windows, windowMaterials: [...windowMaterials.values()] };
+}
+
+/** The glass the structure has is drawn in the tint of the structure; another glass in its own tint, or the usual one. */
+function windowGlassTint(structure: Structure, glassId: Id | null | undefined, tints: Record<string, string>): string {
+  if (glassId === null || glassId === undefined) return structure.appearance.glassTint;
+  const own = tints[String(glassId)];
+  if (own) return own;
+  return String(glassId) === String(structure.defaults.glassId) ? structure.appearance.glassTint : DEFAULT_APPEARANCE.glassTint;
+}
+
+/** The window of a panel, built in its own millimetres and placed on the plane of the panel. */
+function windowOf(structure: Structure, face: Face, design: WindowDesign, look: StructureLook, sets: Map<string, WindowMaterials>): WindowObject {
+  const parts = buildWindowParts(design, { frameFaceMm: look.frameFaceMm });
+  const glassId = design.glazing.glassId;
+  const glassTint = windowGlassTint(structure, glassId, look.glassTints);
+  const profileColor = structure.appearance.profileColour;
+  const key = `${profileColor}|${glassTint}`;
+  let set = sets.get(key);
+  if (!set) {
+    set = createWindowMaterials();
+    applyWindowLook(set, { profileColor, glassTint });
+    sets.set(key, set);
+  }
+  const drawn = buildWindowGroup(parts, set, { profileColor, glassTint, glassTints: look.glassTints });
+  drawn.root.matrixAutoUpdate = false;
+  drawn.root.matrix.copy(panelPlacement(face, parts.depthMm));
+  drawn.root.userData['window'] = face.id;
+  return drawn;
+}
+
+/** A see-through plate of the panel's outline: nothing is drawn, but a tap finds the panel. */
+function hiddenPlate(face: Face, soup: Soup): void {
+  const { origin, u, v } = face.plane;
+  const n = faceNormal(face);
+  const at = (p: Vec2): V => add(origin, add(mul(u, p[0]), mul(v, p[1])));
+  for (let i = 1; i < face.outline.length - 1; i++) soup.tri(at(face.outline[0]), at(face.outline[i]), at(face.outline[i + 1]), { kind: 'face', id: face.id }, n);
 }
 
 interface Soups {
@@ -563,6 +637,8 @@ function addFace(face: Face, s: Soups, trace?: OpeningTrace): void {
 }
 
 export function disposeStructure(object: StructureObject): void {
+  object.windows.forEach(disposeWindow);
+  object.windowMaterials.forEach(disposeWindowMaterials);
   object.root.traverse((o) => {
     const g = (o as Mesh).geometry as BufferGeometry | undefined;
     if (g) g.dispose();

@@ -4,19 +4,27 @@ import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { BehaviorSubject, Observable, Subject, of, throwError } from 'rxjs';
 
+import { AccessState } from '../../shared/access/access.models';
+import { AccessService } from '../../shared/access/access.service';
+import { me, subscription } from '../../shared/access/access.spec';
+import { ACCESS_PARTS } from '../../shared/access/write.directive';
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
 import { ToastService } from '../../shared/services/toast.service';
-import { JOB } from './production.adapter.spec';
+import { BarSettingsDialogComponent } from './bar-settings-dialog.component';
+import { BAR_PLAN, JOB } from './production.adapter.spec';
 import { ProductionComponent } from './production.component';
-import { JobResult, ProductionJob } from './production.model';
+import { BarPlan, JobResult, ProductionJob } from './production.model';
 import { ProductionModule } from './production.module';
 import { ProductionService } from './production.service';
 
 const job = (over: Partial<ProductionJob> = {}): Observable<JobResult> => of({ kind: 'job', job: { ...JOB, ...over } });
+const planJob = (plan: Partial<BarPlan> = {}): Observable<JobResult> => job({ bar_plan: { ...BAR_PLAN, ...plan } });
 const pdf = () => of({ blob: new Blob(['%PDF'], { type: 'application/pdf' }), fileName: null });
+const SETTINGS = { bar_mm: 5800, steel_bar_mm: 6000, blade_mm: 6, end_trim_mm: 20, min_offcut_mm: 500 };
 
 describe('ProductionComponent', () => {
   let fixture: ComponentFixture<ProductionComponent>;
@@ -30,12 +38,14 @@ describe('ProductionComponent', () => {
   const labelled = (label: string): HTMLButtonElement => el().querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!;
 
   beforeEach(() => {
-    service = jasmine.createSpyObj('ProductionService', ['getJob', 'freeze', 'getDocument']);
+    service = jasmine.createSpyObj('ProductionService', ['getJob', 'freeze', 'getDocument', 'getBarSettings', 'saveBarSettings']);
+    service.getBarSettings.and.returnValue(of({ settings: SETTINGS, defaults: SETTINGS }));
+    service.saveBarSettings.and.returnValue(of({ settings: SETTINGS, defaults: SETTINGS }));
     toast = jasmine.createSpyObj('ToastService', ['showSuccess', 'showError', 'showInfo']);
     saved = [];
     TestBed.configureTestingModule({
       declarations: [ProductionComponent],
-      imports: [RouterTestingModule, SharedComponentsModule, ConfirmDialogComponent],
+      imports: [RouterTestingModule, NoopAnimationsModule, SharedComponentsModule, ConfirmDialogComponent, BarSettingsDialogComponent, ...ACCESS_PARTS],
       providers: [
         { provide: ProductionService, useValue: service },
         { provide: ToastService, useValue: toast },
@@ -55,11 +65,11 @@ describe('ProductionComponent', () => {
     create(new Subject<JobResult>());
     expect(service.getJob).toHaveBeenCalledWith('14', undefined);
     expect(el().querySelector('[role="status"]')?.textContent).toContain('Loading the production job');
-    expect(el().querySelectorAll('.sk-doc').length).toBe(4);
+    expect(el().querySelectorAll('.sk-doc').length).toBe(5);
     expect(el().querySelector('.btn-primary')).toBeNull();
   });
 
-  it('shows the job, when it was frozen, its revision and the four documents', () => {
+  it('shows the job, when it was frozen, its revision and the five documents', () => {
     create(job());
     expect(text()).toContain('Job Q-0003/P1');
     expect(text()).toContain('Frozen');
@@ -68,18 +78,20 @@ describe('ProductionComponent', () => {
     expect(text()).toContain('3 windows, 3 units');
     expect(text()).toContain('Al-Rashid Villa Windows · Ahmed Al-Rashid');
     const titles = Array.from(el().querySelectorAll('.doc h2')).map((h) => h.textContent);
-    expect(titles).toEqual(['Cutting list', 'Glass order', 'Hardware order', 'Production sheets']);
+    expect(titles).toEqual(['Cutting list', 'Bar plan', 'Glass order', 'Hardware order', 'Production sheets']);
+    expect(text()).toContain('For buying and the saw: bars to order, the cuts on each bar, offcuts and waste.');
     for (const doc of Array.from(el().querySelectorAll('.doc'))) {
       const labels = Array.from(doc.querySelectorAll('button')).map((b) => (b.textContent || '').trim());
       expect(labels).toEqual(['Preview', 'Download PDF', 'Download Excel', 'Share']);
     }
   });
 
-  it('a job with a 3D structure: the three lists say they are windows only, the sheets do not (T143)', () => {
+  it('a job with a 3D structure: the four lists say they are windows only, the sheets do not (T143)', () => {
     create(job({ structures: [{ line_id: 161, code: 'S2', name: 'Balcony cabin', type: 'cabin', quantity: 1, overall: { widthMm: 3600, depthMm: 2400, heightMm: 2700 } }] } as any));
     const notes = Array.from(el().querySelectorAll('.doc')).map((doc) => [doc.querySelector('h2')!.textContent!.trim(), !!doc.querySelector('[data-q="doc-no-structure"]')]);
     expect(notes).toEqual([
       ['Cutting list', true],
+      ['Bar plan', true],
       ['Glass order', true],
       ['Hardware order', true],
       ['Production sheets', false],
@@ -286,6 +298,7 @@ describe('ProductionComponent', () => {
   it('offers to prepare the documents when the quotation has no job yet', () => {
     create(of({ kind: 'no-job' }));
     expect(text()).toContain('No production job yet');
+    expect(text()).toContain('to make the cutting list, bar plan, glass order, hardware order and production sheets.');
     expect(el().querySelectorAll('.btn-primary').length).toBe(1);
     service.freeze.and.returnValue(job());
     button('Prepare production documents').click();
@@ -383,6 +396,308 @@ describe('ProductionComponent', () => {
       expect(control.getBoundingClientRect().height).toBeGreaterThanOrEqual(44);
     }
   });
+  describe('bar plan (card P6)', () => {
+    // A dialog closed in a test finishes its leaving animation a moment later: wait for that before the page is torn down.
+    afterEach(async () => fixture?.whenStable());
+
+    const tabs = (): string[] => Array.from(el().querySelectorAll('.tab')).map((t) => (t.textContent || '').trim());
+    const openBars = (): void => {
+      Array.from(el().querySelectorAll<HTMLButtonElement>('.tab')).find((t) => (t.textContent || '').trim() === 'Bars')!.click();
+      fixture.detectChanges();
+    };
+    const cells = (tr: Element): string[] => Array.from(tr.querySelectorAll('td')).map((td) => (td.textContent || '').replace(/\s+/g, ' ').trim());
+    const rows = (): string[][] => Array.from(el().querySelectorAll('table tbody tr')).map(cells);
+    const stat = (label: string): string | undefined =>
+      Array.from(el().querySelectorAll('app-stat'))
+        .map((s) => Array.from(s.children).map((part) => (part.textContent || '').trim()).join(' '))
+        .find((s) => s.startsWith(label));
+    const dialogButton = (label: string): HTMLButtonElement =>
+      Array.from(document.querySelectorAll<HTMLButtonElement>('.p-dialog button')).find((b) => (b.textContent || '').includes(label))!;
+
+    it('an older api sends no bar plan: the page is as it was, with no stat and no tab', () => {
+      create(job());
+      expect(tabs()).toEqual(['Profiles', 'Glass', 'Hardware']);
+      expect(stat('Bars to buy')).toBeUndefined();
+      expect(el().querySelectorAll('app-stat').length).toBe(3);
+      expect(el().querySelector('.stats')!.classList.contains('stats-4')).toBeFalse();
+      expect(text()).not.toContain('Bar settings');
+    });
+
+    it('shows the bars to buy beside the other three figures, as the api counted them', () => {
+      create(planJob());
+      expect(stat('Bars to buy')).toBe('Bars to buy 8 bars plus 1 steel bar, 1.7% waste');
+      expect(el().querySelectorAll('app-stat').length).toBe(4);
+      expect(el().querySelector('.stats')!.classList.contains('stats-4')).toBeTrue();
+      expect(tabs()).toEqual(['Profiles', 'Glass', 'Hardware', 'Bars']);
+    });
+
+    it('leaves the stat out when the plan has no bars, but keeps the tab, which says so', () => {
+      const none = { ...BAR_PLAN.totals.profile, bars: 0, pieces: 0, offcuts: 0 };
+      create(planJob({ sections: [], totals: { profile: none, steel: { ...none } } }));
+      expect(stat('Bars to buy')).toBeUndefined();
+      expect(tabs()).toContain('Bars');
+      openBars();
+      expect(rows()).toEqual([['No profile sizes in this job.']]);
+    });
+
+    it('lists each profile with its bar, bars, offcuts and waste, then the sums', () => {
+      create(planJob());
+      openBars();
+      const heads = Array.from(el().querySelectorAll('table th')).map((th) => (th.textContent || '').trim());
+      expect(heads).toEqual(['Profile', 'Bar', 'Bars', 'Offcuts', 'Waste']);
+      const table = rows();
+      expect(table.length).toBe(5);
+      expect(table[0][0]).toContain('Outer Frame');
+      expect(table[0][0]).toContain('P60-K-X-R · Default');
+      expect(table[0].slice(1, 5)).toEqual(['5800 mm', '3', '2', '2.7%']);
+      expect(table[1][0]).toContain('Outward Sash');
+      expect(table[1].slice(1, 5)).toEqual(['5800 mm', '5', '4', '1.0%']);
+      expect(table[2][0]).toContain('GI Reinforcement');
+      expect(table[2][0]).toContain('Steel reinforcement');
+      expect(table[2].slice(1, 5)).toEqual(['5800 mm', '1', '0', '5.9%']);
+      expect(table[3]).toEqual(['Profile total', '', '8', '6', '1.7%']);
+      expect(table[4]).toEqual(['Steel total', '', '1', '0', '5.9%']);
+      expect(el().querySelectorAll('table tbody tr.sum').length).toBe(2);
+    });
+
+    it('has one sum row, "Total", when the job has no steel', () => {
+      create(planJob({ sections: BAR_PLAN.sections.filter((section) => !section.steel) }));
+      openBars();
+      expect(rows().slice(-1)).toEqual([['Total', '', '8', '6', '1.7%']]);
+    });
+
+    it('keeps its columns on a phone, and the table inside the card', () => {
+      create(planJob());
+      openBars();
+      expect(el().querySelector('table')!.classList.contains('table-keep')).toBeTrue();
+      expect(el().querySelector('table th:nth-child(2)')!.classList.contains('hide-phone')).toBeTrue();
+    });
+
+    it('says what the bars were worked out with, and nothing else when all is well', () => {
+      create(planJob());
+      openBars();
+      expect(text()).toContain('Blade 6 mm · 20 mm trimmed from each end · offcuts from 500 mm kept, not counted as waste');
+      expect(text()).not.toContain('standard values');
+      expect(text()).not.toContain('No bar length is set');
+      expect(text()).not.toContain('longer than the bar');
+      expect(el().querySelector('.bars-notes')).toBeNull();
+    });
+
+    it('prints every waste figure with one decimal, as the paper does', () => {
+      create(planJob());
+      openBars();
+      expect(text()).toContain('1.0%');
+    });
+
+    it('standard: says the job was made with standard values', () => {
+      create(planJob({ standard: true }));
+      openBars();
+      expect(text()).toContain('Made with standard values. Refresh the job to use your own.');
+    });
+
+    it('assumed: names the profiles that have no bar length of their own', () => {
+      create(planJob({ assumed: ['OLD-F · Old Frame', 'GI Reinforcement'] }));
+      openBars();
+      expect(text()).toContain('No bar length is set for OLD-F · Old Frame; GI Reinforcement. 5800 mm was used.');
+    });
+
+    it('too_long: warns, naming the pieces the api left out', () => {
+      const sections = [{ ...BAR_PLAN.sections[0], too_long: [{ mm: 6200, code: 'W1', window: 'Hall', part: 'frame', qty: 1 }] }, ...BAR_PLAN.sections.slice(1)];
+      create(planJob({ too_long: 1, sections }));
+      openBars();
+      const warn = el().querySelector('.bars-notes .callout.warn')!;
+      expect((warn.textContent || '').replace(/\s+/g, ' ')).toContain('1 piece is longer than the bar and is not in this plan: W1 frame 6200 mm.');
+    });
+
+    it('shows Bar settings only on the Bars tab, as a secondary button', () => {
+      create(planJob());
+      expect(button('Bar settings')).toBeUndefined();
+      openBars();
+      expect(button('Bar settings').classList.contains('btn-secondary')).toBeTrue();
+      expect(button('Bar settings').hasAttribute('hidden')).toBeFalse();
+    });
+
+    it('hides Bar settings from someone without production.write', () => {
+      const state: AccessState = { me: me(['production.view'], 'viewer', 'Viewer'), subscription: subscription() };
+      TestBed.overrideProvider(AccessService, { useValue: { state$: new BehaviorSubject(state), get state() { return state; } } });
+      create(planJob());
+      openBars();
+      expect(button('Bar settings').hasAttribute('hidden')).toBeTrue();
+      expect(text()).toContain('Blade 6 mm');
+    });
+
+    it('shows Bar settings to someone with production.write', () => {
+      const state: AccessState = { me: me(['production.view', 'production.write'], 'workshop', 'Workshop'), subscription: subscription() };
+      TestBed.overrideProvider(AccessService, { useValue: { state$: new BehaviorSubject(state), get state() { return state; } } });
+      create(planJob());
+      openBars();
+      expect(button('Bar settings').hasAttribute('hidden')).toBeFalse();
+    });
+
+    it('opens the settings with the current values, saves them and says a refresh is needed', () => {
+      create(planJob());
+      openBars();
+      expect(service.getBarSettings).not.toHaveBeenCalled();
+      button('Bar settings').click();
+      fixture.detectChanges();
+      expect(service.getBarSettings).toHaveBeenCalledTimes(1);
+      expect(document.querySelector('.p-dialog-title')?.textContent).toContain('Bar settings');
+      dialogButton('Save').click();
+      fixture.detectChanges();
+      expect(service.saveBarSettings).toHaveBeenCalledOnceWith(SETTINGS);
+      expect(toast.showSuccess).toHaveBeenCalledOnceWith('Saved. Refresh the job to use these.');
+      expect(fixture.componentInstance.barSettingsOpen).toBeFalse();
+      expect(service.getJob).toHaveBeenCalledTimes(1);
+      expect(text()).toContain('8 bars');
+    });
+
+    it("keeps the dialog open with the api's refusal inside it, and no toast", () => {
+      service.saveBarSettings.and.returnValue(throwError(() => new Error('The bar length must be 500 to 20000 mm.')));
+      create(planJob());
+      openBars();
+      button('Bar settings').click();
+      fixture.detectChanges();
+      dialogButton('Save').click();
+      fixture.detectChanges();
+      expect(document.querySelector('.p-dialog [role="alert"]')?.textContent).toContain('The bar length must be 500 to 20000 mm.');
+      expect(fixture.componentInstance.barSettingsOpen).toBeTrue();
+      expect(toast.showSuccess).not.toHaveBeenCalled();
+    });
+
+    it('closes the dialog with Cancel and says nothing', () => {
+      create(planJob());
+      openBars();
+      button('Bar settings').click();
+      fixture.detectChanges();
+      dialogButton('Cancel').click();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.barSettingsOpen).toBeFalse();
+      expect(toast.showSuccess).not.toHaveBeenCalled();
+    });
+
+    it('downloads and shares the bar plan like the other documents', () => {
+      create(planJob());
+      service.getDocument.and.returnValue(pdf());
+      labelled('Download Bar plan as PDF').click();
+      labelled('Download Bar plan as Excel').click();
+      expect(service.getDocument).toHaveBeenCalledWith('14', 'bar-plan', 'pdf', 1, true);
+      expect(service.getDocument).toHaveBeenCalledWith('14', 'bar-plan', 'xlsx', 1, true);
+      expect(saved.map((file) => file.name)).toEqual(['Bar-plan-Q-0003-P1.pdf', 'Bar-plan-Q-0003-P1.xlsx']);
+      expect(labelled('Preview Bar plan')).not.toBeNull();
+      expect(labelled('Share Bar plan')).not.toBeNull();
+    });
+
+    it('goes back to Profiles when the job now on screen has no bar plan', () => {
+      create(planJob());
+      openBars();
+      expect(fixture.componentInstance.tab).toBe('bars');
+      service.getJob.and.returnValue(job());
+      fixture.componentInstance.load();
+      fixture.detectChanges();
+      expect(fixture.componentInstance.tab).toBe('profiles');
+      expect(text()).toContain('P60-K-X-R');
+      expect(tabs()).toEqual(['Profiles', 'Glass', 'Hardware']);
+    });
+
+    it('keeps every control, the new tab and Bar settings at 44 px or more', () => {
+      create(planJob());
+      openBars();
+      document.body.appendChild(el());
+      const controls = Array.from(el().querySelectorAll<HTMLElement>('button.btn, select, .tab'));
+      expect(controls.some((c) => (c.textContent || '').includes('Bar settings'))).toBeTrue();
+      for (const control of controls) {
+        expect(control.getBoundingClientRect().height).withContext(control.textContent!.trim()).toBeGreaterThanOrEqual(44);
+      }
+    });
+
+    describe('layout at the width of this window (run at 390, 1440 and 1920)', () => {
+      let page: HTMLElement;
+
+      beforeEach(() => {
+        // Everything at once: a long name, a long code, every note and a piece left out.
+        const long = { ...BAR_PLAN.sections[0], name: 'Casement outward outer frame with a reinforcement chamber', code: 'CO-6040-R-REINFORCED-123456789', too_long: [{ mm: 6200, code: 'W1', window: 'Hall', part: 'frame', qty: 1 }] };
+        create(planJob({ assumed: ['OLD-F · Old Frame'], standard: true, too_long: 1, sections: [long, ...BAR_PLAN.sections] }));
+        // Like the shell: the screen sits in a .page.
+        page = document.createElement('div');
+        page.className = 'page';
+        document.body.appendChild(page);
+        page.appendChild(el());
+        fixture.detectChanges();
+      });
+
+      afterEach(() => page.remove());
+
+      const noSidewaysScroll = (why: string) => {
+        const root = document.documentElement;
+        expect(root.scrollWidth).withContext(`${why}: page scroll width ${root.scrollWidth} in a window of ${root.clientWidth}`).toBeLessThanOrEqual(root.clientWidth);
+        for (const wide of Array.from(el().querySelectorAll<HTMLElement>('table, .stats, .docs, .bars-foot'))) {
+          expect(wide.getBoundingClientRect().right).withContext(`${why}: ${wide.className || wide.tagName}`).toBeLessThanOrEqual(root.clientWidth + 0.5);
+        }
+      };
+
+      it('never scrolls sideways, on any tab', () => {
+        noSidewaysScroll('Profiles');
+        for (const name of ['Glass', 'Hardware', 'Bars']) {
+          Array.from(el().querySelectorAll<HTMLButtonElement>('.tab')).find((t) => (t.textContent || '').trim() === name)!.click();
+          fixture.detectChanges();
+          noSidewaysScroll(name);
+        }
+      });
+
+      it('keeps the Bar settings dialog inside the window', () => {
+        Array.from(el().querySelectorAll<HTMLButtonElement>('.tab')).find((t) => (t.textContent || '').trim() === 'Bars')!.click();
+        fixture.detectChanges();
+        button('Bar settings').click();
+        fixture.detectChanges();
+        const box = document.querySelector('.p-dialog')!.getBoundingClientRect();
+        expect(box.left).toBeGreaterThanOrEqual(0);
+        expect(box.right).toBeLessThanOrEqual(document.documentElement.clientWidth + 0.5);
+        const content = document.querySelector('.p-dialog-content')!;
+        expect(content.scrollWidth).toBeLessThanOrEqual(content.clientWidth);
+        for (const input of Array.from(document.querySelectorAll<HTMLElement>('.p-dialog input, .p-dialog button'))) {
+          expect(input.getBoundingClientRect().right).toBeLessThanOrEqual(box.right + 0.5);
+        }
+      });
+
+      it('sets the five document cards in the grid: none outside it, none over another', () => {
+        const grid = el().querySelector('.docs')!.getBoundingClientRect();
+        const cards = Array.from(el().querySelectorAll('.doc')).map((card) => card.getBoundingClientRect());
+        expect(cards.length).toBe(5);
+        for (const card of cards) {
+          expect(card.left).toBeGreaterThanOrEqual(grid.left - 0.5);
+          expect(card.right).toBeLessThanOrEqual(grid.right + 0.5);
+        }
+        for (let i = 0; i < cards.length; i++) {
+          for (let j = i + 1; j < cards.length; j++) {
+            const apart = cards[i].bottom <= cards[j].top + 0.5 || cards[j].bottom <= cards[i].top + 0.5 || cards[i].right <= cards[j].left + 0.5 || cards[j].right <= cards[i].left + 0.5;
+            expect(apart).withContext(`cards ${i} and ${j}`).toBeTrue();
+          }
+        }
+        if (window.innerWidth > 900) {
+          // Two to a row, and the odd one out takes the whole last row.
+          expect(Math.abs(cards[0].top - cards[1].top)).toBeLessThan(1);
+          expect(Math.abs(cards[2].top - cards[3].top)).toBeLessThan(1);
+          expect(Math.abs(cards[4].width - grid.width)).toBeLessThan(1);
+        } else {
+          expect(cards.every((card) => Math.abs(card.width - grid.width) < 1)).toBeTrue();
+        }
+      });
+
+      it('keeps the four figures in a row on a wide screen, one under another on a phone', () => {
+        const figures = Array.from(el().querySelectorAll('.stats > app-stat')).map((s) => s.getBoundingClientRect());
+        expect(figures.length).toBe(4);
+        if (window.innerWidth >= 1280) {
+          expect(new Set(figures.map((f) => Math.round(f.top))).size).toBe(1);
+        } else if (window.innerWidth <= 700) {
+          expect(new Set(figures.map((f) => Math.round(f.left))).size).toBe(1);
+        }
+        for (const figure of figures) {
+          expect(figure.right).toBeLessThanOrEqual(window.innerWidth + 0.5);
+        }
+      });
+    });
+  });
+
   describe('from the job of one quotation straight to the job of another: only the id in the address changes (T91)', () => {
     let params: BehaviorSubject<any>;
     const other = (): Observable<JobResult> => job({ number: 'Q-0009/P1', quotation: { ...JOB.quotation, number: 'Q-0009' } });

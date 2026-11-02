@@ -8,6 +8,7 @@ import {
   DesignerCatalog,
   HandleChoice,
   SystemQuery,
+  completeDesign,
   missingSystems,
   needsCasementHandles,
   systemKey,
@@ -27,6 +28,7 @@ export class DesignerCatalogService {
   private readonly systems: DesignerCatalog['systems'] = {};
   private readonly handles: DesignerCatalog['handles'] = {};
   private readonly pending = new Map<string, Promise<void>>();
+  private hardwareRows: CatalogOption[] | null = null;
 
   constructor(
     private readonly profiles: ProfileService,
@@ -67,6 +69,21 @@ export class DesignerCatalogService {
       jobs.push(this.loadHandles('Casement'));
     }
     await Promise.all(jobs);
+  }
+
+  /** The design with every catalogue id filled in; the lists it needs are fetched first. */
+  async complete(design: WindowDesign, catalog: DesignerCatalog): Promise<WindowDesign> {
+    await this.ensure(design, catalog);
+    return completeDesign(design, catalog);
+  }
+
+  /** The Hardware cost heads of the catalogue (a hub is one of them); fetched once. */
+  async hardware(): Promise<CatalogOption[]> {
+    if (this.hardwareRows) return this.hardwareRows;
+    const res = await firstValueFrom(this.dropdowns.getCostHeadDataDropdown({ costhead: '', type: 'Hardware', category: '', search: '' }));
+    if (!res?.success) throw new Error(res?.message || 'The hardware list could not be loaded.');
+    this.hardwareRows = (res.data as any[]).map((h): CatalogOption => ({ id: h.id, label: h.name }));
+    return this.hardwareRows;
   }
 
   private options(rows: any[] | null | undefined): CatalogOption[] {

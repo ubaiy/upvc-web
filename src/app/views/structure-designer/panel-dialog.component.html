@@ -1,0 +1,93 @@
+<div class="pd" data-pd="dialog">
+  <div #box class="pd-box" role="dialog" aria-modal="true" aria-labelledby="pd-title" tabindex="-1">
+    <header class="pd-head">
+      <div class="pd-titles">
+        <h2 id="pd-title">{{ title }}</h2>
+        <p class="pd-scope" data-pd="scope">{{ scope }}</p>
+      </div>
+      <div class="pd-view" role="group" aria-label="Drawing or options" *ngIf="ready">
+        <button type="button" [class.is-on]="view === 'draw'" (click)="view = 'draw'" data-pd="view-draw">Drawing</button>
+        <button type="button" [class.is-on]="view === 'options'" (click)="view = 'options'" data-pd="view-options">Options</button>
+      </div>
+    </header>
+
+    <p class="pd-error" role="alert" *ngIf="loadError">{{ loadError }}</p>
+    <p class="pd-loading" *ngIf="!ready && !loadError">Opening the window…</p>
+
+    <div class="pd-body" *ngIf="ready" [attr.data-view]="view">
+      <section class="pd-draw" aria-label="Drawing">
+        <div class="pd-tools" role="toolbar" aria-label="Tools">
+          <button type="button" class="pd-btn" [class.is-on]="!armedTool" (click)="canvas?.armTool(null)">Select</button>
+          <button
+            type="button"
+            class="pd-btn"
+            data-pd="tool-split"
+            title="Add a vertical divider: drag onto a pane, or click here and then click a pane"
+            [class.is-on]="armedTool === 'split-x'"
+            (pointerdown)="canvas?.onPaletteDown($event, 'split-x')"
+            (pointermove)="canvas?.onPaletteMove($event)"
+            (pointerup)="canvas?.onPaletteUp($event)"
+          >Split</button>
+          <button
+            type="button"
+            class="pd-btn"
+            data-pd="tool-transom"
+            title="Add a horizontal divider: drag onto a pane, or click here and then click a pane"
+            [class.is-on]="armedTool === 'split-y'"
+            (pointerdown)="canvas?.onPaletteDown($event, 'split-y')"
+            (pointermove)="canvas?.onPaletteMove($event)"
+            (pointerup)="canvas?.onPaletteUp($event)"
+          >Transom</button>
+          <button type="button" class="pd-btn" (click)="canvas?.equalizeSelected()">Equal panes</button>
+          <button type="button" class="pd-btn" *ngIf="dividerSelected" (click)="canvas?.deleteSelectedDivider()">Remove divider</button>
+          <span class="pd-gap"></span>
+          <button type="button" class="pd-btn pd-icon" aria-label="Undo" title="Undo (Ctrl+Z)" [disabled]="!canvas?.canUndo" (click)="canvas?.undo()">↶</button>
+          <button type="button" class="pd-btn pd-icon" aria-label="Redo" title="Redo (Ctrl+Y)" [disabled]="!canvas?.canRedo" (click)="canvas?.redo()">↷</button>
+          <button type="button" class="pd-btn pd-icon" aria-label="Zoom out" (click)="canvas?.zoomOut()">−</button>
+          <button type="button" class="pd-btn pd-icon" aria-label="Zoom in" (click)="canvas?.zoomIn()">+</button>
+          <button type="button" class="pd-btn" aria-label="Fit to screen" (click)="canvas?.fitToScreen()">Fit</button>
+        </div>
+        <div class="pd-canvas">
+          <app-design-canvas
+            chrome="none"
+            [model]="model"
+            [frameFaceMm]="frameFaceMm"
+            [glassTints]="glassTints"
+            [glassLabels]="glassLabels"
+            [sashFaces]="$any(sashFaces)"
+            (modelChange)="onModelChange($event)"
+            (selectionChange)="onSelectionChange($event)"
+          ></app-design-canvas>
+        </div>
+        <p class="pd-tip">Drag a divider to resize · double-click a size to type it · tap a pane to change it</p>
+      </section>
+
+      <aside class="pd-side" aria-label="Options of the window">
+        <div class="pd-tabs" role="group" aria-label="Edit">
+          <button type="button" [class.is-on]="tab === 'window'" (click)="tab = 'window'" data-pd="tab-window">Whole window</button>
+          <button type="button" [class.is-on]="tab === 'pane'" (click)="tab = 'pane'" data-pd="tab-pane">Selected pane</button>
+        </div>
+        <div class="pd-inspector">
+          <app-design-inspector
+            [design]="effective"
+            [selection]="selection"
+            [frameFaceMm]="frameFaceMm"
+            [glassOptions]="glassOptions"
+            [colorOptions]="[]"
+            [trackOptions]="catalog.tracks"
+            [handleOptions]="handleOptions"
+            [hingeOptions]="hingeOptions"
+            [sashOptions]="sashOptions"
+            [show]="tab"
+            (designChange)="onInspectorChange($event)"
+          ></app-design-inspector>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="pd-foot">
+      <button type="button" class="pd-btn" data-pd="cancel" (click)="cancel()">Cancel</button>
+      <button type="button" class="pd-btn pd-primary" data-pd="save" [disabled]="!ready || saving" (click)="save()">{{ panels > 1 ? 'Save for ' + panels + ' panels' : 'Save this panel' }}</button>
+    </footer>
+  </div>
+</div>

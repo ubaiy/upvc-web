@@ -4,8 +4,8 @@
  * it has no catalogue product, so `product` is null on it.
  *
  * Every amount shown in the web comes from here; nothing is worked out again.
- * A refusal ("the structure rate 'bar_rate_m.rafter' is not set") arrives as
- * an error whose message is ready to show.
+ * A refusal ("Choose what the solid panels are made of.") arrives as an error
+ * whose message is ready to show, with `missing` naming what to choose.
  */
 import { Injectable } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
@@ -14,14 +14,23 @@ import { catchError, map } from 'rxjs/operators';
 import { quiet } from 'src/app/shared/interceptors/request-options';
 import { ApiHttpService } from 'src/app/shared/services/api-http.service';
 import type { Structure, Summary } from 'src/app/shared/structure-model';
+import type { StructureWindow } from './structure-windows';
 
-/** One row of the costing: glass, a bar role, a hub, an opening, wastage, labour, overhead, installation. */
+/**
+ * One row of the costing: a window (`face_ids`, `count` of them at `unit_cost` each), glass, a solid panel, a bar,
+ * a hub, labour, installation, wastage or overhead.
+ */
 export interface StructureCostRow {
   kind: string;
   name?: string | null;
   role?: string | null;
   fill?: string | null;
   basis?: string | null;
+  costhead_id?: number | null;
+  product_id?: number | null;
+  face_ids?: string[] | null;
+  count?: number | null;
+  unit_cost?: number | null;
   qty: number;
   unit: string;
   rate?: number | null;
@@ -43,10 +52,12 @@ export interface StructurePriceRequest {
   quatation_id?: number;
   structure_type: string;
   quantity: number;
-  /** Key of a glass rate; absent = the default rate. */
-  glass?: string | null;
   /** A typed price for one structure; null = the computed one. */
   unit_price?: number | null;
+  /** The structure with the window of every wall panel; its `defaults` say which catalogue rows it is made of. */
+  document?: Structure;
+  /** The windows, equal ones together: each priced exactly as the same window is on a window line. */
+  windows?: StructureWindow[];
   summary: Summary;
 }
 
@@ -54,8 +65,9 @@ export interface StructurePrice {
   pricing_method: string;
   pricing_version: number;
   quantity: number;
-  rows: StructureCostRow[];
-  totals: StructureCostTotals;
+  /** Left out of the answer for a user who may not see costs; the amount is still there. */
+  rows?: StructureCostRow[];
+  totals?: StructureCostTotals;
   computed_unit_price: number;
   /** For one structure, before the quotation's margin, discount, charges and GST. */
   unit_price: number;
@@ -75,6 +87,7 @@ export interface StructureLineSave {
   name: string;
   structure_type: string;
   quantity: number;
+  /** The name of the glass row of the structure: the workshop glass order prints it. */
   glass?: string | null;
   unit_price?: number | null;
   label?: string | null;
@@ -82,6 +95,7 @@ export interface StructureLineSave {
   /** A png or jpeg data URI, 2 MB at most. */
   image?: string | null;
   document: Structure;
+  windows?: StructureWindow[];
   summary: Summary;
 }
 
@@ -104,13 +118,11 @@ export interface StructureLine {
   structure: {
     type: string;
     name: string;
-    glass: string | null;
     overall: { widthMm: number; depthMm: number; heightMm: number };
     summary: Summary;
     costing: {
-      rows: StructureCostRow[];
-      totals: StructureCostTotals;
-      rates?: unknown;
+      rows?: StructureCostRow[];
+      totals?: StructureCostTotals;
       computed_unit_price: number;
       unit_price: number;
       price_is_manual: boolean;
@@ -124,35 +136,10 @@ export interface StructureLine {
   totals?: unknown;
 }
 
-/** A figure may be 0; null = not set (a structure that needs it is refused). */
-export type Rate = number | null;
-
-export interface StructureRates {
-  glass_rate_sq_m: { default: Rate; by_glass: Record<string, Rate> };
-  solid_panel_rate_sq_m: Rate;
-  /** By bar role; `default` serves a role without its own figure. */
-  bar_rate_m: Record<string, Rate>;
-  hub_rate: Record<string, Rate>;
-  opening_extra: Record<string, Rate>;
-  wastage_pct: Rate;
-  labour_rate_sq_ft: Rate;
-  installation_rate_sq_ft: Rate;
-  overhead_pct: Rate;
-}
-
-export interface StructureRatesAnswer {
-  rates: StructureRates;
-  bar_roles: string[];
-  /** The hubs the designer makes: crown, node, ridge_end, corner (the live api sends it; the contract did not list it). */
-  hub_roles?: string[];
-  openings: string[];
-  /** Paths of the figures that are not set: "bar_rate_m.hip". */
-  missing: string[];
-}
-
 /** A refusal or a failure, with the sentence to show. `refused` = the api answered and said no. */
 export class StructureApiError extends Error {
-  constructor(message: string, readonly refused: boolean) {
+  /** `missing` of a refusal: what to choose ("glass", "solid_panel", "bar.rafter"); '' when it names nothing. */
+  constructor(message: string, readonly refused: boolean, readonly missing = '') {
     super(message);
   }
 }
@@ -187,15 +174,6 @@ export class StructureLineService {
     return this.data(this.api.post(`quatation/structure/delete/${id}`, {}, quiet()));
   }
 
-  rates(): Observable<StructureRatesAnswer> {
-    return this.data(this.api.get('structure-rates', quiet()));
-  }
-
-  /** The whole object is sent; the answer is the same as `rates()`. */
-  saveRates(rates: StructureRates): Observable<StructureRatesAnswer> {
-    return this.data(this.api.put('structure-rates', { rates }, quiet()));
-  }
-
   /** The usual envelope {success, data, message}: the data, or an error with the api's sentence. */
   private data<T>(request: Observable<any>): Observable<T> {
     return request.pipe(
@@ -203,7 +181,7 @@ export class StructureLineService {
         if (res?.success && res.data !== undefined && res.data !== null) {
           return res.data as T;
         }
-        throw new StructureApiError(text(res?.message) || 'The server refused this.', true);
+        throw new StructureApiError(text(res?.message) || 'The server refused this.', true, missingOf(res));
       }),
       catchError((err) => {
         if (err instanceof StructureApiError) {
@@ -213,7 +191,7 @@ export class StructureLineService {
         const status = Number(err?.status) || 0;
         // The api said no in its own words (a rate not set, a summary that does not add up): the user can act on it.
         const refused = !!said && [400, 409, 422].includes(status);
-        if (refused) return throwError(() => new StructureApiError(said, true));
+        if (refused) return throwError(() => new StructureApiError(said, true, missingOf(err?.error)));
         return throwError(() => new StructureApiError(status === 404 ? NOT_THERE : status > 0 && status < 500 && said ? said : NO_ANSWER, false));
       })
     );
@@ -224,59 +202,13 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
-/** "bar_rate_m.rafter" out of "…the structure rate 'bar_rate_m.rafter' is not set." ('' when the sentence names none). */
-export function missingRate(message: string): string {
-  return /structure rate '([^']+)' is not set/i.exec(message)?.[1] ?? '';
+/** What a refusal asks to be chosen, wherever the api put it. */
+function missingOf(body: any): string {
+  return text(body?.missing) || text(body?.data?.missing) || text(body?.errors?.missing);
 }
 
-/** What a rate is called, as on the Structure rates screen: "glass rate per sq m", "rafter rate per metre". */
-export function rateName(path: string): string {
-  const [group, ...rest] = path.split('.');
-  const key = rest[rest.length - 1]?.replace(/[_-]+/g, ' ') ?? '';
-  switch (group) {
-    case 'glass_rate_sq_m':
-      return rest[0] === 'by_glass' ? `${key} glass rate per sq m` : 'glass rate per sq m';
-    case 'solid_panel_rate_sq_m':
-      return 'solid panel rate per sq m';
-    case 'bar_rate_m':
-      return key === 'default' ? 'bar rate per metre' : `${key} rate per metre`;
-    case 'hub_rate':
-      return key === 'default' ? 'hub rate' : `${key} hub rate`;
-    case 'opening_extra':
-      return `extra for a ${key} panel`;
-    case 'wastage_pct':
-      return 'wastage %';
-    case 'labour_rate_sq_ft':
-      return 'labour rate per sq ft';
-    case 'installation_rate_sq_ft':
-      return 'installation rate per sq ft';
-    case 'overhead_pct':
-      return 'overhead %';
-    default:
-      return path.replace(/[_.-]+/g, ' ');
-  }
-}
-
-/** The rates a structure with this summary is priced with, as the api's paths. Only to name what is missing; no amount is worked out. */
-export function neededRates(summary: Summary): string[] {
-  const openings = ['casement', 'top-hung', 'door', 'sliding'];
-  return [
-    ...(summary.glassAreaSqM > 0 ? ['glass_rate_sq_m.default'] : []),
-    ...(summary.solidAreaSqM > 0 ? ['solid_panel_rate_sq_m'] : []),
-    ...summary.bars.map((bar) => `bar_rate_m.${bar.role}`),
-    ...summary.hubs.map((hub) => `hub_rate.${hub.role}`),
-    ...[...new Set(summary.panels.map((panel) => String(panel.fill)))].filter((fill) => openings.includes(fill)).map((fill) => `opening_extra.${fill}`),
-    'wastage_pct',
-    'labour_rate_sq_ft',
-    'overhead_pct',
-    'installation_rate_sq_ft',
-  ];
-}
-
-/** The api's refusal in plain words: the name of its pricing method and the path of a rate are not for the user. */
+/** The api's refusal in plain words: the name of its pricing method is not for the user. */
 export function plainRefusal(message: string): string {
-  const rate = missingRate(message);
-  if (rate) return `The ${rateName(rate)} is not set.`;
-  const said = message.replace(/^s*[a-z0-9_]+ cannot price this structure:s*/i, '').trim();
+  const said = message.replace(/^\s*[a-z0-9_]+ cannot price this structure:\s*/i, '').trim();
   return said ? said.charAt(0).toUpperCase() + said.slice(1) : message;
 }

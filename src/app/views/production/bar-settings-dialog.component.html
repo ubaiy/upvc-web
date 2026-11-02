@@ -1,0 +1,148 @@
+<p-dialog
+  header="Bar settings"
+  [visible]="visible"
+  (visibleChange)="$event ? null : close()"
+  [modal]="true"
+  closeAriaLabel="Close"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!saving"
+  [closeOnEscape]="!saving"
+  [style]="{ width: '520px' }"
+  [breakpoints]="{ '640px': '94vw' }"
+>
+  <form id="bar-settings-form" class="bar-settings" [formGroup]="form" (ngSubmit)="submit()" novalidate>
+    <p class="hint">New jobs use these. A job already made keeps its numbers until you refresh it.</p>
+    <p class="hint" role="status" *ngIf="loading">Loading the bar settings…</p>
+
+    <app-callout tone="danger" *ngIf="loadError">
+      {{ loadError }}
+      <button action type="button" class="btn btn-secondary" (click)="load()">Try again</button>
+    </app-callout>
+
+    <div class="field">
+      <label class="label" for="bs-bar">Bar length</label>
+      <div class="input-group" [class.is-invalid]="bad('bar_mm')">
+        <input
+          id="bs-bar"
+          class="num"
+          inputmode="numeric"
+          autocomplete="off"
+          formControlName="bar_mm"
+          [attr.aria-invalid]="bad('bar_mm') ? 'true' : null"
+          aria-describedby="bs-bar-h"
+        />
+        <span class="unit">mm</span>
+      </div>
+      <span class="error" id="bs-bar-h" *ngIf="bad('bar_mm'); else barHint">Enter a whole number of mm from 500 to 20000.</span>
+      <ng-template #barHint>
+        <span class="hint" id="bs-bar-h">
+          Used for a profile that has no bar length of its own.<ng-container *ngIf="defaults"> Standard: {{ defaults.bar_mm }} mm.</ng-container>
+        </span>
+      </ng-template>
+    </div>
+
+    <div class="field">
+      <label class="label" for="bs-steel">Steel bar length</label>
+      <div class="input-group" [class.is-invalid]="bad('steel_bar_mm')">
+        <input
+          id="bs-steel"
+          class="num"
+          inputmode="numeric"
+          autocomplete="off"
+          formControlName="steel_bar_mm"
+          [attr.aria-invalid]="bad('steel_bar_mm') ? 'true' : null"
+          aria-describedby="bs-steel-h"
+        />
+        <span class="unit">mm</span>
+      </div>
+      <span class="error" id="bs-steel-h" *ngIf="bad('steel_bar_mm'); else steelHint">Enter a whole number of mm from 500 to 20000.</span>
+      <ng-template #steelHint>
+        <span class="hint" id="bs-steel-h">
+          Used for steel reinforcement.<ng-container *ngIf="defaults"> Standard: {{ defaults.steel_bar_mm }} mm.</ng-container>
+        </span>
+      </ng-template>
+    </div>
+
+    <div class="field">
+      <label class="label" for="bs-blade">Blade</label>
+      <div class="input-group" [class.is-invalid]="bad('blade_mm')">
+        <input
+          id="bs-blade"
+          class="num"
+          inputmode="decimal"
+          autocomplete="off"
+          formControlName="blade_mm"
+          [attr.aria-invalid]="bad('blade_mm') ? 'true' : null"
+          aria-describedby="bs-blade-h"
+        />
+        <span class="unit">mm</span>
+      </div>
+      <span class="error" id="bs-blade-h" *ngIf="bad('blade_mm'); else bladeHint">Enter a number of mm from 0 to 20.</span>
+      <ng-template #bladeHint>
+        <span class="hint" id="bs-blade-h">
+          What one cut takes out of the bar. A 4 mm blade at 45° takes about 5.7 mm.<ng-container *ngIf="defaults"> Standard: {{ defaults.blade_mm }} mm.</ng-container>
+        </span>
+      </ng-template>
+    </div>
+
+    <div class="field">
+      <label class="label" for="bs-trim">End trim</label>
+      <div class="input-group" [class.is-invalid]="bad('end_trim_mm')">
+        <input
+          id="bs-trim"
+          class="num"
+          inputmode="decimal"
+          autocomplete="off"
+          formControlName="end_trim_mm"
+          [attr.aria-invalid]="bad('end_trim_mm') ? 'true' : null"
+          aria-describedby="bs-trim-h"
+        />
+        <span class="unit">mm</span>
+      </div>
+      <span class="error" id="bs-trim-h" *ngIf="bad('end_trim_mm'); else trimHint">Enter a number of mm from 0 to 200.</span>
+      <ng-template #trimHint>
+        <span class="hint" id="bs-trim-h">
+          Trimmed from each end of a bar.<ng-container *ngIf="defaults"> Standard: {{ defaults.end_trim_mm }} mm.</ng-container>
+        </span>
+      </ng-template>
+    </div>
+
+    <div class="field">
+      <label class="label" for="bs-offcut">Smallest offcut to keep</label>
+      <div class="input-group" [class.is-invalid]="bad('min_offcut_mm')">
+        <input
+          id="bs-offcut"
+          class="num"
+          inputmode="numeric"
+          autocomplete="off"
+          formControlName="min_offcut_mm"
+          [attr.aria-invalid]="bad('min_offcut_mm') ? 'true' : null"
+          aria-describedby="bs-offcut-h"
+        />
+        <span class="unit">mm</span>
+      </div>
+      <span class="error" id="bs-offcut-h" *ngIf="bad('min_offcut_mm'); else offcutHint">Enter a whole number of mm from 0 to 6000.</span>
+      <ng-template #offcutHint>
+        <span class="hint" id="bs-offcut-h">
+          A leftover this long or longer is kept as an offcut; a shorter one is waste.<ng-container *ngIf="defaults"> Standard: {{ defaults.min_offcut_mm }} mm.</ng-container>
+        </span>
+      </ng-template>
+    </div>
+
+    <app-callout tone="danger" *ngIf="error">{{ error }}</app-callout>
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button label="Cancel" [outlined]="true" [disabled]="saving" (onClick)="close()"></p-button>
+    <button
+      pButton
+      type="submit"
+      form="bar-settings-form"
+      appWrite="production.write"
+      label="Save"
+      [loading]="saving"
+      [disabled]="loading || !!loadError"
+    ></button>
+  </ng-template>
+</p-dialog>

@@ -1,14 +1,21 @@
 import {
   DOCUMENTS,
+  assumedLine,
+  barRule,
+  barSettingsMessage,
+  barTotals,
+  barsStat,
   fileName,
   fileNameFromHeader,
   plainWarnings,
   previewPage,
   structureRows,
   summarise,
+  toBarSettingsAnswer,
   toJobResult,
+  tooLongNote,
 } from './production.adapter';
-import { ProductionJob } from './production.model';
+import { BarPlan, ProductionJob } from './production.model';
 
 export const JOB: ProductionJob = {
   id: 1,
@@ -43,12 +50,50 @@ export const JOB: ProductionJob = {
   warnings: [],
 };
 
+/** A bar plan as the api sends it (card P6): the sums add up, as the api's do. */
+export const BAR_PLAN: BarPlan = {
+  settings: { bar_mm: 5800, blade_mm: 6, end_trim_mm: 20, min_offcut_mm: 500 },
+  standard: false,
+  sections: [
+    {
+      code: 'P60-K-X-R', name: 'Outer Frame', colour: 'Default', steel: false, profile_id: 26,
+      bar_mm: 5800, bar_assumed: false, bars: 3, pieces: 4,
+      bought_m: 17.4, cut_m: 6.024, blade_m: 0.024, trim_m: 0.12, scrap_m: 0.332, offcut_m: 10.9,
+      offcuts: 2, offcut_sizes: [{ mm: 5450, count: 2 }], waste_m: 0.476, waste_pct: 2.7,
+    },
+    {
+      code: 'P60-WKS-R', name: 'Outward Sash', colour: 'Default', steel: false, profile_id: 27,
+      bar_mm: 5800, bar_assumed: false, bars: 5, pieces: 8,
+      bought_m: 29, cut_m: 11.496, blade_m: 0.048, trim_m: 0.2, scrap_m: 0.056, offcut_m: 17.2,
+      offcuts: 4, offcut_sizes: [{ mm: 4300, count: 4 }], waste_m: 0.304, waste_pct: 1,
+    },
+    {
+      code: null, name: 'GI Reinforcement', colour: null, steel: true, profile_id: null,
+      bar_mm: 5800, bar_assumed: false, bars: 1, pieces: 4,
+      bought_m: 5.8, cut_m: 5.46, blade_m: 0.024, trim_m: 0.04, scrap_m: 0.276, offcut_m: 0,
+      offcuts: 0, offcut_sizes: [], waste_m: 0.34, waste_pct: 5.9,
+    },
+  ],
+  totals: {
+    profile: { bars: 8, pieces: 12, bought_m: 46.4, cut_m: 17.52, offcut_m: 28.1, offcuts: 6, waste_m: 0.78, waste_pct: 1.7 },
+    steel: { bars: 1, pieces: 4, bought_m: 5.8, cut_m: 5.46, offcut_m: 0, offcuts: 0, waste_m: 0.34, waste_pct: 5.9 },
+  },
+  assumed: [],
+  too_long: 0,
+};
+
 describe('production adapter', () => {
-  it('lists the four workshop documents in the order of the pack', () => {
-    expect(DOCUMENTS.map((doc) => doc.type)).toEqual(['cutting-list', 'glass-order', 'hardware-order', 'sheet']);
+  it('lists the five workshop documents in the order of the pack, the bar plan after the cutting list', () => {
+    expect(DOCUMENTS.map((doc) => doc.type)).toEqual(['cutting-list', 'bar-plan', 'glass-order', 'hardware-order', 'sheet']);
+    const plan = DOCUMENTS[1];
+    expect(plan.title).toBe('Bar plan');
+    expect(plan.text).toBe('For buying and the saw: bars to order, the cuts on each bar, offcuts and waste.');
+    expect(DOCUMENTS.map((doc) => doc.icon).filter((icon, i, all) => all.indexOf(icon) === i).length).withContext('five different icons').toBe(5);
   });
 
   it('names a file the way the api does', () => {
+    expect(fileName(JOB, 'bar-plan', 'pdf')).toBe('Bar-plan-Q-0003-P1.pdf');
+    expect(fileName({ ...JOB, revision: 3 }, 'bar-plan', 'xlsx')).toBe('Bar-plan-Q-0003-P3.xlsx');
     expect(fileName(JOB, 'cutting-list', 'pdf')).toBe('Cutting-list-Q-0003-P1.pdf');
     expect(fileName(JOB, 'sheet', 'xlsx')).toBe('Production-sheets-Q-0003-P1.xlsx');
     expect(fileName({ ...JOB, revision: 2 }, 'pack', 'pdf')).toBe('Production-pack-Q-0003-P2.pdf');
@@ -96,6 +141,115 @@ describe('production adapter', () => {
       glassArea: 0,
       glassPanes: 0,
       hardwareItems: 0,
+      bars: 0,
+      steelBars: 0,
+      wastePct: 0,
+      offcuts: 0,
+    });
+  });
+
+  describe('bar plan (card P6)', () => {
+    it('takes the bars, steel bars, waste and offcuts from the totals the api sent', () => {
+      const summary = summarise({ ...JOB, bar_plan: BAR_PLAN });
+      expect(summary.bars).toBe(8);
+      expect(summary.steelBars).toBe(1);
+      expect(summary.wastePct).toBe(1.7);
+      expect(summary.offcuts).toBe(6);
+    });
+
+    it('gives zeros for a job from an api that sends no bar plan, and for a plan with no totals', () => {
+      const none = { bars: 0, steelBars: 0, wastePct: 0, offcuts: 0 };
+      expect(summarise(JOB)).toEqual(jasmine.objectContaining(none));
+      expect(summarise({ ...JOB, bar_plan: { ...BAR_PLAN, totals: undefined as any } })).toEqual(jasmine.objectContaining(none));
+      expect(summarise({ ...JOB, bar_plan: { ...BAR_PLAN, totals: { profile: BAR_PLAN.totals.profile } as any } }).steelBars).toBe(0);
+    });
+
+    it('words the stat: bars, then the steel bars and the waste', () => {
+      expect(barsStat(summarise({ ...JOB, bar_plan: BAR_PLAN }))).toEqual({ value: '8 bars', detail: 'plus 1 steel bar, 1.7% waste' });
+      const many = { ...BAR_PLAN, totals: { profile: { ...BAR_PLAN.totals.profile, bars: 42, waste_pct: 4.2 }, steel: { ...BAR_PLAN.totals.steel, bars: 12 } } };
+      expect(barsStat(summarise({ ...JOB, bar_plan: many }))).toEqual({ value: '42 bars', detail: 'plus 12 steel bars, 4.2% waste' });
+      const one = { ...BAR_PLAN, totals: { profile: { ...BAR_PLAN.totals.profile, bars: 1, waste_pct: 0 }, steel: { ...BAR_PLAN.totals.steel, bars: 0 } } };
+      expect(barsStat(summarise({ ...JOB, bar_plan: one }))).toEqual({ value: '1 bar', detail: '0% waste' });
+    });
+
+    it('has a sum row for the profiles and one for the steel, as the api totals them', () => {
+      expect(barTotals(BAR_PLAN)).toEqual([
+        { label: 'Profile total', bars: 8, offcuts: 6, waste_pct: 1.7 },
+        { label: 'Steel total', bars: 1, offcuts: 0, waste_pct: 5.9 },
+      ]);
+      const profilesOnly = { ...BAR_PLAN, sections: BAR_PLAN.sections.filter((section) => !section.steel) };
+      expect(barTotals(profilesOnly)).toEqual([{ label: 'Total', bars: 8, offcuts: 6, waste_pct: 1.7 }]);
+      const steelOnly = { ...BAR_PLAN, sections: BAR_PLAN.sections.filter((section) => section.steel) };
+      expect(barTotals(steelOnly)).toEqual([{ label: 'Total', bars: 1, offcuts: 0, waste_pct: 5.9 }]);
+      expect(barTotals({ ...BAR_PLAN, sections: [] })).toEqual([]);
+    });
+
+    it('says the rule the bars were worked out with', () => {
+      expect(barRule(BAR_PLAN.settings)).toBe('Blade 6 mm · 20 mm trimmed from each end · offcuts from 500 mm kept, not counted as waste');
+      expect(barRule({ bar_mm: 5800, blade_mm: 5.7, end_trim_mm: 0, min_offcut_mm: 0 })).toBe(
+        'Blade 5.7 mm · 0 mm trimmed from each end · offcuts from 0 mm kept, not counted as waste'
+      );
+    });
+
+    it('names the profiles with no bar length of their own, and the length used', () => {
+      expect(assumedLine(BAR_PLAN)).toBe('');
+      expect(assumedLine({ ...BAR_PLAN, assumed: ['OLD-F · Old Frame', 'GI Reinforcement'] })).toBe(
+        'No bar length is set for OLD-F · Old Frame; GI Reinforcement. 5800 mm was used.'
+      );
+      const none = BAR_PLAN.sections.map((section) => ({ ...section, bar_assumed: true }));
+      expect(assumedLine({ ...BAR_PLAN, sections: none, assumed: ['OLD-F · Old Frame', 'OLD-B · Old Bead'] })).toBe(
+        'No profile has its own bar length, so 5800 mm was used for all of them. Set it on a profile in the Catalogue, or change it in Bar settings.'
+      );
+    });
+
+    it('names the pieces that are longer than the bar, from the sections', () => {
+      expect(tooLongNote(BAR_PLAN)).toBe('');
+      const long = {
+        ...BAR_PLAN,
+        too_long: 3,
+        sections: [
+          { ...BAR_PLAN.sections[0], too_long: [{ mm: 6200, code: 'W1', window: 'Hall', part: 'frame', qty: 1 }, { mm: 6400, code: 'W3', window: 'Hall', part: 'bead', qty: 2 }] },
+          BAR_PLAN.sections[1],
+        ],
+      };
+      expect(tooLongNote(long)).toBe(
+        '3 pieces are longer than the bar and are not in this plan: W1 frame 6200 mm, W3 glazing bead 6400 mm × 2.'
+      );
+      expect(tooLongNote({ ...BAR_PLAN, too_long: 1 })).toBe('1 piece is longer than the bar and is not in this plan.');
+    });
+  });
+
+  describe('bar settings (card P6)', () => {
+    const answer = {
+      settings: { bar_mm: 6000, blade_mm: 5.7, end_trim_mm: 25, min_offcut_mm: 400 },
+      defaults: { bar_mm: 5800, blade_mm: 6, end_trim_mm: 20, min_offcut_mm: 500 },
+    };
+
+    it('reads the settings and the standard values, as numbers', () => {
+      expect(toBarSettingsAnswer({ settings: { bar_mm: '6000', blade_mm: '5.7', end_trim_mm: 25, min_offcut_mm: 400 }, defaults: answer.defaults })).toEqual(answer);
+    });
+
+    it('refuses an answer without settings', () => {
+      expect(toBarSettingsAnswer({ defaults: answer.defaults })).toBeNull();
+      expect(toBarSettingsAnswer(null)).toBeNull();
+      expect(toBarSettingsAnswer({ settings: { bar_mm: 'x' } })).toBeNull();
+    });
+
+    it('has no standard values when the api sends none', () => {
+      expect(toBarSettingsAnswer({ settings: answer.settings })!.defaults).toBeNull();
+    });
+
+    it("gives the api's own sentence for a refusal, the connection for no answer, else the fallback", () => {
+      const fallback = 'The settings could not be saved.';
+      expect(barSettingsMessage({ status: 422, error: { message: 'The bar must be 500 to 20000 mm. The blade must be 0 to 20 mm.', data: { errors: ['a', 'b'] } } }, fallback)).toBe(
+        'The bar must be 500 to 20000 mm. The blade must be 0 to 20 mm.'
+      );
+      expect(barSettingsMessage({ status: 422, error: { data: { errors: ['The blade must be 0 to 20 mm.', 'The end trim must be 0 to 200 mm.'] } } }, fallback)).toBe(
+        'The blade must be 0 to 20 mm. The end trim must be 0 to 200 mm.'
+      );
+      expect(barSettingsMessage({ status: 0 }, fallback)).toBe('We could not reach the server. Check your connection.');
+      expect(barSettingsMessage({ status: 500, error: {} }, fallback)).toBe(fallback);
+      expect(barSettingsMessage(new Error('The settings came back empty.'), fallback)).toBe('The settings came back empty.');
     });
   });
 

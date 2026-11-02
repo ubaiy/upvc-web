@@ -40,9 +40,10 @@ describe('ProfileComponent (Settings page)', () => {
     fixture.detectChanges();
   });
 
-  it('is one page called Settings with the seven sections', () => {
+  it('is one page called Settings with the six sections, and no tab for structure rates', () => {
     expect(text('h1')).toEqual(['Settings']);
-    expect(text('[role=tab]')).toEqual(['Company', 'Team', 'Plan', 'Pricing and tax', 'Structure rates', 'Documents', 'Your profile']);
+    expect(text('[role=tab]')).toEqual(['Company', 'Team', 'Plan', 'Pricing and tax', 'Documents', 'Your profile']);
+    expect(SETTINGS_TABS.map((tab) => tab.id)).not.toContain('structure-rates');
   });
 
   it('shows a user only the sections their abilities open (card T117)', () => {
@@ -56,10 +57,10 @@ describe('ProfileComponent (Settings page)', () => {
     expect(fixture.componentInstance.active.id).withContext('a tab that is not theirs is not opened by its address').toBe('you');
 
     state$.next(me(['prices.view_cost']));
-    expect(labels()).withContext('accounts').toEqual(['Pricing and tax', 'Structure rates', 'Your profile']);
+    expect(labels()).withContext('accounts').toEqual(['Pricing and tax', 'Your profile']);
 
     state$.next(me(['settings.write', 'team.manage', 'billing.view', 'prices.view_cost']));
-    expect(labels().length).withContext('owner').toBe(7);
+    expect(labels().length).withContext('owner').toBe(6);
     expect(fixture.componentInstance.active.id).toBe('team');
   });
 

@@ -1,0 +1,63 @@
+// The dropdowns of the catalogue choices, the window line and the dialog button.
+// Same tokens as structure-designer.component.scss.
+
+.sd-choose {
+  margin-bottom: 8px;
+  padding: 2px;
+  border-radius: 8px;
+
+  small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+  }
+
+  // A refusal opened this control: it is marked until the next change.
+  &.is-asked {
+    outline: 2px solid var(--sd-accent);
+    outline-offset: 1px;
+    background: var(--sd-accent-soft);
+  }
+}
+
+.sd-choose--row {
+  display: grid;
+  gap: 4px;
+
+  label {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-weight: 500;
+  }
+}
+
+.sd-select {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--sd-border);
+  border-radius: 6px;
+  background: var(--sd-surface);
+  color: var(--sd-text);
+  font: inherit;
+  text-overflow: ellipsis;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring, 0 0 0 3px rgba(14, 111, 106, 0.28));
+  }
+}
+
+.sd-window {
+  margin-bottom: 8px;
+  color: var(--sd-text-2);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.sd-wide {
+  width: 100%;
+  margin-bottom: 8px;
+  white-space: normal;
+}

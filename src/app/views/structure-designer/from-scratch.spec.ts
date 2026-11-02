@@ -1,15 +1,14 @@
-import { provideHttpClient } from '@angular/common/http';
-import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { By } from '@angular/platform-browser';
-import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { BehaviorSubject } from 'rxjs';
-import { WorkspaceService } from '../../containers/shell/workspace.service';
+import { Router } from '@angular/router';
 import { fillKey, formatPlan, Pt, rectanglePlan, serializeStructure } from '../../shared/structure-model';
 import { environment } from '../../../environments/environment';
 import { PlanEditorComponent } from './plan-editor.component';
 import { StructureDesignerComponent } from './structure-designer.component';
 import { STRUCTURE_STORE_KEY as STORE_KEY } from './structure-store.service';
+import { documentFor } from './structure-windows';
+import { openDesigner } from './testing';
 
 const API = environment.API_URL;
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
@@ -28,20 +27,9 @@ describe('StructureDesignerComponent: a structure from nothing (T169)', () => {
   const http = (): HttpTestingController => TestBed.inject(HttpTestingController);
 
   async function make(params: Record<string, string> = {}): Promise<void> {
-    await TestBed.configureTestingModule({
-      imports: [StructureDesignerComponent],
-      providers: [
-        provideRouter([]),
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}), paramMap: convertToParamMap(params) } } },
-        { provide: WorkspaceService, useValue: { workspace$: new BehaviorSubject({ name: 'Hakimi Enterprise' }) } },
-      ],
-    }).compileComponents();
-    fixture = TestBed.createComponent(StructureDesignerComponent);
+    fixture = await openDesigner({}, params);
     c = fixture.componentInstance;
     el = fixture.nativeElement;
-    fixture.detectChanges();
   }
 
   /** An L of 4800 × 3600 with a 2400 × 1800 bite out of the back right, drawn corner by corner. */
@@ -235,7 +223,7 @@ describe('StructureDesignerComponent: a structure from nothing (T169)', () => {
     c.save();
     await waitFor(() => (add = [...add, ...http().match(`${API}/quatation/structure/add`)]).length > 0);
     expect(add[0].request.body).toEqual(jasmine.objectContaining({ quatation_id: 12, name: 'Sit-out for Mrs Rao', structure_type: 'free', quantity: 1, unit_price: null, summary }));
-    expect(serializeStructure(add[0].request.body.document)).toBe(saved);
+    expect(serializeStructure(add[0].request.body.document)).toBe(serializeStructure(documentFor(c.structure!, c.catalog)));
     // What the api checks of a summary holds: the counts are the sums of their rows.
     expect(summary!.panelCount).toBe(summary!.panels.reduce((n, r) => n + r.count, 0));
     expect(summary!.barCount).toBe(summary!.bars.reduce((n, r) => n + r.count, 0));

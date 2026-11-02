@@ -144,6 +144,25 @@ export function fillKey(face: Face): FillKey {
 
 export const isGlazed = (face: Face): boolean => face.fill.kind === 'glass' || face.fill.kind === 'design';
 
+/** A framed panel is a window: its frame, sashes and glass are priced as the window designer prices them. */
+export const isWindowFace = (face: Face): boolean => face.fill.kind === 'design';
+
+/** Bars of these roles are the frame, mullion or transom of a window when only windows touch them. */
+export const WINDOW_BAR_ROLES: readonly string[] = ['frame', 'mullion', 'transom'];
+
+const windowIds = (structure: Structure): Set<string> => new Set(structure.faces.filter(isWindowFace).map((f) => f.id));
+const ownedBy = (joint: Joint, windows: Set<string>): boolean =>
+  WINDOW_BAR_ROLES.includes(joint.role) && joint.faceIds.length > 0 && joint.faceIds.every((id) => windows.has(id));
+
+/** True when the window already carries this bar: no catalogue charge of its own. */
+export const isWindowBar = (joint: Joint, structure: Structure): boolean => ownedBy(joint, windowIds(structure));
+
+/** The bars the catalogue charges on their own: every bar but those that belong to the windows. */
+export function chargedJoints(structure: Structure): Joint[] {
+  const windows = windowIds(structure);
+  return structure.joints.filter((j) => !ownedBy(j, windows));
+}
+
 export interface PanelRow {
   shape: PanelShape;
   fill: FillKey;
@@ -168,9 +187,12 @@ export interface Summary {
   panels: PanelRow[];
   glassAreaSqM: number;
   solidAreaSqM: number;
+  /** The bars charged on their own. The frames, mullions and transoms between wall windows are the windows' (`windowBars`). */
   bars: BarRow[];
   barCount: number;
   barTotalMm: number;
+  /** Bars that belong to the windows: counted, never charged twice. */
+  windowBars: { count: number; totalMm: number };
   hubs: { role: string; label: string; count: number }[];
   hubCount: number;
   cornerPosts: number;
@@ -200,7 +222,10 @@ export function summarize(structure: Structure): Summary {
   }
 
   const bars = new Map<string, BarRow & { byLength: Map<number, number> }>();
-  for (const joint of structure.joints) {
+  const charged = chargedJoints(structure);
+  const chargedSet = new Set(charged);
+  const owned = structure.joints.filter((j) => !chargedSet.has(j));
+  for (const joint of charged) {
     const mm = Math.round(jointLengthMm(joint));
     let row = bars.get(joint.role);
     if (!row) {
@@ -230,8 +255,9 @@ export function summarize(structure: Structure): Summary {
     glassAreaSqM: sqm(glass),
     solidAreaSqM: sqm(solid),
     bars: barRows,
-    barCount: structure.joints.length,
+    barCount: charged.length,
     barTotalMm: barRows.reduce((s, r) => s + r.totalMm, 0),
+    windowBars: { count: owned.length, totalMm: owned.reduce((n, j) => n + Math.round(jointLengthMm(j)), 0) },
     hubs: [...hubs.entries()].map(([role, count]) => ({ role, label: hubLabel(role), count })),
     hubCount: structure.hubs.length,
     cornerPosts: structure.joints.filter((j) => j.role === 'corner_post').length,

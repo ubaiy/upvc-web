@@ -405,19 +405,33 @@ describe('toPayload pricing rule', () => {
   const openable = (d: WindowDesign, id: string): WindowDesign =>
     setLeafSpec(d, id, { category: 'Casement', casementType: 'Openable', productId: 32, ...HARDWARE });
 
-  it('one opening sash is one per-sash part, whichever way it was made', () => {
+  it('a window of one opening sash is priced at the window size, whichever way it was made', () => {
     // Way 1: click the pane, choose "Openable".
     const direct = toPayload(openable(blank(), 'p1'));
     // Way 2: the legacy "1 palla" sash division.
     const divided = toPayload(splitPaneEqualSash(openable(blank(), 'p1'), 'p1', 1));
     expect(direct.parts.length).toBe(1);
     expect(direct.parts[0].palla_type).toBe(1);
-    expect(direct.parts[0].width).toBe(1380); // 1500 − 2 × 60, not the frame
-    expect(direct.parts[0].height).toBe(1080);
+    expect(direct.parts[0].width).toBe(1500);
+    expect(direct.parts[0].height).toBe(1200);
     expect(direct.parts[0].casement_type).toBe('Openable');
+    expect(direct.parts[0].sash_id).toBe(27);
+    expect(direct.parts[0].handle_id).toBe(55);
     expect(JSON.stringify(direct.parts)).toBe(JSON.stringify(divided.parts));
     expect(direct.width).toBe(1500);
     expect(direct.height).toBe(1200);
+    // What is drawn stays the sash: only the priced size is the window's.
+    expect(direct.sections[0].widthMm).toBe(1380);
+    expect(direct.sections[0].heightMm).toBe(1080);
+  });
+
+  it('a sash beside another pane stays at its own daylight size', () => {
+    const base = splitPane(blank(), 'p1', 'x', 690, { dividerProfileId: 29 });
+    const split = base.root as SplitNode;
+    const payload = toPayload(openable(base, split.children[0].id));
+    expect(payload.parts.length).toBe(2);
+    expect(payload.parts[0].width).toBeLessThan(1500);
+    expect(payload.parts[0].height).toBe(1080);
   });
 
   it('a pane never borrows hardware from another pane: mirror images match', () => {

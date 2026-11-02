@@ -1,11 +1,11 @@
 import { HttpClient, HttpParams, HttpResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable, from, map, of, switchMap, throwError } from 'rxjs';
+import { Observable, catchError, from, map, of, switchMap, throwError } from 'rxjs';
 
 import { quiet } from '../../shared/interceptors/request-options';
 import { ApiHttpService } from '../../shared/services/api-http.service';
-import { fileNameFromHeader, toJobResult } from './production.adapter';
-import { DocumentFile, DocumentFormat, DocumentType, JobResult } from './production.model';
+import { barSettingsMessage, fileNameFromHeader, toBarSettingsAnswer, toJobResult } from './production.adapter';
+import { BarSettings, BarSettingsAnswer, DocumentFile, DocumentFormat, DocumentType, JobResult } from './production.model';
 
 const MIME: Record<DocumentFormat, string> = {
   pdf: 'application/pdf',
@@ -62,6 +62,34 @@ export class ProductionService {
         ...quiet(),
       })
       .pipe(switchMap((response) => this.toFile(response, format)));
+  }
+
+  /** The company's bar settings and the standard values (card P6). A failure is an Error with the reason to show. */
+  getBarSettings(): Observable<BarSettingsAnswer> {
+    return this.api
+      .get('production/bar-settings', quiet())
+      .pipe(this.toSettings('The bar settings could not be loaded.'));
+  }
+
+  /** Sets the four numbers. Only a job refreshed afterwards uses them. */
+  saveBarSettings(settings: BarSettings): Observable<BarSettingsAnswer> {
+    return this.api
+      .post('production/bar-settings', settings, quiet())
+      .pipe(this.toSettings('The bar settings could not be saved.'));
+  }
+
+  private toSettings(fallback: string) {
+    return (source: Observable<any>): Observable<BarSettingsAnswer> =>
+      source.pipe(
+        map((res) => {
+          const answer = toBarSettingsAnswer(res?.data);
+          if (!answer) {
+            throw new Error(res?.message && res.success === false ? res.message : fallback);
+          }
+          return answer;
+        }),
+        catchError((err) => throwError(() => new Error(barSettingsMessage(err, fallback))))
+      );
   }
 
   private toFile(response: HttpResponse<Blob>, format: DocumentFormat): Observable<DocumentFile> {

@@ -7,7 +7,8 @@ import { faceNormal } from './builder';
 import { FillKey } from './derive';
 import { TemplateDef, defaultParams, normalizeParams } from './template';
 import { templateOf } from './templates';
-import { Face, FaceFill, Params, STRUCTURE_SCHEMA, Structure } from './types';
+import { windowFrameOf } from './window-shape';
+import { emptyDefaults, Face, FaceFill, Params, STRUCTURE_SCHEMA, Structure } from './types';
 import { area2, dot, len } from './vec';
 
 /** A new structure of a template at its default size (or with some parameters given). */
@@ -47,7 +48,10 @@ export function retemplate(structure: Structure, params: Params): Structure {
   };
 }
 
-/** What a choice of the designer means for a face: a roof pane is plain glass, a wall panel a framed unit. */
+/**
+ * What a choice of the designer means for a face: a roof pane is plain glass, a wall panel a window
+ * (a window needs a shape one has: any other panel is plain glass).
+ */
 export function fillFor(face: Face, key: FillKey): FaceFill {
   switch (key) {
     case 'panel':
@@ -55,9 +59,9 @@ export function fillFor(face: Face, key: FillKey): FaceFill {
     case 'open':
       return { kind: 'open' };
     case 'fixed':
-      return face.role === 'roof' ? { kind: 'glass', glassId: null } : { kind: 'design', opening: 'fixed' };
+      return face.role === 'roof' || !windowFrameOf(face) ? { kind: 'glass', glassId: null } : { kind: 'design', opening: 'fixed' };
     default:
-      return { kind: 'design', opening: key };
+      return windowFrameOf(face) ? { kind: 'design', opening: key } : { kind: 'glass', glassId: null };
   }
 }
 
@@ -145,7 +149,9 @@ export function parseStructure(text: string): Structure {
   const s = doc as Partial<Structure> | null;
   if (!s || s.schema !== STRUCTURE_SCHEMA) throw new Error('This file is not a structure document (schema upvc.structure/1 expected).');
   if (!Array.isArray(s.faces) || !Array.isArray(s.joints) || !Array.isArray(s.hubs)) throw new Error('This structure document is incomplete.');
-  const structure = { ...s, extras: s.extras ?? [] } as Structure;
+  // A document from before the catalogue has no bars or hubs chosen.
+  const defaults = { ...emptyDefaults(), ...s.defaults, bars: { ...s.defaults?.bars }, hubs: { ...s.defaults?.hubs } };
+  const structure = { ...s, defaults, extras: s.extras ?? [] } as Structure;
   const problems = checkStructure(structure);
   if (problems.length) throw new Error(`This structure document is damaged: ${problems[0]}.`);
   return structure;

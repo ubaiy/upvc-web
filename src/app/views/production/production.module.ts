@@ -4,12 +4,20 @@ import { CommonModule } from '@angular/common';
 
 import { SharedComponentsModule } from '../../shared/components/shared-components.module';
 import { ConfirmDialogComponent } from '../bills/confirm-dialog.component';
+import { BarSettingsDialogComponent } from './bar-settings-dialog.component';
 import { ProductionRoutingModule } from './production-routing.module';
 import { ProductionComponent } from './production.component';
 
-/** Workshop documents of a quotation (roadmap card P5), at /production/:quotationId. */
+/** Workshop documents of a quotation (roadmap cards P5 and P6), at /production/:quotationId. */
 @NgModule({
   declarations: [ProductionComponent],
-  imports: [...ACCESS_PARTS, CommonModule, ProductionRoutingModule, SharedComponentsModule, ConfirmDialogComponent],
+  imports: [
+    ...ACCESS_PARTS,
+    CommonModule,
+    ProductionRoutingModule,
+    SharedComponentsModule,
+    ConfirmDialogComponent,
+    BarSettingsDialogComponent,
+  ],
 })
 export class ProductionModule {}

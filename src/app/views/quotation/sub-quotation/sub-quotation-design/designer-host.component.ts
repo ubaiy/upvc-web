@@ -62,10 +62,12 @@ import { DesignTemplateStore } from '../../../design-lab/design-template-store.s
 import { QuotationService } from '../../quotation.service';
 import {
   DesignerCatalog,
+  FRAME_FACE_MM,
   completeDesign,
-  handlesFor,
+  handleOptionsFor,
   sashFacesOf,
-  systemKeyOf,
+  sashOptionsFor,
+  tintsOf,
 } from './designer-catalog';
 import { Designer3dView, View3dInputs, View3dPick } from './designer-3d';
 import { DesignerCatalogService } from './designer-catalog.service';
@@ -77,8 +79,6 @@ import {
 } from './designer-request';
 import { OpenedLine, openSavedLine } from './saved-line';
 import { DesignThumb, STARTING_DESIGNS, StartingDesign, thumbOf } from './starting-designs';
-
-const FRAME_FACE_MM = 60;
 
 type PriceState = 'loading' | 'live' | 'stored' | 'error';
 
@@ -615,9 +615,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   }
 
   get handleOptions(): GlassOption[] {
-    const leaf = this.selectedLeaf;
-    if (!leaf || leaf.category !== 'Casement') return [];
-    return handlesFor(this.catalog, 'Casement', this.effective.productType);
+    return handleOptionsFor(this.catalog, this.effective.productType, this.selectedLeaf);
   }
 
   get hingeOptions(): string[] {
@@ -625,9 +623,7 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
   }
 
   get sashOptions(): GlassOption[] {
-    const leaf = this.selectedLeaf;
-    if (!leaf) return [];
-    return this.catalog.systems[systemKeyOf(this.effective.productType, leaf)]?.sashes ?? [];
+    return sashOptionsFor(this.catalog, this.effective.productType, this.selectedLeaf);
   }
 
   private async ensureForSelection(): Promise<void> {
@@ -932,23 +928,4 @@ export class DesignerHostComponent implements OnInit, OnDestroy {
 
 function text(err: unknown): string {
   return err instanceof Error ? err.message : String(err ?? '');
-}
-
-/** A drawing tint for each glass, from its name (the catalogue has no colour). */
-function tintsOf(catalog: DesignerCatalog): GlassTints {
-  const rules: [RegExp, string][] = [
-    [/no glass/i, '#ffffff'],
-    [/black/i, '#8a9099'],
-    [/brown|bronze/i, '#c9a27a'],
-    [/blue/i, '#8fb8e0'],
-    [/green/i, '#9fd3b4'],
-    [/frost|wash/i, '#e8eef2'],
-    [/reflect/i, '#a9c7d6'],
-  ];
-  const out: GlassTints = {};
-  for (const g of catalog.glass) {
-    const hit = rules.find(([re]) => re.test(g.label));
-    if (hit) out[String(g.id)] = hit[1];
-  }
-  return out;
 }

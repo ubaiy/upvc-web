@@ -52,6 +52,7 @@ import {
   disposeMaterials,
   disposeStructure,
   PickTarget,
+  StructureLook,
   StructureMaterials,
   StructureObject,
 } from './structure-mesh';
@@ -228,11 +229,11 @@ export class StructureScene {
    * moves the camera to it; 'auto' does so only when it has outgrown (or
    * shrunk well inside) the view it was fitted to, keeping the user's angle.
    */
-  setStructure(structure: Structure, dims: Dim[], refit: boolean | 'auto'): void {
+  setStructure(structure: Structure, dims: Dim[], refit: boolean | 'auto', look?: StructureLook): void {
     if (this.object) disposeStructure(this.object);
     applyAppearance(this.materials, structure.appearance);
     this.structure = structure;
-    this.object = buildStructure(structure, this.materials);
+    this.object = buildStructure(structure, this.materials, look);
     this.scene.add(this.object.root);
     this.gizmos.setDims(dims);
 

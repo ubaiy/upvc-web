@@ -104,7 +104,7 @@
       <div class="sd-price__figure" [ngSwitch]="price.state">
         <p class="sd-price__refusal" *ngSwitchCase="'refused'" data-price="refusal">
           <strong>No price yet:</strong> {{ price.message }}
-          <a routerLink="/profile" [queryParams]="{ tab: 'structure-rates', missing: price.missing || null }">Set structure rates</a>
+          <button type="button" class="sd-link" *ngIf="price.missing" (click)="revealAgain()" data-action="choose">Show me where</button>
         </p>
         <p class="sd-price__refusal" *ngSwitchCase="'failed'" data-price="failed">
           <strong>Price not available.</strong> {{ price.message }}
@@ -123,7 +123,7 @@
       </span>
     </label>
     <button type="button" class="sd-btn" (click)="manualOpen ? (manualOpen = false) : openManual()" [class.is-on]="manualPrice !== null" [attr.aria-expanded]="manualOpen" data-action="manual">{{ manualPrice !== null ? 'Your price' : 'Set my price' }}</button>
-    <button type="button" class="sd-btn" (click)="detailsOpen = !detailsOpen" [disabled]="!price.data" [attr.aria-expanded]="detailsOpen" data-action="details">Price details</button>
+    <button type="button" class="sd-btn" (click)="detailsOpen = !detailsOpen" [disabled]="!price.data?.rows?.length" [attr.aria-expanded]="detailsOpen" data-action="details">Price details</button>
     <p class="sd-price__refusal sd-price__wide" *ngIf="saveError" data-price="save-error" role="alert">
       <strong>Not saved.</strong> {{ saveError }}
     </p>
@@ -135,7 +135,7 @@
         <span class="sd-unit">₹</span>
         <input id="sd-manual" name="manual" type="number" inputmode="decimal" min="0" step="0.01" [(ngModel)]="manualDraft" />
       </div>
-      <small *ngIf="price.data as p">The rates give {{ p.computed_unit_price | inr }} for one.</small>
+      <small *ngIf="price.data as p">The catalogue gives {{ p.computed_unit_price | inr }} for one.</small>
       <div class="sd-row">
         <button type="submit" class="sd-btn sd-btn--primary">Use this price</button>
         <button type="button" class="sd-btn" (click)="useComputedPrice()" [disabled]="manualPrice === null" data-action="computed">Use the computed price</button>
@@ -143,7 +143,7 @@
     </form>
 
     <!-- The cost rows, as the api returns them. -->
-    <section class="sd-pop sd-pop--details" *ngIf="detailsOpen && price.data as p" data-pop="details" aria-label="Price details">
+    <section class="sd-pop sd-pop--details" *ngIf="detailsOpen && price.data?.rows?.length && price.data as p" data-pop="details" aria-label="Price details">
       <header>
         <h2>Price details</h2>
         <button type="button" class="sd-btn" (click)="detailsOpen = false" aria-label="Close price details">Close</button>
@@ -151,22 +151,26 @@
       <table class="sd-table">
         <thead><tr><th>What</th><th class="num">Quantity</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
         <tbody>
-          <tr *ngFor="let r of p.rows">
-            <td><strong>{{ rowName(r) }}</strong><span class="sd-lengths" *ngIf="r.basis">{{ r.basis }}</span></td>
-            <td class="num">{{ r.qty | number : '1.0-2' }} {{ r.unit === 'percent' ? '%' : r.unit }}</td>
-            <td class="num">{{ r.rate === null || r.rate === undefined ? '' : (r.rate | inr) }}</td>
+          <tr *ngFor="let r of rowsOf(p)" [attr.data-row]="r.kind">
+            <td>
+              <strong>{{ rowName(r) }}</strong>
+              <span class="sd-lengths" *ngIf="r.basis">{{ r.basis }}</span>
+              <span class="sd-lengths" *ngIf="r.face_ids?.length">{{ panelNames(r.face_ids) }}</span>
+            </td>
+            <td class="num">{{ (r.kind === 'window' ? r.count ?? r.qty : r.qty) | number : '1.0-2' }} {{ r.kind === 'window' ? '' : r.unit === 'percent' ? '%' : r.unit }}</td>
+            <td class="num">{{ rowRate(r) === null ? '' : (rowRate(r) | inr) }}</td>
             <td class="num">{{ r.amount | inr }}</td>
           </tr>
         </tbody>
       </table>
       <dl class="sd-facts sd-facts--money">
-        <div><dt>Cost of one, from the rates</dt><dd>{{ p.computed_unit_price | inr }}</dd></div>
+        <div><dt>Cost of one, from the catalogue</dt><dd>{{ p.computed_unit_price | inr }}</dd></div>
         <div *ngIf="p.price_is_manual"><dt>Your price for one</dt><dd>{{ p.unit_price | inr }}</dd></div>
         <div><dt>{{ p.quantity }} × {{ p.unit_price | inr }}</dt><dd>{{ p.total | inr }}</dd></div>
         <div *ngIf="p.margin_percent"><dt>With the quotation's margin, {{ p.margin_percent | number : '1.0-2' }}%</dt><dd>{{ p.amount | inr }}</dd></div>
         <div class="is-total"><dt>On the quotation line</dt><dd>{{ p.amount | inr }}</dd></div>
       </dl>
-      <p class="sd-muted sd-small">Discount, charges and GST are added on the quotation, as for a window. <a routerLink="/profile" [queryParams]="{ tab: 'structure-rates' }">Structure rates</a></p>
+      <p class="sd-muted sd-small">Discount, charges and GST are added on the quotation, as for a window.</p>
     </section>
   </div>
 
@@ -216,14 +220,44 @@
           <ng-container *ngIf="p.key === 'roof'"><small class="sd-why" *ngFor="let r of roofNotes" data-roof="not-offered">{{ r }}</small></ng-container>
         </div>
 
-        <h3>Profile colour</h3>
-        <div class="sd-swatches">
-          <button type="button" *ngFor="let c of profileColours" [style.background]="c.value" [class.is-on]="s.appearance.profileColour === c.value" (click)="setColour(c.value)" [title]="c.label" [attr.aria-label]="'Profile colour ' + c.label"></button>
+        <!-- What it is made of: rows of the company's catalogue. -->
+        <h3>Colour</h3>
+        <div class="sd-choose" [class.is-asked]="asked === 'colour'">
+          <select class="sd-select" data-choose="colour" (change)="chooseColour($any($event.target).value)" aria-label="Colour of the profiles" *ngIf="colourChoices.length; else noColours">
+            <option *ngFor="let c of colourChoices" [value]="c.id" [selected]="same(c.id, s.defaults.colorId)">{{ c.label }}</option>
+          </select>
+          <ng-template #noColours><p class="sd-muted sd-small">The catalogue has no colours yet.</p></ng-template>
         </div>
-        <h3>Glass tint, whole structure</h3>
-        <div class="sd-swatches">
-          <button type="button" *ngFor="let c of glassTints" [style.background]="c.value" [class.is-on]="s.appearance.glassTint === c.value" (click)="setTint(c.value)" [title]="c.label" [attr.aria-label]="'Glass tint ' + c.label"></button>
+        <h3>Glass</h3>
+        <div class="sd-choose" [class.is-asked]="asked === 'glass'">
+          <select class="sd-select" data-choose="glass" (change)="chooseGlass($any($event.target).value)" aria-label="Glass of the whole structure" *ngIf="glassChoices.length; else noGlass">
+            <option *ngFor="let g of glassChoices" [value]="g.id" [selected]="same(g.id, s.defaults.glassId)">{{ g.label }}</option>
+          </select>
+          <ng-template #noGlass><p class="sd-muted sd-small">The catalogue has no glass yet.</p></ng-template>
+          <small class="sd-muted">For the windows and the roof. A window or a roof pane can have another glass of its own.</small>
         </div>
+        <ng-container *ngIf="barRows.length">
+          <h3>Bars</h3>
+          <p class="sd-muted sd-small" *ngIf="!barChoices.length">The catalogue has no profiles to choose from yet.</p>
+          <div class="sd-choose sd-choose--row" *ngFor="let b of barRows; trackBy: trackRole" [class.is-asked]="asked === 'bar.' + b.role" [attr.data-bar-role]="b.role">
+            <label [attr.for]="'sd-bar-' + b.role">{{ b.label }}</label>
+            <select class="sd-select" [id]="'sd-bar-' + b.role" [attr.data-choose]="'bar.' + b.role" (change)="chooseBar(b.role, $any($event.target).value)">
+              <option value="" *ngIf="b.automatic || b.value === null">{{ b.automatic ? 'From the accessories' : 'Choose a profile' }}</option>
+              <option *ngFor="let p of barChoices" [value]="p.id" [selected]="same(p.id, b.value)">{{ p.label }}</option>
+            </select>
+          </div>
+          <small class="sd-muted">The frames and mullions between wall panels belong to the windows: they are not charged twice.</small>
+        </ng-container>
+        <ng-container *ngIf="hubRows.length">
+          <h3>Hubs</h3>
+          <div class="sd-choose sd-choose--row" *ngFor="let h of hubRows; trackBy: trackRole" [attr.data-hub-role]="h.role">
+            <label [attr.for]="'sd-hub-' + h.role">{{ h.label }}</label>
+            <select class="sd-select" [id]="'sd-hub-' + h.role" [attr.data-choose]="'hub.' + h.role" (change)="chooseHub(h.role, $any($event.target).value)">
+              <option value="">None, not charged</option>
+              <option *ngFor="let o of hardwareChoices" [value]="o.id" [selected]="same(o.id, h.value)">{{ o.label }}</option>
+            </select>
+          </div>
+        </ng-container>
       </section>
     </aside>
 
@@ -275,16 +309,40 @@
             <div><dt>Area</dt><dd>{{ f.area }}</dd></div>
           </dl>
           <div class="sd-fills" role="group" aria-label="Panel type">
-            <button type="button" *ngFor="let k of fillKeys" [class.is-on]="f.fill === k" (click)="setFill(k)" [attr.data-fill]="k" [disabled]="k === 'sliding' && !!f.noSliding" [attr.title]="k === 'sliding' && f.noSliding ? f.noSliding : null">{{ fillLabel[k] }}</button>
+            <button type="button" *ngFor="let k of fillKeys" [class.is-on]="f.fill === k" (click)="setFill(k)" [attr.data-fill]="k" [disabled]="(k === 'sliding' && !!f.noSliding) || (!!f.noWindow && k !== 'fixed' && k !== 'panel' && k !== 'open')" [attr.title]="k === 'sliding' && f.noSliding ? f.noSliding : f.noWindow && k !== 'fixed' && k !== 'panel' && k !== 'open' ? f.noWindow : null">{{ fillLabel[k] }}</button>
           </div>
           <p class="sd-muted sd-small sd-why" *ngIf="f.noSliding">{{ f.noSliding }}</p>
-          <ng-container *ngIf="f.glazed">
-            <h3>Glass tint of {{ selectedFaces.length === 1 ? 'this panel' : 'these ' + selectedFaces.length + ' panels' }}</h3>
-            <div class="sd-swatches" data-tint="face">
-              <button type="button" *ngFor="let c of glassTints" [style.background]="c.value" [class.is-on]="f.tint === c.value" (click)="setFaceTint(c.value)" [title]="c.label" [attr.aria-label]="'Glass tint ' + c.label + ' for the selection'"></button>
-              <button type="button" class="sd-btn" (click)="setFaceTint(null)" [disabled]="!f.ownTint" title="Back to the tint of the whole structure">As the structure</button>
+          <p class="sd-muted sd-small sd-why" *ngIf="f.noWindow" data-why="no-window">{{ f.noWindow }}</p>
+
+          <!-- A wall panel is a real window: the same drawing and options as the window designer. -->
+          <ng-container *ngIf="f.windowIds.length">
+            <h3>Window</h3>
+            <p class="sd-window" data-window="text">{{ f.windowText }}</p>
+            <button type="button" class="sd-btn sd-btn--primary sd-wide" (click)="editPanel()" data-action="edit-panel">{{ f.windowIds.length === 1 ? 'Edit this panel' : 'Edit these ' + f.windowIds.length + ' panels' }}</button>
+          </ng-container>
+
+          <!-- A pane of plain glass (a roof pane): its glass is a row of the catalogue. -->
+          <ng-container *ngIf="f.glassPanes">
+            <h3>Glass of {{ f.glassPanes === 1 ? 'this pane' : 'these ' + f.glassPanes + ' panes' }}</h3>
+            <div class="sd-choose">
+              <select class="sd-select" data-choose="pane-glass" (change)="choosePaneGlass($any($event.target).value)" aria-label="Glass of the selected panes">
+                <option value="" [selected]="f.glassValue === ''">As the structure</option>
+                <option value="mixed" disabled [selected]="f.glassValue === 'mixed'" *ngIf="f.glassValue === 'mixed'">Different glass</option>
+                <option *ngFor="let g of glassChoices" [value]="g.id" [selected]="same(g.id, f.glassValue)">{{ g.label }}</option>
+              </select>
             </div>
-            <p class="sd-muted sd-small" *ngIf="f.tint === null">The selected panels have different tints.</p>
+          </ng-container>
+
+          <!-- A solid panel is made of a catalogue row. -->
+          <ng-container *ngIf="f.solidPanes">
+            <h3>{{ f.solidPanes === 1 ? 'This panel is' : 'These ' + f.solidPanes + ' panels are' }} made of</h3>
+            <div class="sd-choose" [class.is-asked]="asked === 'solid_panel'">
+              <select class="sd-select" data-choose="solid" (change)="chooseSolid($any($event.target).value)" aria-label="What the selected solid panels are made of">
+                <option value="" disabled [selected]="f.solidValue === ''">Choose what it is made of</option>
+                <option value="mixed" disabled [selected]="f.solidValue === 'mixed'" *ngIf="f.solidValue === 'mixed'">Different items</option>
+                <option *ngFor="let g of glassChoices" [value]="g.id" [selected]="same(g.id, f.solidValue)">{{ g.label }}</option>
+              </select>
+            </div>
           </ng-container>
           <div class="sd-row">
             <button type="button" class="sd-btn" (click)="selectGroup()" data-action="group">Select all of: {{ f.group }}</button>
@@ -297,6 +355,16 @@
             <div><dt>True length</dt><dd>{{ b.length | number }} mm</dd></div>
             <div><dt>Joins</dt><dd>{{ b.faces }} panel{{ b.faces === 1 ? '' : 's' }}</dd></div>
           </dl>
+          <ng-container *ngIf="b.control as c; else ownedBar">
+            <h3>Profile of every {{ b.role | lowercase }}</h3>
+            <div class="sd-choose" [class.is-asked]="asked === 'bar.' + c.role">
+              <select class="sd-select" [attr.data-choose]="'bar.' + c.role" (change)="chooseBar(c.role, $any($event.target).value)" [attr.aria-label]="'Profile of the ' + b.role">
+                <option value="" *ngIf="c.automatic || c.value === null">{{ c.automatic ? 'From the accessories' : 'Choose a profile' }}</option>
+                <option *ngFor="let p of barChoices" [value]="p.id" [selected]="same(p.id, c.value)">{{ p.label }}</option>
+              </select>
+            </div>
+          </ng-container>
+          <ng-template #ownedBar><p class="sd-muted sd-small" data-why="window-bar">This bar is the frame of the windows beside it, so it is priced with them.</p></ng-template>
           <button type="button" class="sd-btn" (click)="clearSelection()">Clear</button>
         </ng-container>
       </section>
@@ -308,7 +376,7 @@
           <div><dt>Overall</dt><dd>{{ m.overall.widthMm | number }} × {{ m.overall.depthMm | number }} × {{ m.overall.heightMm | number }} mm</dd></div>
           <div><dt>Glass</dt><dd>{{ m.glassAreaSqM | number : '1.2-2' }} m²</dd></div>
           <div *ngIf="m.solidAreaSqM"><dt>Solid panels</dt><dd>{{ m.solidAreaSqM | number : '1.2-2' }} m²</dd></div>
-          <div><dt>Bars</dt><dd>{{ m.barCount }} · {{ m.barTotalMm / 1000 | number : '1.1-1' }} m</dd></div>
+          <div><dt>Bars charged</dt><dd>{{ m.barCount }} · {{ m.barTotalMm / 1000 | number : '1.1-1' }} m</dd></div>
         </dl>
 
         <h3>Panels ({{ m.panelCount }})</h3>
@@ -338,6 +406,8 @@
             </tr>
           </tbody>
         </table>
+        <p class="sd-muted sd-small" *ngIf="m.windowBars.count" data-why="window-bars">{{ m.windowBars.count }} more {{ m.windowBars.count === 1 ? 'bar is' : 'bars are' }} the frame or mullion of the wall windows ({{ m.windowBars.totalMm / 1000 | number : '1.1-1' }} m): priced with the windows, not twice.</p>
+        <p class="sd-muted sd-small" *ngIf="plainWalls" data-why="plain-walls">{{ plainWalls }} wall {{ plainWalls === 1 ? 'panel has' : 'panels have' }} a shape or a size no window has: plain glass, priced as glass and bars.</p>
 
         <h3>Hubs and posts</h3>
         <dl class="sd-facts">
@@ -355,5 +425,17 @@
     <button type="button" [class.is-on]="sheetOpen && sheet === 'parts'" (click)="showSheet('parts')">Parts</button>
   </nav>
 </div>
+
+<!-- The window of a wall panel, edited as a window. -->
+<app-panel-dialog
+  *ngIf="panelEdit as edit"
+  [design]="edit.design"
+  [face]="edit.face"
+  [panels]="edit.faceIds.length"
+  [title]="edit.title"
+  [catalog]="catalog"
+  (saved)="panelSaved($event)"
+  (cancelled)="panelCancelled()"
+></app-panel-dialog>
 
 <input #fileInput type="file" accept=".json,application/json" hidden (change)="importFile($event)" />

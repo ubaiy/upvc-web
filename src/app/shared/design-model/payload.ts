@@ -7,10 +7,9 @@
  *  - every pane is priced from ITS OWN configuration. A part never borrows
  *    a sash, handle, hinge, track or mesh from another pane, so a window
  *    and its mirror image cost the same;
- *  - an opening sash is always one part at its own daylight size with
- *    `palla_type: 1` (the per-sash form), whether it is the only pane or
- *    one of several. The old screen sent either that or one whole-window
- *    part depending on what was selected, and the two gave different totals;
+ *  - an opening sash is always one part with `palla_type: 1`: at the window
+ *    size when it is the only pane, as a single fixed pane is, and at its
+ *    own daylight size when it is one of several;
  *  - a sliding pane is always one part per panel;
  *  - every part carries the glass of ITS pane in `glazz_id` (the pane's own
  *    glass, else the window's). The api charges glass per part from that
@@ -449,9 +448,9 @@ export function toPayload(
   const sections: SectionPayload[] = [];
 
   const root = design.root;
-  // Only a single FIXED pane keeps the legacy whole-window part. A single
-  // opening sash is priced like every other sash (and the api refuses an
-  // Openable part without a palla count).
+  // A single FIXED pane keeps the legacy whole-window part. A single opening
+  // sash is priced at the window size too (the api refuses an Openable part
+  // without a palla count, so it stays one part with its own hardware).
   const singleFixedRoot =
     isLeaf(root) && root.category === 'Casement' && !isOpenable(root);
   const grid = leafGrid(root);
@@ -512,6 +511,8 @@ export function toPayload(
     };
     if (singleFixedRoot) {
       parts.push({ ...base, ...ownGlass(leaf), ...ownLouvers(leaf), ...extras });
+    } else if (lay.leaves.length === 1 && isOpenable(leaf)) {
+      parts.push(leafPart(base, leaf, design.frame.widthMm, design.frame.heightMm, frameProductId, extras));
     } else {
       parts.push(leafPart(base, leaf, rect.wMm, rect.hMm, frameProductId, extras));
     }

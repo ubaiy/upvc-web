@@ -3,6 +3,7 @@ import { Observable, defer, of, throwError } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { parseStructure, Structure, summarize } from '../../shared/structure-model';
 import { StructureLine, StructureLineService } from './structure-line.service';
+import type { StructureWindow } from './structure-windows';
 
 /** One row of the list of saved structures: everything but the document. */
 export interface StructureSummary {
@@ -34,6 +35,10 @@ export interface StructureSave {
   quantity?: number;
   /** A typed price for one; null = the api's computed price. */
   unitPrice?: number | null;
+  /** The windows of the wall panels, equal ones together: the api prices the line from them. */
+  windows?: StructureWindow[];
+  /** The name of the glass row of the structure, for the workshop glass order. */
+  glass?: string | null;
 }
 
 /**
@@ -88,6 +93,8 @@ export class ApiStructureStore extends StructureStore {
       image: input.thumbnail,
       document: doc,
       summary: summarize(doc),
+      ...(input.windows ? { windows: input.windows } : {}),
+      ...(input.glass !== undefined ? { glass: input.glass } : {}),
     };
     if (input.id) return this.lines.update(Number(input.id), body).pipe(map(summaryOfLine));
     if (!input.quotationId) return throwError(() => new Error('A structure is saved as a line of a quotation: open it from a quotation.'));

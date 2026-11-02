@@ -47,7 +47,7 @@
   <app-empty-state
     icon="layers"
     title="No production job yet"
-    text="Freeze this quotation's windows to make the cutting list, glass order, hardware order and production sheets. The documents keep these sizes even if the quotation changes later."
+    text="Freeze this quotation's windows to make the cutting list, bar plan, glass order, hardware order and production sheets. The documents keep these sizes even if the quotation changes later."
   >
     <button type="button" class="btn btn-primary btn-lg" [disabled]="freezing" appWrite="production.write" (click)="freeze()">
       {{ freezing ? 'Preparing…' : 'Prepare production documents' }}
@@ -241,12 +241,14 @@
       <h2 id="summary-title">Quick summary</h2>
       <span class="muted small">Totals for the whole job</span>
     </div>
-    <div class="stats">
+    <div class="stats" [class.stats-4]="!!barsFigure">
       <app-stat
         label="Profile to cut"
         [value]="(sum.profileMetres | number : '1.0-1') + ' m'"
         [detail]="sum.profilePieces + ' pieces' + (sum.steelMetres ? ', plus ' + (sum.steelMetres | number : '1.0-1') + ' m of steel' : '')"
       ></app-stat>
+      <!-- The api's bar plan: absent from an older api, and then there is no figure and no tab. -->
+      <app-stat *ngIf="barsFigure as figure" label="Bars to buy" [value]="figure.value" [detail]="figure.detail"></app-stat>
       <app-stat
         label="Glass"
         [value]="(sum.glassArea | number : '1.0-2') + ' sq m'"
@@ -268,6 +270,9 @@
       </button>
       <button type="button" class="tab" role="tab" [attr.aria-selected]="tab === 'hardware'" (click)="tab = 'hardware'">
         Hardware
+      </button>
+      <button type="button" class="tab" role="tab" *ngIf="bars" [attr.aria-selected]="tab === 'bars'" (click)="tab = 'bars'">
+        Bars
       </button>
     </div>
 
@@ -345,7 +350,64 @@
         </tr>
       </tbody>
     </table>
+
+    <ng-container *ngIf="tab === 'bars' && bars as bar">
+      <table class="table table-keep bars-table">
+        <thead>
+          <tr>
+            <th scope="col">Profile</th>
+            <th scope="col" class="hide-phone">Bar</th>
+            <th scope="col" class="right">Bars</th>
+            <th scope="col" class="right">Offcuts</th>
+            <th scope="col" class="right">Waste</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of bar.plan.sections">
+            <td>
+              <span class="title">{{ row.name }}</span>
+              <span class="muted small sub-line"
+                ><ng-container *ngIf="row.steel; else profileLine">Steel reinforcement</ng-container>
+                <ng-template #profileLine
+                  ><bdi>{{ row.code || 'No profile code' }}</bdi
+                  ><ng-container *ngIf="row.colour"> · {{ row.colour }}</ng-container></ng-template
+                ><span class="bar-inline"> · {{ row.bar_mm }} mm bar</span></span
+              >
+            </td>
+            <td class="num hide-phone">{{ row.bar_mm }} mm</td>
+            <td class="right num">{{ row.bars }}</td>
+            <td class="right num">{{ row.offcuts }}</td>
+            <td class="right num">{{ row.waste_pct | number : '1.1-1' }}%</td>
+          </tr>
+          <tr class="sum" *ngFor="let total of bar.totals">
+            <td class="title">{{ total.label }}</td>
+            <td class="hide-phone"></td>
+            <td class="right num">{{ total.bars }}</td>
+            <td class="right num">{{ total.offcuts }}</td>
+            <td class="right num">{{ total.waste_pct | number : '1.1-1' }}%</td>
+          </tr>
+          <tr *ngIf="!bar.plan.sections.length">
+            <td colspan="5" class="muted">No profile sizes in this job.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="bars-foot">
+        <p class="muted small">{{ bar.rule }}</p>
+        <button type="button" class="btn btn-secondary" appWrite="production.write" (click)="barSettingsOpen = true">
+          <app-icon name="settings"></app-icon>Bar settings
+        </button>
+      </div>
+
+      <div class="bars-notes" *ngIf="bar.plan.standard || bar.assumed || bar.tooLong">
+        <app-callout *ngIf="bar.plan.standard">Made with standard values. Refresh the job to use your own.</app-callout>
+        <app-callout *ngIf="bar.assumed">{{ bar.assumed }}</app-callout>
+        <app-callout tone="warn" *ngIf="bar.tooLong">{{ bar.tooLong }}</app-callout>
+      </div>
+    </ng-container>
   </section>
+
+  <app-bar-settings-dialog [(visible)]="barSettingsOpen" (saved)="barSettingsSaved()"></app-bar-settings-dialog>
 </ng-container>
 
 <!-- A new revision replaces the one the workshop may be cutting from: one small confirm (T84, m21). -->

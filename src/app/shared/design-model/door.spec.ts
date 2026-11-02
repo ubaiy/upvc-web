@@ -233,6 +233,15 @@ describe('checkDoor', () => {
 });
 
 describe('toPayload goldens — doors', () => {
+  it('single door: priced at the door size, as a single window sash is', () => {
+    const d = makeDoor(doorBase(1000), 'p1', { leaves: 1, sashId: 12, handleId: 3, hingesType: '3D Hinges' });
+    const payload = toPayload(d);
+    expect(payload.parts.length).toBe(1);
+    expect(payload.parts[0].width).toBe(1000);
+    expect(payload.parts[0].height).toBe(2100);
+    expect(payload.sections[0].widthMm).toBe(880);
+  });
+
   it('double door: two sash parts, product_type Door, 3D hinges priced', () => {
     const d = makeDoor(doorBase(1500), 'p1', {
       leaves: 2,

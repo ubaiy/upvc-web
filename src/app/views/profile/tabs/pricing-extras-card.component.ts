@@ -91,7 +91,7 @@ export function extraRatesFrom(fields: ExtraRateField[]): ExtraRates {
   standalone: true,
   imports: [WriteDirective, CommonModule, FormsModule, RouterModule, SharedComponentsModule],
   templateUrl: './pricing-extras-card.component.html',
-  styleUrls: ['../settings-tab.scss', './structure-rates-tab.component.scss'],
+  styleUrls: ['../settings-tab.scss', './pricing-extras-card.component.scss'],
   styles: [
     `
       .input-group .unit { white-space: nowrap; }
